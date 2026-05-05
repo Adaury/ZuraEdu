@@ -39,23 +39,58 @@
         :root { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
     </style>
 
+    <!-- Tailwind CSS — Play CDN con preflight desactivado para convivir con Bootstrap -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: ['attribute', '[data-theme="dark"]'],
+            corePlugins: { preflight: false }
+        }
+    </script>
+    <!-- x-cloak: ocultar elementos Alpine hasta que inicialice -->
+    <style>[x-cloak] { display: none !important; }</style>
+
     @stack('styles')
 
     <style>
         /* ── CSS Variables ─────────────────────────────── */
         :root {
-            --primary:       #2563eb;
-            --primary-dark:  #1d4ed8;
-            --primary-light: #3b82f6;
-            --secondary:     #10b981;
-            --accent:        #10b981;
-            --accent-light:  #d1fae5;
-            --sidebar-bg:    #0f172a;
-            --sidebar-width: 260px;
-            --topbar-height: 64px;
-            --sidebar-text:  rgba(255,255,255,.80);
-            --sidebar-hover: rgba(255,255,255,.08);
-            --sidebar-active:rgba(37,99,235,.28);
+            --primary:         #3B82F6;
+            --primary-dark:    #2563EB;
+            --primary-light:   #60A5FA;
+            --secondary:       #10b981;
+            --accent:          #10b981;
+            --accent-light:    #d1fae5;
+            --sidebar-bg:      #0f172a;
+            --sidebar-width:   260px;
+            --topbar-height:   60px;
+            --sidebar-text:    #94a3b8;
+            --sidebar-hover:   rgba(255,255,255,.06);
+            --sidebar-active:  var(--primary);
+            --role-color:      #3B82F6;
+            --role-glow:       rgba(59,130,246,.35);
+            --role-grad1:      #0f172a;
+            --role-grad2:      #1e3a8a;
+        }
+        /* ── Docente → violeta ── */
+        body.role-docente {
+            --primary:      #7c3aed;
+            --primary-dark: #6d28d9;
+            --primary-light:#a78bfa;
+            --role-color:   #7c3aed;
+            --role-glow:    rgba(124,58,237,.35);
+            --role-grad1:   #1e0a3c;
+            --role-grad2:   #6d28d9;
+        }
+        /* ── Coordinador → índigo ── */
+        body.role-coordinador {
+            --primary:      #4f46e5;
+            --primary-dark: #4338ca;
+            --primary-light:#818cf8;
+            --role-color:   #4f46e5;
+            --role-glow:    rgba(79,70,229,.35);
+            --role-grad1:   #1e1b4b;
+            --role-grad2:   #4338ca;
         }
 
         /* ── Dark mode overrides ───────────────────────── */
@@ -69,16 +104,14 @@
             color: #e2e8f0;
         }
         [data-theme="dark"] .topbar {
-            background: rgba(15,23,42,.85);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border-color: #334155;
+            background: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+            border-bottom: none;
         }
-        [data-theme="dark"] .topbar-title { color: #e2e8f0; }
-        [data-theme="dark"] .topbar-user .dropdown-toggle { color: #cbd5e1; }
-        [data-theme="dark"] .topbar-user .dropdown-toggle:hover { background: #334155; }
+        [data-theme="dark"] .topbar-title { color: rgba(255,255,255,.85); }
+        [data-theme="dark"] .topbar-user .dropdown-toggle { color: #fff; }
+        [data-theme="dark"] .topbar-user .dropdown-toggle:hover { background: rgba(255,255,255,.14); }
         [data-theme="dark"] .main-content { background: #0f172a; }
-        [data-theme="dark"] .sidebar { background: #0f172a; box-shadow: 4px 0 24px rgba(0,0,0,.4); }
+        [data-theme="dark"] .sidebar { background: linear-gradient(180deg,#020617 0%,#0a0f1e 100%); box-shadow: 4px 0 32px rgba(0,0,0,.6); }
         [data-theme="dark"] .card,
         [data-theme="dark"] .card-panel,
         [data-theme="dark"] .import-card,
@@ -395,18 +428,19 @@
         .topbar-search { position: relative; flex: 1; max-width: 380px; }
         .topbar-search input {
             width: 100%; padding: .38rem .9rem .38rem 2.2rem;
-            border: 1.5px solid #e5e7eb; border-radius: 20px;
-            font-size: .82rem; background: #f8faff; color: #1e293b;
-            outline: none; transition: border-color .2s, box-shadow .2s;
+            border: 1.5px solid rgba(255,255,255,.18); border-radius: 20px;
+            font-size: .82rem; background: rgba(255,255,255,.1); color: #fff;
+            outline: none; transition: border-color .2s, box-shadow .2s, background .2s;
         }
+        .topbar-search input::placeholder { color: rgba(255,255,255,.45); }
         .topbar-search input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(30,64,175,.12);
-            background: #fff;
+            border-color: rgba(255,255,255,.38);
+            box-shadow: 0 0 0 3px rgba(255,255,255,.08);
+            background: rgba(255,255,255,.16);
         }
         .topbar-search .gs-icon {
             position: absolute; left: .65rem; top: 50%;
-            transform: translateY(-50%); color: #60a5fa; font-size: .85rem; pointer-events: none;
+            transform: translateY(-50%); color: rgba(255,255,255,.55); font-size: .85rem; pointer-events: none;
         }
         #gsDropdown {
             position: absolute; top: calc(100% + 6px); left: 0; right: 0;
@@ -435,7 +469,8 @@
         .gs-item-label { font-size: .82rem; font-weight: 600; }
         .gs-item-sub   { font-size: .73rem; color: #6b7280; }
         .gs-empty { padding: .85rem; text-align: center; font-size: .82rem; color: #60a5fa; }
-        [data-theme="dark"] .topbar-search input { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+        [data-theme="dark"] .topbar-search input { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.15); color: #fff; }
+        [data-theme="dark"] .topbar-search input::placeholder { color: rgba(255,255,255,.35); }
         [data-theme="dark"] #gsDropdown { background: #1e293b; border-color: #334155; }
         [data-theme="dark"] .gs-group-header { background: #0f172a; color: #60a5fa; border-color: #334155; }
         [data-theme="dark"] .gs-item { color: #e2e8f0; }
@@ -830,14 +865,18 @@
         /* ── Dark mode toggle button ─────────────────────── */
         .dark-toggle {
             background: transparent; border: none;
-            color: #6b7280; font-size: 1.05rem;
+            color: rgba(255,255,255,.7); font-size: 1.05rem;
             padding: .3rem .4rem; border-radius: 8px;
             cursor: pointer; transition: color .18s, background .18s;
             line-height: 1;
         }
-        .dark-toggle:hover { color: var(--primary); background: #f3f4f6; }
+        .dark-toggle:hover { color: #fff; background: rgba(255,255,255,.12); }
         [data-theme="dark"] .dark-toggle { color: #fcd34d; }
-        [data-theme="dark"] .dark-toggle:hover { background: #334155; }
+        [data-theme="dark"] .dark-toggle:hover { background: rgba(255,255,255,.08); }
+
+        /* ── Bell / alertas en topbar oscuro ─────────────── */
+        #adminBell { color: rgba(255,255,255,.7) !important; border-radius: 8px; transition: color .15s, background .15s; }
+        #adminBell:hover { color: #fff !important; background: rgba(255,255,255,.12) !important; }
 
         * { box-sizing: border-box; }
 
@@ -850,20 +889,22 @@
         }
 
         /* ════════════════════════════════════════════════
-           SIDEBAR
+           SIDEBAR — Diseño oscuro moderno
         ════════════════════════════════════════════════ */
         .sidebar {
             position: fixed;
             top: 0; left: 0;
             width: var(--sidebar-width);
             height: 100vh;
-            background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 60%, #0f172a 100%);
+            background: linear-gradient(180deg,#0f172a 0%,#111827 100%);
             display: flex;
             flex-direction: column;
             z-index: 1040;
             transition: transform .3s cubic-bezier(.4,0,.2,1);
-            overflow: hidden;
-            box-shadow: 4px 0 24px rgba(0,0,0,.25);
+            overflow-x: hidden;
+            overflow-y: hidden;
+            border-right: 1px solid rgba(255,255,255,.06);
+            box-shadow: 4px 0 32px rgba(0,0,0,.35);
         }
 
         /* ── Logo Area ────────────────────────────────── */
@@ -872,15 +913,16 @@
             align-items: center;
             gap: .85rem;
             padding: 1.15rem 1.25rem 1rem;
-            border-bottom: 1px solid rgba(59,130,246,.15);
+            border-bottom: 1px solid rgba(255,255,255,.07);
             text-decoration: none;
             flex-shrink: 0;
+            background: rgba(255,255,255,.02);
         }
 
         .logo-badge {
             width: 42px; height: 42px;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            border-radius: 10px;
+            background: linear-gradient(135deg, var(--role-color) 0%, var(--primary-dark) 100%);
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -889,20 +931,20 @@
             color: #fff;
             letter-spacing: .02em;
             flex-shrink: 0;
-            box-shadow: 0 4px 18px rgba(16,185,129,.45), 0 0 0 1px rgba(16,185,129,.2);
+            box-shadow: 0 4px 18px var(--role-glow), 0 0 0 1px rgba(255,255,255,.1);
         }
 
         .logo-text .system-name {
-            font-size: 1.05rem;
+            font-size: 1rem;
             font-weight: 800;
-            color: #fff;
+            color: #f1f5f9;
             line-height: 1.1;
-            letter-spacing: .03em;
+            letter-spacing: .02em;
         }
         .logo-text .system-sub {
-            font-size: .7rem;
-            color: rgba(255,255,255,.75);
-            letter-spacing: .05em;
+            font-size: .65rem;
+            color: #64748b;
+            letter-spacing: .08em;
             text-transform: uppercase;
         }
 
@@ -910,22 +952,32 @@
         .sidebar-nav {
             flex: 1;
             overflow-y: auto;
-            padding: .75rem 0;
+            padding: .5rem 0;
             scrollbar-width: thin;
-            scrollbar-color: rgba(255,255,255,.15) transparent;
+            scrollbar-color: rgba(255,255,255,.08) transparent;
         }
-        .sidebar-nav::-webkit-scrollbar { width: 4px; }
+        .sidebar-nav::-webkit-scrollbar { width: 3px; }
         .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
-        .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 2px; }
+        .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 2px; }
+
+        /* ── Sidebar submenus (custom, no Bootstrap Collapse) ─── */
+        .sidebar-submenu {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height .35s ease;
+        }
+        .sidebar-submenu.sidebar-submenu-open {
+            max-height: 600px;
+        }
 
         .nav-section-title {
-            font-size: .6rem;
+            font-size: .58rem;
             font-weight: 700;
-            letter-spacing: .14em;
+            letter-spacing: .18em;
             text-transform: uppercase;
-            color: rgba(255,255,255,.38);
-            padding: .85rem 1.25rem .25rem;
-            margin-top: .15rem;
+            color: #475569;
+            padding: .9rem 1.1rem .2rem;
+            margin-top: .1rem;
         }
 
         .nav-item a,
@@ -933,109 +985,109 @@
             display: flex;
             align-items: center;
             gap: .7rem;
-            padding: .55rem 1.25rem;
-            color: var(--sidebar-text);
+            padding: .48rem 1rem;
+            color: #94a3b8;
             text-decoration: none;
-            font-size: .84rem;
+            font-size: .82rem;
             font-weight: 500;
             border-radius: 0;
-            transition: background .18s, color .18s, padding-left .18s;
+            transition: all .17s ease;
             width: 100%;
             background: transparent;
             border: none;
             cursor: pointer;
             text-align: left;
+            margin: 1px .6rem;
+            width: calc(100% - 1.2rem);
+            border-radius: 8px;
         }
 
         .nav-item a:hover,
         .nav-item button.nav-link-btn:hover {
-            background: rgba(255,255,255,.09);
-            color: #fff;
-            border-radius: 8px;
-            margin: 0 .6rem;
-            padding-left: calc(1.25rem - .6rem);
-            padding-right: .65rem;
+            background: rgba(255,255,255,.06);
+            color: #e2e8f0;
         }
 
         .nav-item a.active,
         .nav-item a[aria-current="page"] {
-            background: linear-gradient(90deg, #2563eb, #1d4ed8);
+            background: var(--role-color);
             color: #fff;
-            border-radius: 8px;
-            margin: 0 .6rem;
-            padding-left: calc(1.25rem - .6rem);
-            padding-right: .65rem;
             font-weight: 600;
-            box-shadow: 0 4px 16px rgba(37,99,235,.40), inset 0 1px 0 rgba(255,255,255,.12);
+            box-shadow: 0 4px 14px var(--role-glow), inset 0 1px 0 rgba(255,255,255,.15);
         }
 
         .nav-item a i,
         .nav-item button.nav-link-btn i {
-            font-size: 1.05rem;
+            font-size: 1rem;
             flex-shrink: 0;
-            width: 20px;
+            width: 18px;
             text-align: center;
+            opacity: .75;
         }
+        .nav-item a.active i,
+        .nav-item a:hover i { opacity: 1; }
 
         /* ── User Footer ──────────────────────────────── */
         .sidebar-user {
-            border-top: 1px solid rgba(255,255,255,.10);
-            padding: .9rem 1.1rem;
+            border-top: 1px solid rgba(255,255,255,.07);
+            padding: .85rem 1rem;
             display: flex;
             align-items: center;
             gap: .75rem;
             flex-shrink: 0;
+            background: rgba(0,0,0,.2);
         }
 
         .user-avatar {
-            width: 38px; height: 38px;
-            background: var(--secondary);
-            border-radius: 50%;
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--role-color), var(--primary-dark));
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: .8rem;
+            font-size: .78rem;
             font-weight: 800;
             color: #fff;
             flex-shrink: 0;
+            box-shadow: 0 2px 8px var(--role-glow);
         }
 
         .user-info { flex: 1; min-width: 0; }
         .user-name {
-            font-size: .8rem;
+            font-size: .78rem;
             font-weight: 700;
-            color: #fff;
+            color: #e2e8f0;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         .user-role {
-            font-size: .68rem;
-            color: rgba(255,255,255,.7);
+            font-size: .65rem;
+            color: #64748b;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
         .btn-logout {
-            background: rgba(255,255,255,.08);
-            border: 1px solid rgba(255,255,255,.12);
-            color: rgba(255,255,255,.6);
-            border-radius: 6px;
+            background: rgba(255,255,255,.06);
+            border: 1px solid rgba(255,255,255,.1);
+            color: #64748b;
+            border-radius: 8px;
             padding: .3rem .5rem;
             font-size: .85rem;
             flex-shrink: 0;
-            transition: background .18s, color .18s;
+            transition: all .18s;
             line-height: 1;
         }
         .btn-logout:hover {
-            background: rgba(16,185,129,.35);
-            border-color: rgba(16,185,129,.5);
-            color: #fff;
+            background: rgba(239,68,68,.2);
+            border-color: rgba(239,68,68,.3);
+            color: #fca5a5;
         }
 
         /* ════════════════════════════════════════════════
-           TOPBAR
+           TOPBAR — Gradiente oscuro (igual al portal)
         ════════════════════════════════════════════════ */
         .topbar {
             position: fixed;
@@ -1043,13 +1095,12 @@
             left: var(--sidebar-width);
             right: 0;
             height: var(--topbar-height);
-            background: #fff;
-            border-bottom: 1px solid #e2e8f0;
+            background: linear-gradient(135deg, var(--role-grad1) 0%, var(--role-grad2) 100%);
             display: flex;
             align-items: center;
             padding: 0 1.5rem;
             z-index: 1030;
-            box-shadow: 0 1px 8px rgba(0,0,0,.06);
+            box-shadow: 0 2px 16px rgba(0,0,0,.28);
             gap: 1rem;
             transition: left .3s cubic-bezier(.4,0,.2,1);
         }
@@ -1058,7 +1109,7 @@
             display: none;
             background: transparent;
             border: none;
-            color: #6b7280;
+            color: rgba(255,255,255,.7);
             font-size: 1.3rem;
             padding: .25rem;
             line-height: 1;
@@ -1066,22 +1117,23 @@
             border-radius: 6px;
             transition: color .18s, background .18s;
         }
-        .topbar-hamburger:hover { color: var(--primary); background: #f3f4f6; }
+        .topbar-hamburger:hover { color: #fff; background: rgba(255,255,255,.12); }
 
         .topbar-title {
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: var(--primary);
+            font-size: .95rem;
+            font-weight: 600;
+            color: rgba(255,255,255,.8);
             flex: 1;
+            letter-spacing: .01em;
         }
 
         .schoolyear-badge {
-            background: var(--accent-light);
-            color: #92400e;
-            border: 1px solid #fcd34d;
+            background: rgba(255,255,255,.12);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,.22);
             border-radius: 20px;
             padding: .28rem .85rem;
-            font-size: .75rem;
+            font-size: .74rem;
             font-weight: 600;
             white-space: nowrap;
         }
@@ -1090,16 +1142,16 @@
             display: flex;
             align-items: center;
             gap: .55rem;
-            background: transparent;
-            border: none;
-            color: #374151;
-            font-size: .84rem;
+            background: rgba(255,255,255,.12);
+            border: 1px solid rgba(255,255,255,.2);
+            color: #fff;
+            font-size: .83rem;
             font-weight: 600;
-            padding: .35rem .6rem;
-            border-radius: 8px;
+            padding: .3rem .75rem .3rem .4rem;
+            border-radius: 20px;
             transition: background .18s;
         }
-        .topbar-user .dropdown-toggle:hover { background: #f3f4f6; }
+        .topbar-user .dropdown-toggle:hover { background: rgba(255,255,255,.22); color: #fff; }
         .topbar-user .dropdown-toggle::after { display: none; }
 
         .topbar-avatar {
@@ -1123,6 +1175,11 @@
             padding: 1.75rem;
             min-height: calc(100vh - var(--topbar-height));
             transition: margin-left .3s cubic-bezier(.4,0,.2,1);
+            animation: mainFadeIn .22s ease;
+        }
+        @keyframes mainFadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
 
         /* ════════════════════════════════════════════════
@@ -1164,6 +1221,8 @@
         /* ── Misc helpers ─────────────────────────────── */
         .dropdown-item { font-size: .84rem; }
         .dropdown-item i { width: 18px; }
+        /* Ensure topbar dropdown appears above sidebar (z-index:1040) */
+        .topbar-user .dropdown-menu { z-index: 1050 !important; }
 
         /* ── Responsive: contenido en móvil ──────────── */
         @media (max-width: 767.98px) {
@@ -1406,7 +1465,15 @@
         }
     </style>
 </head>
-<body>
+@php
+$bodyRoleClass = '';
+if(auth()->check()) {
+    $r = auth()->user();
+    if($r->hasRole('Docente'))      $bodyRoleClass = 'role-docente';
+    elseif($r->hasAnyRole(['Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo'])) $bodyRoleClass = 'role-coordinador';
+}
+@endphp
+<body class="{{ $bodyRoleClass }}">
 
     <div id="nprogress-bar"></div>
 
@@ -1456,33 +1523,19 @@
         <!-- Navigation -->
         <nav class="sidebar-nav">
 
-            <!-- Dashboard -->
-            <ul class="list-unstyled mb-0">
-                <li class="nav-item">
-                    <a href="{{ route('admin.dashboard') }}"
-                       class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
-                        <i class="bi bi-speedometer2"></i>
-                        Dashboard
-                    </a>
-                </li>
-            </ul>
-
             @php
                 $u = Auth::user();
-                $isAdmin   = $u->hasRole('Administrador');
-                $isDir     = $u->hasRole('Director');
-                $isCoord   = $u->hasAnyRole(['Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']);
-                $isCoordPC = $u->hasRole('Coordinador Primer Ciclo');
-                $isCoordSC = $u->hasAnyRole(['Coordinador Segundo Ciclo','Coordinador Académico']);
-                $isDocente = $u->hasRole('Docente');
-                $isSecre        = $u->hasAnyRole(['Secretaría','Secretaria Docente']);
+                $isAdmin        = $u->hasRole('Administrador');
+                $isDir          = $u->hasRole('Director');
+                $isCoord        = $u->hasAnyRole(['Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']);
+                $isDocente      = $u->hasRole('Docente');
+                $isSecre        = $u->hasAnyRole(['Secretaría','Secretaria Docente','Secretaria']);
                 $isPersonalAdm  = $u->hasRole('Personal Administrativo');
                 $canSupervisar  = $isAdmin || $isDir || $isPersonalAdm;
-                $canConfig = $isAdmin;
-                $canAcad   = $isAdmin || $isDir || $isCoord || $isSecre || $isPersonalAdm;
-                $canCalif  = $isAdmin || $isDir || $isCoord || $isDocente;
-                // Detect docente area to show only relevant sections
-                $docenteArea = null;
+                $canConfig      = $isAdmin;
+                $canAcad        = $isAdmin || $isDir || $isCoord || $isSecre || $isPersonalAdm;
+                $canCalif       = $isAdmin || $isDir || $isCoord || $isDocente;
+                $docenteArea    = null;
                 if ($isDocente) {
                     try {
                         $docenteArea = \Illuminate\Support\Facades\Cache::remember(
@@ -1491,381 +1544,107 @@
                         );
                     } catch (\Exception $e) {}
                 }
-                $showPrimerCiclo  = $isAdmin || $isDir || $isCoord || $isSecre || $isPersonalAdm
-                    || ($isDocente && in_array($docenteArea, ['academica','ambas',null]));
-                $showSegAcademica = $isAdmin || $isDir || $isCoord || $isSecre || $isPersonalAdm
-                    || ($isDocente && in_array($docenteArea, ['academica','ambas',null]));
-                $showSegTecnica   = $isAdmin || $isDir || $isCoord || $isSecre || $isPersonalAdm
+                $showSegTecnica = $isAdmin || $isDir || $isCoord || $isSecre || $isPersonalAdm
                     || ($isDocente && in_array($docenteArea, ['tecnica','ambas']));
             @endphp
 
-            {{-- ══ PRIMER CICLO (1ro–3ro de Secundaria) ══ --}}
-            {{-- Flujo: Estudiantes → Importar → Matrículas → Asistencia → Notas → Boletines → Dashboard → Calendario --}}
-            @if($showPrimerCiclo)
-            <div class="nav-section-title d-flex align-items-center gap-1">
-                <span style="background:#2563eb;color:#fff;border-radius:4px;padding:.1rem .45rem;font-size:.62rem;font-weight:700;">1ro–3ro</span>
-                Primer Ciclo
-            </div>
+            {{-- Dashboard --}}
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                        <i class="bi bi-speedometer2"></i>Dashboard
+                    </a>
+                </li>
+                @if($isAdmin || $isDir)
+                <li class="nav-item">
+                    <a href="{{ route('admin.kpis.index') }}" class="{{ request()->routeIs('admin.kpis*') ? 'active' : '' }}">
+                        <i class="bi bi-graph-up-arrow"></i>KPIs Director
+                    </a>
+                </li>
+                @endif
+            </ul>
+
+            {{-- ══ GESTIÓN ACADÉMICA ══ --}}
+            @if($canAcad || $isDocente)
+            <div class="nav-section-title">Gestión Académica</div>
             <ul class="list-unstyled mb-0">
                 @if($canAcad)
                 <li class="nav-item">
-                    <a href="{{ route('admin.estudiantes.index', ['ciclo'=>1]) }}"
-                       class="{{ request()->routeIs('admin.estudiantes.index') && request('ciclo')=='1' ? 'active' : '' }}">
+                    <a href="{{ route('admin.estudiantes.index') }}" class="{{ request()->routeIs('admin.estudiantes.index') ? 'active' : '' }}">
                         <i class="bi bi-people-fill"></i>Estudiantes
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.estudiantes.import', ['ciclo'=>1]) }}"
-                       class="{{ request()->routeIs('admin.estudiantes.import') && request('ciclo')=='1' ? 'active' : '' }}">
-                        <i class="bi bi-file-earmark-arrow-up"></i>Importar Estudiantes
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.matriculas.index', ['ciclo'=>1]) }}"
-                       class="{{ request()->routeIs('admin.matriculas*') && request('ciclo')=='1' ? 'active' : '' }}">
+                    <a href="{{ route('admin.matriculas.index') }}" class="{{ request()->routeIs('admin.matriculas*') ? 'active' : '' }}">
                         <i class="bi bi-card-list"></i>Matrículas
                     </a>
                 </li>
                 @endif
-                @if($canCalif)
+                @if($canCalif || $isDocente)
                 <li class="nav-item">
-                    <a href="{{ route('admin.asistencia.index', ['ciclo'=>1]) }}"
-                       class="{{ request()->routeIs('admin.asistencia*') && request('ciclo')=='1' ? 'active' : '' }}">
+                    <a href="{{ route('admin.asistencia.index') }}" class="{{ request()->routeIs('admin.asistencia*') ? 'active' : '' }}">
                         <i class="bi bi-calendar-check"></i>Asistencia
                     </a>
                 </li>
-                {{-- ── Horarios: Gestión completa (admin) o Mi Horario (docente) ── --}}
-                @php $horarioActivo = request()->routeIs('admin.horarios*') || request()->routeIs('admin.asignaturas*');
-     $isPrivado = \App\Models\ConfigInstitucional::get('tipo_institucion') === 'privado'; @endphp
-                @if($isDocente)
-                <li class="nav-item">
-                    <a href="{{ route('admin.horarios.mi-horario') }}"
-                       class="{{ request()->routeIs('admin.horarios.mi-horario') ? 'active' : '' }}">
-                        <i class="bi bi-calendar-week-fill" style="color:#818cf8;"></i>Mi Horario
-                    </a>
-                </li>
-                @else
+                @if(!$isDocente)
+                @php $horarioActive = request()->routeIs('admin.horarios*'); @endphp
                 <li class="nav-item">
                     <button class="nav-link-btn w-100 text-start d-flex align-items-center justify-content-between"
-                            type="button"
-                            data-bs-toggle="collapse"
-                            data-bs-target="#subHorarios"
-                            aria-expanded="{{ $horarioActivo ? 'true' : 'false' }}"
-                            style="{{ $horarioActivo ? 'background:var(--sidebar-active);color:#fff;border-radius:8px;' : '' }}">
-                        <span class="d-flex align-items-center gap-2">
-                            <i class="bi bi-calendar-week"></i>Gestión de Horarios
-                        </span>
-                        <i class="bi bi-chevron-down" style="font-size:.65rem;transition:transform .2s;{{ $horarioActivo ? 'transform:rotate(180deg)' : '' }}"></i>
+                            type="button" data-sidebar-toggle="subHorarios"
+                            aria-expanded="{{ $horarioActive ? 'true' : 'false' }}">
+                        <span class="d-flex align-items-center gap-2"><i class="bi bi-calendar-week"></i>Horarios</span>
+                        <i class="bi bi-chevron-down" style="font-size:.65rem;transition:transform .2s;{{ $horarioActive ? 'transform:rotate(180deg)' : '' }}"></i>
                     </button>
-                    <div class="collapse {{ $horarioActivo ? 'show' : '' }}" id="subHorarios">
+                    <div class="sidebar-submenu {{ $horarioActive ? 'sidebar-submenu-open' : '' }}" id="subHorarios">
                         <ul class="list-unstyled ps-3 mb-0" style="border-left:2px solid rgba(255,255,255,.12);margin-left:1.25rem;margin-top:.25rem;">
-                            <li>
-                                <a href="{{ route('admin.horarios.index') }}"
-                                   class="{{ request()->routeIs('admin.horarios.index') || request()->routeIs('admin.horarios.show') ? 'active' : '' }}"
-                                   style="font-size:.81rem;padding:.4rem .75rem;">
-                                    <i class="bi bi-calendar3"></i>Horarios
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{{ route('admin.asignaturas.index') }}"
-                                   class="{{ request()->routeIs('admin.asignaturas*') ? 'active' : '' }}"
-                                   style="font-size:.81rem;padding:.4rem .75rem;">
-                                    <i class="bi bi-book"></i>Materias
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{{ route('admin.docentes.index') }}"
-                                   class="{{ request()->routeIs('admin.docentes*') ? 'active' : '' }}"
-                                   style="font-size:.81rem;padding:.4rem .75rem;">
-                                    <i class="bi bi-person-badge"></i>Profesores
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{{ route('admin.horarios.horario-docente') }}"
-                                   class="{{ request()->routeIs('admin.horarios.horario-docente') ? 'active' : '' }}"
-                                   style="font-size:.81rem;padding:.4rem .75rem;">
-                                    <i class="bi bi-person-video3"></i>Horario por Docente
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{{ route('admin.horarios.vista-maestra') }}"
-                                   class="{{ request()->routeIs('admin.horarios.vista-maestra') ? 'active' : '' }}"
-                                   style="font-size:.81rem;padding:.4rem .75rem;">
-                                    <i class="bi bi-grid-3x3-gap-fill"></i>Vista Maestra
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{{ route('admin.horarios.aulas') }}"
-                                   class="{{ request()->routeIs('admin.horarios.aulas') ? 'active' : '' }}"
-                                   style="font-size:.81rem;padding:.4rem .75rem;">
-                                    <i class="bi bi-door-open"></i>Aulas
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{{ route('admin.horarios.disponibilidad') }}"
-                                   class="{{ request()->routeIs('admin.horarios.disponibilidad') ? 'active' : '' }}"
-                                   style="font-size:.81rem;padding:.4rem .75rem;">
-                                    <i class="bi bi-person-check"></i>Disponibilidad
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{{ route('admin.horarios.configuracion') }}"
-                                   class="{{ request()->routeIs('admin.horarios.configuracion') ? 'active' : '' }}"
-                                   style="font-size:.81rem;padding:.4rem .75rem;">
-                                    <i class="bi bi-sliders2"></i>Configuración
-                                </a>
-                            </li>
+                            <li><a href="{{ route('admin.horarios.index') }}" class="{{ request()->routeIs('admin.horarios.index') || request()->routeIs('admin.horarios.show') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-calendar3"></i>Horarios</a></li>
+                            <li><a href="{{ route('admin.horarios.vista-maestra') }}" class="{{ request()->routeIs('admin.horarios.vista-maestra') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-grid-3x3-gap-fill"></i>Vista Maestra</a></li>
+                            <li><a href="{{ route('admin.horarios.suplencias') }}" class="{{ request()->routeIs('admin.horarios.suplencias*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-person-fill-exclamation"></i>Suplencias</a></li>
+                            <li><a href="{{ route('admin.horarios.disponibilidad') }}" class="{{ request()->routeIs('admin.horarios.disponibilidad') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-person-check"></i>Disponibilidad</a></li>
                         </ul>
                     </div>
                 </li>
-                @endif
+                @else
                 <li class="nav-item">
-                    <a href="{{ route('admin.calificaciones.index', ['ciclo'=>1]) }}"
-                       class="{{ request()->routeIs('admin.calificaciones*') && request('ciclo')=='1' ? 'active' : '' }}">
-                        <i class="bi bi-journal-check"></i>Registro de Notas
+                    <a href="{{ route('admin.horarios.mi-horario') }}" class="{{ request()->routeIs('admin.horarios.mi-horario') ? 'active' : '' }}">
+                        <i class="bi bi-calendar-week-fill"></i>Mi Horario
                     </a>
                 </li>
                 @endif
-                @if($isAdmin || $isDir || $isCoord || $isSecre || $isDocente || $isPersonalAdm)
                 <li class="nav-item">
-                    <a href="{{ route('admin.boletines.index', ['ciclo'=>1]) }}"
-                       class="{{ request()->routeIs('admin.boletines.index') && request('ciclo')=='1' ? 'active' : '' }}">
+                    <a href="{{ route('admin.calificaciones.index') }}" class="{{ request()->routeIs('admin.calificaciones.index') || request()->routeIs('admin.calificaciones.planilla*') ? 'active' : '' }}">
+                        <i class="bi bi-journal-check"></i>Registro de Notas
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.boletines.index') }}" class="{{ request()->routeIs('admin.boletines.index') || request()->routeIs('admin.boletines.ver') ? 'active' : '' }}">
                         <i class="bi bi-file-earmark-text"></i>Boletines
                     </a>
                 </li>
                 @endif
-                @if($isAdmin || $isDir || $isCoord)
+                @if($showSegTecnica)
                 <li class="nav-item">
-                    <a href="{{ route('admin.rendimiento.dashboard', ['ciclo'=>1]) }}"
-                       class="{{ request()->routeIs('admin.rendimiento.dashboard') && request('ciclo')=='1' ? 'active' : '' }}">
-                        <i class="bi bi-bar-chart-line"></i>Dashboard
+                    <a href="{{ route('admin.planificacion.index') }}" class="{{ request()->routeIs('admin.planificacion*') ? 'active' : '' }}">
+                        <i class="bi bi-journal-text"></i>Planificaciones Técnicas
                     </a>
                 </li>
                 @endif
-                <li class="nav-item">
-                    <a href="{{ route('admin.calendario.index', ['ciclo'=>1]) }}"
-                       class="{{ request()->routeIs('admin.calendario*') && request('ciclo')=='1' ? 'active' : '' }}">
-                        <i class="bi bi-calendar-event"></i>Calendario
-                    </a>
-                </li>
             </ul>
             @endif
 
-            {{-- ══ SEGUNDO CICLO – ÁREA ACADÉMICA (4to–6to) ══ --}}
-            {{-- Flujo: Estudiantes → Importar → Matrículas → Asistencia → Notas → Boletines → Dashboard → Docentes → Malla → Calendario --}}
-            @if($showSegAcademica)
-            <div class="nav-section-title d-flex align-items-center gap-1">
-                <span style="background:#2563eb;color:#fff;border-radius:4px;padding:.1rem .45rem;font-size:.62rem;font-weight:700;">4to–6to</span>
-                2do Ciclo · Académica
-            </div>
+            {{-- ══ GESTIÓN INSTITUCIONAL ══ --}}
+            @if($isAdmin || $isDir || $isCoord)
+            <div class="nav-section-title">Gestión Institucional</div>
             <ul class="list-unstyled mb-0">
-                @if($canAcad)
                 <li class="nav-item">
-                    <a href="{{ route('admin.estudiantes.index', ['ciclo'=>2,'area'=>'academica']) }}"
-                       class="{{ request()->routeIs('admin.estudiantes.index') && request('ciclo')=='2' && request('area')=='academica' ? 'active' : '' }}">
-                        <i class="bi bi-people-fill"></i>Estudiantes
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.estudiantes.import', ['ciclo'=>2,'area'=>'academica']) }}"
-                       class="{{ request()->routeIs('admin.estudiantes.import') && request('ciclo')=='2' && request('area')=='academica' ? 'active' : '' }}">
-                        <i class="bi bi-file-earmark-arrow-up"></i>Importar Estudiantes
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.matriculas.index', ['ciclo'=>2,'area'=>'academica']) }}"
-                       class="{{ request()->routeIs('admin.matriculas*') && request('ciclo')=='2' && request('area')=='academica' ? 'active' : '' }}">
-                        <i class="bi bi-card-list"></i>Matrículas
-                    </a>
-                </li>
-                @endif
-                @if($canCalif)
-                <li class="nav-item">
-                    <a href="{{ route('admin.asistencia.index', ['ciclo'=>2,'area'=>'academica']) }}"
-                       class="{{ request()->routeIs('admin.asistencia*') && request('ciclo')=='2' && request('area')=='academica' ? 'active' : '' }}">
-                        <i class="bi bi-calendar-check"></i>Asistencia
-                    </a>
-                </li>
-                @if(!$isDocente)
-                <li class="nav-item">
-                    <a href="{{ route('admin.horarios.index', ['ciclo'=>2,'area'=>'academica']) }}"
-                       class="{{ request()->routeIs('admin.horarios*') && request('ciclo')=='2' && request('area')=='academica' ? 'active' : '' }}">
-                        <i class="bi bi-calendar-week"></i>Horarios
-                    </a>
-                </li>
-                @endif
-                <li class="nav-item">
-                    <a href="{{ route('admin.calificaciones.index', ['ciclo'=>2,'area'=>'academica']) }}"
-                       class="{{ request()->routeIs('admin.calificaciones*') && request('ciclo')=='2' && request('area')=='academica' ? 'active' : '' }}">
-                        <i class="bi bi-journal-check"></i>Registro de Notas
-                    </a>
-                </li>
-                @endif
-                @if($isAdmin || $isDir || $isCoord || $isSecre || $isDocente || $isPersonalAdm)
-                <li class="nav-item">
-                    <a href="{{ route('admin.boletines.index', ['ciclo'=>2,'area'=>'academica']) }}"
-                       class="{{ request()->routeIs('admin.boletines.index') && request('ciclo')=='2' && request('area')=='academica' ? 'active' : '' }}">
-                        <i class="bi bi-file-earmark-text"></i>Boletines
-                    </a>
-                </li>
-                @endif
-                @if($isAdmin || $isDir || $isCoord)
-                <li class="nav-item">
-                    <a href="{{ route('admin.rendimiento.dashboard', ['ciclo'=>2,'area'=>'academica']) }}"
-                       class="{{ request()->routeIs('admin.rendimiento.dashboard') && request('ciclo')=='2' && request('area')=='academica' ? 'active' : '' }}">
-                        <i class="bi bi-bar-chart-line"></i>Dashboard
-                    </a>
-                </li>
-                @endif
-                @if(!$isDocente)
-                <li class="nav-item">
-                    <a href="{{ route('admin.areas.academica') }}"
-                       class="{{ request()->routeIs('admin.areas.academica') ? 'active' : '' }}">
-                        <i class="bi bi-book-half"></i>Docentes del Área
-                    </a>
-                </li>
-                @endif
-                @if($isAdmin || $isDir || $isCoord)
-                <li class="nav-item">
-                    <a href="{{ route('admin.malla.index', ['area'=>'academica']) }}"
-                       class="{{ request()->routeIs('admin.malla*') && request('area')=='academica' ? 'active' : '' }}">
-                        <i class="bi bi-grid-3x3"></i>Malla Curricular
-                    </a>
-                </li>
-                @endif
-                <li class="nav-item">
-                    <a href="{{ route('admin.calendario.index', ['ciclo'=>2,'area'=>'academica']) }}"
-                       class="{{ request()->routeIs('admin.calendario*') && request('ciclo')=='2' && request('area')=='academica' ? 'active' : '' }}">
-                        <i class="bi bi-calendar-event"></i>Calendario
-                    </a>
-                </li>
-            </ul>
-            @endif
-
-            {{-- ══ SEGUNDO CICLO – ÁREA TÉCNICA (4to–6to) ══ --}}
-            {{-- Flujo: Estudiantes → Importar → Matrículas → Asistencia → Notas → Boletines → Dashboard → Docentes → Especialidades → Calendario --}}
-            @if($showSegTecnica)
-            <div class="nav-section-title d-flex align-items-center gap-1">
-                <span style="background:#c0392b;color:#fff;border-radius:4px;padding:.1rem .45rem;font-size:.62rem;font-weight:700;">4to–6to</span>
-                2do Ciclo · Técnica
-            </div>
-            <ul class="list-unstyled mb-0">
-                @if($canAcad)
-                <li class="nav-item">
-                    <a href="{{ route('admin.estudiantes.index', ['ciclo'=>2,'area'=>'tecnica']) }}"
-                       class="{{ request()->routeIs('admin.estudiantes.index') && request('ciclo')=='2' && request('area')=='tecnica' ? 'active' : '' }}">
-                        <i class="bi bi-people-fill"></i>Estudiantes
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.estudiantes.import', ['ciclo'=>2,'area'=>'tecnica']) }}"
-                       class="{{ request()->routeIs('admin.estudiantes.import') && request('ciclo')=='2' && request('area')=='tecnica' ? 'active' : '' }}">
-                        <i class="bi bi-file-earmark-arrow-up"></i>Importar Estudiantes
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.matriculas.index', ['ciclo'=>2,'area'=>'tecnica']) }}"
-                       class="{{ request()->routeIs('admin.matriculas*') && request('ciclo')=='2' && request('area')=='tecnica' ? 'active' : '' }}">
-                        <i class="bi bi-card-list"></i>Matrículas
-                    </a>
-                </li>
-                @endif
-                @if($canCalif)
-                <li class="nav-item">
-                    <a href="{{ route('admin.asistencia.index', ['ciclo'=>2,'area'=>'tecnica']) }}"
-                       class="{{ request()->routeIs('admin.asistencia*') && request('ciclo')=='2' && request('area')=='tecnica' ? 'active' : '' }}">
-                        <i class="bi bi-calendar-check"></i>Asistencia
-                    </a>
-                </li>
-                @if(!$isDocente)
-                <li class="nav-item">
-                    <a href="{{ route('admin.horarios.index', ['ciclo'=>2,'area'=>'tecnica']) }}"
-                       class="{{ request()->routeIs('admin.horarios*') && request('ciclo')=='2' && request('area')=='tecnica' ? 'active' : '' }}">
-                        <i class="bi bi-calendar-week"></i>Horarios
-                    </a>
-                </li>
-                @endif
-                <li class="nav-item">
-                    <a href="{{ route('admin.calificaciones.index', ['ciclo'=>2,'area'=>'tecnica']) }}"
-                       class="{{ request()->routeIs('admin.calificaciones*') && request('ciclo')=='2' && request('area')=='tecnica' ? 'active' : '' }}">
-                        <i class="bi bi-journal-check"></i>Registro de Notas
-                    </a>
-                </li>
-                @endif
-                @if($isAdmin || $isDir || $isCoord || $isSecre || $isDocente || $isPersonalAdm)
-                <li class="nav-item">
-                    <a href="{{ route('admin.boletines.index', ['ciclo'=>2,'area'=>'tecnica']) }}"
-                       class="{{ request()->routeIs('admin.boletines.index') && request('ciclo')=='2' && request('area')=='tecnica' ? 'active' : '' }}">
-                        <i class="bi bi-file-earmark-text"></i>Boletines
-                    </a>
-                </li>
-                @endif
-                @if($isAdmin || $isDir || $isCoord)
-                <li class="nav-item">
-                    <a href="{{ route('admin.rendimiento.dashboard', ['ciclo'=>2,'area'=>'tecnica']) }}"
-                       class="{{ request()->routeIs('admin.rendimiento.dashboard') && request('ciclo')=='2' && request('area')=='tecnica' ? 'active' : '' }}">
-                        <i class="bi bi-bar-chart-line"></i>Dashboard
-                    </a>
-                </li>
-                @endif
-                @if(!$isDocente)
-                <li class="nav-item">
-                    <a href="{{ route('admin.areas.tecnica') }}"
-                       class="{{ request()->routeIs('admin.areas.tecnica') ? 'active' : '' }}">
-                        <i class="bi bi-tools"></i>Docentes del Área
-                    </a>
-                </li>
-                @endif
-                @if($isAdmin || $isDir || $isCoord)
-                <li class="nav-item">
-                    <a href="{{ route('admin.especialidades.index') }}"
-                       class="{{ request()->routeIs('admin.especialidades*') ? 'active' : '' }}">
-                        <i class="bi bi-award"></i>Especialidades
-                    </a>
-                </li>
-                @endif
-                <li class="nav-item">
-                    <a href="{{ route('admin.calendario.index', ['ciclo'=>2,'area'=>'tecnica']) }}"
-                       class="{{ request()->routeIs('admin.calendario*') && request('ciclo')=='2' && request('area')=='tecnica' ? 'active' : '' }}">
-                        <i class="bi bi-calendar-event"></i>Calendario
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.planificacion.index') }}"
-                       class="{{ request()->routeIs('admin.planificacion*') ? 'active' : '' }}">
-                        <i class="bi bi-journal-text"></i>Planificaciones
-                    </a>
-                </li>
-            </ul>
-            @endif
-
-            {{-- ══ GESTIÓN (Admin / Director / Coordinador) ══ --}}
-            @if($canAcad || $isAdmin || $isDir)
-            <div class="nav-section-title">Gestión</div>
-            <ul class="list-unstyled mb-0">
-                @if($isAdmin || $isDir || $isCoord)
-                <li class="nav-item">
-                    <a href="{{ route('admin.docentes.index') }}" class="{{ request()->routeIs('admin.docentes*') && !request()->routeIs('admin.docentes.import*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.docentes.index') }}" class="{{ request()->routeIs('admin.docentes*') ? 'active' : '' }}">
                         <i class="bi bi-person-badge"></i>Docentes
                     </a>
                 </li>
-                @endif
                 @if($canAcad)
                 <li class="nav-item">
                     <a href="{{ route('admin.grupos.index') }}" class="{{ request()->routeIs('admin.grupos*') ? 'active' : '' }}">
                         <i class="bi bi-grid-3x3-gap"></i>Grupos / Cursos
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.matriculas.index') }}" class="{{ request()->routeIs('admin.matriculas*') && !request('ciclo') ? 'active' : '' }}">
-                        <i class="bi bi-card-list"></i>Todas las Matrículas
-                    </a>
-                </li>
-                @endif
-                @if($isAdmin || $isDir || $isCoord || $isSecre || $isDocente || $isPersonalAdm)
-                <li class="nav-item">
-                    <a href="{{ route('admin.boletines.index') }}" class="{{ (request()->routeIs('admin.boletines.index') || request()->routeIs('admin.boletines.ver')) && !request('ciclo') ? 'active' : '' }}">
-                        <i class="bi bi-file-earmark-text"></i>Todos los Boletines
                     </a>
                 </li>
                 @endif
@@ -1876,7 +1655,6 @@
                     </a>
                 </li>
                 @endif
-                @if($isAdmin || $isDir || $isCoord)
                 <li class="nav-item">
                     <a href="{{ route('admin.calificaciones.resumen') }}" class="{{ request()->routeIs('admin.calificaciones.resumen') ? 'active' : '' }}">
                         <i class="bi bi-table"></i>Resumen de Notas
@@ -1884,12 +1662,7 @@
                 </li>
                 <li class="nav-item">
                     <a href="{{ route('admin.calificaciones.ranking') }}" class="{{ request()->routeIs('admin.calificaciones.ranking') ? 'active' : '' }}">
-                        <i class="bi bi-trophy"></i>Ranking
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.calificaciones.auditoria') }}" class="{{ request()->routeIs('admin.calificaciones.auditoria') ? 'active' : '' }}">
-                        <i class="bi bi-clock-history"></i>Auditoría
+                        <i class="bi bi-trophy"></i>Ranking Académico
                     </a>
                 </li>
                 <li class="nav-item">
@@ -1897,13 +1670,42 @@
                         <i class="bi bi-chat-square-text"></i>Observaciones
                     </a>
                 </li>
-                @endif
-                @if($isDocente)
                 <li class="nav-item">
-                    <a href="{{ route('admin.horarios.mi-horario') }}"
-                       class="{{ request()->routeIs('admin.horarios.mi-horario') ? 'active' : '' }}"
-                       style="{{ request()->routeIs('admin.horarios.mi-horario') ? '' : '' }}">
-                        <i class="bi bi-calendar-week-fill" style="color:#6366f1;"></i>Mi Horario
+                    <a href="{{ route('admin.disciplina.index') }}" class="{{ request()->routeIs('admin.disciplina*') ? 'active' : '' }}">
+                        <i class="bi bi-shield-exclamation"></i>Disciplina
+                    </a>
+                </li>
+                @php $otrasActive = request()->routeIs('admin.reconocimientos*') || request()->routeIs('admin.gamificacion*') || request()->routeIs('admin.proyectos*') || request()->routeIs('admin.salud*') || request()->routeIs('admin.tutorias*') || request()->routeIs('admin.seguimiento-social*') || request()->routeIs('admin.reuniones*') || request()->routeIs('admin.evaluaciones-docentes*'); @endphp
+                <li class="nav-item">
+                    <button class="nav-link-btn w-100 text-start d-flex align-items-center justify-content-between"
+                            type="button" data-sidebar-toggle="subOtrasFunciones"
+                            aria-expanded="{{ $otrasActive ? 'true' : 'false' }}">
+                        <span class="d-flex align-items-center gap-2"><i class="bi bi-three-dots"></i>Más funciones</span>
+                        <i class="bi bi-chevron-down" style="font-size:.65rem;transition:transform .2s;{{ $otrasActive ? 'transform:rotate(180deg)' : '' }}"></i>
+                    </button>
+                    <div class="sidebar-submenu {{ $otrasActive ? 'sidebar-submenu-open' : '' }}" id="subOtrasFunciones">
+                        <ul class="list-unstyled ps-3 mb-0" style="border-left:2px solid rgba(255,255,255,.12);margin-left:1.25rem;margin-top:.25rem;">
+                            <li><a href="{{ route('admin.tutorias.index') }}" class="{{ request()->routeIs('admin.tutorias*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-person-hearts"></i>Tutorías</a></li>
+                            <li><a href="{{ route('admin.seguimiento-social.index') }}" class="{{ request()->routeIs('admin.seguimiento-social*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-people"></i>Seguimiento Social</a></li>
+                            <li><a href="{{ route('admin.salud.incidentes') }}" class="{{ request()->routeIs('admin.salud*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-heart-pulse"></i>Salud Escolar</a></li>
+                            <li><a href="{{ route('admin.evaluaciones-docentes.index') }}" class="{{ request()->routeIs('admin.evaluaciones-docentes*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-clipboard2-check"></i>Eval. Docentes</a></li>
+                            <li><a href="{{ route('admin.reuniones.index') }}" class="{{ request()->routeIs('admin.reuniones*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-journal-text"></i>Actas Reuniones</a></li>
+                            <li><a href="{{ route('admin.proyectos.index') }}" class="{{ request()->routeIs('admin.proyectos*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-lightbulb"></i>Proyectos</a></li>
+                            <li><a href="{{ route('admin.reconocimientos.index') }}" class="{{ request()->routeIs('admin.reconocimientos*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-trophy"></i>Reconocimientos</a></li>
+                            <li><a href="{{ route('admin.gamificacion.index') }}" class="{{ request()->routeIs('admin.gamificacion*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-controller"></i>Gamificación</a></li>
+                        </ul>
+                    </div>
+                </li>
+            </ul>
+            @endif
+
+            {{-- ══ MI ESPACIO (solo Docente) ══ --}}
+            @if($isDocente)
+            <div class="nav-section-title">Mi Espacio</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.horarios.mi-horario') }}" class="{{ request()->routeIs('admin.horarios.mi-horario') ? 'active' : '' }}">
+                        <i class="bi bi-calendar-week-fill"></i>Mi Horario
                     </a>
                 </li>
                 <li class="nav-item">
@@ -1911,11 +1713,290 @@
                         <i class="bi bi-person-circle"></i>Mi Perfil
                     </a>
                 </li>
+            </ul>
+            @endif
+
+            {{-- ══ RENDIMIENTO INSTITUCIONAL ══ --}}
+            @if($isAdmin || $isDir || $isCoord)
+            <div class="nav-section-title">Rendimiento</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.rendimiento.dashboard') }}" class="{{ request()->routeIs('admin.rendimiento.dashboard') && !request('ciclo') ? 'active' : '' }}">
+                        <i class="bi bi-bar-chart-line"></i>Dashboard General
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.rendimiento.semaforo') }}" class="{{ request()->routeIs('admin.rendimiento.semaforo') ? 'active' : '' }}">
+                        <i class="bi bi-circle-fill" style="color:#22c55e;font-size:.6rem;"></i>&nbsp;Semáforo
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.rendimiento.porArea') }}" class="{{ request()->routeIs('admin.rendimiento.porArea') ? 'active' : '' }}">
+                        <i class="bi bi-graph-up-arrow"></i>Por Área
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.rendimiento.recuperaciones') }}" class="{{ request()->routeIs('admin.rendimiento.recuperaciones') ? 'active' : '' }}">
+                        <i class="bi bi-exclamation-triangle-fill" style="color:#ef4444;font-size:.75rem;"></i>&nbsp;Recuperaciones
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.rendimiento.rezagados') }}" class="{{ request()->routeIs('admin.rendimiento.rezagados') ? 'active' : '' }}">
+                        <i class="bi bi-person-x-fill" style="color:#d97706;font-size:.75rem;"></i>&nbsp;Rezagados
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.rendimiento.comparativo') }}" class="{{ request()->routeIs('admin.rendimiento.comparativo') ? 'active' : '' }}">
+                        <i class="bi bi-bar-chart-steps"></i>Comparativo Períodos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.rendimiento.rankingAsignaturas') }}" class="{{ request()->routeIs('admin.rendimiento.rankingAsignaturas') ? 'active' : '' }}">
+                        <i class="bi bi-trophy"></i>Ranking Asignaturas
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.rendimiento.tendencia') }}" class="{{ request()->routeIs('admin.rendimiento.tendencia') ? 'active' : '' }}">
+                        <i class="bi bi-graph-up-arrow"></i>Tendencia por Grupo
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.malla.matriz') }}" class="{{ request()->routeIs('admin.malla.matriz') ? 'active' : '' }}">
+                        <i class="bi bi-grid-3x3"></i>Matriz Curricular
+                    </a>
+                </li>
+            </ul>
+            @endif
+
+            {{-- ══ PLANIFICACIÓN DOCENTE ══ --}}
+            @if($isAdmin || $isDir || $isCoord || $isDocente)
+            <div class="nav-section-title">Planificación Docente</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.planes-clase.index') }}" class="{{ request()->routeIs('admin.planes-clase*') ? 'active' : '' }}">
+                        <i class="bi bi-journal-text"></i>Planes de Clase
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.instrumentos.index') }}" class="{{ request()->routeIs('admin.instrumentos*') ? 'active' : '' }}">
+                        <i class="bi bi-clipboard-check"></i>Instrumentos de Evaluación
+                    </a>
+                </li>
+                @if($isAdmin || $isDir || $isCoord)
+                <li class="nav-item">
+                    <a href="{{ route('admin.classroom.index') }}" class="{{ request()->routeIs('admin.classroom*') ? 'active' : '' }}">
+                        <i class="bi bi-easel2-fill"></i>Classroom Virtual
+                    </a>
+                </li>
                 @endif
             </ul>
             @endif
 
-            <!-- CONFIGURACIÓN -->
+            {{-- ══ SUPERVISIÓN ══ --}}
+            @if($canSupervisar || $isDir || $isCoord)
+            <div class="nav-section-title">Supervisión</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.reportes.index') }}" class="{{ request()->routeIs('admin.reportes*') ? 'active' : '' }}">
+                        <i class="bi bi-clipboard2-data"></i>Reportes Institucionales
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.registro.index') }}" class="{{ request()->routeIs('admin.registro*') ? 'active' : '' }}">
+                        <i class="bi bi-journal-bookmark-fill"></i>Registro Académico
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.competencias.index') }}" class="{{ request()->routeIs('admin.competencias*') ? 'active' : '' }}">
+                        <i class="bi bi-diagram-3"></i>Competencias / IL
+                    </a>
+                </li>
+                @if($isAdmin || $isDir)
+                <li class="nav-item">
+                    <a href="{{ route('admin.cierre-ano.index') }}" class="{{ request()->routeIs('admin.cierre-ano*') ? 'active' : '' }}">
+                        <i class="bi bi-lock-fill"></i>Cierre de Año
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.exportacion-masiva.index') }}" class="{{ request()->routeIs('admin.exportacion-masiva*') ? 'active' : '' }}">
+                        <i class="bi bi-file-zip"></i>Exportación Masiva
+                    </a>
+                </li>
+                @endif
+            </ul>
+            @endif
+
+            {{-- ══ CALENDARIO Y ALERTAS ══ --}}
+            @if($isAdmin || $isDir || $isCoord || $isDocente)
+            <div class="nav-section-title">Calendario</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.calendario.index') }}" class="{{ request()->routeIs('admin.calendario*') ? 'active' : '' }}">
+                        <i class="bi bi-calendar-event"></i>Calendario Académico
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.alertas.index') }}" class="{{ request()->routeIs('admin.alertas.index') ? 'active' : '' }}" style="justify-content:space-between;">
+                        <span class="d-flex align-items-center gap-2">
+                            <i class="bi bi-bell"></i>Notificaciones
+                        </span>
+                        @if(!empty($alertasNoLeidas) && $alertasNoLeidas > 0)
+                            <span class="badge rounded-pill text-bg-danger" style="font-size:.62rem;padding:.2rem .5rem;">{{ $alertasNoLeidas }}</span>
+                        @endif
+                    </a>
+                </li>
+            </ul>
+        @endif
+
+            {{-- ══ COMUNICADOS Y MENSAJES ══ --}}
+            <div class="nav-section-title">Comunicados y Mensajes</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.mensajes.index') }}" class="{{ request()->routeIs('admin.mensajes*') ? 'active' : '' }}">
+                        <i class="bi bi-envelope-fill"></i>Mensajes
+                        @php $msgNoLeidos = \App\Models\Mensaje::recibidos(auth()->id())->noLeidos()->count(); @endphp
+                        @if($msgNoLeidos > 0)
+                        <span class="badge rounded-pill text-bg-primary ms-auto" style="font-size:.62rem;padding:.2rem .5rem;">{{ $msgNoLeidos }}</span>
+                        @endif
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.comunicados.mis') }}" class="{{ request()->routeIs('admin.comunicados.mis') ? 'active' : '' }}">
+                        <i class="bi bi-megaphone"></i>Mis Comunicados
+                    </a>
+                </li>
+                @if($isAdmin || $isDir || $isCoord)
+                <li class="nav-item">
+                    <a href="{{ route('admin.comunicados.index') }}" class="{{ request()->routeIs('admin.comunicados.index') || request()->routeIs('admin.comunicados.create') || request()->routeIs('admin.comunicados.edit') ? 'active' : '' }}">
+                        <i class="bi bi-megaphone-fill"></i>Gestionar Comunicados
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.avisos-emergencia.index') }}" class="{{ request()->routeIs('admin.avisos-emergencia*') ? 'active' : '' }}">
+                        <i class="bi bi-exclamation-octagon-fill" style="color:#ef4444;"></i>Avisos Emergencia
+                    </a>
+                </li>
+                @endif
+            </ul>
+
+            {{-- ══ PAGOS Y COLEGIATURAS ══ --}}
+            @php $moduloPagos = \App\Models\ConfigInstitucional::moduloActivo('pagos'); @endphp
+            @if($moduloPagos && ($isAdmin || $isDir))
+            <div class="nav-section-title">Pagos y Colegiaturas</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.pagos.index') }}" class="{{ request()->routeIs('admin.pagos.index') ? 'active' : '' }}">
+                        <i class="bi bi-cash-coin"></i>Gestión de Pagos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.pagos.deudores') }}" class="{{ request()->routeIs('admin.pagos.deudores') ? 'active' : '' }}">
+                        <i class="bi bi-exclamation-circle"></i>Deudores
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.becas.index') }}" class="{{ request()->routeIs('admin.becas*') ? 'active' : '' }}">
+                        <i class="bi bi-award"></i>Becas y Descuentos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.pagos.config') }}" class="{{ request()->routeIs('admin.pagos.config') ? 'active' : '' }}">
+                        <i class="bi bi-gear"></i>Config. Pagos
+                    </a>
+                </li>
+            </ul>
+            @endif
+
+            {{-- ══ INSCRIPCIONES ══ --}}
+            @if($isAdmin || $isDir || $isSecre)
+            @php $pmPendientes = \App\Models\PreMatricula::where('estado','pendiente')->count(); @endphp
+            <div class="nav-section-title">Inscripciones</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.pre-matriculas.index') }}"
+                       class="{{ request()->routeIs('admin.pre-matriculas*') ? 'active' : '' }}"
+                       style="display:flex;align-items:center;justify-content:space-between;">
+                        <span><i class="bi bi-person-lines-fill"></i>Pre-matrículas</span>
+                        @if($pmPendientes > 0)
+                        <span style="background:#f59e0b;color:#fff;font-size:.65rem;font-weight:800;padding:.1rem .45rem;border-radius:20px;line-height:1.5;flex-shrink:0;margin-left:.4rem;">{{ $pmPendientes }}</span>
+                        @endif
+                    </a>
+                </li>
+            </ul>
+            @endif
+
+            {{-- ══ SERVICIOS INSTITUCIONALES ══ --}}
+            @if($isAdmin || $isDir || $isSecre || $isCoord)
+            <div class="nav-section-title">Servicios Institucionales</div>
+            <ul class="list-unstyled mb-0">
+                @if($isAdmin || $isDir || $isSecre)
+                <li class="nav-item">
+                    <a href="{{ route('admin.cafeteria.ventas') }}" class="{{ request()->routeIs('admin.cafeteria*') ? 'active' : '' }}">
+                        <i class="bi bi-shop"></i>Cafetería
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.equipos.index') }}" class="{{ request()->routeIs('admin.equipos.index') || request()->routeIs('admin.equipos.create') || request()->routeIs('admin.equipos.edit') ? 'active' : '' }}">
+                        <i class="bi bi-laptop"></i>Equipos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.equipos.prestamos.index') }}" class="{{ request()->routeIs('admin.equipos.prestamos*') ? 'active' : '' }}">
+                        <i class="bi bi-arrow-left-right"></i>Préstamos de Equipos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.biblioteca.index') }}" class="{{ request()->routeIs('admin.biblioteca.index') || request()->routeIs('admin.biblioteca.libros*') ? 'active' : '' }}">
+                        <i class="bi bi-book-half"></i>Biblioteca
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.biblioteca.prestamos.index') }}" class="{{ request()->routeIs('admin.biblioteca.prestamos*') ? 'active' : '' }}">
+                        <i class="bi bi-arrow-left-right"></i>Préstamos de Libros
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.inventario.index') }}" class="{{ request()->routeIs('admin.inventario*') ? 'active' : '' }}">
+                        <i class="bi bi-archive"></i>Inventario Escolar
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.recursos.index') }}" class="{{ request()->routeIs('admin.recursos*') && !request()->routeIs('admin.recursos.disponibilidad') ? 'active' : '' }}">
+                        <i class="bi bi-building"></i>Recursos y Aulas
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.recursos.disponibilidad') }}" class="{{ request()->routeIs('admin.recursos.disponibilidad') ? 'active' : '' }}">
+                        <i class="bi bi-calendar2-check"></i>Disponibilidad Aulas
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.transporte.index') }}" class="{{ request()->routeIs('admin.transporte*') ? 'active' : '' }}">
+                        <i class="bi bi-bus-front"></i>Transporte Escolar
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.galeria.index') }}" class="{{ request()->routeIs('admin.galeria*') ? 'active' : '' }}">
+                        <i class="bi bi-images"></i>Galería
+                    </a>
+                </li>
+                @endif
+                <li class="nav-item">
+                    <a href="{{ route('admin.eventos.index') }}" class="{{ request()->routeIs('admin.eventos*') ? 'active' : '' }}">
+                        <i class="bi bi-calendar-event-fill"></i>Eventos
+                    </a>
+                </li>
+                @if($isAdmin || $isDir)
+                <li class="nav-item">
+                    <a href="{{ route('admin.nomina.index') }}" class="{{ request()->routeIs('admin.nomina*') ? 'active' : '' }}">
+                        <i class="bi bi-cash-stack"></i>Nómina de Empleados
+                    </a>
+                </li>
+                @endif
+            </ul>
+            @endif
+
+            {{-- ══ CONFIGURACIÓN ══ --}}
             @if($canConfig || $isDir)
             <div class="nav-section-title">Configuración</div>
             <ul class="list-unstyled mb-0">
@@ -1952,8 +2033,6 @@
                         <i class="bi bi-file-earmark-medical"></i>Config. Boletín
                     </a>
                 </li>
-                @endif
-                @if($isAdmin)
                 <li class="nav-item">
                     <a href="{{ route('admin.config.ra') }}" class="{{ request()->routeIs('admin.config.ra*') ? 'active' : '' }}">
                         <i class="bi bi-bar-chart-steps"></i>Config. RA
@@ -1963,125 +2042,13 @@
             </ul>
             @endif
 
-        {{-- RENDIMIENTO INSTITUCIONAL --}}
-        @if($isAdmin || $isDir || $isCoord)
-        <div class="nav-section-title">Rendimiento Institucional</div>
-        <ul class="list-unstyled mb-0">
-            <li class="nav-item">
-                <a href="{{ route('admin.rendimiento.dashboard') }}" class="{{ request()->routeIs('admin.rendimiento.dashboard') && !request('ciclo') ? 'active' : '' }}">
-                    <i class="bi bi-bar-chart-line"></i>Dashboard General
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('admin.rendimiento.semaforo') }}" class="{{ request()->routeIs('admin.rendimiento.semaforo') ? 'active' : '' }}">
-                    <i class="bi bi-circle-fill" style="color:#22c55e;font-size:.6rem;"></i>&nbsp;Semáforo
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('admin.rendimiento.porArea') }}" class="{{ request()->routeIs('admin.rendimiento.porArea') ? 'active' : '' }}">
-                    <i class="bi bi-graph-up-arrow"></i>Por Área
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('admin.rendimiento.recuperaciones') }}" class="{{ request()->routeIs('admin.rendimiento.recuperaciones') ? 'active' : '' }}">
-                    <i class="bi bi-exclamation-triangle-fill" style="color:#ef4444;font-size:.75rem;"></i>&nbsp;Recuperaciones
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('admin.rendimiento.rezagados') }}" class="{{ request()->routeIs('admin.rendimiento.rezagados') ? 'active' : '' }}">
-                    <i class="bi bi-person-x-fill" style="color:#d97706;font-size:.75rem;"></i>&nbsp;Rezagados
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('admin.malla.matriz') }}" class="{{ request()->routeIs('admin.malla.matriz') ? 'active' : '' }}">
-                    <i class="bi bi-grid-3x3"></i>Matriz Curricular
-                </a>
-            </li>
-        </ul>
-        @endif
-
-        {{-- CALENDARIO Y ALERTAS --}}
-        @if($isAdmin || $isDir || $isCoord || $isDocente)
-        <div class="nav-section-title">Calendario</div>
-        <ul class="list-unstyled mb-0">
-            <li class="nav-item">
-                <a href="{{ route('admin.calendario.index') }}" class="{{ request()->routeIs('admin.calendario*') ? 'active' : '' }}">
-                    <i class="bi bi-calendar-event"></i>Calendario Académico
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('admin.alertas.index') }}" class="{{ request()->routeIs('admin.alertas.index') ? 'active' : '' }}" style="justify-content:space-between;">
-                    <span class="d-flex align-items-center gap-2">
-                        <i class="bi bi-bell"></i>Notificaciones
-                    </span>
-                    @if(!empty($alertasNoLeidas) && $alertasNoLeidas > 0)
-                        <span class="badge rounded-pill text-bg-danger" style="font-size:.62rem;padding:.2rem .5rem;">
-                            {{ $alertasNoLeidas }}
-                        </span>
-                    @endif
-                </a>
-            </li>
-        </ul>
-        @endif
-
-        {{-- PLANIFICACIÓN DOCENTE --}}
-        @if($isAdmin || $isDir || $isCoord || $isDocente)
-        <div class="nav-section-title">Planificación Docente</div>
-        <ul class="list-unstyled mb-0">
-            <li class="nav-item">
-                <a href="{{ route('admin.planes-clase.index') }}" class="{{ request()->routeIs('admin.planes-clase*') ? 'active' : '' }}">
-                    <i class="bi bi-journal-text"></i>Planes de Clase
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('admin.instrumentos.index') }}" class="{{ request()->routeIs('admin.instrumentos*') ? 'active' : '' }}">
-                    <i class="bi bi-clipboard-check"></i>Instrumentos de Evaluación
-                </a>
-            </li>
-        </ul>
-        @endif
-
-        {{-- SUPERVISIÓN (Personal Administrativo + Admin + Dir) --}}
-        @if($canSupervisar)
-        <div class="nav-section-title">Supervisión</div>
-        <ul class="list-unstyled mb-0">
-            <li class="nav-item">
-                <a href="{{ route('admin.reportes.index') }}" class="{{ request()->routeIs('admin.reportes*') ? 'active' : '' }}">
-                    <i class="bi bi-clipboard2-data"></i>Reportes Institucionales
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('admin.calificaciones.resumen') }}" class="{{ request()->routeIs('admin.calificaciones.resumen') ? 'active' : '' }}">
-                    <i class="bi bi-table"></i>Resumen Calificaciones
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('admin.registro.index') }}"
-                   class="{{ request()->routeIs('admin.registro*') ? 'active' : '' }}">
-                    <i class="bi bi-journal-bookmark-fill"></i>Registro Académico
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('admin.competencias.index') }}"
-                   class="{{ request()->routeIs('admin.competencias*') ? 'active' : '' }}">
-                    <i class="bi bi-diagram-3"></i>Competencias / IL
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('admin.boletines.index') }}" class="{{ request()->routeIs('admin.boletines.*') ? 'active' : '' }}">
-                    <i class="bi bi-file-earmark-text"></i>Boletines por Grupo
-                </a>
-            </li>
-        </ul>
-        @endif
-
-            <!-- PÁGINA DE INICIO (Admin + Director + Coordinador) -->
+            {{-- ══ PÁGINA DE INICIO ══ --}}
             @if($isAdmin || $isDir || $isCoord)
             <div class="nav-section-title">Página de Inicio</div>
             <ul class="list-unstyled mb-0">
                 <li class="nav-item">
                     <a href="{{ route('admin.sistema.landing') }}" class="{{ request()->routeIs('admin.sistema.landing') ? 'active' : '' }}">
-                        <i class="bi bi-display"></i>Editor Página de Inicio
+                        <i class="bi bi-display"></i>Editor Landing
                     </a>
                 </li>
                 <li class="nav-item">
@@ -2099,37 +2066,26 @@
             </ul>
             @endif
 
-            <!-- SISTEMA (solo Administrador) -->
+            {{-- ══ SISTEMA ══ --}}
             @if($isAdmin)
             <div class="nav-section-title">Sistema</div>
             <ul class="list-unstyled mb-0">
                 <li class="nav-item">
-                    <a href="{{ route('admin.usuarios.index') }}" class="{{ request()->routeIs('admin.usuarios.index') || request()->routeIs('admin.usuarios.create') || request()->routeIs('admin.usuarios.edit') ? 'active' : '' }}" style="justify-content:space-between;">
-                        <span class="d-flex align-items-center gap-2">
-                            <i class="bi bi-people"></i>Usuarios
-                        </span>
+                    <a href="{{ route('admin.usuarios.index') }}" class="{{ request()->routeIs('admin.usuarios.index') || request()->routeIs('admin.usuarios.create') || request()->routeIs('admin.usuarios.edit') ? 'active' : '' }}">
+                        <i class="bi bi-people"></i>Usuarios
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.usuarios.pendientes') }}" class="{{ request()->routeIs('admin.usuarios.pendientes') ? 'active' : '' }}" style="justify-content:space-between;">
-                        <span class="d-flex align-items-center gap-2">
-                            <i class="bi bi-person-check"></i>Accesos Pendientes
-                        </span>
+                    <a href="{{ route('admin.usuarios.pendientes') }}" class="{{ request()->routeIs('admin.usuarios.pendientes') ? 'active' : '' }}" style="display:flex;align-items:center;justify-content:space-between;">
+                        <span class="d-flex align-items-center gap-2"><i class="bi bi-person-check"></i>Accesos Pendientes</span>
                         @if(!empty($usuariosPendientes) && $usuariosPendientes > 0)
-                            <span class="badge rounded-pill text-bg-warning" style="font-size:.62rem;padding:.2rem .5rem;">
-                                {{ $usuariosPendientes }}
-                            </span>
+                            <span class="badge rounded-pill text-bg-warning" style="font-size:.62rem;padding:.2rem .5rem;">{{ $usuariosPendientes }}</span>
                         @endif
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="{{ route('admin.sistema.index') }}" class="{{ request()->routeIs('admin.sistema.index') ? 'active' : '' }}">
                         <i class="bi bi-gear"></i>Configuración
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.sistema.demo-trial') }}" class="{{ request()->routeIs('admin.sistema.demo-trial') ? 'active' : '' }}">
-                        <i class="bi bi-play-circle"></i>Demo & Prueba
                     </a>
                 </li>
                 <li class="nav-item">
@@ -2157,68 +2113,37 @@
                         <i class="bi bi-speedometer2"></i>Estadísticas
                     </a>
                 </li>
-            </ul>
-            @endif
-
-            {{-- Comunicados --}}
-            <div class="nav-section-title">Comunicados y Mensajes</div>
-            <ul class="list-unstyled mb-0">
                 <li class="nav-item">
-                    <a href="{{ route('admin.mensajes.index') }}" class="{{ request()->routeIs('admin.mensajes*') ? 'active' : '' }}">
-                        <i class="bi bi-envelope-fill"></i>Mensajes
-                        @php $msgNoLeidos = \App\Models\Mensaje::recibidos(auth()->id())->noLeidos()->count(); @endphp
-                        @if($msgNoLeidos > 0)
-                        <span class="badge rounded-pill text-bg-primary ms-auto" style="font-size:.62rem;padding:.2rem .5rem;">{{ $msgNoLeidos }}</span>
-                        @endif
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.comunicados.mis') }}" class="{{ request()->routeIs('admin.comunicados.mis') ? 'active' : '' }}">
-                        <i class="bi bi-megaphone"></i>Mis Comunicados
-                        @if(!empty($alertasNoLeidas) && $alertasNoLeidas > 0)
-                            <span class="badge rounded-pill text-bg-danger ms-auto" style="font-size:.62rem;padding:.2rem .5rem;">{{ $alertasNoLeidas }}</span>
-                        @endif
-                    </a>
-                </li>
-                @if(auth()->user()->hasAnyRole(['Administrador','Director','Coordinador']))
-                <li class="nav-item">
-                    <a href="{{ route('admin.comunicados.index') }}" class="{{ request()->routeIs('admin.comunicados.index') || request()->routeIs('admin.comunicados.create') || request()->routeIs('admin.comunicados.edit') ? 'active' : '' }}">
-                        <i class="bi bi-megaphone-fill"></i>Gestionar Comunicados
-                    </a>
-                </li>
-                @endif
-            </ul>
-
-            {{-- Módulo de Pagos (solo centros privados con módulo activo) --}}
-            @php $moduloPagos = \App\Models\ConfigInstitucional::moduloActivo('pagos'); @endphp
-            @if($moduloPagos && auth()->user()->hasAnyRole(['Administrador','Director']))
-            <div class="nav-section-title">Pagos y Colegiaturas</div>
-            <ul class="list-unstyled mb-0">
-                <li class="nav-item">
-                    <a href="{{ route('admin.pagos.index') }}" class="{{ request()->routeIs('admin.pagos.index') ? 'active' : '' }}">
-                        <i class="bi bi-cash-coin"></i>Gestión de Pagos
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.pagos.deudores') }}" class="{{ request()->routeIs('admin.pagos.deudores') ? 'active' : '' }}">
-                        <i class="bi bi-exclamation-circle"></i>Deudores
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.pagos.config') }}" class="{{ request()->routeIs('admin.pagos.config') ? 'active' : '' }}">
-                        <i class="bi bi-gear"></i>Configuración
+                    <a href="{{ route('admin.sistema.demo-trial') }}" class="{{ request()->routeIs('admin.sistema.demo-trial') ? 'active' : '' }}">
+                        <i class="bi bi-play-circle"></i>Demo & Prueba
                     </a>
                 </li>
             </ul>
             @endif
 
-            {{-- Ayuda --}}
+            {{-- ══ SUPER ADMIN — solo visible para super_admin ══ --}}
+            @if(Auth::user()->hasRole('super_admin'))
+            <div class="nav-section-title" style="color:#a78bfa;">ZuraEdu Platform</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('superadmin.tenants.index') }}" class="{{ request()->routeIs('superadmin*') ? 'active' : '' }}" style="{{ request()->routeIs('superadmin*') ? '' : 'color:#c4b5fd;' }}">
+                        <i class="bi bi-building-fill-gear"></i>Panel de Instituciones
+                    </a>
+                </li>
+            </ul>
+            @endif
+
+            {{-- ══ SOPORTE ══ --}}
             <div class="nav-section-title">Soporte</div>
             <ul class="list-unstyled mb-0">
                 <li class="nav-item">
+                    <a href="{{ route('admin.soporte.index') }}" class="{{ request()->routeIs('admin.soporte*') ? 'active' : '' }}">
+                        <i class="bi bi-headset"></i>Tickets de Soporte
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.ayuda') }}" class="{{ request()->routeIs('admin.ayuda') ? 'active' : '' }}">
-                        <i class="bi bi-question-circle"></i>
-                        Centro de Ayuda
+                        <i class="bi bi-question-circle"></i>Centro de Ayuda
                     </a>
                 </li>
             </ul>
@@ -2298,7 +2223,8 @@
 
         <!-- User dropdown -->
         <div class="topbar-user dropdown">
-            <button class="dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <button class="dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                    data-bs-strategy="fixed" data-bs-offset="0,4" aria-expanded="false">
                 @if(Auth::user()->photo_url)
                     <img src="{{ Auth::user()->photo_url }}" alt="Foto"
                          style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid #e5e7eb;">
@@ -2308,7 +2234,7 @@
                 </div>
                 @endif
                 <span class="d-none d-md-inline">{{ Auth::user()->name ?? 'Usuario' }}</span>
-                <i class="bi bi-chevron-down" style="font-size:.7rem;color:#9ca3af;"></i>
+                <i class="bi bi-chevron-down" style="font-size:.7rem;color:rgba(255,255,255,.55);"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" style="min-width:180px;">
                 <li>
@@ -2389,6 +2315,88 @@
         </div>
         @endif
 
+        {{-- ── Banner SuperAdmin: modo panel de institución ──────── --}}
+        @if(Auth::check() && Auth::user()->hasRole('super_admin') && session('sa_tenant_id'))
+        <div style="background:linear-gradient(90deg,#4f46e5,#7c3aed);color:#fff;padding:.6rem 1.25rem;display:flex;align-items:center;gap:.85rem;flex-wrap:wrap;margin:-1.5rem -1.5rem 1.5rem;border-bottom:2px solid #6366f1;">
+            <i class="bi bi-shield-fill-check" style="font-size:1.1rem;flex-shrink:0;"></i>
+            <div style="flex:1;min-width:200px;font-size:.83rem;font-weight:600;">
+                <span style="opacity:.8;">SuperAdmin · Administrando:</span>
+                <strong class="ms-1">{{ session('sa_tenant_nombre') }}</strong>
+            </div>
+            <div class="d-flex align-items-center gap-2" style="flex-shrink:0;">
+                <a href="{{ route('superadmin.tenants.show', session('sa_tenant_id')) }}"
+                   style="font-size:.75rem;font-weight:700;color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.4);padding:.25rem .7rem;border-radius:6px;background:rgba(255,255,255,.1);">
+                    <i class="bi bi-building me-1"></i>Ficha
+                </a>
+                <a href="{{ route('admin.homepage.edit') }}"
+                   style="font-size:.75rem;font-weight:700;color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.4);padding:.25rem .7rem;border-radius:6px;background:rgba(255,255,255,.1);">
+                    <i class="bi bi-palette-fill me-1"></i>Homepage
+                </a>
+                <form method="POST" action="{{ route('superadmin.tenants.exit-panel') }}" class="d-inline">
+                    @csrf
+                    <button type="submit"
+                        style="font-size:.75rem;font-weight:700;color:#4f46e5;background:#fff;border:none;padding:.25rem .7rem;border-radius:6px;cursor:pointer;">
+                        <i class="bi bi-box-arrow-left me-1"></i>Salir al panel ZuraEdu
+                    </button>
+                </form>
+            </div>
+        </div>
+        @endif
+
+        {{-- ── Banner de vencimiento de suscripción ──────────────── --}}
+        @php
+            $showSuscBanner = false;
+            try {
+                if (
+                    app()->bound('tenant') &&
+                    ! auth()->user()->hasRole('super_admin') &&
+                    isset($currentTenant) && $currentTenant?->fecha_vencimiento
+                ) {
+                    $diasVence = (int) now()->diffInDays($currentTenant->fecha_vencimiento, false);
+                    $showSuscBanner = $diasVence <= 14;
+                }
+            } catch (\Exception $e) {}
+        @endphp
+        @if($showSuscBanner)
+        @php
+            if ($diasVence <= 0)       { $bColor = '#fef2f2'; $bBorder = '#fca5a5'; $bText = '#991b1b'; $bIcon = 'x-octagon-fill'; }
+            elseif ($diasVence <= 3)   { $bColor = '#fef2f2'; $bBorder = '#fca5a5'; $bText = '#991b1b'; $bIcon = 'exclamation-octagon-fill'; }
+            elseif ($diasVence <= 7)   { $bColor = '#fffbeb'; $bBorder = '#fcd34d'; $bText = '#92400e'; $bIcon = 'exclamation-triangle-fill'; }
+            else                       { $bColor = '#eff6ff'; $bBorder = '#93c5fd'; $bText = '#1e40af'; $bIcon = 'info-circle-fill'; }
+        @endphp
+        <div style="background:{{ $bColor }};border-bottom:2px solid {{ $bBorder }};padding:.6rem 1.25rem;display:flex;align-items:center;gap:.85rem;flex-wrap:wrap;margin:-1.5rem -1.5rem 1.5rem;">
+            <i class="bi bi-{{ $bIcon }}" style="font-size:1.1rem;color:{{ $bText }};flex-shrink:0;"></i>
+            <div style="flex:1;min-width:200px;font-size:.82rem;font-weight:600;color:{{ $bText }};">
+                @if($diasVence <= 0)
+                    ¡Tu suscripción <strong>ha vencido hoy</strong>! El acceso puede suspenderse en cualquier momento.
+                @elseif($diasVence === 1)
+                    Tu suscripción vence <strong>mañana</strong>. Renueva para no perder el acceso.
+                @else
+                    Tu suscripción vence en <strong>{{ $diasVence }} días</strong> ({{ $currentTenant->fecha_vencimiento->format('d/m/Y') }}).
+                @endif
+            </div>
+            <div class="d-flex align-items-center gap-2" style="flex-shrink:0;">
+                <a href="mailto:soporte@zuraedu.com"
+                   style="font-size:.75rem;font-weight:700;color:{{ $bText }};text-decoration:none;border:1px solid {{ $bBorder }};padding:.25rem .7rem;border-radius:6px;background:rgba(255,255,255,.6);">
+                    <i class="bi bi-envelope me-1"></i>Renovar
+                </a>
+                <button type="button" onclick="this.closest('div[style]').remove()"
+                    style="background:none;border:none;color:{{ $bText }};opacity:.6;cursor:pointer;font-size:1rem;padding:0 .2rem;">
+                    ✕
+                </button>
+            </div>
+        </div>
+        @endif
+
+        {{-- ── Flash de feature deshabilitada ────────────────────── --}}
+        @if(session('warning'))
+        <div class="alert alert-warning alert-dismissible fade show d-flex align-items-center gap-2 mb-3 rounded-3" role="alert" style="font-size:.88rem;">
+            <i class="bi bi-shield-exclamation fs-5 flex-shrink-0"></i>
+            <span>{{ session('warning') }}</span>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+        </div>
+        @endif
+
         @yield('content')
 
         {{-- ── FOOTER ─────────────────────────────────────────────── --}}
@@ -2459,20 +2467,16 @@
             const KEY = 'sge-sidebar-scroll';
 
             // Restore saved position immediately (before paint)
-            const saved = sessionStorage.getItem(KEY);
-            if (saved !== null) {
-                nav.scrollTop = parseInt(saved, 10);
-            } else {
-                // First visit: scroll active item into view
-                const active = nav.querySelector('.nav-item a.active');
-                if (active) {
-                    const offset = active.getBoundingClientRect().top
-                                 - nav.getBoundingClientRect().top
-                                 + nav.scrollTop
-                                 - nav.clientHeight / 2
-                                 + active.clientHeight / 2;
-                    nav.scrollTop = Math.max(0, offset);
-                }
+            // Always scroll active item into center on every load
+            const active = nav.querySelector('.nav-item a.active');
+            if (active) {
+                const offset = active.getBoundingClientRect().top
+                             - nav.getBoundingClientRect().top
+                             + nav.scrollTop
+                             - nav.clientHeight / 3;
+                nav.scrollTop = Math.max(0, offset);
+            } else if (sessionStorage.getItem(KEY) !== null) {
+                nav.scrollTop = parseInt(sessionStorage.getItem(KEY), 10);
             }
 
             // Save scroll position on every link click (before unload)
@@ -2486,6 +2490,31 @@
                 sessionStorage.setItem(KEY, nav.scrollTop);
             });
         })();
+
+        // ── Sidebar submenus (custom toggle, no Bootstrap Collapse) ───
+        document.querySelectorAll('[data-sidebar-toggle]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.dataset.sidebarToggle;
+                const target   = document.getElementById(targetId);
+                if (!target) return;
+                const isOpen = target.classList.toggle('sidebar-submenu-open');
+                btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                const chevron = btn.querySelector('.bi-chevron-down');
+                if (chevron) chevron.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+                if (isOpen) {
+                    const nav = document.querySelector('.sidebar-nav');
+                    if (nav) {
+                        setTimeout(() => {
+                            const btnBottom = btn.getBoundingClientRect().bottom;
+                            const navBottom = nav.getBoundingClientRect().bottom;
+                            if (btnBottom > navBottom - 60) {
+                                nav.scrollBy({ top: target.scrollHeight + 24, behavior: 'smooth' });
+                            }
+                        }, 360);
+                    }
+                }
+            });
+        });
 
         // ── Dark mode toggle ──────────────────────────
         const darkBtn  = document.getElementById('darkToggleBtn');

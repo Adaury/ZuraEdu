@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 
 class Grado extends Model
 {
+    use BelongsToTenant;
+
     protected $fillable = ['nombre', 'nivel', 'ciclo', 'orden'];
 
     public function grupos()

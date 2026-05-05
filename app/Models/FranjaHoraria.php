@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 
 class FranjaHoraria extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'franjas_horarias';
 
     protected $fillable = [

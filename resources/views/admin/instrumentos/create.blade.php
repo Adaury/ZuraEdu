@@ -1,6 +1,6 @@
-@extends('layouts.admin')
+﻿@extends('layouts.admin')
 
-@section('title', 'Nuevo Instrumento de Evaluación')
+@section('page-title', 'Nuevo Instrumento de Evaluación')
 
 @section('content')
 <div class="container-fluid px-4">

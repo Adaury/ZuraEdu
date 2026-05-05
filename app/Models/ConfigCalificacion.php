@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 
 class ConfigCalificacion extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'config_calificaciones';
 
     protected $fillable = [

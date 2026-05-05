@@ -884,7 +884,7 @@ function colorInput(inp) {
         return;
     }
     if      (v >= 80) { inp.style.background = '#dcfce7'; inp.style.color = '#15803d'; }
-    else if (v >= 60) { inp.style.background = '#fef9c3'; inp.style.color = '#854d0e'; }
+    else if (v >= 70) { inp.style.background = '#fef9c3'; inp.style.color = '#854d0e'; }
     else              { inp.style.background = '#fee2e2'; inp.style.color = '#991b1b'; }
 }
 function _showNiTipGr(inp, msg) {
@@ -900,7 +900,7 @@ function _showNiTipGr(inp, msg) {
 function colorCalcCell(cell, val) {
     const cls = val === null ? 'color-vacio'
         : val >= 80 ? 'color-excelente'
-        : val >= 60 ? 'color-proceso'
+        : val >= 70 ? 'color-proceso'
         : 'color-insuf';
     cell.className = 'calc-cell ' + cls;
 }

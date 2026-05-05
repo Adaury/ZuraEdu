@@ -55,7 +55,14 @@ class MatriculaController extends Controller
             ->orderBy('grado_id')->orderBy('seccion_id')
             ->get();
 
-        return view('admin.matriculas.index', compact('matriculas', 'schoolYear', 'grupos', 'ciclo'));
+        // Conteos para el panel de configuración inicial
+        $totalGruposAnio      = $schoolYear ? Grupo::where('school_year_id', $schoolYear->id)->count() : 0;
+        $totalEstudiantesActivos = Estudiante::where('estado', 'activo')->count();
+
+        return view('admin.matriculas.index', compact(
+            'matriculas', 'schoolYear', 'grupos', 'ciclo',
+            'totalGruposAnio', 'totalEstudiantesActivos'
+        ));
     }
 
     public function create()

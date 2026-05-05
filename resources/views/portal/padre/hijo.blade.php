@@ -9,9 +9,6 @@
     <a href="#asistencia" class="prt-sidebar-link"><i class="bi bi-calendar-check"></i>Asistencia</a>
     <a href="#horario" class="prt-sidebar-link"><i class="bi bi-calendar-week"></i>Horario</a>
     <a href="#observaciones" class="prt-sidebar-link"><i class="bi bi-chat-square-text"></i>Observaciones</a>
-    @if($planificaciones->isNotEmpty())
-    <a href="#planificaciones" class="prt-sidebar-link"><i class="bi bi-journal-text"></i>Planificaciones</a>
-    @endif
     @if($resumenPagos !== null)
     <a href="#pagos" class="prt-sidebar-link">
         <i class="bi bi-cash-coin"></i>Pagos
@@ -235,6 +232,59 @@
         @endif
     </div>
 </div>
+
+{{-- ── Comparativo de Promedios por Período ──────────────────────────── --}}
+@if(!empty($comparativoChart) && $comparativoChart['labels'] !== '[]')
+<div class="prt-card" id="comparativo" style="margin-bottom:1rem;">
+    <div class="prt-card-header">
+        <i class="bi bi-graph-up" style="color:#6366f1;font-size:1rem;"></i>
+        <h3>Evolución de Promedios</h3>
+        @php
+            $tendencia = $comparativoChart['tendencia'] ?? null;
+        @endphp
+        @if($tendencia === 'positiva')
+            <span style="margin-left:auto;display:inline-flex;align-items:center;gap:.25rem;background:#dcfce7;color:#15803d;border-radius:99px;padding:.18rem .6rem;font-size:.68rem;font-weight:700;">
+                <i class="bi bi-arrow-up-circle-fill"></i> Tendencia positiva
+            </span>
+        @elseif($tendencia === 'negativa')
+            <span style="margin-left:auto;display:inline-flex;align-items:center;gap:.25rem;background:#fee2e2;color:#dc2626;border-radius:99px;padding:.18rem .6rem;font-size:.68rem;font-weight:700;">
+                <i class="bi bi-arrow-down-circle-fill"></i> Tendencia negativa
+            </span>
+        @elseif($tendencia === 'estable')
+            <span style="margin-left:auto;display:inline-flex;align-items:center;gap:.25rem;background:#fef9c3;color:#854d0e;border-radius:99px;padding:.18rem .6rem;font-size:.68rem;font-weight:700;">
+                <i class="bi bi-dash-circle-fill"></i> Estable
+            </span>
+        @endif
+    </div>
+    <div class="prt-card-body" style="padding:1rem;">
+        @if($tendencia !== null)
+        <div style="display:flex;gap:.5rem;margin-bottom:.85rem;flex-wrap:wrap;">
+            <div style="background:#f1f5f9;border-radius:8px;padding:.45rem .85rem;font-size:.74rem;">
+                <span style="color:#64748b;">Inicio: </span>
+                <strong>{{ $comparativoChart['primero'] ?? '—' }}</strong>
+            </div>
+            <div style="background:#f1f5f9;border-radius:8px;padding:.45rem .85rem;font-size:.74rem;">
+                <span style="color:#64748b;">Último: </span>
+                <strong>{{ $comparativoChart['ultimo'] ?? '—' }}</strong>
+            </div>
+            @php
+                $diff = ($comparativoChart['ultimo'] ?? null) !== null && ($comparativoChart['primero'] ?? null) !== null
+                    ? round($comparativoChart['ultimo'] - $comparativoChart['primero'], 1)
+                    : null;
+            @endphp
+            @if($diff !== null)
+            <div style="background:{{ $diff >= 0 ? '#dcfce7' : '#fee2e2' }};border-radius:8px;padding:.45rem .85rem;font-size:.74rem;color:{{ $diff >= 0 ? '#15803d' : '#dc2626' }};font-weight:700;">
+                {{ $diff >= 0 ? '+' : '' }}{{ $diff }} puntos
+            </div>
+            @endif
+        </div>
+        @endif
+        <div style="position:relative;height:220px;">
+            <canvas id="chartComparativoPeriodos"></canvas>
+        </div>
+    </div>
+</div>
+@endif
 
 {{-- ── Asistencia ─────────────────────────────────────────────────────── --}}
 <div class="prt-card" id="asistencia" style="margin-bottom:1rem;">
@@ -533,3 +583,75 @@
 @endif
 
 @endsection
+
+@push('scripts')
+@if(!empty($comparativoChart) && $comparativoChart['labels'] !== '[]')
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    const ctx = document.getElementById('chartComparativoPeriodos');
+    if (!ctx) return;
+
+    const labels    = {!! $comparativoChart['labels'] !!};
+    const data      = {!! $comparativoChart['data'] !!};
+    const tendencia = @json($comparativoChart['tendencia'] ?? null);
+
+    const lineColor = tendencia === 'positiva' ? '#16a34a'
+                    : tendencia === 'negativa'  ? '#dc2626'
+                    : '#6366f1';
+    const fillColor = tendencia === 'positiva' ? 'rgba(22,163,74,.12)'
+                    : tendencia === 'negativa'  ? 'rgba(220,38,38,.10)'
+                    : 'rgba(99,102,241,.10)';
+
+    const pointColors = data.map(function(v) {
+        return v >= 80 ? '#16a34a' : (v >= 60 ? '#ca8a04' : '#dc2626');
+    });
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Promedio',
+                data: data,
+                borderColor: lineColor,
+                backgroundColor: fillColor,
+                borderWidth: 3,
+                pointBackgroundColor: pointColors,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 7,
+                pointHoverRadius: 9,
+                tension: 0.35,
+                fill: true,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(c) { return ' Promedio: ' + c.parsed.y; }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    min: Math.max(0, Math.min.apply(null, data) - 10),
+                    max: 100,
+                    grid: { color: 'rgba(0,0,0,.06)' },
+                    ticks: { font: { size: 11 } }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { size: 12, weight: '700' } }
+                }
+            }
+        }
+    });
+})();
+</script>
+@endif
+@endpush

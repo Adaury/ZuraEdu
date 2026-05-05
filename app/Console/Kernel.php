@@ -34,6 +34,12 @@ class Kernel extends ConsoleKernel
 
         // ── Limpiar sesiones expiradas ────────────────────────────────────────
         $schedule->command('session:flush')->weeklyOn(0, '03:00');
+
+        // ── Limpiar tenants demo temporales vencidos (cada hora) ─────────────
+        $schedule->command('demo:limpiar --force')->hourly();
+
+        // ── Verificar pagos: suspender vencidos, reactivar pagados (diario) ───
+        $schedule->command('tenants:verificar-pagos')->dailyAt('02:00');
     }
 
     /**

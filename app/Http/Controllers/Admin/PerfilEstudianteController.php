@@ -359,6 +359,114 @@ class PerfilEstudianteController extends Controller
         return $pdf->download("asistencia_{$slug}.pdf");
     }
 
+    // ── Historial Académico Multi-año (vista interactiva) ────────────────
+    public function historialAcademico(Estudiante $estudiante)
+    {
+        $estudiante->load([
+            'user',
+            'matriculas' => function ($q) {
+                $q->with(['grupo.grado', 'grupo.seccion', 'schoolYear'])
+                  ->orderBy('school_year_id');
+            },
+        ]);
+
+        // Construir historial año por año con detalle de asignaturas
+        $historial = $estudiante->matriculas->map(function ($m) {
+            $calAcad = CalificacionAcademica::with('asignacion.asignatura')
+                ->where('matricula_id', $m->id)
+                ->get()
+                ->sortBy(fn($c) => $c->asignacion?->asignatura?->nombre);
+
+            $asistencias  = Asistencia::where('matricula_id', $m->id)->get();
+            $totalAs      = $asistencias->count();
+            $presentesAs  = $asistencias->whereIn('estado', ['presente', 'tardanza', 'justificado'])->count();
+
+            return [
+                'matricula'  => $m,
+                'schoolYear' => $m->schoolYear,
+                'grado'      => $m->grupo?->grado?->nombre ?? '—',
+                'seccion'    => $m->grupo?->seccion?->nombre ?? '',
+                'grupo'      => $m->grupo?->nombre_completo ?? '—',
+                'califs'     => $calAcad,
+                'promedio'   => $calAcad->whereNotNull('nota_final')->avg('nota_final'),
+                'aprobadas'  => $calAcad->where('situacion', 'A')->count(),
+                'reprobadas' => $calAcad->where('situacion', 'R')->count(),
+                'total_asig' => $calAcad->count(),
+                'asistencia' => $totalAs > 0 ? round($presentesAs / $totalAs * 100, 1) : null,
+                'situacion_general' => $calAcad->where('situacion', 'R')->count() === 0 &&
+                                       $calAcad->whereNotNull('situacion')->count() > 0
+                                       ? 'Promovido' : ($calAcad->whereNotNull('situacion')->count() > 0 ? 'Reprobado' : '—'),
+            ];
+        })->filter(fn($h) => $h['schoolYear'] !== null)->values();
+
+        // Datos para Chart.js: años en orden cronológico
+        $chartLabels   = $historial->pluck('schoolYear.nombre')->map(fn($n) => $n ?? '—')->values();
+        $chartPromedios = $historial->pluck('promedio')->map(fn($p) => $p !== null ? round($p, 1) : null)->values();
+
+        $si = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        return view('admin.perfiles.historial_academico', compact(
+            'estudiante', 'historial', 'chartLabels', 'chartPromedios', 'si'
+        ));
+    }
+
+    // ── Historial Académico Multi-año PDF oficial ─────────────────────────
+    public function historialPdf(Estudiante $estudiante)
+    {
+        $estudiante->load([
+            'user',
+            'representantes',
+            'matriculas' => function ($q) {
+                $q->with(['grupo.grado', 'grupo.seccion', 'schoolYear'])
+                  ->orderBy('school_year_id');
+            },
+        ]);
+
+        $historial = $estudiante->matriculas->map(function ($m) {
+            $calAcad = CalificacionAcademica::with('asignacion.asignatura')
+                ->where('matricula_id', $m->id)
+                ->get()
+                ->sortBy(fn($c) => $c->asignacion?->asignatura?->nombre);
+
+            $asistencias  = Asistencia::where('matricula_id', $m->id)->get();
+            $totalAs      = $asistencias->count();
+            $presentesAs  = $asistencias->whereIn('estado', ['presente', 'tardanza', 'justificado'])->count();
+
+            return [
+                'matricula'  => $m,
+                'schoolYear' => $m->schoolYear,
+                'grado'      => $m->grupo?->grado?->nombre ?? '—',
+                'seccion'    => $m->grupo?->seccion?->nombre ?? '',
+                'grupo'      => $m->grupo?->nombre_completo ?? '—',
+                'califs'     => $calAcad,
+                'promedio'   => $calAcad->whereNotNull('nota_final')->avg('nota_final'),
+                'aprobadas'  => $calAcad->where('situacion', 'A')->count(),
+                'reprobadas' => $calAcad->where('situacion', 'R')->count(),
+                'total_asig' => $calAcad->count(),
+                'asistencia' => $totalAs > 0 ? round($presentesAs / $totalAs * 100, 1) : null,
+                'situacion_general' => $calAcad->where('situacion', 'R')->count() === 0 &&
+                                       $calAcad->whereNotNull('situacion')->count() > 0
+                                       ? 'Promovido' : ($calAcad->whereNotNull('situacion')->count() > 0 ? 'Reprobado' : '—'),
+            ];
+        })->filter(fn($h) => $h['schoolYear'] !== null)->values();
+
+        $si     = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+        $dir    = \App\Models\ConfigInstitucional::get('nombre_director', '');
+        $cod    = \App\Models\ConfigInstitucional::get('codigo_centro', '');
+        $nivel  = \App\Models\ConfigInstitucional::get('nivel_educativo', '');
+        $config = \App\Models\BoletinConfig::getOrCreate(
+            \App\Models\SchoolYear::actual()?->id ?? 0
+        );
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'admin.perfiles.historial_pdf',
+            compact('estudiante', 'historial', 'si', 'dir', 'cod', 'nivel', 'config')
+        )->setPaper('letter', 'portrait');
+
+        $slug = \Illuminate\Support\Str::slug($estudiante->nombre_completo ?? 'estudiante');
+        return $pdf->download("historial_academico_{$slug}.pdf");
+    }
+
     // ── Reporte de asistencia del estudiante Excel ───────────────────────
     public function asistenciaExcel(Estudiante $estudiante)
     {

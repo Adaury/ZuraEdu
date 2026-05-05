@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
 class Pago extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'pagos';
 
     protected $fillable = [

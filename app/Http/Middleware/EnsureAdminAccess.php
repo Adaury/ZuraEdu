@@ -13,6 +13,7 @@ class EnsureAdminAccess
 {
     /** Roles que SÍ pueden acceder al panel admin */
     private const ADMIN_ROLES = [
+        'super_admin',
         'Administrador',
         'Director',
         'Coordinador Académico',
@@ -32,7 +33,13 @@ class EnsureAdminAccess
             return redirect()->route('login');
         }
 
-        // Docente → portal propio (NO tiene acceso al panel admin)
+        // SuperAdmin sin tenant activo en sesión → redirigir a su panel
+        if ($user->hasRole('super_admin') && ! session('sa_tenant_id')) {
+            return redirect('/superadmin')
+                ->with('info', 'Selecciona una institución para administrar su panel.');
+        }
+
+        // Docente → portal propio
         if ($user->hasRole('Docente')) {
             return redirect()->route('portal.docente.dashboard')
                 ->with('info', 'Tu acceso es a través del portal docente.');

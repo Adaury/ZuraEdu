@@ -184,14 +184,20 @@
         <h2 style="font-size:1rem;font-weight:800;margin:0;">Boletín de Calificaciones</h2>
         <div style="font-size:.78rem;color:#64748b;">{{ $estudiante->nombre_completo }}</div>
     </div>
-    <div style="display:flex;gap:.5rem;">
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
         <button onclick="window.print()" style="background:#f1f5f9;color:#374151;border:none;border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:.4rem;">
             <i class="bi bi-printer"></i>Imprimir
         </button>
         <a href="{{ route('portal.padre.hijo.boletin.pdf', $estudiante) }}" target="_blank"
            style="background:#1e40af;color:#fff;border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.4rem;">
-            <i class="bi bi-file-earmark-pdf"></i>PDF
+            <i class="bi bi-file-earmark-pdf"></i>PDF Período
         </a>
+        @if($matricula)
+        <a href="{{ route('admin.boletines.pdf-anual', $matricula->id) }}" target="_blank"
+           style="background:#7c3aed;color:#fff;border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.4rem;">
+            <i class="bi bi-file-earmark-bar-graph"></i>PDF Anual
+        </a>
+        @endif
         <a href="{{ route('portal.padre.hijo.notas.excel', $estudiante) }}"
            style="background:#166534;color:#fff;border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.4rem;">
             <i class="bi bi-file-earmark-excel"></i>Excel
@@ -210,6 +216,12 @@
         </div>
     </div>
     <div class="bol-hero-stats">
+        @if(isset($promedioGeneral) && $promedioGeneral !== null)
+        <div class="bol-hero-stat">
+            <div class="val" style="font-size:1.5rem;">{{ $promedioGeneral }}</div>
+            <div class="lbl">Promedio General</div>
+        </div>
+        @endif
         <div class="bol-hero-stat">
             <div class="val">{{ $resumenAsistencia['porcentaje'] !== null ? $resumenAsistencia['porcentaje'].'%' : '—' }}</div>
             <div class="lbl">Asistencia</div>
@@ -229,6 +241,14 @@
         <div class="bol-hero-stat">
             <div class="val">{{ $aprobadas }}/{{ $calificacionesAcademicas->count() }}</div>
             <div class="lbl">Aprobadas</div>
+        </div>
+        @endif
+        @if(isset($rankingGrupo) && !empty($rankingGrupo['puesto']))
+        <div class="bol-hero-stat">
+            <div class="val" style="font-size:1.1rem;">
+                <i class="bi bi-trophy" style="color:#fbbf24;"></i> {{ $rankingGrupo['puesto'] }}/{{ $rankingGrupo['total'] }}
+            </div>
+            <div class="lbl">Puesto en el Grupo</div>
         </div>
         @endif
     </div>

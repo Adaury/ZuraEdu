@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Estudiante extends Model
 {
+    use BelongsToTenant;
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
@@ -80,6 +83,26 @@ class Estudiante extends Model
         return $this->hasMany(Observacion::class);
     }
 
+    public function reconocimientos()
+    {
+        return $this->hasMany(Reconocimiento::class);
+    }
+
+    public function faltasDisciplinarias()
+    {
+        return $this->hasMany(FaltaDisciplinaria::class);
+    }
+
+    public function fichaSalud()
+    {
+        return $this->hasOne(FichaSalud::class);
+    }
+
+    public function incidentesMedicos()
+    {
+        return $this->hasMany(IncidenteMedico::class);
+    }
+
     /* ── Relaciones adicionales ─────────────────────────────── */
 
     /** Asistencias a través de matriculas */
@@ -134,6 +157,11 @@ class Estudiante extends Model
     public function scopeActivos($q)
     {
         return $q->where('estado', 'activo');
+    }
+
+    public function casosSeguimiento()
+    {
+        return $this->hasMany(CasoSeguimiento::class);
     }
 
     public function currentMatricula()

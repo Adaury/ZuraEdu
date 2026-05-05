@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 
 class PlanificacionActividad extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'planificacion_actividades';
 
     protected $fillable = [

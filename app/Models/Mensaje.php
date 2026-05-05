@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Mensaje extends Model
 {
+    use BelongsToTenant;
+
     protected $fillable = [
         'remitente_id', 'destinatario_id', 'asunto', 'cuerpo',
         'leido', 'leido_en', 'archivado_remitente', 'archivado_destinatario',

@@ -251,19 +251,11 @@
                onmouseover="this.style.background='{{ $color }}10'" onmouseout="this.style.background=''">
                 <i class="bi bi-folder-fill" style="font-size:1rem;"></i>Recursos
             </a>
-            @if($asig->area === 'tecnica')
-            <a href="{{ route('portal.estudiante.planificaciones') }}"
-               style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2rem;padding:.55rem .35rem;text-decoration:none;color:#7c3aed;font-size:.65rem;font-weight:700;transition:background .15s;"
-               onmouseover="this.style.background='#7c3aed10'" onmouseout="this.style.background=''">
-                <i class="bi bi-journal-text" style="font-size:1rem;"></i>Planif.
-            </a>
-            @else
             <a href="{{ route('portal.estudiante.boletin') }}"
                style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2rem;padding:.55rem .35rem;text-decoration:none;color:#1d4ed8;font-size:.65rem;font-weight:700;transition:background .15s;"
                onmouseover="this.style.background='#1d4ed810'" onmouseout="this.style.background=''">
                 <i class="bi bi-file-earmark-text" style="font-size:1rem;"></i>Boletín
             </a>
-            @endif
         </div>
     </div>
     @endforeach
@@ -335,6 +327,58 @@
         @endif
     </div>
 </div>
+
+{{-- ── ZuraClass — Tareas Pendientes ───────────────────────────────── --}}
+@if(!empty($zuraClasesData) && ($zuraClasesData['totalPendientes'] > 0 || $zuraClasesData['tareasVencidas'] > 0))
+<div class="prt-card" style="margin-bottom:1.25rem;">
+    <div class="prt-card-header" style="background:linear-gradient(90deg,rgba(79,70,229,.06) 0%,transparent 100%);">
+        <i class="bi bi-easel2-fill" style="color:#4f46e5;font-size:1rem;"></i>
+        <h3>ZuraClass — Tareas Pendientes</h3>
+        <div style="margin-left:auto;display:flex;gap:.5rem;align-items:center;">
+            @if($zuraClasesData['tareasVencidas'] > 0)
+            <span style="background:#fee2e2;color:#dc2626;font-size:.7rem;font-weight:700;padding:.15rem .55rem;border-radius:99px;">
+                {{ $zuraClasesData['tareasVencidas'] }} vencida(s)
+            </span>
+            @endif
+            <a href="{{ route('portal.estudiante.classroom.index') }}"
+               style="font-size:.75rem;color:#4f46e5;text-decoration:none;font-weight:600;">
+                Ver aulas <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+    <div class="prt-card-body" style="padding:0;">
+        @foreach($zuraClasesData['tareasPendientes'] as $tarea)
+        @php $urgente = $tarea['fecha_limite'] && $tarea['fecha_limite']->diffInDays(now()) <= 2; @endphp
+        <div style="padding:.75rem 1rem;border-bottom:1px solid #f1f5f9;display:flex;gap:.75rem;align-items:center;">
+            <div style="width:36px;height:36px;background:{{ $urgente?'#fee2e2':'#eef2ff' }};border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="bi bi-pencil-fill" style="color:{{ $urgente?'#dc2626':'#4f46e5' }};font-size:.85rem;"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:600;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $tarea['titulo'] }}</div>
+                <div style="font-size:.75rem;color:#64748b;">{{ $tarea['asignatura'] }}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+                @if($tarea['fecha_limite'])
+                <div style="font-size:.72rem;font-weight:700;color:{{ $urgente?'#dc2626':'#92400e' }};">
+                    {{ $tarea['fecha_limite']->format('d/m') }}
+                </div>
+                <div style="font-size:.65rem;color:{{ $urgente?'#dc2626':'#94a3b8' }};">
+                    {{ $tarea['fecha_limite']->diffForHumans() }}
+                </div>
+                @endif
+            </div>
+        </div>
+        @endforeach
+        @if($zuraClasesData['totalPendientes'] > 5)
+        <div style="padding:.6rem 1rem;text-align:center;font-size:.78rem;color:#4f46e5;font-weight:600;">
+            <a href="{{ route('portal.estudiante.classroom.index') }}" style="text-decoration:none;color:inherit;">
+                Ver {{ $zuraClasesData['totalPendientes'] - 5 }} tarea(s) más <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+        @endif
+    </div>
+</div>
+@endif
 
 {{-- ── Observaciones del docente ────────────────────────────────────── --}}
 @if($observaciones->isNotEmpty())

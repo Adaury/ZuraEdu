@@ -843,6 +843,240 @@ class RendimientoController extends Controller
         }, $filename, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
     }
 
+    // ── Comparativo por Período ───────────────────────────────────────────
+    public function comparativo(Request $request)
+    {
+        $schoolYear = SchoolYear::where('activo', true)->first();
+        if (! $schoolYear) {
+            return view('admin.rendimiento.comparativo', ['sinAnio' => true]);
+        }
+
+        $grupos  = Grupo::where('school_year_id', $schoolYear->id)
+            ->where('activo', true)
+            ->with(['grado', 'seccion'])
+            ->orderBy('grado_id')
+            ->get();
+
+        $grupoId = $request->grupo_id ?? $grupos->first()?->id;
+        $chartData = [];
+        $tablaData = [];
+
+        if ($grupoId) {
+            // Asignaciones del grupo con calificaciones académicas
+            $asignaciones = \App\Models\Asignacion::with('asignatura')
+                ->where('school_year_id', $schoolYear->id)
+                ->where('grupo_id', $grupoId)
+                ->where('activo', true)
+                ->get();
+
+            foreach ($asignaciones as $asig) {
+                $nombre = $asig->asignatura?->nombre ?? 'S/N';
+                $promedios = [];
+
+                for ($p = 1; $p <= 4; $p++) {
+                    // Promedio del grupo para esta asignatura en este período
+                    // Nota período = promedio de los 4 avg_compC_pP no nulos
+                    $rows = CalificacionAcademica::where('school_year_id', $schoolYear->id)
+                        ->where('asignacion_id', $asig->id)
+                        ->get(['avg_comp1_p' . $p, 'avg_comp2_p' . $p, 'avg_comp3_p' . $p, 'avg_comp4_p' . $p]);
+
+                    $sumaGrupo = 0;
+                    $cntGrupo  = 0;
+                    foreach ($rows as $row) {
+                        $vals = array_filter([
+                            $row->{"avg_comp1_p{$p}"},
+                            $row->{"avg_comp2_p{$p}"},
+                            $row->{"avg_comp3_p{$p}"},
+                            $row->{"avg_comp4_p{$p}"},
+                        ], fn($v) => $v !== null);
+
+                        if (count($vals) > 0) {
+                            $sumaGrupo += array_sum($vals) / count($vals);
+                            $cntGrupo++;
+                        }
+                    }
+
+                    $promedios[$p] = $cntGrupo > 0 ? round($sumaGrupo / $cntGrupo, 1) : null;
+                }
+
+                $tablaData[] = [
+                    'asignatura' => $nombre,
+                    'p1' => $promedios[1],
+                    'p2' => $promedios[2],
+                    'p3' => $promedios[3],
+                    'p4' => $promedios[4],
+                ];
+            }
+
+            $chartData = [
+                'labels'   => array_column($tablaData, 'asignatura'),
+                'datasets' => [
+                    ['label' => 'P1', 'data' => array_column($tablaData, 'p1'),
+                     'backgroundColor' => 'rgba(37,99,235,0.75)'],
+                    ['label' => 'P2', 'data' => array_column($tablaData, 'p2'),
+                     'backgroundColor' => 'rgba(5,150,105,0.75)'],
+                    ['label' => 'P3', 'data' => array_column($tablaData, 'p3'),
+                     'backgroundColor' => 'rgba(217,119,6,0.75)'],
+                    ['label' => 'P4', 'data' => array_column($tablaData, 'p4'),
+                     'backgroundColor' => 'rgba(220,38,38,0.75)'],
+                ],
+            ];
+        }
+
+        return view('admin.rendimiento.comparativo', compact(
+            'schoolYear', 'grupos', 'grupoId', 'chartData', 'tablaData'
+        ));
+    }
+
+    // ── Ranking de Asignaturas ────────────────────────────────────────────
+    public function rankingAsignaturas(Request $request)
+    {
+        $schoolYear = SchoolYear::where('activo', true)->first();
+        if (! $schoolYear) {
+            return view('admin.rendimiento.ranking_asignaturas', ['sinAnio' => true]);
+        }
+
+        $grupos  = Grupo::where('school_year_id', $schoolYear->id)
+            ->where('activo', true)
+            ->with(['grado', 'seccion'])
+            ->orderBy('grado_id')
+            ->get();
+
+        $grupoId  = $request->grupo_id  ?? $grupos->first()?->id;
+        $periodo  = (int) ($request->periodo ?? 1);
+        $ranking  = [];
+
+        if ($grupoId) {
+            $asignaciones = \App\Models\Asignacion::with('asignatura')
+                ->where('school_year_id', $schoolYear->id)
+                ->where('grupo_id', $grupoId)
+                ->where('activo', true)
+                ->get();
+
+            $p = $periodo;
+
+            foreach ($asignaciones as $asig) {
+                $rows = CalificacionAcademica::where('school_year_id', $schoolYear->id)
+                    ->where('asignacion_id', $asig->id)
+                    ->get(['avg_comp1_p' . $p, 'avg_comp2_p' . $p,
+                           'avg_comp3_p' . $p, 'avg_comp4_p' . $p]);
+
+                $sumaGrupo = 0;
+                $cntGrupo  = 0;
+                $reprobados = 0;
+
+                foreach ($rows as $row) {
+                    $vals = array_filter([
+                        $row->{"avg_comp1_p{$p}"},
+                        $row->{"avg_comp2_p{$p}"},
+                        $row->{"avg_comp3_p{$p}"},
+                        $row->{"avg_comp4_p{$p}"},
+                    ], fn($v) => $v !== null);
+
+                    if (count($vals) > 0) {
+                        $notaEst = array_sum($vals) / count($vals);
+                        $sumaGrupo += $notaEst;
+                        $cntGrupo++;
+                        if ($notaEst < 70) $reprobados++;
+                    }
+                }
+
+                if ($cntGrupo === 0) continue;
+
+                $promedio = round($sumaGrupo / $cntGrupo, 1);
+                $pctReprobados = round($reprobados / $cntGrupo * 100, 1);
+
+                $ranking[] = [
+                    'asignatura'     => $asig->asignatura?->nombre ?? 'S/N',
+                    'promedio'       => $promedio,
+                    'total'          => $cntGrupo,
+                    'reprobados'     => $reprobados,
+                    'pct_reprobados' => $pctReprobados,
+                    'semaforo'       => $promedio >= 70 ? 'success' : ($promedio >= 60 ? 'warning' : 'danger'),
+                ];
+            }
+
+            usort($ranking, fn($a, $b) => $b['promedio'] <=> $a['promedio']);
+        }
+
+        return view('admin.rendimiento.ranking_asignaturas', compact(
+            'schoolYear', 'grupos', 'grupoId', 'periodo', 'ranking'
+        ));
+    }
+
+    // ── Tendencia por Grupo ───────────────────────────────────────────────
+    public function tendenciaGrupo(Request $request)
+    {
+        $schoolYear = SchoolYear::where('activo', true)->first();
+        if (! $schoolYear) {
+            return view('admin.rendimiento.tendencia', ['sinAnio' => true]);
+        }
+
+        $grupos  = Grupo::where('school_year_id', $schoolYear->id)
+            ->where('activo', true)
+            ->with(['grado', 'seccion'])
+            ->orderBy('grado_id')
+            ->get();
+
+        $grupoId  = $request->grupo_id ?? $grupos->first()?->id;
+        $promediosPeriodos = [];
+        $tendencia = null;
+
+        if ($grupoId) {
+            // Obtener todas las asignaciones del grupo
+            $asigIds = \App\Models\Asignacion::where('school_year_id', $schoolYear->id)
+                ->where('grupo_id', $grupoId)
+                ->where('activo', true)
+                ->pluck('id');
+
+            for ($p = 1; $p <= 4; $p++) {
+                $rows = CalificacionAcademica::where('school_year_id', $schoolYear->id)
+                    ->whereIn('asignacion_id', $asigIds)
+                    ->get(['avg_comp1_p' . $p, 'avg_comp2_p' . $p,
+                           'avg_comp3_p' . $p, 'avg_comp4_p' . $p]);
+
+                $suma = 0;
+                $cnt  = 0;
+
+                foreach ($rows as $row) {
+                    $vals = array_filter([
+                        $row->{"avg_comp1_p{$p}"},
+                        $row->{"avg_comp2_p{$p}"},
+                        $row->{"avg_comp3_p{$p}"},
+                        $row->{"avg_comp4_p{$p}"},
+                    ], fn($v) => $v !== null);
+
+                    if (count($vals) > 0) {
+                        $suma += array_sum($vals) / count($vals);
+                        $cnt++;
+                    }
+                }
+
+                $promediosPeriodos["P{$p}"] = $cnt > 0 ? round($suma / $cnt, 1) : null;
+            }
+
+            // Calcular tendencia comparando primer y último período con dato
+            $conDatos = array_filter($promediosPeriodos, fn($v) => $v !== null);
+            if (count($conDatos) >= 2) {
+                $vals = array_values($conDatos);
+                $diff = end($vals) - reset($vals);
+                $tendencia = [
+                    'valor'    => round($diff, 1),
+                    'positiva' => $diff >= 0,
+                ];
+            }
+        }
+
+        $chartData = [
+            'labels' => array_keys($promediosPeriodos),
+            'data'   => array_values($promediosPeriodos),
+        ];
+
+        return view('admin.rendimiento.tendencia', compact(
+            'schoolYear', 'grupos', 'grupoId', 'promediosPeriodos', 'chartData', 'tendencia'
+        ));
+    }
+
     public function recalcular(Request $request)
     {
         $schoolYear = SchoolYear::where('activo', true)->firstOrFail();

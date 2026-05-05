@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -10,6 +12,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class PromedioPeriodo extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'promedios_periodo';
 
     protected $fillable = [

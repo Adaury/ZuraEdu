@@ -346,7 +346,7 @@ class GrupoController extends Controller
                 $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
                 if ($nota !== null) {
                     $ws->getStyle("{$colLetter}{$row}")->getFont()
-                       ->getColor()->setRGB($nota >= 65 ? '065f46' : '991b1b');
+                       ->getColor()->setRGB($nota >= 70 ? '065f46' : '991b1b');
                 }
                 $col++;
             }
@@ -355,7 +355,7 @@ class GrupoController extends Controller
             if ($prom !== null) {
                 $promLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
                 $ws->getStyle("{$promLetter}{$row}")->getFont()->setBold(true)
-                   ->getColor()->setRGB($prom >= 65 ? '065f46' : '991b1b');
+                   ->getColor()->setRGB($prom >= 70 ? '065f46' : '991b1b');
             }
             if ($i % 2 === 1) {
                 $ws->getStyle("A{$row}:D{$row}")->getFill()

@@ -14,9 +14,9 @@ class AreaController extends Controller
 {
     public function index()
     {
-        // Resumen: áreas con conteo de materias
-        $areas = Area::withCount('asignaturas')->orderBy('tipo')->orderBy('nombre')->get();
-        return view('admin.areas.index', compact('areas'));
+        $areas         = Area::withCount('asignaturas')->orderBy('tipo')->orderBy('nombre')->get();
+        $especialidades = EspecialidadTecnica::activas()->orderBy('orden')->get();
+        return view('admin.areas.index', compact('areas', 'especialidades'));
     }
 
     public function academica()

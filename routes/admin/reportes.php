@@ -38,6 +38,9 @@ Route::get('rendimiento/rezagados',         [RendimientoController::class, 'reza
 Route::get('rendimiento/rezagados/pdf',     [RendimientoController::class, 'rezagadosPdf'])->name('rendimiento.rezagados.pdf');
 Route::get('rendimiento/rezagados/excel',   [RendimientoController::class, 'rezagadosExcel'])->name('rendimiento.rezagados.excel');
 
+// ── Reportes Comparativos de Rendimiento ─────────────────────────────────
+require __DIR__ . '/rendimiento_comparativo.php';
+
 // ── Alertas ───────────────────────────────────────────────────────────────
 Route::get('alertas',                      [AlertaController::class, 'index'])->name('alertas.index');
 Route::get('alertas/pdf',                  [AlertaController::class, 'pdf'])->name('alertas.pdf');

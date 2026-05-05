@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 
 class HorarioDetalle extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'horario_detalles';
 
     protected $fillable = [

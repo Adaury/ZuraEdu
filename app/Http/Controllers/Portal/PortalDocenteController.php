@@ -479,7 +479,7 @@ class PortalDocenteController extends Controller
                             if ($n !== null) $notasValidas[] = $n;
                         }
                         $promedio = count($notasValidas) ? round(array_sum($notasValidas)/count($notasValidas),2) : null;
-                        $sit = $promedio !== null ? ($promedio >= 65 ? 'A' : 'R') : null;
+                        $sit = $promedio !== null ? ($promedio >= 70 ? 'A' : 'R') : null;
                     } else {
                         $cal = $califAcadMap->get($asi->id);
                         foreach ($periodos as $p) {
@@ -886,8 +886,8 @@ class PortalDocenteController extends Controller
         if ($notas->isNotEmpty()) {
             $statsMateria = [
                 'promedio'   => round($notas->avg(), 1),
-                'aprobados'  => $notas->filter(fn($n) => $n >= 65)->count(),
-                'reprobados' => $notas->filter(fn($n) => $n < 65)->count(),
+                'aprobados'  => $notas->filter(fn($n) => $n >= 70)->count(),
+                'reprobados' => $notas->filter(fn($n) => $n < 70)->count(),
                 'max'        => round($notas->max(), 1),
                 'min'        => round($notas->min(), 1),
                 'total'      => $notas->count(),
@@ -963,7 +963,7 @@ class PortalDocenteController extends Controller
                 $promedio   = count($notasValidas)
                     ? round(array_sum($notasValidas) / count($notasValidas), 2)
                     : null;
-                $situacion  = $promedio !== null ? ($promedio >= 65 ? 'A' : 'R') : null;
+                $situacion  = $promedio !== null ? ($promedio >= 70 ? 'A' : 'R') : null;
             } else {
                 $cal = $califAcadMap->get($asi->id);
 
@@ -1058,7 +1058,7 @@ class PortalDocenteController extends Controller
                     if ($notaPeriodo !== null) $notasValidas[] = $notaPeriodo;
                 }
                 $promedio  = count($notasValidas) ? round(array_sum($notasValidas) / count($notasValidas), 2) : null;
-                $situacion = $promedio !== null ? ($promedio >= 65 ? 'A' : 'R') : null;
+                $situacion = $promedio !== null ? ($promedio >= 70 ? 'A' : 'R') : null;
             } else {
                 $cal = $califAcadMap->get($asi->id);
                 foreach ($periodos as $p) {
@@ -1817,6 +1817,215 @@ class PortalDocenteController extends Controller
         ])->deleteFileAfterSend(true);
     }
 
+    // ── Mis Estadísticas Personales ──────────────────────────────────────
+    public function misEstadisticas()
+    {
+        $docente    = $this->getDocente();
+        $schoolYear = SchoolYear::actual();
+        $syId       = $schoolYear?->id ?? 0;
+
+        // Asignaciones activas del docente
+        $asignaciones = Asignacion::with(['grupo.grado', 'grupo.seccion', 'asignatura'])
+            ->where('docente_id', $docente->id)
+            ->where('activo', true)
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $syId))
+            ->get();
+
+        // Total de estudiantes únicos en sus grupos
+        $grupoIds = $asignaciones->pluck('grupo_id')->unique()->values();
+        $totalEstudiantes = $grupoIds->isNotEmpty()
+            ? Matricula::whereIn('grupo_id', $grupoIds)
+                ->where('estado', 'activa')
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $syId))
+                ->count()
+            : 0;
+
+        // Promedio de calificaciones y % asistencia por asignación
+        $estadisticasPorAsignacion = [];
+        foreach ($asignaciones as $asig) {
+            $esTecnica = ($asig->area ?? '') === 'tecnica';
+
+            // Promedio de nota_final publicadas
+            if ($esTecnica) {
+                $notas = Calificacion::where('asignacion_id', $asig->id)
+                    ->whereNotNull('nota_final')
+                    ->pluck('nota_final');
+            } else {
+                $notas = CalificacionAcademica::where('asignacion_id', $asig->id)
+                    ->when($schoolYear, fn($q) => $q->where('school_year_id', $syId))
+                    ->whereNotNull('nota_final')
+                    ->pluck('nota_final');
+            }
+            $promedio = $notas->count() ? round($notas->avg(), 1) : null;
+
+            // % de asistencia del grupo en esta asignación
+            $totalAsist = Asistencia::where('asignacion_id', $asig->id)->count();
+            $presentes  = Asistencia::where('asignacion_id', $asig->id)
+                ->whereIn('estado', ['presente', 'tardanza'])->count();
+            $pctAsist = $totalAsist > 0 ? round($presentes / $totalAsist * 100, 1) : null;
+
+            $estadisticasPorAsignacion[] = [
+                'asignatura' => $asig->asignatura?->nombre ?? '—',
+                'grupo'      => $asig->grupo?->nombre_completo ?? '—',
+                'promedio'   => $promedio,
+                'pct_asist'  => $pctAsist,
+                'total_asist'=> $totalAsist,
+            ];
+        }
+
+        // % de asistencia promedio general de sus grupos
+        $totalAsistGlobal = Asistencia::whereIn('asignacion_id', $asignaciones->pluck('id'))->count();
+        $presentesGlobal  = Asistencia::whereIn('asignacion_id', $asignaciones->pluck('id'))
+            ->whereIn('estado', ['presente', 'tardanza'])->count();
+        $pctAsistGlobal = $totalAsistGlobal > 0 ? round($presentesGlobal / $totalAsistGlobal * 100, 1) : null;
+
+        // Planes de clase y planificaciones creadas
+        $totalPlanificaciones = \App\Models\Planificacion::whereIn('asignacion_id', $asignaciones->pluck('id'))->count();
+        $totalPlanesClase     = \App\Models\PlanClase::whereIn('asignacion_id', $asignaciones->pluck('id'))->count();
+
+        // Datos para Chart.js (promedio por asignación)
+        $chartLabels = collect($estadisticasPorAsignacion)
+            ->map(fn($e) => \Illuminate\Support\Str::limit($e['asignatura'], 20))
+            ->values()->toJson();
+        $chartData   = collect($estadisticasPorAsignacion)
+            ->map(fn($e) => $e['promedio'] ?? 0)
+            ->values()->toJson();
+
+        return view('portal.docente.mis_estadisticas', compact(
+            'docente', 'schoolYear', 'asignaciones',
+            'totalEstudiantes', 'estadisticasPorAsignacion',
+            'pctAsistGlobal', 'totalPlanificaciones', 'totalPlanesClase',
+            'chartLabels', 'chartData'
+        ));
+    }
+
+    // ── Mis Estudiantes (vista global docente) ──────────────────────────
+    public function misEstudiantes(Request $request)
+    {
+        $docente    = $this->getDocente();
+        $schoolYear = SchoolYear::actual();
+        $syId       = $schoolYear?->id ?? 0;
+
+        // Todas las asignaciones activas del docente con relaciones necesarias
+        $asignaciones = Asignacion::with(['grupo.grado', 'grupo.seccion', 'asignatura'])
+            ->where('docente_id', $docente->id)
+            ->where('activo', true)
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $syId))
+            ->get();
+
+        $asignacionIds = $asignaciones->pluck('id');
+        $grupoIds      = $asignaciones->pluck('grupo_id')->unique()->values();
+
+        // Filtro opcional por asignacion_id o grupo_id
+        $filtroAsignacion = $request->integer('asignacion_id');
+        $filtroGrupo      = $request->integer('grupo_id');
+        $filtroBusqueda   = trim($request->input('q', ''));
+
+        // Matriculas activas de todos sus grupos
+        $matriculas = Matricula::with('estudiante')
+            ->whereIn('grupo_id', $grupoIds)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $syId))
+            ->when($filtroGrupo, fn($q) => $q->where('grupo_id', $filtroGrupo))
+            ->get();
+
+        // Si se filtra por asignación concreta, conservar solo los del grupo de esa asignación
+        if ($filtroAsignacion) {
+            $asig = $asignaciones->firstWhere('id', $filtroAsignacion);
+            if ($asig) {
+                $matriculas = $matriculas->where('grupo_id', $asig->grupo_id)->values();
+            }
+        }
+
+        // Filtro de búsqueda por nombre
+        if ($filtroBusqueda !== '') {
+            $lower = mb_strtolower($filtroBusqueda);
+            $matriculas = $matriculas->filter(function ($m) use ($lower) {
+                $nombre = mb_strtolower($m->estudiante?->nombres . ' ' . $m->estudiante?->apellidos);
+                return str_contains($nombre, $lower);
+            })->values();
+        }
+
+        // Pre-cargar calificaciones y asistencias en bulk para evitar N+1
+        $matriculaIds = $matriculas->pluck('id');
+
+        // Calificaciones académicas (segundo ciclo)
+        $califAcad = CalificacionAcademica::whereIn('matricula_id', $matriculaIds)
+            ->whereIn('asignacion_id', $asignacionIds)
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $syId))
+            ->whereNotNull('nota_final')
+            ->get()
+            ->groupBy('matricula_id');
+
+        // Calificaciones técnicas
+        $califTec = Calificacion::whereIn('matricula_id', $matriculaIds)
+            ->whereIn('asignacion_id', $asignacionIds)
+            ->whereNotNull('nota_final')
+            ->get()
+            ->groupBy('matricula_id');
+
+        // Asistencias
+        $asistencias = Asistencia::whereIn('matricula_id', $matriculaIds)
+            ->whereIn('asignacion_id', $asignacionIds)
+            ->get()
+            ->groupBy('matricula_id');
+
+        // Alertas activas por estudiante (referencia_tipo = Matricula o Estudiante)
+        $alertasEstudiante = \App\Models\AlertaSistema::whereIn('referencia_id', $matriculaIds)
+            ->where('referencia_tipo', 'matricula')
+            ->where('leida', false)
+            ->vigentes()
+            ->get()
+            ->groupBy('referencia_id');
+
+        // Enriquecer cada matrícula
+        $matriculas = $matriculas->map(function ($m) use (
+            $califAcad, $califTec, $asistencias, $alertasEstudiante, $asignaciones
+        ) {
+            // Grupo del estudiante
+            $asig = $asignaciones->firstWhere('grupo_id', $m->grupo_id);
+            $m->_grupo = $asig?->grupo;
+
+            // Promedio de notas — combinar académicas y técnicas
+            $notasAcad = $califAcad->get($m->id, collect())->pluck('nota_final');
+            $notasTec  = $califTec->get($m->id, collect())->pluck('nota_final');
+            $todasNotas = $notasAcad->concat($notasTec)->filter()->values();
+            $m->_promedio = $todasNotas->count() ? round($todasNotas->avg(), 1) : null;
+
+            // % asistencia global sobre todas las asignaciones del docente
+            $asistEst   = $asistencias->get($m->id, collect());
+            $total      = $asistEst->count();
+            $presentes  = $asistEst->whereIn('estado', ['presente', 'tardanza'])->count();
+            $m->_asist  = $total > 0 ? round($presentes / $total * 100, 1) : null;
+
+            // Alertas activas
+            $m->_alertas = $alertasEstudiante->get($m->id, collect());
+
+            // Semáforo: rojo < 65 o asist < 70 | amarillo 65–74 o asist 70–79 | verde >= 75
+            $nota  = $m->_promedio;
+            $asist = $m->_asist;
+
+            if (($nota !== null && $nota < 65) || ($asist !== null && $asist < 70)) {
+                $m->_semaforo = 'rojo';
+            } elseif (($nota !== null && $nota < 75) || ($asist !== null && $asist < 80)) {
+                $m->_semaforo = 'amarillo';
+            } else {
+                $m->_semaforo = 'verde';
+            }
+
+            return $m;
+        });
+
+        // Ordenar: rojo primero, luego amarillo, verde
+        $orden = ['rojo' => 0, 'amarillo' => 1, 'verde' => 2];
+        $matriculas = $matriculas->sortBy(fn($m) => $orden[$m->_semaforo] . ($m->estudiante?->apellidos ?? ''))->values();
+
+        return view('portal.docente.mis_estudiantes', compact(
+            'docente', 'schoolYear', 'asignaciones', 'matriculas',
+            'filtroAsignacion', 'filtroGrupo', 'filtroBusqueda'
+        ));
+    }
+
     private function cargarHorario(Docente $docente, $schoolYear): array
     {
         $grid    = [];
@@ -2036,7 +2245,7 @@ class PortalDocenteController extends Controller
             }
 
             $promFinal = count($notasParaPromedio) ? round(array_sum($notasParaPromedio) / count($notasParaPromedio), 2) : null;
-            $sit = $promFinal !== null ? ($promFinal >= 65 ? 'Aprobado' : 'Reprobado') : '';
+            $sit = $promFinal !== null ? ($promFinal >= 70 ? 'Aprobado' : 'Reprobado') : '';
             $ws->setCellValueByColumnAndRow($col++, $row, $promFinal ?? '');
             $ws->setCellValueByColumnAndRow($col, $row, $sit);
 
@@ -2229,7 +2438,7 @@ class PortalDocenteController extends Controller
                         'comp1_p3' => $p3, 'comp2_p3' => $p3, 'comp3_p3' => $p3, 'comp4_p3' => $p3,
                         'comp1_p4' => $p4, 'comp2_p4' => $p4, 'comp3_p4' => $p4, 'comp4_p4' => $p4,
                         'prom_comp1' => $p1, 'prom_comp2' => $p2, 'prom_comp3' => $p3, 'prom_comp4' => $p4,
-                        'nota_final' => $nf, 'situacion' => $nf >= 65 ? 'A' : 'R',
+                        'nota_final' => $nf, 'situacion' => $nf >= 70 ? 'A' : 'R',
                         'publicado'  => true,
                         'modificado_por' => auth()->id(),
                     ]

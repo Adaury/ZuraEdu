@@ -149,6 +149,37 @@
 
 @section('content')
 
+{{-- ── Alerta: sin año escolar activo ────────────────────────────────────── --}}
+@unless($schoolYear)
+<div class="alert border-0 mb-4" role="alert"
+     style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border-left:4px solid #f97316 !important;border-radius:12px;padding:1.1rem 1.4rem;">
+    <div class="d-flex align-items-start gap-3">
+        <i class="bi bi-exclamation-triangle-fill" style="font-size:1.5rem;color:#f97316;flex-shrink:0;margin-top:.1rem;"></i>
+        <div style="flex:1;">
+            <div style="font-weight:800;font-size:.95rem;color:#9a3412;margin-bottom:.25rem;">
+                No hay un Año Escolar activo
+            </div>
+            <div style="font-size:.83rem;color:#c2410c;line-height:1.5;">
+                Para registrar y visualizar matrículas necesitas crear un Año Escolar y marcarlo como activo.
+                Sin eso el sistema no puede asignar estudiantes a grupos ni generar registros académicos.
+            </div>
+            <div class="d-flex gap-2 mt-3 flex-wrap">
+                <a href="{{ route('admin.school-years.create') }}"
+                   class="btn btn-sm fw-bold"
+                   style="background:#f97316;color:#fff;border-radius:8px;padding:.4rem 1rem;font-size:.82rem;">
+                    <i class="bi bi-plus-circle me-1"></i>Crear Año Escolar
+                </a>
+                <a href="{{ route('admin.school-years.index') }}"
+                   class="btn btn-sm fw-semibold"
+                   style="background:#fff3e0;color:#c2410c;border:1px solid #fdba74;border-radius:8px;padding:.4rem 1rem;font-size:.82rem;">
+                    <i class="bi bi-gear me-1"></i>Ver Años Escolares
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+@endunless
+
 {{-- Page Header --}}
 <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
@@ -284,6 +315,86 @@
 {{-- Table --}}
 <div class="table-card">
     @if($matriculas->isEmpty())
+        @if($schoolYear && !request()->hasAny(['search','grupo_id','estado']) && ($totalGruposAnio === 0 || $totalEstudiantesActivos === 0))
+        {{-- ── Panel de pasos de configuración ── --}}
+        <div class="p-4">
+            <div class="text-center mb-4">
+                <i class="bi bi-rocket-takeoff" style="font-size:2.5rem;color:#6366f1;display:block;margin-bottom:.5rem;"></i>
+                <h6 class="fw-bold mb-1" style="color:#1e3a8a;">Configura el sistema antes de matricular</h6>
+                <p class="text-muted" style="font-size:.82rem;">Completa los siguientes pasos en orden para poder registrar matrículas.</p>
+            </div>
+            <div class="row g-3 justify-content-center">
+                {{-- Paso 1: Año Escolar --}}
+                <div class="col-12 col-md-4">
+                    <div class="text-center p-3 rounded-3" style="border:2px solid #d1fae5;background:#f0fdf4;">
+                        <div style="width:36px;height:36px;background:#059669;color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:.9rem;margin-bottom:.6rem;">1</div>
+                        <div style="font-weight:700;font-size:.85rem;color:#065f46;margin-bottom:.3rem;">
+                            <i class="bi bi-check-circle-fill text-success me-1"></i>Año Escolar
+                        </div>
+                        <div style="font-size:.75rem;color:#047857;">
+                            {{ $schoolYear->nombre }} — <span class="fw-bold">Activo</span>
+                        </div>
+                    </div>
+                </div>
+                {{-- Paso 2: Grupos --}}
+                <div class="col-12 col-md-4">
+                    @if($totalGruposAnio > 0)
+                    <div class="text-center p-3 rounded-3" style="border:2px solid #d1fae5;background:#f0fdf4;">
+                        <div style="width:36px;height:36px;background:#059669;color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:.9rem;margin-bottom:.6rem;">2</div>
+                        <div style="font-weight:700;font-size:.85rem;color:#065f46;margin-bottom:.3rem;">
+                            <i class="bi bi-check-circle-fill text-success me-1"></i>Grupos / Cursos
+                        </div>
+                        <div style="font-size:.75rem;color:#047857;">{{ $totalGruposAnio }} grupo(s) creado(s)</div>
+                    </div>
+                    @else
+                    <div class="text-center p-3 rounded-3" style="border:2px solid #fde68a;background:#fffbeb;">
+                        <div style="width:36px;height:36px;background:#f59e0b;color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:.9rem;margin-bottom:.6rem;">2</div>
+                        <div style="font-weight:700;font-size:.85rem;color:#92400e;margin-bottom:.3rem;">
+                            <i class="bi bi-exclamation-circle-fill" style="color:#f59e0b;"></i> Grupos / Cursos
+                        </div>
+                        <div style="font-size:.75rem;color:#b45309;margin-bottom:.6rem;">No hay grupos para este año</div>
+                        <a href="{{ route('admin.grupos.create') }}" class="btn btn-sm fw-bold"
+                           style="background:#f59e0b;color:#fff;border-radius:7px;font-size:.75rem;padding:.3rem .75rem;">
+                            <i class="bi bi-plus-lg me-1"></i>Crear Grupos
+                        </a>
+                    </div>
+                    @endif
+                </div>
+                {{-- Paso 3: Estudiantes --}}
+                <div class="col-12 col-md-4">
+                    @if($totalEstudiantesActivos > 0)
+                    <div class="text-center p-3 rounded-3" style="border:2px solid #d1fae5;background:#f0fdf4;">
+                        <div style="width:36px;height:36px;background:#059669;color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:.9rem;margin-bottom:.6rem;">3</div>
+                        <div style="font-weight:700;font-size:.85rem;color:#065f46;margin-bottom:.3rem;">
+                            <i class="bi bi-check-circle-fill text-success me-1"></i>Estudiantes
+                        </div>
+                        <div style="font-size:.75rem;color:#047857;">{{ $totalEstudiantesActivos }} estudiante(s) activo(s)</div>
+                    </div>
+                    @else
+                    <div class="text-center p-3 rounded-3" style="border:2px solid #fde68a;background:#fffbeb;">
+                        <div style="width:36px;height:36px;background:#f59e0b;color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:.9rem;margin-bottom:.6rem;">3</div>
+                        <div style="font-weight:700;font-size:.85rem;color:#92400e;margin-bottom:.3rem;">
+                            <i class="bi bi-exclamation-circle-fill" style="color:#f59e0b;"></i> Estudiantes
+                        </div>
+                        <div style="font-size:.75rem;color:#b45309;margin-bottom:.6rem;">No hay estudiantes activos</div>
+                        <a href="{{ route('admin.estudiantes.create') }}" class="btn btn-sm fw-bold"
+                           style="background:#f59e0b;color:#fff;border-radius:7px;font-size:.75rem;padding:.3rem .75rem;">
+                            <i class="bi bi-plus-lg me-1"></i>Registrar Estudiantes
+                        </a>
+                    </div>
+                    @endif
+                </div>
+            </div>
+            @if($totalGruposAnio > 0 && $totalEstudiantesActivos > 0)
+            <div class="text-center mt-4">
+                <a href="{{ route('admin.matriculas.create') }}" class="btn fw-bold"
+                   style="background:var(--primary);color:#fff;border-radius:8px;padding:.55rem 1.4rem;">
+                    <i class="bi bi-plus-lg me-1"></i>Registrar primera matrícula
+                </a>
+            </div>
+            @endif
+        </div>
+        @else
         <div class="text-center py-5 px-3">
             <i class="bi bi-card-list" style="font-size:2.5rem;display:block;margin-bottom:.75rem;color:#60a5fa;"></i>
             <h6 class="fw-semibold mb-1" style="color:#2563eb;">No se encontraron matrículas</h6>
@@ -294,10 +405,13 @@
                     Aún no hay matrículas registradas para este año escolar.
                 @endif
             </p>
+            @if($schoolYear)
             <a href="{{ route('admin.matriculas.create') }}" class="btn btn-sm" style="background:var(--primary);color:#fff;border-radius:8px;">
                 <i class="bi bi-plus-lg me-1"></i>Registrar matrícula
             </a>
+            @endif
         </div>
+        @endif
     @else
         <div class="table-responsive">
             <table class="table mb-0">

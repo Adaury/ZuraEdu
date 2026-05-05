@@ -18,6 +18,8 @@ use App\Models\Planificacion;
 use App\Models\PlanClase;
 use App\Models\SchoolYear;
 use App\Models\AlertaSistema;
+use App\Models\ClaseVirtual;
+use App\Models\EntregaClassroom;
 use App\Models\Matricula;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -163,6 +165,55 @@ class DashboardController extends Controller
             });
         }
 
+        // ── ZuraClass widget ──────────────────────────────────────────────
+        $zuraClassData = null;
+        if ($schoolYear) {
+            if ($isDocente) {
+                $docente = $docente ?? Docente::where('user_id', $user->id)->first();
+                if ($docente) {
+                    $misClases = ClaseVirtual::with(['asignacion.asignatura', 'asignacion.grupo'])
+                        ->whereHas('asignacion', fn($q) =>
+                            $q->where('docente_id', $docente->id)
+                              ->where('school_year_id', $schoolYear->id)
+                              ->where('activo', true)
+                        )
+                        ->where('activo', true)
+                        ->latest()
+                        ->take(4)
+                        ->get();
+
+                    // Entregas pendientes de calificar en todas mis clases
+                    $entregasPendientes = EntregaClassroom::whereHas('material.claseVirtual.asignacion', fn($q) =>
+                            $q->where('docente_id', $docente->id)
+                              ->where('school_year_id', $schoolYear->id)
+                        )
+                        ->where('estado', 'entregado')
+                        ->count();
+
+                    $zuraClassData = [
+                        'clases'             => $misClases,
+                        'entregasPendientes' => $entregasPendientes,
+                        'totalClases'        => $misClases->count(),
+                    ];
+                }
+            } else {
+                $totalClasesActivas = Cache::remember("dashboard_zura_clases_{$syId}", 300, fn() =>
+                    ClaseVirtual::whereHas('asignacion', fn($q) =>
+                        $q->where('school_year_id', $schoolYear->id)->where('activo', true)
+                    )->where('activo', true)->count()
+                );
+                $totalEntregasPend  = Cache::remember("dashboard_zura_entregas_{$syId}", 120, fn() =>
+                    EntregaClassroom::whereHas('material.claseVirtual.asignacion', fn($q) =>
+                        $q->where('school_year_id', $schoolYear->id)
+                    )->where('estado', 'entregado')->count()
+                );
+                $zuraClassData = [
+                    'totalClasesActivas'  => $totalClasesActivas,
+                    'totalEntregasPend'   => $totalEntregasPend,
+                ];
+            }
+        }
+
         // Alertas académicas recientes no leídas (solo admin/director)
         $alertasAcad = null;
         if (!$isDocente && $schoolYear) {
@@ -192,7 +243,8 @@ class DashboardController extends Controller
             'statsExtra',
             'statsPagos',
             'chartData',
-            'alertasAcad'
+            'alertasAcad',
+            'zuraClassData'
         ));
     }
 

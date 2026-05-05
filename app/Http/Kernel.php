@@ -37,6 +37,7 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\ResolveTenant::class,
             \App\Http\Middleware\DemoMode::class,
         ],
 
@@ -71,6 +72,8 @@ class Kernel extends HttpKernel
         'activo'      => \App\Http\Middleware\CheckUserActivo::class,
         'sanitize'    => \App\Http\Middleware\SanitizeInput::class,
         'session.timeout' => \App\Http\Middleware\SessionTimeout::class,
-        'admin.access' => \App\Http\Middleware\EnsureAdminAccess::class,
+        'admin.access'   => \App\Http\Middleware\EnsureAdminAccess::class,
+        'super_admin'    => \App\Http\Middleware\EnsureSuperAdmin::class,
+        'tenant.feature' => \App\Http\Middleware\CheckTenantFeature::class,
     ];
 }

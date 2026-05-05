@@ -325,8 +325,7 @@ class AuthController extends Controller
         $this->ensureDemoProfile($rol, $user);
 
         Auth::login($user);
-        request()->session()->invalidate();
-        request()->session()->regenerateToken();
+        request()->session()->regenerate();
         request()->session()->put('demo_mode', true);
 
         return redirect($this->redirectByRole($user));
@@ -398,6 +397,7 @@ class AuthController extends Controller
 
     private function redirectByRole($user): string
     {
+        if ($user->hasRole('super_admin'))               return '/superadmin';
         if ($user->hasRole('Representante'))             return '/portal/padre';
         if ($user->hasRole('Estudiante'))                return '/portal/estudiante';
         if ($user->hasRole('Administrador'))             return '/admin/dashboard';

@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 
 class Comunicado extends Model
 {
+    use BelongsToTenant;
+
     protected $fillable = [
         'titulo', 'cuerpo', 'autor_id', 'tipo_destinatarios',
         'grupo_id', 'published_at', 'activo',

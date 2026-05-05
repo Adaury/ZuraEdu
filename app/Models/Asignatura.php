@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 
 class Asignatura extends Model
 {
+    use BelongsToTenant;
+
     protected $fillable = [
         'codigo', 'nombre', 'descripcion',
         'area', 'area_id', 'familia_id',

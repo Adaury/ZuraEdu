@@ -1,5 +1,5 @@
-@extends('layouts.admin')
-@section('title', 'Ver Planificación')
+﻿@extends('layouts.admin')
+@section('page-title', 'Ver Planificación')
 
 @push('styles')
 <style>

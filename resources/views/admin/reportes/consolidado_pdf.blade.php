@@ -112,7 +112,7 @@ tbody td.ord  { color: #94a3b8; font-size: 7.5px; }
                     {{ $nota !== null ? number_format($nota, 1) : '—' }}
                 </td>
             @endforeach
-            <td style="font-weight:700; color:{{ $prom !== null ? ($prom >= 60 ? '#15803d' : '#dc2626') : '#94a3b8' }};">
+            <td style="font-weight:700; color:{{ $prom !== null ? ($prom >= 70 ? '#15803d' : '#dc2626') : '#94a3b8' }};">
                 {{ $prom !== null ? number_format($prom, 2) : '—' }}
             </td>
             <td class="{{ $sit === 'A' ? 'sit-a' : ($sit === 'R' ? 'sit-r' : '') }}">

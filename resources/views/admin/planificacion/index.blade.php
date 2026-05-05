@@ -1,5 +1,5 @@
-@extends('layouts.admin')
-@section('title', 'Planificaciones — Área Técnica')
+﻿@extends('layouts.admin')
+@section('page-title', 'Planificaciones — Área Técnica')
 
 @section('content')
 <div class="container-fluid py-3">

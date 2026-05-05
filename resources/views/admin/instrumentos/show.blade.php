@@ -1,6 +1,6 @@
-@extends('layouts.admin')
+﻿@extends('layouts.admin')
 
-@section('title', $instrumento->titulo)
+@section('page-title', $instrumento->titulo)
 
 @section('content')
 <div class="container-fluid px-4">

@@ -67,6 +67,33 @@
     </div>
 </div>
 
+{{-- Beca activa --}}
+@php $becaActiva = $matricula->becaActiva; @endphp
+@if($becaActiva && $becaActiva->beca)
+<div style="background:#ede9fe;border:1px solid #c4b5fd;border-radius:10px;padding:.75rem 1.1rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+    <svg style="width:20px;height:20px;color:#7c3aed;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <div>
+        <span style="font-size:.8rem;font-weight:700;color:#5b21b6;">BECA ACTIVA:</span>
+        <span style="font-size:.85rem;font-weight:600;color:#4c1d95;margin-left:.35rem;">{{ $becaActiva->beca->nombre }}</span>
+        <span style="font-size:.8rem;color:#6d28d9;margin-left:.5rem;">
+            — Descuento:
+            <strong>{{ $becaActiva->beca->tipo === 'porcentaje' ? $becaActiva->beca->valor . '%' : 'RD$ ' . number_format($becaActiva->beca->valor, 2) }}</strong>
+            ({{ $becaActiva->beca->tipo === 'porcentaje' ? 'porcentaje' : 'monto fijo' }})
+        </span>
+        <span style="font-size:.75rem;color:#7c3aed;margin-left:.75rem;">
+            Desde {{ $becaActiva->fecha_inicio?->format('d/m/Y') ?? '—' }}
+            @if($becaActiva->fecha_fin) hasta {{ $becaActiva->fecha_fin->format('d/m/Y') }} @else (sin fecha fin) @endif
+        </span>
+    </div>
+    <a href="{{ route('admin.becas.becados') }}" style="margin-left:auto;font-size:.75rem;color:#5b21b6;text-decoration:underline;">
+        Ver becas
+    </a>
+</div>
+@endif
+
 {{-- Totales --}}
 <div class="totales-bar">
     <div class="total-chip">

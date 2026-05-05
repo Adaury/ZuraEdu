@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 
 class EvaluacionIndicador extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'evaluaciones_indicadores';
 
     public const NIVELES = ['Excelente', 'Bueno', 'En proceso', 'Insuficiente'];

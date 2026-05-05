@@ -81,7 +81,7 @@ tbody td.left { text-align: left; }
             <td>{{ $c->comp1_p2 ?? '—' }}</td>
             <td>{{ $c->comp1_p3 ?? '—' }}</td>
             <td>{{ $c->comp1_p4 ?? '—' }}</td>
-            <td class="{{ ($c->nota_final ?? 0) >= 60 ? 'nota-ok' : 'nota-bad' }}">
+            <td class="{{ ($c->nota_final ?? 0) >= 70 ? 'nota-ok' : 'nota-bad' }}">
                 {{ $c->nota_final !== null ? number_format($c->nota_final, 1) : '—' }}
             </td>
             <td>
@@ -123,7 +123,7 @@ tbody td.left { text-align: left; }
             <td>{{ $c->comp3 ?? '—' }}</td>
             <td>{{ $c->comp4 ?? '—' }}</td>
             <td>{{ $c->pc ?? '—' }}</td>
-            <td class="{{ ($c->nota_final ?? 0) >= 60 ? 'nota-ok' : 'nota-bad' }}">
+            <td class="{{ ($c->nota_final ?? 0) >= 70 ? 'nota-ok' : 'nota-bad' }}">
                 {{ $c->nota_final !== null ? number_format($c->nota_final, 1) : '—' }}
             </td>
         </tr>

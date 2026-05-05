@@ -1,18 +1,40 @@
 {{--
-    Sidebar reutilizable para las vistas de asignación del portal docente.
-    Uso: @include('portal.docente._sidebar_clase', ['activeKey' => 'planes'])
-    Valores de activeKey: asistencia|calificaciones|estudiantes|observaciones|boletines|recursos|planes|instrumentos|planificacion
+    Sidebar contextual para vistas de asignación del portal docente.
+    Uso: @include('portal.docente._sidebar_clase', ['activeKey' => 'calificaciones', 'asignacion' => $asignacion])
+    activeKey: asistencia|calificaciones|estudiantes|observaciones|boletines|
+               recursos|planes|instrumentos|planificacion|tareas|
+               mis-estadisticas|mis-planificaciones|mis-estudiantes|classroom
 --}}
-@php $ak = $activeKey ?? ''; @endphp
+@php
+$ak  = $activeKey ?? '';
+@endphp
+
+{{-- ── MI PORTAL ── --}}
 <div class="prt-sidebar-section">Mi Portal</div>
-<a href="{{ route('portal.docente.dashboard') }}" class="prt-sidebar-link">
+
+<a href="{{ route('portal.docente.dashboard') }}"
+   class="prt-sidebar-link {{ $ak === 'dashboard' ? 'active' : '' }}">
     <i class="bi bi-house-fill"></i>Inicio
 </a>
-<a href="{{ route('portal.docente.mis-planificaciones') }}"
-   class="prt-sidebar-link {{ $ak === 'mis-planificaciones' ? 'active' : '' }}">
-    <i class="bi bi-journal-text"></i>Mis Planificaciones
+<a href="{{ route('portal.docente.classroom.index') }}"
+   class="prt-sidebar-link {{ $ak === 'classroom' ? 'active' : '' }}">
+    <i class="bi bi-easel2-fill"></i>Mi Classroom
 </a>
-<div class="prt-sidebar-section mt-2">Esta Clase</div>
+<a href="{{ route('portal.docente.mis-estudiantes') }}"
+   class="prt-sidebar-link {{ $ak === 'mis-estudiantes' ? 'active' : '' }}">
+    <i class="bi bi-people-fill"></i>Mis Estudiantes
+</a>
+<a href="{{ route('portal.docente.mis-estadisticas') }}"
+   class="prt-sidebar-link {{ $ak === 'mis-estadisticas' ? 'active' : '' }}">
+    <i class="bi bi-bar-chart-fill"></i>Estadísticas
+</a>
+
+{{-- ── ESTA CLASE ── --}}
+@if(isset($asignacion))
+<div class="prt-sidebar-section mt-2">
+    {{ $asignacion->asignatura?->nombre ?? 'Esta Clase' }}
+</div>
+
 <a href="{{ route('portal.docente.asistencia', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'asistencia' ? 'active' : '' }}">
     <i class="bi bi-calendar-check-fill"></i>Asistencia
@@ -37,6 +59,10 @@
    class="prt-sidebar-link {{ $ak === 'recursos' ? 'active' : '' }}">
     <i class="bi bi-folder-fill"></i>Recursos
 </a>
+
+{{-- ── PLANIFICACIÓN ── --}}
+<div class="prt-sidebar-section mt-2">Planificación</div>
+
 <a href="{{ route('portal.docente.planes-clase.index', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'planes' ? 'active' : '' }}">
     <i class="bi bi-journal-text"></i>Planes de Clase
@@ -45,16 +71,40 @@
    class="prt-sidebar-link {{ $ak === 'instrumentos' ? 'active' : '' }}">
     <i class="bi bi-clipboard-check-fill"></i>Instrumentos
 </a>
-@if($asignacion->area === 'tecnica')
+<a href="{{ route('portal.docente.tareas.index', $asignacion) }}"
+   class="prt-sidebar-link {{ $ak === 'tareas' ? 'active' : '' }}">
+    <i class="bi bi-check2-square"></i>Tareas / Agenda
+</a>
+@if(isset($asignacion) && $asignacion->area === 'tecnica')
 <a href="{{ route('portal.docente.planificacion.index', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'planificacion' ? 'active' : '' }}">
-    <i class="bi bi-journal-text"></i>Planificaciones
+    <i class="bi bi-kanban-fill"></i>Planificaciones Técnicas
+</a>
+<a href="{{ route('portal.docente.mis-planificaciones') }}"
+   class="prt-sidebar-link {{ $ak === 'mis-planificaciones' ? 'active' : '' }}">
+    <i class="bi bi-collection-fill"></i>Todas mis Planif.
 </a>
 @endif
+@endif
+
+{{-- ── CUENTA ── --}}
 <div class="prt-sidebar-section mt-2">Cuenta</div>
+
+<a href="{{ route('admin.mensajes.index') }}"
+   class="prt-sidebar-link {{ $ak === 'mensajes' ? 'active' : '' }}">
+    <i class="bi bi-envelope-fill"></i>Mensajes
+    @php try { $msgDoc = \App\Models\Mensaje::recibidos(auth()->id())->noLeidos()->count(); } catch(\Exception $e){ $msgDoc=0; } @endphp
+    @if($msgDoc > 0)
+    <span style="background:#dc2626;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $msgDoc }}</span>
+    @endif
+</a>
+<a href="{{ route('perfil.show') }}"
+   class="prt-sidebar-link {{ $ak === 'perfil' ? 'active' : '' }}">
+    <i class="bi bi-person-circle"></i>Mi Perfil
+</a>
 <form method="POST" action="{{ route('logout') }}">
     @csrf
-    <button type="submit" class="prt-sidebar-link w-100 border-0" style="cursor:pointer;text-align:left;">
+    <button type="submit" class="prt-sidebar-link w-100 border-0" style="cursor:pointer;text-align:left;background:transparent;">
         <i class="bi bi-box-arrow-right" style="color:#ef4444;"></i>Cerrar sesión
     </button>
 </form>

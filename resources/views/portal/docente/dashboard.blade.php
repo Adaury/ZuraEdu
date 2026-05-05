@@ -8,7 +8,19 @@
     <a href="{{ route('portal.docente.dashboard') }}" class="prt-sidebar-link {{ request()->routeIs('portal.docente.dashboard') ? 'active' : '' }}">
         <i class="bi bi-house-fill"></i>Inicio
     </a>
-    <a href="#rendimiento" class="prt-sidebar-link"><i class="bi bi-bar-chart-fill"></i>Rendimiento</a>
+    <a href="{{ route('portal.docente.mis-estadisticas') }}" class="prt-sidebar-link">
+        <i class="bi bi-bar-chart-fill"></i>Mis Estadísticas
+    </a>
+    <a href="{{ route('portal.docente.classroom.index') }}" class="prt-sidebar-link {{ request()->routeIs('portal.docente.classroom*') ? 'active' : '' }}">
+        <i class="bi bi-easel2-fill" style="color:#3B82F6;"></i>Classroom
+    </a>
+    <a href="{{ route('portal.docente.mis-estudiantes') }}" class="prt-sidebar-link {{ request()->routeIs('portal.docente.mis-estudiantes') ? 'active' : '' }}">
+        <i class="bi bi-people-fill"></i>Mis Estudiantes
+    </a>
+    <a href="{{ route('portal.docente.mis-planificaciones') }}" class="prt-sidebar-link {{ request()->routeIs('portal.docente.mis-planificaciones*') ? 'active' : '' }}">
+        <i class="bi bi-journal-text"></i>Mis Planificaciones
+    </a>
+    <a href="#rendimiento" class="prt-sidebar-link"><i class="bi bi-bar-chart-line"></i>Rendimiento</a>
     <a href="#mi-horario" class="prt-sidebar-link"><i class="bi bi-calendar-week"></i>Mi Horario</a>
     <a href="#notificaciones" class="prt-sidebar-link"><i class="bi bi-bell"></i>Notificaciones</a>
     <a href="{{ route('admin.mensajes.index') }}" class="prt-sidebar-link">
@@ -73,9 +85,12 @@
     @endif
 
     <div class="prt-sidebar-section mt-2">Cuenta</div>
+    <a href="{{ route('perfil.show') }}" class="prt-sidebar-link">
+        <i class="bi bi-person-circle"></i>Mi Perfil
+    </a>
     <form method="POST" action="{{ route('logout') }}">
         @csrf
-        <button type="submit" class="prt-sidebar-link w-100 border-0" style="cursor:pointer;text-align:left;">
+        <button type="submit" class="prt-sidebar-link w-100 border-0" style="cursor:pointer;text-align:left;background:transparent;">
             <i class="bi bi-box-arrow-right" style="color:#ef4444;"></i>Cerrar sesión
         </button>
     </form>

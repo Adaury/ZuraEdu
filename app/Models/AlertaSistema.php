@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AlertaSistema extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'alertas_sistema';
 
     protected $fillable = [

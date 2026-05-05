@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 
 class Asistencia extends Model
 {
+    use BelongsToTenant;
+
     public const ESTADOS = ['presente', 'ausente', 'tardanza', 'justificado'];
 
     protected $fillable = [

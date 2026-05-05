@@ -29,6 +29,33 @@
         --prt-border:  #e2e8f0;
         --prt-text:    #1e293b;
         --prt-muted:   #64748b;
+        --role-grad1:  #1e1b4b;
+        --role-grad2:  #2563eb;
+        --role-glow:   rgba(37,99,235,.4);
+    }
+    /* ── Docente → violeta ── */
+    body.role-docente {
+        --prt-primary: #7c3aed;
+        --prt-dark:    #4c1d95;
+        --role-grad1:  #2e1065;
+        --role-grad2:  #7c3aed;
+        --role-glow:   rgba(124,58,237,.4);
+    }
+    /* ── Padre → teal ── */
+    body.role-padre {
+        --prt-primary: #0f766e;
+        --prt-dark:    #134e4a;
+        --role-grad1:  #042f2e;
+        --role-grad2:  #0f766e;
+        --role-glow:   rgba(15,118,110,.4);
+    }
+    /* ── Estudiante → azul océano ── */
+    body.role-estudiante {
+        --prt-primary: #2563eb;
+        --prt-dark:    #1e3a6e;
+        --role-grad1:  #0f172a;
+        --role-grad2:  #2563eb;
+        --role-glow:   rgba(37,99,235,.4);
     }
 
     /* ── Dark mode variables ── */
@@ -269,7 +296,7 @@
 
     /* ── Topbar ── */
     .prt-topbar {
-        background: linear-gradient(135deg, #1e1b4b 0%, #2563eb 100%);
+        background: linear-gradient(135deg, var(--role-grad1) 0%, var(--role-grad2) 100%);
         padding: .75rem 1.25rem;
         display: flex;
         align-items: center;
@@ -407,37 +434,44 @@
 
     /* ── Desktop sidebar ── */
     .prt-sidebar {
-        width: 220px;
-        background: #fff;
-        border-right: 1px solid var(--prt-border);
+        width: 230px;
+        background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+        border-right: 1px solid rgba(255,255,255,.06);
         min-height: calc(100vh - 56px);
-        padding: 1.25rem .75rem;
+        padding: 1rem .6rem;
         flex-shrink: 0;
         display: none;
+        box-shadow: 4px 0 20px rgba(0,0,0,.2);
     }
     .prt-sidebar-link {
         display: flex;
         align-items: center;
         gap: .65rem;
-        padding: .55rem .85rem;
+        padding: .5rem .8rem;
         border-radius: 10px;
-        font-size: .83rem;
-        color: var(--prt-muted);
+        font-size: .82rem;
+        color: #94a3b8;
         text-decoration: none;
         transition: all .15s;
-        margin-bottom: .2rem;
+        margin-bottom: 2px;
         font-weight: 500;
     }
-    .prt-sidebar-link:hover { background: #f1f5f9; color: var(--prt-text); }
-    .prt-sidebar-link.active { background: #eff6ff; color: var(--prt-primary); font-weight: 700; }
-    .prt-sidebar-link i { font-size: 1rem; flex-shrink: 0; }
-    .prt-sidebar-section {
-        font-size: .65rem;
+    .prt-sidebar-link:hover { background: rgba(255,255,255,.07); color: #e2e8f0; }
+    .prt-sidebar-link.active {
+        background: var(--prt-primary);
+        color: #fff;
         font-weight: 700;
-        color: #94a3b8;
+        box-shadow: 0 4px 12px var(--role-glow);
+    }
+    .prt-sidebar-link i { font-size: 1rem; flex-shrink: 0; opacity: .8; }
+    .prt-sidebar-link.active i { opacity: 1; }
+    .prt-sidebar-section {
+        font-size: .6rem;
+        font-weight: 700;
+        color: #475569;
         text-transform: uppercase;
-        letter-spacing: .08em;
-        padding: .75rem .85rem .3rem;
+        letter-spacing: .12em;
+        padding: .75rem .8rem .2rem;
     }
 
     /* ── Contenido principal ── */
@@ -652,7 +686,16 @@
     </style>
     @stack('styles')
 </head>
-<body>
+@php
+$portalRoleClass = '';
+if(auth()->check()) {
+    $u = auth()->user();
+    if($u->hasRole('Docente'))       $portalRoleClass = 'role-docente';
+    elseif($u->hasRole('Representante')) $portalRoleClass = 'role-padre';
+    elseif($u->hasRole('Estudiante'))    $portalRoleClass = 'role-estudiante';
+}
+@endphp
+<body class="{{ $portalRoleClass }}">
 
 {{-- ── Banner Modo Demo ──────────────────────────────────────────────── --}}
 @if(session('demo_mode'))
@@ -674,11 +717,15 @@
 @endif
 
 {{-- ── Topbar ────────────────────────────────────────────────────────── --}}
+@php
+$sysAbbr = \Illuminate\Support\Facades\Cache::remember('system_abbr',600,fn()=>\Illuminate\Support\Facades\DB::table('system_settings')->where('key','system_abbr')->value('value')) ?? 'SGE';
+$sysName = \Illuminate\Support\Facades\Cache::remember('system_name',600,fn()=>\Illuminate\Support\Facades\DB::table('system_settings')->where('key','system_name')->value('value')) ?? config('app.name','SGE');
+@endphp
 <nav class="prt-topbar">
-    <a href="#" class="prt-logo">SGE</a>
+    <a href="{{ route('admin.dashboard') }}" class="prt-logo" style="background:rgba(255,255,255,.18);font-size:.78rem;">{{ $sysAbbr }}</a>
     <div>
         <div class="prt-brand">@yield('portal-name', 'Portal')</div>
-        <div class="prt-brand-sub">{{ config('app.name', 'SGE') }}</div>
+        <div class="prt-brand-sub">{{ $sysName }}</div>
     </div>
 
     <div class="prt-topbar-right">

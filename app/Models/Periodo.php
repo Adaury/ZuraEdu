@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 
 class Periodo extends Model
 {
+    use BelongsToTenant;
+
     protected $fillable = [
         'school_year_id',
         'numero',

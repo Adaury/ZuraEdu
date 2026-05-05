@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BoletinObservacion extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'boletin_observaciones';
 
     protected $fillable = [

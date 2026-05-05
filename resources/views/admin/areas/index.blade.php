@@ -109,13 +109,21 @@
                         <div class="text-muted" style="font-size:.82rem;">Docentes de especialidades técnicas</div>
                     </div>
                 </div>
+                @if($especialidades->isNotEmpty())
                 <ul class="list-unstyled mb-0" style="font-size:.84rem;color:#4b5563;">
-                    <li class="mb-1"><i class="bi bi-airplane me-2" style="color:#e67e22;"></i>Turismo y Hotelería</li>
-                    <li class="mb-1"><i class="bi bi-laptop me-2" style="color:#2980b9;"></i>Informática</li>
-                    <li class="mb-1"><i class="bi bi-graph-up me-2" style="color:#27ae60;"></i>Mercadeo</li>
-                    <li class="mb-1"><i class="bi bi-heart-pulse me-2" style="color:#8e44ad;"></i>Acondicionamiento Físico</li>
-                    <li><i class="bi bi-truck me-2" style="color:#c0392b;"></i>Logística y Transporte</li>
+                    @foreach($especialidades->take(5) as $esp)
+                    <li class="mb-1">
+                        <i class="bi {{ $esp->icono ?? 'bi-award' }} me-2" style="color:{{ $esp->color ?? '#c0392b' }};"></i>
+                        {{ $esp->nombre }}
+                    </li>
+                    @endforeach
+                    @if($especialidades->count() > 5)
+                    <li class="text-muted" style="font-size:.78rem;">+ {{ $especialidades->count() - 5 }} más</li>
+                    @endif
                 </ul>
+                @else
+                <p class="text-muted mb-0" style="font-size:.84rem;">Sin especialidades configuradas aún.</p>
+                @endif
                 <div class="mt-3 fw-semibold" style="font-size:.82rem;color:#c0392b;">
                     Ver Área Técnica <i class="bi bi-arrow-right ms-1"></i>
                 </div>
@@ -124,7 +132,7 @@
     </div>
 </div>
 
-@if(Auth::user()->hasAnyRole(['Administrador','Director','Coordinador Académico']))
+@if(Auth::user()->hasAnyRole(['Administrador','Director','Coordinador Académico','super_admin']))
 <div class="row g-4 mt-1">
     <div class="col-md-4">
         <a href="{{ route('admin.malla.index') }}" class="text-decoration-none">

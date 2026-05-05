@@ -61,6 +61,7 @@
             <div style="font-size:.72rem;color:#64748b;">{{ $asig->grupo?->nombre_completo ?? '—' }}</div>
         </div>
         <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0;">
+            @if(in_array($asig->area, ['tecnica', 'ambas']))
             <span style="background:#7c3aed;color:#fff;border-radius:20px;padding:.15rem .6rem;font-size:.68rem;font-weight:700;">
                 {{ $planes->count() }} planif.
             </span>
@@ -72,10 +73,13 @@
                style="background:#f0fdf4;color:#15803d;border-radius:7px;padding:.3rem .7rem;font-size:.72rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.25rem;">
                 <i class="bi bi-plus-lg"></i>Nueva
             </a>
+            @endif
         </div>
     </div>
 
-    @if($planes->isEmpty())
+    @if(!in_array($asig->area, ['tecnica', 'ambas']))
+    {{-- Asignatura de área general: no aplica planificaciones técnicas --}}
+    @elseif($planes->isEmpty())
     <div style="padding:.85rem 1rem;font-size:.8rem;color:#94a3b8;text-align:center;">
         Sin planificaciones aún — <a href="{{ route('portal.docente.planificacion.create-ra', $asig) }}" style="color:#7c3aed;">Crear primera</a>
     </div>

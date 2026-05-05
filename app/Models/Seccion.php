@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 
 class Seccion extends Model
 {
+    use BelongsToTenant;
+
     protected $table    = 'secciones';
     protected $fillable = ['nombre', 'orden'];
 

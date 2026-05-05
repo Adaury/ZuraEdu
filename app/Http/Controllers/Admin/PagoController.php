@@ -78,6 +78,8 @@ class PagoController extends Controller
     {
         Pago::sincronizarVencidos();
 
+        $matricula->load(['estudiante', 'grupo.grado', 'grupo.seccion', 'becaActiva.beca']);
+
         $pagos = $matricula->pagos()->latest('fecha_vencimiento')->get();
 
         $totales = [
@@ -296,12 +298,35 @@ class PagoController extends Controller
                           ->exists();
 
             if (!$existe) {
+                // ── Aplicar beca activa si la tiene ──────────────────────
+                $montoFinal = (float) $data['monto'];
+                $becaActiva = \App\Models\BecaEstudiante::with('beca')
+                    ->where('matricula_id', $matricula->id)
+                    ->where('activo', true)
+                    ->where(fn($q) =>
+                        $q->whereNull('fecha_fin')->orWhere('fecha_fin', '>=', today())
+                    )
+                    ->latest()
+                    ->first();
+
+                $notaBeca = null;
+                if ($becaActiva && $becaActiva->beca) {
+                    $descuento   = $becaActiva->beca->calcularDescuento($montoFinal);
+                    $montoFinal  = max(0, $montoFinal - $descuento);
+                    $notaBeca    = "Beca aplicada: {$becaActiva->beca->nombre} (descuento: " .
+                                   ($becaActiva->beca->tipo === 'porcentaje'
+                                       ? $becaActiva->beca->valor . '%'
+                                       : 'RD$ ' . number_format($descuento, 2)) . ')';
+                }
+                // ─────────────────────────────────────────────────────────
+
                 Pago::create([
                     'matricula_id'      => $matricula->id,
                     'concepto'          => $data['concepto'],
-                    'monto'             => $data['monto'],
+                    'monto'             => $montoFinal,
                     'fecha_vencimiento' => $data['fecha_vencimiento'],
                     'estado'            => 'pendiente',
+                    'notas'             => $notaBeca,
                     'registrado_por'    => auth()->id(),
                 ]);
                 $creados++;

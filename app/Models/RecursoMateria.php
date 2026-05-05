@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 
 class RecursoMateria extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'recursos_materia';
 
     protected $fillable = [

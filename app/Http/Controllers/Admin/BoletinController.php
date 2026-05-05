@@ -107,6 +107,74 @@ class BoletinController extends Controller
         ));
     }
 
+    // ── Calcular ranking del estudiante en su grupo ───────────────────────
+    private function calcularRanking(Matricula $matricula, Periodo $periodo): array
+    {
+        $schoolYear = SchoolYear::actual();
+
+        // Todas las matrículas activas del mismo grupo
+        $matriculaIds = Matricula::where('grupo_id', $matricula->grupo_id)
+            ->where('school_year_id', $matricula->school_year_id ?? $schoolYear?->id)
+            ->where('estado', 'activa')
+            ->pluck('id');
+
+        $total = $matriculaIds->count();
+        if ($total <= 1) return ['puesto' => 1, 'total' => $total, 'percentil' => 100];
+
+        // Calcular promedio general por matrícula
+        $promedios = [];
+        $allCalAc  = CalificacionAcademica::whereIn('matricula_id', $matriculaIds)
+            ->where('school_year_id', $matricula->school_year_id ?? $schoolYear?->id)
+            ->get()->groupBy('matricula_id');
+
+        $allCalLeg = Calificacion::whereIn('matricula_id', $matriculaIds)
+            ->where('periodo_id', $periodo->id)
+            ->get()->groupBy('matricula_id');
+
+        foreach ($matriculaIds as $mid) {
+            $notas = [];
+            if ($allCalAc->has($mid)) {
+                foreach ($allCalAc[$mid] as $ca) {
+                    if ($ca->nota_final !== null) $notas[] = (float) $ca->nota_final;
+                }
+            } elseif ($allCalLeg->has($mid)) {
+                foreach ($allCalLeg[$mid] as $cal) {
+                    if ($cal->nota_final !== null) $notas[] = (float) $cal->nota_final;
+                }
+            }
+            $promedios[$mid] = count($notas) ? round(array_sum($notas) / count($notas), 2) : 0;
+        }
+
+        arsort($promedios);
+        $posicion = array_search($matricula->id, array_keys($promedios));
+        $puesto   = $posicion !== false ? $posicion + 1 : null;
+        $percentil = $puesto ? round((($total - $puesto) / ($total - 1)) * 100) : null;
+
+        return ['puesto' => $puesto, 'total' => $total, 'percentil' => $percentil];
+    }
+
+    // ── Progreso respecto al período anterior ─────────────────────────────
+    private function calcularProgreso(array $tablaNotas, Periodo $periodo, $periodos): array
+    {
+        $prevPeriodo = $periodos->where('numero', $periodo->numero - 1)->first();
+        if (! $prevPeriodo) return [];
+
+        $progreso = [];
+        foreach ($tablaNotas as $row) {
+            $notaActual = $row['periodos'][$periodo->id]?->nota_final ?? null;
+            $notaAnterior = $row['periodos'][$prevPeriodo->id]?->nota_final ?? null;
+
+            if ($notaActual !== null && $notaAnterior !== null) {
+                $diff = round($notaActual - $notaAnterior, 2);
+                $progreso[$row['asignacion']->id] = [
+                    'diff'      => $diff,
+                    'direccion' => $diff > 0 ? 'sube' : ($diff < 0 ? 'baja' : 'igual'),
+                ];
+            }
+        }
+        return $progreso;
+    }
+
     // ── Build shared boletin data (used by both web + PDF) ────────────────
     private function buildBoletinData(Matricula $matricula, Periodo $periodo): array
     {
@@ -318,13 +386,17 @@ class BoletinController extends Controller
             ->where('school_year_id', $schoolYear?->id ?? 0)
             ->first();
 
+        // Ranking y progreso
+        $rankingGrupo = $this->calcularRanking($matricula, $periodo);
+        $progreso     = $this->calcularProgreso($tablaNotas, $periodo, $periodos);
+
         return compact(
             'matricula', 'periodo', 'periodos', 'schoolYear', 'boletinConfig',
             'tablaNotas', 'promedioGeneral',
             'asistenciaPorPeriodo', 'asistenciaTotales',
             'evaluaciones', 'observacionesList',
             'boletinObservaciones', 'promocion',
-            'vistaDocente'
+            'vistaDocente', 'rankingGrupo', 'progreso'
         );
     }
 
@@ -534,5 +606,172 @@ class BoletinController extends Controller
         return response()->download($zipPath, $nombreArchivo, [
             'Content-Type' => 'application/zip',
         ])->deleteFileAfterSend(true);
+    }
+
+    // ── PDF Anual (todos los períodos en un solo documento) ───────────────
+    public function pdfAnual(Matricula $matricula)
+    {
+        if (! $this->puedeVerTodo()) {
+            $docente = $this->docenteActual();
+            if ($docente) {
+                $schoolYear = SchoolYear::actual();
+                $grupoIds   = Asignacion::where('docente_id', $docente->id)
+                    ->where('school_year_id', $schoolYear?->id ?? 0)
+                    ->where('activo', true)
+                    ->pluck('grupo_id')->unique();
+                if (! $grupoIds->contains($matricula->grupo_id)) {
+                    abort(403);
+                }
+            }
+        }
+
+        $matricula->load(['estudiante', 'grupo.grado', 'grupo.seccion', 'grupo.schoolYear', 'grupo.tutor']);
+        $schoolYear    = $matricula->grupo->schoolYear ?? SchoolYear::actual();
+        $boletinConfig = $schoolYear ? BoletinConfig::getOrCreate($schoolYear->id) : null;
+
+        $periodos = Periodo::where('school_year_id', $schoolYear?->id ?? 0)
+            ->orderBy('numero')->get();
+
+        // Construir tabla anual con todas las notas de todos los períodos
+        $asignaciones = \App\Models\Asignacion::with(['asignatura', 'docente'])
+            ->where('grupo_id', $matricula->grupo_id)
+            ->where('school_year_id', $schoolYear?->id ?? 0)
+            ->where('activo', true)
+            ->get()->sortBy(fn ($a) => $a->asignatura->nombre ?? '');
+
+        $allCalIds = $asignaciones->pluck('id');
+
+        $calAcMap = CalificacionAcademica::where('matricula_id', $matricula->id)
+            ->whereIn('asignacion_id', $allCalIds)
+            ->where('school_year_id', $schoolYear?->id ?? 0)
+            ->get()->keyBy('asignacion_id');
+
+        $calLegacyMap = Calificacion::where('matricula_id', $matricula->id)
+            ->whereIn('asignacion_id', $allCalIds)
+            ->whereIn('periodo_id', $periodos->pluck('id'))
+            ->get()->groupBy(fn ($c) => $c->asignacion_id . '_' . $c->periodo_id);
+
+        $tablaAnual = [];
+        foreach ($asignaciones as $asi) {
+            $row = ['asignatura' => $asi->asignatura?->nombre ?? '—', 'periodos' => [], 'final' => null, 'indicador' => null];
+            $calAc = $calAcMap->get($asi->id);
+            $notasValidas = [];
+
+            foreach ($periodos as $p) {
+                $nota = null;
+                if ($calAc) {
+                    $n = $p->numero;
+                    $comps = array_filter([
+                        $calAc->{"comp1_p{$n}"} ?? null, $calAc->{"comp2_p{$n}"} ?? null,
+                        $calAc->{"comp3_p{$n}"} ?? null, $calAc->{"comp4_p{$n}"} ?? null,
+                    ], fn ($v) => $v !== null && $v !== '');
+                    if (count($comps)) $nota = round(array_sum($comps) / count($comps), 2);
+                } else {
+                    $cal = $calLegacyMap->get($asi->id . '_' . $p->id)?->first();
+                    if ($cal && $cal->nota_final !== null) $nota = (float) $cal->nota_final;
+                }
+                $row['periodos'][$p->id] = $nota;
+                if ($nota !== null) $notasValidas[] = $nota;
+            }
+
+            if ($calAc && $calAc->nota_final !== null) {
+                $row['final'] = (float) $calAc->nota_final;
+            } elseif (count($notasValidas)) {
+                $row['final'] = round(array_sum($notasValidas) / count($notasValidas), 2);
+            }
+
+            if ($row['final'] !== null) {
+                $f = $row['final'];
+                $row['indicador'] = $f >= 90 ? 'Excelente' : ($f >= 75 ? 'Bueno' : ($f >= 60 ? 'En proceso' : 'Insuficiente'));
+            }
+            $tablaAnual[] = $row;
+        }
+
+        $promedioAnual = collect($tablaAnual)->pluck('final')->filter();
+        $promedioAnual = $promedioAnual->count() ? round($promedioAnual->avg(), 2) : null;
+
+        $promocion     = Promocion::where('matricula_id', $matricula->id)
+            ->where('school_year_id', $schoolYear?->id ?? 0)->first();
+
+        $rankingGrupo  = $this->calcularRanking($matricula, $periodos->last() ?? new Periodo());
+
+        $asistenciaTotales = $this->calcularAsistenciaTotales($matricula, $periodos);
+
+        $boletinObservaciones = BoletinObservacion::with('docente')
+            ->where('matricula_id', $matricula->id)
+            ->where('school_year_id', $schoolYear?->id ?? 0)
+            ->whereNull('periodo_id')
+            ->orderByRaw("FIELD(tipo,'academica','conducta','sugerencia','general')")
+            ->get()->groupBy('tipo');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.boletines.pdf_anual', compact(
+            'matricula', 'periodos', 'schoolYear', 'boletinConfig',
+            'tablaAnual', 'promedioAnual', 'promocion', 'rankingGrupo',
+            'asistenciaTotales', 'boletinObservaciones'
+        ))->setPaper('letter', 'landscape');
+
+        $apellidos = Str::slug($matricula->estudiante->apellidos ?? 'estudiante');
+        return $pdf->download("boletin_anual_{$apellidos}.pdf");
+    }
+
+    // ── Helper: totales asistencia para todos los períodos ─────────────────
+    private function calcularAsistenciaTotales(Matricula $matricula, $periodos): array
+    {
+        $fechaMin = $periodos->whereNotNull('fecha_inicio')->min('fecha_inicio') ?? '1900-01-01';
+        $fechaMax = $periodos->whereNotNull('fecha_fin')->max('fecha_fin') ?? '2100-12-31';
+        $asist = Asistencia::where('matricula_id', $matricula->id)
+            ->whereBetween('fecha', [$fechaMin, $fechaMax])->get();
+        $total = $asist->count();
+        $presente  = $asist->where('estado', 'presente')->count();
+        $ausente   = $asist->where('estado', 'ausente')->count();
+        $tardanza  = $asist->whereIn('estado', ['tardanza', 'tarde'])->count();
+        $excusa    = $asist->whereIn('estado', ['justificado', 'excusa'])->count();
+        return [
+            'total' => $total, 'presente' => $presente, 'ausente' => $ausente,
+            'tardanza' => $tardanza, 'justificado' => $excusa,
+            'pct' => $total > 0 ? round((($presente + $tardanza + $excusa) / $total) * 100, 1) : null,
+        ];
+    }
+
+    // ── Guardar observación desde la vista del boletín ────────────────────
+    public function guardarObservacion(Request $request, Matricula $matricula, Periodo $periodo)
+    {
+        abort_unless($this->puedeVerTodo(), 403);
+
+        $data = $request->validate([
+            'tipo'      => 'required|in:academica,conducta,sugerencia,general',
+            'contenido' => 'required|string|max:1000',
+        ]);
+
+        $schoolYear = SchoolYear::actual();
+        $docente    = Docente::where('user_id', auth()->id())->first();
+
+        BoletinObservacion::create([
+            'matricula_id'  => $matricula->id,
+            'school_year_id'=> $schoolYear?->id,
+            'periodo_id'    => $periodo->id,
+            'tipo'          => $data['tipo'],
+            'contenido'     => $data['contenido'],
+            'docente_id'    => $docente?->id,
+        ]);
+
+        return back()->with('success', 'Observación guardada correctamente.');
+    }
+
+    // ── Eliminar observación ──────────────────────────────────────────────
+    public function eliminarObservacion(BoletinObservacion $observacion)
+    {
+        abort_unless($this->puedeVerTodo(), 403);
+        $observacion->delete();
+        return back()->with('success', 'Observación eliminada.');
+    }
+
+    /**
+     * Expone buildBoletinData como método público para uso desde otros controladores
+     * (p. ej. CierreAnoController::boletinesMasivos).
+     */
+    public function buildBoletinDataPublic(Matricula $matricula, Periodo $periodo): array
+    {
+        return $this->buildBoletinData($matricula, $periodo);
     }
 }

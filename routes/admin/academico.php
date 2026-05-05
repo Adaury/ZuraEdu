@@ -106,11 +106,14 @@ Route::middleware('can:ingresar-asistencia')->group(function () {
 
 // ── Boletines ─────────────────────────────────────────────────────────────
 Route::middleware('can:ver-boletines')->group(function () {
-    Route::get('boletines',                           [BoletinController::class, 'index'])->name('boletines.index');
-    Route::get('boletines/grupo',                     [BoletinController::class, 'grupo'])->name('boletines.grupo');
-    Route::get('boletines/zip',                       [BoletinController::class, 'zipGrupo'])->name('boletines.zip');
-    Route::get('boletines/{matricula}/{periodo}/ver', [BoletinController::class, 'verEstudiante'])->name('boletines.ver');
-    Route::get('boletines/{matricula}/{periodo}/pdf', [BoletinController::class, 'pdf'])->name('boletines.pdf');
+    Route::get('boletines',                                  [BoletinController::class, 'index'])->name('boletines.index');
+    Route::get('boletines/grupo',                            [BoletinController::class, 'grupo'])->name('boletines.grupo');
+    Route::get('boletines/zip',                              [BoletinController::class, 'zipGrupo'])->name('boletines.zip');
+    Route::get('boletines/{matricula}/{periodo}/ver',        [BoletinController::class, 'verEstudiante'])->name('boletines.ver');
+    Route::get('boletines/{matricula}/{periodo}/pdf',        [BoletinController::class, 'pdf'])->name('boletines.pdf');
+    Route::get('boletines/{matricula}/pdf-anual',            [BoletinController::class, 'pdfAnual'])->name('boletines.pdf-anual');
+    Route::post('boletines/{matricula}/{periodo}/observacion',[BoletinController::class, 'guardarObservacion'])->name('boletines.obs.guardar');
+    Route::delete('boletines/observacion/{observacion}',     [BoletinController::class, 'eliminarObservacion'])->name('boletines.obs.eliminar');
 });
 
 Route::middleware('can:gestionar-configuracion')->group(function () {

@@ -149,6 +149,10 @@
                 title="Copiar enlace del portal para el representante">
             <i class="bi bi-share me-1"></i>Portal Representante
         </button>
+        <a href="{{ route('admin.disciplina.expediente-pdf', $estudiante) }}" target="_blank"
+           class="btn btn-sm btn-outline-danger" style="border-radius:8px;">
+            <i class="bi bi-shield-exclamation me-1"></i>Expediente Discipl.
+        </a>
         <a href="{{ route('admin.estudiantes.ficha-pdf', $estudiante) }}" target="_blank"
            class="btn btn-sm" style="background:#1e3a6e;color:#fff;border-radius:8px;">
             <i class="bi bi-person-badge me-1"></i>Ficha PDF

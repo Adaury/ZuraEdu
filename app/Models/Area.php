@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 
 class Area extends Model
 {
+    use BelongsToTenant;
+
     protected $fillable = ['nombre', 'tipo', 'ciclo', 'color', 'activo'];
 
     protected $casts = ['activo' => 'boolean'];

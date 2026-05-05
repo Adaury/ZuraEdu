@@ -280,9 +280,9 @@
     {{-- ══ Alerta de riesgo académico ════════════════════════════ --}}
     @php
         $notasBajas = $calificaciones->flatten()
-            ->filter(fn($c) => $c->nota_final !== null && $c->nota_final < 60);
+            ->filter(fn($c) => $c->nota_final !== null && $c->nota_final < 70);
         $acadBajas  = isset($calificacionesAcademicas)
-            ? $calificacionesAcademicas->filter(fn($c) => $c->nota_final !== null && $c->nota_final < 60)
+            ? $calificacionesAcademicas->filter(fn($c) => $c->nota_final !== null && $c->nota_final < 70)
             : collect();
         $totalRiesgo = $notasBajas->count() + $acadBajas->count();
     @endphp
@@ -296,7 +296,7 @@
                 ⚠️ Atención requerida — Riesgo académico
             </div>
             <div style="font-size:.83rem;color:#7f1d1d;line-height:1.5;">
-                Su representado tiene <strong>{{ $totalRiesgo }} materia(s)</strong> con nota por debajo de 60.
+                Su representado tiene <strong>{{ $totalRiesgo }} materia(s)</strong> con nota por debajo de 70 (umbral de aprobación MINERD).
                 Le recomendamos contactar al docente y planificar refuerzo académico.
             </div>
             <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">
@@ -373,7 +373,7 @@
                             @foreach($calificaciones->get($periodo->id) as $cal)
                             @php
                                 $letra   = $cal->letra ?? 'N';
-                                $enRiesgo = $cal->nota_final !== null && $cal->nota_final < 60;
+                                $enRiesgo = $cal->nota_final !== null && $cal->nota_final < 70;
                             @endphp
                             <tr style="{{ $enRiesgo ? 'background:#fff5f5;' : '' }}">
                                 <td class="ps-3 fw-semibold">
@@ -434,7 +434,7 @@
                         @foreach($calificacionesAcademicas as $cal)
                         @php
                             $nota      = $cal->nota_final;
-                            $enRiesgo  = $nota !== null && $nota < 60;
+                            $enRiesgo  = $nota !== null && $nota < 70;
                             $indColor  = match($cal->indicador ?? '') {
                                 'Excelente'   => ['bg'=>'#dcfce7','color'=>'#15803d'],
                                 'Bueno'       => ['bg'=>'#dbeafe','color'=>'#1d4ed8'],

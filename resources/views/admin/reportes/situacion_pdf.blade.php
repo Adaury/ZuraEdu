@@ -116,7 +116,7 @@ tbody td.name { text-align: left; font-weight: 600; }
         <tr>
             <td style="color:#94a3b8; font-size:7.5px;">{{ $loop->iteration }}</td>
             <td class="name">{{ $d['estudiante']?->apellidos }}, {{ $d['estudiante']?->nombres }}</td>
-            <td style="font-weight:700; color:{{ $d['promedio'] !== null ? ($d['promedio'] >= 60 ? '#15803d' : '#dc2626') : '#94a3b8' }};">
+            <td style="font-weight:700; color:{{ $d['promedio'] !== null ? ($d['promedio'] >= 70 ? '#15803d' : '#dc2626') : '#94a3b8' }};">
                 {{ $d['promedio'] !== null ? number_format($d['promedio'], 2) : '—' }}
             </td>
             <td style="color:#15803d; font-weight:700;">{{ $d['aprobadas'] }}</td>
@@ -128,7 +128,7 @@ tbody td.name { text-align: left; font-weight: 600; }
             <td>
                 @if($d['total'] > 0)
                     <div class="progress-bar">
-                        <div class="progress-fill" style="width:{{ $d['pct_aprobadas'] }}%; background:{{ $d['pct_aprobadas'] >= 60 ? '#16a34a' : '#dc2626' }};"></div>
+                        <div class="progress-fill" style="width:{{ $d['pct_aprobadas'] }}%; background:{{ $d['pct_aprobadas'] >= 70 ? '#16a34a' : '#dc2626' }};"></div>
                     </div>
                     <div style="font-size:7.5px; margin-top:2px; color:#475569;">{{ $d['pct_aprobadas'] }}%</div>
                 @else

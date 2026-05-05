@@ -177,9 +177,19 @@
                         </div>
                         <input type="hidden" name="school_year_id" value="{{ $schoolYear->id }}">
                     @else
-                        <div class="alert alert-warning border-0" style="border-radius:8px;font-size:.83rem;">
-                            <i class="bi bi-exclamation-triangle me-2"></i>
-                            No hay un año escolar activo. Por favor activa uno antes de registrar matrículas.
+                        <div class="alert border-0" style="background:#fff7ed;border-left:4px solid #f97316 !important;border-radius:8px;font-size:.83rem;padding:.85rem 1rem;">
+                            <div style="font-weight:700;color:#9a3412;margin-bottom:.4rem;">
+                                <i class="bi bi-exclamation-triangle-fill me-2" style="color:#f97316;"></i>
+                                No hay un Año Escolar activo
+                            </div>
+                            <div style="color:#c2410c;margin-bottom:.75rem;">
+                                Debes crear y activar un Año Escolar antes de registrar matrículas.
+                            </div>
+                            <a href="{{ route('admin.school-years.create') }}"
+                               class="btn btn-sm fw-bold"
+                               style="background:#f97316;color:#fff;border-radius:7px;font-size:.8rem;padding:.35rem .9rem;">
+                                <i class="bi bi-plus-circle me-1"></i>Crear Año Escolar ahora
+                            </a>
                         </div>
                     @endif
                 </div>

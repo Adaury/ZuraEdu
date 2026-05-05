@@ -2,26 +2,80 @@
 @section('page-title', 'Dashboard')
 
 @section('content')
-{{-- Bienvenida: solo para roles admin (Docentes usan su propio panel) --}}
-@unless($isDocente)
-@if($schoolYear)
-<div class="mb-4" style="background:linear-gradient(140deg,#0a0f2e 0%,#1e3a8a 55%,#1d4ed8 100%);border-radius:20px;padding:22px 28px;display:flex;align-items:center;gap:18px;box-shadow:0 8px 32px rgba(30,58,138,.32);position:relative;overflow:hidden;">
-    <div style="position:absolute;top:-20px;right:-20px;width:120px;height:120px;background:rgba(255,255,255,.08);border-radius:50%;"></div>
-    <div style="position:absolute;bottom:-30px;right:60px;width:80px;height:80px;background:rgba(255,255,255,.06);border-radius:50%;"></div>
-    <div style="width:52px;height:52px;background:rgba(255,255,255,.18);border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;z-index:1;">
-        <i class="bi bi-mortarboard-fill" style="font-size:1.5rem;color:#fff;"></i>
-    </div>
-    <div style="position:relative;z-index:1;">
-        <div style="font-size:1rem;font-weight:800;color:#fff;">Año Escolar {{ $schoolYear->nombre }}
-            <span class="ms-2 badge" style="background:rgba(255,255,255,.22);color:#fff;font-size:.7rem;border-radius:20px;padding:.25rem .7rem;">Activo</span>
+
+{{-- ── BANNER MODO DEMO ─────────────────────────────────────────────────── --}}
+@if(session('demo_mode') && session('demo_admin'))
+<div id="demo-banner" style="background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;border-radius:16px;padding:1rem 1.5rem;color:#fff;display:flex;align-items:center;gap:1rem;box-shadow:0 8px 24px rgba(124,58,237,.35);margin-bottom:1rem;">
+    <div style="font-size:2rem;flex-shrink:0;">🎮</div>
+    <div style="flex:1;">
+        <div style="font-weight:800;font-size:1rem;margin-bottom:.15rem;">Modo Demo — ZuraEdu</div>
+        <div style="font-size:.82rem;opacity:.9;">
+            Estás explorando el sistema con datos ficticios. Las modificaciones <strong>no se guardan</strong>.
+            <a href="{{ route('onboarding') }}" style="color:#fde68a;font-weight:700;margin-left:.5rem;">→ Crear mi escuela GRATIS</a>
         </div>
-        <div style="font-size:.82rem;color:rgba(255,255,255,.75);margin-top:3px;">
-            <i class="bi bi-calendar3 me-1"></i>
-            {{ \Carbon\Carbon::parse($schoolYear->fecha_inicio)->format('d/m/Y') }} — {{ \Carbon\Carbon::parse($schoolYear->fecha_fin)->format('d/m/Y') }}
+    </div>
+    <button onclick="document.getElementById('demo-banner').remove()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:.3rem .75rem;cursor:pointer;font-size:.85rem;flex-shrink:0;">Cerrar</button>
+</div>
+@endif
+
+{{-- ── BIENVENIDA ONBOARDING ───────────────────────────────────────────── --}}
+@if(session('onboarding_new_tenant'))
+<div class="alert mb-4" style="background:linear-gradient(135deg,#059669,#10b981);border:none;border-radius:16px;padding:1.5rem 1.75rem;color:#fff;display:flex;align-items:center;gap:1.25rem;box-shadow:0 8px 24px rgba(16,185,129,.3);">
+    <div style="font-size:2.5rem;flex-shrink:0;">🎉</div>
+    <div>
+        <div style="font-size:1.1rem;font-weight:800;margin-bottom:.25rem;">¡Bienvenido a ZuraEdu!</div>
+        <div style="font-size:.88rem;opacity:.9;line-height:1.5;">
+            Tu institución <strong>{{ session('onboarding_tenant_name') }}</strong> ya está lista.
+            Comienza configurando tus grupos, docentes y estudiantes desde el panel de administración.
+        </div>
+    </div>
+    <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;opacity:.7;flex-shrink:0;" aria-label="Cerrar">×</button>
+</div>
+@endif
+
+{{-- ══════════════════════════════════════════════
+     BANNER BIENVENIDA ESTILO ZURA
+     ══════════════════════════════════════════════ --}}
+@php
+    $hora = now()->hour;
+    $saludo = $hora < 12 ? 'Buenos días' : ($hora < 18 ? 'Buenas tardes' : 'Buenas noches');
+    $nombreUsuario = Auth::user()->name ?? 'Usuario';
+    $primerNombre  = explode(' ', $nombreUsuario)[0];
+@endphp
+<div class="mb-4" style="background:#3B82F6;border-radius:16px;padding:28px 32px;position:relative;overflow:hidden;box-shadow:0 4px 24px rgba(59,130,246,.35);">
+    {{-- círculos decorativos --}}
+    <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:rgba(255,255,255,.08);border-radius:50%;"></div>
+    <div style="position:absolute;bottom:-50px;right:120px;width:130px;height:130px;background:rgba(255,255,255,.06);border-radius:50%;"></div>
+    <div style="position:absolute;top:50%;right:32px;transform:translateY(-50%);opacity:.08;">
+        <i class="bi bi-mortarboard-fill" style="font-size:6rem;color:#fff;"></i>
+    </div>
+
+    <div style="position:relative;z-index:1;">
+        <div style="font-size:1.75rem;font-weight:800;color:#fff;letter-spacing:-.02em;line-height:1.2;">
+            Bienvenido {{ $primerNombre }}
+        </div>
+        <div style="font-size:.9rem;color:rgba(255,255,255,.8);margin-top:6px;">
+            {{ $saludo }} &mdash;
+            @php
+                $roles = ['Administrador'=>'Administrador del Sistema','Director'=>'Director','Coordinador'=>'Coordinador Académico','Docente'=>'Docente'];
+                $rolActual = collect($roles)->first(fn($v,$k) => Auth::user()->hasRole($k)) ?? 'Usuario';
+            @endphp
+            {{ $rolActual }}
+            @if($schoolYear)
+            &nbsp;&bull;&nbsp; Año Escolar <strong>{{ $schoolYear->nombre }}</strong>
+            <span style="background:rgba(255,255,255,.2);color:#fff;font-size:.7rem;border-radius:20px;padding:.2rem .65rem;margin-left:6px;font-weight:700;">ACTIVO</span>
+            @endif
+        </div>
+        <div style="font-size:.78rem;color:rgba(255,255,255,.65);margin-top:8px;">
+            <i class="bi bi-calendar3 me-1"></i>{{ now()->isoFormat('dddd, D [de] MMMM [de] YYYY') }}
+            &nbsp;&bull;&nbsp;
+            <i class="bi bi-clock me-1"></i><span id="zura-clock">{{ now()->format('H:i') }}</span>
         </div>
     </div>
 </div>
-@endif
+
+{{-- Bienvenida: solo para roles admin (Docentes usan su propio panel) --}}
+@unless($isDocente)
 @endunless {{-- /isDocente --}}
 
 {{-- ── Stats y módulos admin (ocultos para Docentes) ──────────── --}}
@@ -147,6 +201,86 @@
 @endif
 
 @endunless {{-- /isDocente --}}
+
+{{-- ── Widget: ZuraClass ───────────────────────────────────────────── --}}
+@if(!empty($zuraClassData))
+@if($isDocente && !empty($zuraClassData['clases']) && $zuraClassData['clases']->isNotEmpty())
+{{-- Vista docente: mis clases + entregas pendientes --}}
+<div class="card border-0 mb-4" style="border-radius:20px;box-shadow:0 4px 24px rgba(0,0,0,.06);overflow:hidden;">
+    <div class="card-header border-0 py-3 px-4 d-flex align-items-center gap-2"
+         style="background:linear-gradient(135deg,#3730a3,#4f46e5);color:#fff;">
+        <i class="bi bi-easel2-fill" style="font-size:1.1rem;"></i>
+        <span style="font-weight:700;">ZuraClass — Mis Aulas Virtuales</span>
+        @if($zuraClassData['entregasPendientes'] > 0)
+        <span class="ms-2" style="background:rgba(255,255,255,.2);border-radius:99px;padding:.15rem .6rem;font-size:.72rem;font-weight:700;">
+            <i class="bi bi-inbox me-1"></i>{{ $zuraClassData['entregasPendientes'] }} por calificar
+        </span>
+        @endif
+        <a href="{{ route('portal.docente.classroom.index') }}" class="ms-auto"
+           style="font-size:.75rem;color:rgba(255,255,255,.9);text-decoration:none;display:flex;align-items:center;gap:.3rem;">
+            Ver todas <i class="bi bi-arrow-right"></i>
+        </a>
+    </div>
+    <div class="card-body py-3 px-4">
+        <div class="row g-3">
+            @foreach($zuraClassData['clases'] as $clase)
+            @php $color = $clase->portada_color ?? '#4f46e5'; @endphp
+            <div class="col-md-6">
+                <a href="{{ route('portal.docente.classroom.show', $clase) }}" class="text-decoration-none">
+                    <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background:#F8FAFC;border:1px solid #E5E7EB;transition:.15s;" onmouseover="this.style.borderColor='{{ $color }}'" onmouseout="this.style.borderColor='#E5E7EB'">
+                        <div style="width:44px;height:44px;background:{{ $color }};border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="bi bi-easel2-fill" style="color:#fff;font-size:1.1rem;"></i>
+                        </div>
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="fw-semibold text-dark" style="font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $clase->nombre }}</div>
+                            <div class="text-muted" style="font-size:.75rem;">{{ $clase->asignacion?->asignatura?->nombre }} · {{ $clase->asignacion?->grupo?->nombre }}</div>
+                        </div>
+                        <div class="text-end flex-shrink-0">
+                            <div style="font-size:.75rem;color:#6b7280;">{{ $clase->materiales->count() }} materiales</div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            @endforeach
+        </div>
+        @if($zuraClassData['entregasPendientes'] > 0)
+        <div class="mt-3 pt-2 border-top">
+            <a href="{{ route('portal.docente.classroom.index') }}"
+               style="display:inline-flex;align-items:center;gap:.4rem;background:#eef2ff;color:#4338ca;border-radius:8px;padding:.35rem .8rem;font-size:.78rem;font-weight:700;text-decoration:none;">
+                <i class="bi bi-inbox-fill"></i>
+                {{ $zuraClassData['entregasPendientes'] }} entrega(s) esperando calificación
+            </a>
+        </div>
+        @endif
+    </div>
+</div>
+
+@elseif(!$isDocente && !empty($zuraClassData['totalClasesActivas']))
+{{-- Vista admin: resumen global --}}
+<div class="card border-0 mb-4" style="border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden;">
+    <div class="card-body d-flex align-items-center gap-4 py-3 px-4" style="background:linear-gradient(135deg,#eef2ff,#e0e7ff);">
+        <div style="width:48px;height:48px;background:#4f46e5;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="bi bi-easel2-fill" style="color:#fff;font-size:1.25rem;"></i>
+        </div>
+        <div class="flex-grow-1">
+            <div style="font-weight:800;font-size:.95rem;color:#3730a3;">ZuraClass — Aulas Virtuales</div>
+            <div style="font-size:.8rem;color:#4f46e5;margin-top:2px;">
+                <strong>{{ $zuraClassData['totalClasesActivas'] }}</strong> aulas activas
+                @if($zuraClassData['totalEntregasPend'] > 0)
+                &nbsp;·&nbsp; <strong style="color:#dc2626;">{{ $zuraClassData['totalEntregasPend'] }}</strong> entregas pendientes de calificación
+                @else
+                &nbsp;·&nbsp; Todas las entregas calificadas
+                @endif
+            </div>
+        </div>
+        <a href="{{ route('admin.classroom.index') }}"
+           style="background:#4f46e5;color:#fff;border-radius:10px;padding:.4rem 1rem;font-size:.8rem;font-weight:700;text-decoration:none;white-space:nowrap;">
+            <i class="bi bi-arrow-right me-1"></i>Ver aulas
+        </a>
+    </div>
+</div>
+@endif
+@endif
 
 {{-- ── Widget: Pagos y Colegiaturas ───────────────────────────────── --}}
 @if(!empty($statsPagos))
@@ -1128,6 +1262,16 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.stat-num').forEach(el => animateCounter(el));
     });
+})();
+
+// ── Reloj en tiempo real (banner Zura) ─────────────────────────
+(function () {
+    const el = document.getElementById('zura-clock');
+    if (!el) return;
+    setInterval(() => {
+        const now = new Date();
+        el.textContent = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+    }, 1000);
 })();
 </script>
 @endpush

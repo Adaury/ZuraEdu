@@ -230,7 +230,7 @@
                     if ($n === null) return 'nota-nu';
                     if ($n >= 90) return 'nota-ex';
                     if ($n >= 75) return 'nota-bu';
-                    if ($n >= 60) return 'nota-pr';
+                    if ($n >= 70) return 'nota-pr';
                     return 'nota-in';
                 }
             @endphp
@@ -298,8 +298,8 @@
     <span class="text-muted fw-semibold">Indicadores:</span>
     <span class="px-2 py-1 rounded" style="background:#dcfce7;color:#15803d;font-weight:700;">Excelente (90+)</span>
     <span class="px-2 py-1 rounded" style="background:#dbeafe;color:#1d4ed8;font-weight:700;">Bueno (75–89)</span>
-    <span class="px-2 py-1 rounded" style="background:#fef3c7;color:#92400e;font-weight:700;">En proceso (60–74)</span>
-    <span class="px-2 py-1 rounded" style="background:#fee2e2;color:#991b1b;font-weight:700;">Insuficiente (&lt;60)</span>
+    <span class="px-2 py-1 rounded" style="background:#fef3c7;color:#92400e;font-weight:700;">En proceso (70–74)</span>
+    <span class="px-2 py-1 rounded" style="background:#fee2e2;color:#991b1b;font-weight:700;">Insuficiente (&lt;70)</span>
 </div>
 
 @endif

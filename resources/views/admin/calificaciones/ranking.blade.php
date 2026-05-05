@@ -215,13 +215,13 @@
 
 {{-- At-risk alert --}}
 @php
-    $enRiesgo = array_filter($rankingArr, function($r) { return $r['promedio'] !== null && $r['promedio'] < 60; });
+    $enRiesgo = array_filter($rankingArr, function($r) { return $r['promedio'] !== null && $r['promedio'] < 70; });
 @endphp
 @if(count($enRiesgo) > 0)
 <div class="riesgo-alert">
     <div class="fw-bold text-danger mb-1">
         <i class="bi bi-exclamation-triangle-fill me-2"></i>
-        {{ count($enRiesgo) }} estudiante(s) con promedio inferior a 60
+        {{ count($enRiesgo) }} estudiante(s) con promedio inferior a 70
     </div>
     <div style="font-size:.83rem;color:#7f1d1d;">
         @foreach($enRiesgo as $r)
@@ -333,7 +333,7 @@
                         if ($nota === null)          { $notaClass = 'nota-nu'; $ind = '—'; }
                         elseif ($nota >= 90)         { $notaClass = 'nota-ex'; $ind = 'Excelente'; }
                         elseif ($nota >= 75)         { $notaClass = 'nota-bu'; $ind = 'Bueno'; }
-                        elseif ($nota >= 60)         { $notaClass = 'nota-pr'; $ind = 'En proceso'; }
+                        elseif ($nota >= 70)         { $notaClass = 'nota-pr'; $ind = 'En proceso'; }
                         else                         { $notaClass = 'nota-in'; $ind = 'Insuficiente'; }
 
                         $posCls = match(true) {

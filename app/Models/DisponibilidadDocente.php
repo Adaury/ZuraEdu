@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 
 class DisponibilidadDocente extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'disponibilidad_docente';
 
     protected $fillable = [

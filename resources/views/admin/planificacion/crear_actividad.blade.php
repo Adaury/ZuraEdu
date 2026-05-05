@@ -1,5 +1,5 @@
-@extends('layouts.admin')
-@section('title', isset($planificacion) ? 'Editar Planificación por Actividad' : 'Nueva Planificación por Actividad')
+﻿@extends('layouts.admin')
+@section('page-title', isset($planificacion) ? 'Editar Planificación por Actividad' : 'Nueva Planificación por Actividad')
 
 @section('content')
 <div class="container-fluid py-3" style="max-width:900px;">

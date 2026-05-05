@@ -355,9 +355,9 @@
                 <span class="text-muted" style="font-size:.72rem;">Sin asistencia registrada</span>
                 @endif
             </div>
-            <div class="d-flex gap-1 no-print">
+            <div class="d-flex gap-1 no-print flex-wrap">
                 <button onclick="imprimirUno({{ $matricula->id }})"
-                        class="btn btn-sm btn-outline-secondary" title="Imprimir este boletín">
+                        class="btn btn-sm btn-outline-secondary" title="Imprimir">
                     <i class="bi bi-printer"></i>
                 </button>
                 <a href="{{ route('admin.boletines.ver', [$matricula->id, $periodo->id]) }}"
@@ -365,9 +365,27 @@
                     <i class="bi bi-eye"></i>
                 </a>
                 <a href="{{ route('admin.boletines.pdf', [$matricula->id, $periodo->id]) }}"
-                   class="btn btn-sm btn-danger" title="Descargar PDF" target="_blank">
+                   class="btn btn-sm btn-danger" title="PDF Período" target="_blank">
                     <i class="bi bi-file-pdf"></i>
                 </a>
+                <a href="{{ route('admin.boletines.pdf-anual', $matricula->id) }}"
+                   class="btn btn-sm btn-outline-info" title="PDF Anual" target="_blank">
+                    <i class="bi bi-file-earmark-bar-graph"></i>
+                </a>
+                @php
+                    $telRep = $matricula->representantes()->first()?->telefono
+                        ?? $matricula->estudiante?->tutor_telefono ?? null;
+                    if ($telRep) {
+                        $msgWA2 = urlencode("📋 *Boletín de Calificaciones*\n\nEstudiante: " . ($matricula->estudiante?->nombres . ' ' . $matricula->estudiante?->apellidos) . "\nPeríodo: {$periodo->nombre}\nPromedio: " . ($promGen ? number_format($promGen,1) : '—') . "\n\n_" . ($boletinConfig?->nombre_institucion ?? 'Centro Educativo') . "_");
+                        $waLink = 'https://wa.me/' . preg_replace('/\D+/', '', $telRep) . '?text=' . $msgWA2;
+                    }
+                @endphp
+                @if($telRep ?? false)
+                <a href="{{ $waLink }}" target="_blank"
+                   class="btn btn-sm" style="background:#25D366;color:#fff;border:none;" title="Enviar por WhatsApp">
+                    <i class="bi bi-whatsapp"></i>
+                </a>
+                @endif
             </div>
         </div>
 

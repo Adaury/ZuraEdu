@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Asignacion;
 use App\Models\Asistencia;
 use App\Models\CalificacionAcademica;
+use App\Models\Encuesta;
 use App\Models\Planificacion;
 use App\Models\Calificacion;
 use App\Models\Comunicado;
@@ -13,6 +14,7 @@ use App\Models\Estudiante;
 use App\Models\FranjaHoraria;
 use App\Models\Horario;
 use App\Models\HorarioDetalle;
+use App\Models\RespuestaEncuesta;
 use App\Models\Matricula;
 use App\Models\Notificacion;
 use App\Models\Observacion;
@@ -215,12 +217,15 @@ class PortalPadreController extends Controller
             ];
         }
 
+        // ── Comparativo de notas por período (para gráfica Chart.js) ──
+        $comparativoChart = $this->calcularComparativoPeriodos($matricula, $periodos, $calificaciones, $calificacionesAcademicas);
+
         return view('portal.padre.hijo', compact(
             'representante', 'estudiante', 'matricula', 'schoolYear', 'periodos',
             'calificaciones', 'calificacionesAcademicas',
             'resumenAsistencia', 'gridHorario', 'franjasHorario', 'horarioActivo', 'diasConfig',
             'observaciones', 'planificaciones', 'asignaciones',
-            'pagosHijo', 'resumenPagos'
+            'pagosHijo', 'resumenPagos', 'comparativoChart'
         ));
     }
 
@@ -276,9 +281,26 @@ class PortalPadreController extends Controller
 
         $resumenAsistencia = $this->calcularAsistencia($matricula);
 
+        // Promedio general
+        $notasTecnicas  = $calificaciones->flatten()->pluck('nota_final')->filter();
+        $notasAcademicas = $calificacionesAcademicas->pluck('nota_final')->filter();
+        $todasNotas     = $notasTecnicas->merge($notasAcademicas);
+        $promedioGeneral = $todasNotas->count() ? round($todasNotas->avg(), 1) : null;
+
+        // Ranking en el grupo
+        $rankingGrupo = null;
+        if ($matricula && $periodos->isNotEmpty()) {
+            $ultimoPeriodo = $periodos->last();
+            $boletinCtrl   = app(\App\Http\Controllers\Admin\BoletinController::class);
+            try {
+                $rankingGrupo = $boletinCtrl->buildBoletinDataPublic($matricula, $ultimoPeriodo)['rankingGrupo'] ?? null;
+            } catch (\Exception $e) { }
+        }
+
         return view('portal.padre.boletin', compact(
             'representante', 'estudiante', 'matricula', 'schoolYear', 'periodos',
-            'calificaciones', 'calificacionesAcademicas', 'resumenAsistencia'
+            'calificaciones', 'calificacionesAcademicas', 'resumenAsistencia',
+            'promedioGeneral', 'rankingGrupo'
         ));
     }
 
@@ -399,7 +421,7 @@ class PortalPadreController extends Controller
                     if ($n !== null) $notasValidas[] = $n;
                 }
                 $promedio  = count($notasValidas) ? round(array_sum($notasValidas) / count($notasValidas), 2) : null;
-                $situacion = $promedio !== null ? ($promedio >= 65 ? 'A' : 'R') : null;
+                $situacion = $promedio !== null ? ($promedio >= 70 ? 'A' : 'R') : null;
             } else {
                 $cal = $calificacionesAcademicas->get($asi->id);
                 foreach ($periodos as $p) {
@@ -1329,6 +1351,29 @@ class PortalPadreController extends Controller
         return $pdf->download("recursos_{$slug}.pdf");
     }
 
+    // ── Documentos del hijo ──────────────────────────────────────────────
+    public function documentosHijo(Estudiante $estudiante)
+    {
+        $representante = $this->getRepresentante();
+        if (! $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists()) {
+            abort(403, 'No tienes acceso a la información de este estudiante.');
+        }
+
+        $schoolYear = SchoolYear::actual();
+        $matricula  = $estudiante->matriculas()
+            ->with(['grupo.grado', 'grupo.seccion'])
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()
+            ->first();
+
+        $moduloPagos = \App\Models\ConfigInstitucional::moduloActivo('pagos');
+
+        return view('portal.padre.documentos_hijo', compact(
+            'representante', 'estudiante', 'matricula', 'schoolYear', 'moduloPagos'
+        ));
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────
     private function calcularAsistencia($matricula): array
     {
@@ -1366,6 +1411,76 @@ class PortalPadreController extends Controller
         ];
     }
 
+    // ── Comparativo de notas del hijo por período ─────────────────────────
+    private function calcularComparativoPeriodos($matricula, $periodos, $calificaciones, $calificacionesAcademicas): array
+    {
+        if (! $matricula || $periodos->isEmpty()) {
+            return ['labels' => '[]', 'data' => '[]', 'tendencia' => null];
+        }
+
+        $promediosPorPeriodo = [];
+
+        foreach ($periodos as $periodo) {
+            $notas = collect();
+
+            // Calificaciones técnicas
+            $calsPeriodo = $calificaciones->get($periodo->id, collect());
+            foreach ($calsPeriodo as $cal) {
+                if ($cal->nota_final !== null) {
+                    $notas->push((float) $cal->nota_final);
+                }
+            }
+
+            // Calificaciones académicas: extraer la nota del período específico
+            foreach ($calificacionesAcademicas as $calAcad) {
+                $n = $periodo->numero;
+                // Promedio de las 4 competencias en ese período
+                $vals = [];
+                for ($ci = 1; $ci <= 4; $ci++) {
+                    $pb = $calAcad->{"comp{$ci}_p{$n}"};
+                    if ($pb !== null) {
+                        $rv = $calAcad->{"comp{$ci}_r{$n}"};
+                        $pb = (float) $pb;
+                        $cv = ($rv !== null && $pb < 70)
+                            ? round($pb + min((float) $rv, max(0.0, 100.0 - $pb)), 2)
+                            : round($pb, 2);
+                        $vals[] = $cv;
+                    }
+                }
+                if (count($vals)) {
+                    $notas->push(round(array_sum($vals) / count($vals), 1));
+                }
+            }
+
+            if ($notas->count()) {
+                $promediosPorPeriodo[$periodo->numero] = round($notas->avg(), 1);
+            }
+        }
+
+        if (empty($promediosPorPeriodo)) {
+            return ['labels' => '[]', 'data' => '[]', 'tendencia' => null];
+        }
+
+        $labels = collect(array_keys($promediosPorPeriodo))->map(fn($n) => "P{$n}")->values();
+        $data   = collect(array_values($promediosPorPeriodo))->values();
+
+        // Tendencia: comparar primer y último período con datos
+        $valores = array_values($promediosPorPeriodo);
+        $primero = reset($valores);
+        $ultimo  = end($valores);
+        $tendencia = count($valores) >= 2
+            ? ($ultimo > $primero ? 'positiva' : ($ultimo < $primero ? 'negativa' : 'estable'))
+            : null;
+
+        return [
+            'labels'    => $labels->toJson(),
+            'data'      => $data->toJson(),
+            'tendencia' => $tendencia,
+            'primero'   => $primero,
+            'ultimo'    => count($valores) >= 2 ? $ultimo : null,
+        ];
+    }
+
     private function cargarHorario($matricula, $schoolYear): array
     {
         $grid    = [];
@@ -1394,5 +1509,75 @@ class PortalPadreController extends Controller
         }
 
         return [$grid, $franjas, $horario, $dias];
+    }
+
+    // ── Encuestas disponibles para el padre ──────────────────────────────
+    public function encuestas()
+    {
+        $encuestas = Encuesta::activas()
+            ->dirigidaA('padres')
+            ->withCount('preguntas')
+            ->latest()
+            ->get()
+            ->map(function ($encuesta) {
+                $encuesta->_ya_respondio = $encuesta->yaRespondio(auth()->id());
+                return $encuesta;
+            });
+
+        return view('portal.padre.encuestas', compact('encuestas'));
+    }
+
+    // ── Mostrar formulario de respuesta (GET) ─────────────────────────────
+    public function verEncuesta(Encuesta $encuesta)
+    {
+        abort_unless($encuesta->activo, 403, 'Esta encuesta no está disponible.');
+        abort_if($encuesta->fecha_cierre && $encuesta->fecha_cierre->isPast(), 403, 'La encuesta ha cerrado.');
+
+        if ($encuesta->yaRespondio(auth()->id())) {
+            return redirect()->route('portal.padre.encuestas')
+                             ->with('success', 'Ya has respondido esta encuesta anteriormente.');
+        }
+
+        $encuesta->load('preguntas.opciones');
+
+        return view('portal.padre.encuestas_responder', compact('encuesta'));
+    }
+
+    // ── Guardar respuestas (POST) ─────────────────────────────────────────
+    public function responderEncuesta(Request $request, Encuesta $encuesta)
+    {
+        abort_unless($encuesta->activo, 403, 'Esta encuesta no está disponible.');
+        abort_if($encuesta->fecha_cierre && $encuesta->fecha_cierre->isPast(), 403, 'La encuesta ha cerrado.');
+        abort_if($encuesta->yaRespondio(auth()->id()), 403, 'Ya respondiste esta encuesta.');
+
+        $encuesta->load('preguntas.opciones');
+
+        $rules = [];
+        foreach ($encuesta->preguntas as $pregunta) {
+            if ($pregunta->tipo === 'opcion_multiple') {
+                $rules["respuestas.{$pregunta->id}.opcion_id"] = "required|exists:opciones_pregunta,id";
+            } elseif ($pregunta->tipo === 'escala_1_5') {
+                $rules["respuestas.{$pregunta->id}.escala_valor"] = "required|integer|min:1|max:5";
+            } else {
+                $rules["respuestas.{$pregunta->id}.respuesta_texto"] = "required|string|max:1000";
+            }
+        }
+
+        $validated = $request->validate($rules);
+
+        foreach ($encuesta->preguntas as $pregunta) {
+            $dato = $validated['respuestas'][$pregunta->id] ?? [];
+            RespuestaEncuesta::create([
+                'encuesta_id'     => $encuesta->id,
+                'pregunta_id'     => $pregunta->id,
+                'user_id'         => auth()->id(),
+                'opcion_id'       => $dato['opcion_id'] ?? null,
+                'escala_valor'    => isset($dato['escala_valor']) ? (int) $dato['escala_valor'] : null,
+                'respuesta_texto' => $dato['respuesta_texto'] ?? null,
+            ]);
+        }
+
+        return redirect()->route('portal.padre.encuestas')
+                         ->with('success', '¡Gracias por participar! Tus respuestas han sido registradas.');
     }
 }

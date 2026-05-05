@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 
 class Notificacion extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'notificaciones';
 
     protected $fillable = [
@@ -20,27 +24,47 @@ class Notificacion extends Model
 
     // ── Iconos por tipo ───────────────────────────────────────────────────
     const ICONOS = [
-        'nueva_nota'    => 'bi-journal-check',
-        'ausencia'      => 'bi-calendar-x',
-        'comunicado'    => 'bi-megaphone',
-        'observacion'   => 'bi-chat-square-text',
-        'alerta'        => 'bi-exclamation-triangle',
-        'horario'       => 'bi-calendar-week',
-        'recursos'      => 'bi-folder-fill',
-        'planificacion' => 'bi-journal-text',
-        'general'       => 'bi-bell',
+        'nueva_nota'       => 'bi-journal-check',
+        'ausencia'         => 'bi-calendar-x',
+        'comunicado'       => 'bi-megaphone',
+        'observacion'      => 'bi-chat-square-text',
+        'alerta'           => 'bi-exclamation-triangle',
+        'horario'          => 'bi-calendar-week',
+        'recursos'         => 'bi-folder-fill',
+        'planificacion'    => 'bi-journal-text',
+        'general'          => 'bi-bell',
+        // ZuraClass
+        'zura_tarea'       => 'bi-pencil-fill',
+        'zura_calificado'  => 'bi-check-circle-fill',
+        'zura_devuelto'    => 'bi-arrow-return-left',
+        'zura_quiz'        => 'bi-clipboard-check-fill',
+        'zura_anuncio'     => 'bi-megaphone-fill',
+        'zura_material'    => 'bi-book-fill',
+        'zura_boletin'     => 'bi-file-earmark-text',
+        'boletin'          => 'bi-file-earmark-text',
+        'asistencia'       => 'bi-calendar-check',
     ];
 
     const COLORES = [
-        'nueva_nota'    => '#10b981',
-        'ausencia'      => '#ef4444',
-        'comunicado'    => '#3b82f6',
-        'observacion'   => '#f59e0b',
-        'alerta'        => '#dc2626',
-        'horario'       => '#6366f1',
-        'recursos'      => '#2563eb',
-        'planificacion' => '#7c3aed',
-        'general'       => '#6b7280',
+        'nueva_nota'       => '#10b981',
+        'ausencia'         => '#ef4444',
+        'comunicado'       => '#3b82f6',
+        'observacion'      => '#f59e0b',
+        'alerta'           => '#dc2626',
+        'horario'          => '#6366f1',
+        'recursos'         => '#2563eb',
+        'planificacion'    => '#7c3aed',
+        'general'          => '#6b7280',
+        // ZuraClass
+        'zura_tarea'       => '#f59e0b',
+        'zura_calificado'  => '#16a34a',
+        'zura_devuelto'    => '#f59e0b',
+        'zura_quiz'        => '#4f46e5',
+        'zura_anuncio'     => '#6366f1',
+        'zura_material'    => '#10b981',
+        'zura_boletin'     => '#1e40af',
+        'boletin'          => '#1e40af',
+        'asistencia'       => '#dc2626',
     ];
 
     // ── Relaciones ────────────────────────────────────────────────────────

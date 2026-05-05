@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -10,6 +12,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
+    use BelongsToTenant;
     use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     protected $fillable = [
@@ -39,6 +42,11 @@ class User extends Authenticatable
         return $this->hasOne(Docente::class);
     }
 
+    public function nominaEmpleado()
+    {
+        return $this->hasOne(NominaEmpleado::class);
+    }
+
     public function estudiante()
     {
         return $this->hasOne(Estudiante::class);
@@ -60,5 +68,10 @@ class User extends Authenticatable
     public function scopeActivos($q)
     {
         return $q->where('activo', true);
+    }
+
+    public function casosAsignados()
+    {
+        return $this->hasMany(CasoSeguimiento::class, 'responsable_id');
     }
 }

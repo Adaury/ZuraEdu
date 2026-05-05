@@ -65,7 +65,7 @@
         <a href="{{ route('admin.areas.academica') }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-book-half me-1"></i>Ver Área Académica
         </a>
-        @if(Auth::user()->hasAnyRole(['Administrador','Director']))
+        @if(Auth::user()->hasAnyRole(['Administrador','Director','super_admin']))
         <a href="{{ route('admin.especialidades.index') }}" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-gear me-1"></i>Gestionar Especialidades
         </a>
@@ -84,7 +84,7 @@
         <div class="empty-illustration"><i class="bi bi-tools"></i></div>
         <div class="empty-title">Sin especialidades configuradas</div>
         <div class="empty-desc">Configura las especialidades técnicas del politécnico para comenzar.</div>
-        @if(Auth::user()->hasAnyRole(['Administrador','Director']))
+        @if(Auth::user()->hasAnyRole(['Administrador','Director','super_admin']))
         <div class="empty-actions">
             <a href="{{ route('admin.especialidades.create') }}" class="btn btn-primary btn-sm">
                 <i class="bi bi-plus-circle me-1"></i>Agregar Especialidad

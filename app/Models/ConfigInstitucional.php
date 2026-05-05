@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 
 class ConfigInstitucional extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'config_institucional';
 
     protected $fillable = [
@@ -19,7 +23,8 @@ class ConfigInstitucional extends Model
 
     public static function get(string $clave, $default = null)
     {
-        return Cache::remember("config_{$clave}", 300, function () use ($clave, $default) {
+        $tid = tenant_id();
+        return Cache::remember("config_t{$tid}_{$clave}", 300, function () use ($clave, $default) {
             $c = static::where('clave', $clave)->first();
             if (!$c) return $default;
             return match ($c->tipo) {
@@ -37,7 +42,7 @@ class ConfigInstitucional extends Model
             ['clave' => $clave],
             ['valor' => is_array($valor) ? json_encode($valor) : $valor]
         );
-        Cache::forget("config_{$clave}");
+        Cache::forget("config_t" . tenant_id() . "_{$clave}");
     }
 
     public static function esPrivado(): bool

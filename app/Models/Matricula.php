@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Model;
 
 class Matricula extends Model
 {
+    use BelongsToTenant;
+
     protected $fillable = [
         'school_year_id',
         'estudiante_id',
@@ -70,9 +74,36 @@ class Matricula extends Model
         return $this->hasOne(Promocion::class);
     }
 
+    public function puntos()
+    {
+        return $this->hasMany(\App\Models\PuntoEstudiante::class);
+    }
+
+    public function insignias()
+    {
+        return $this->hasMany(\App\Models\InsigniaEstudiante::class);
+    }
+
     public function pagos()
     {
         return $this->hasMany(\App\Models\Pago::class);
+    }
+
+    public function becas()
+    {
+        return $this->hasMany(\App\Models\BecaEstudiante::class);
+    }
+
+    public function becaActiva()
+    {
+        return $this->hasOne(\App\Models\BecaEstudiante::class)
+            ->where('activo', true)
+            ->where(fn($q) =>
+                $q->whereNull('fecha_fin')
+                  ->orWhere('fecha_fin', '>=', today())
+            )
+            ->with('beca')
+            ->latest();
     }
 
     public function scopeActivas($q)

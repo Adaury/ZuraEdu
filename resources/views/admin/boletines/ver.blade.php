@@ -335,25 +335,53 @@
 @section('content')
 
 {{-- ── Action bar ──────────────────────────────────────────────────────── --}}
+@php
+    $est = $matricula->estudiante;
+    $ranking = $rankingGrupo ?? [];
+    $telRepresentante = $matricula->representantes()->first()?->telefono
+        ?? $matricula->estudiante?->tutor_telefono ?? null;
+    $nombreEst = $est?->nombres . ' ' . $est?->apellidos;
+    $msgWA = urlencode("📋 *Boletín de Calificaciones*\n\nEstudiante: {$nombreEst}\nPeríodo: {$periodo->nombre}\nGrupo: {$matricula->grupo?->nombre_completo}\nPromedio: " . ($promedioGeneral ? number_format($promedioGeneral,1) : '—') . "\n\n_" . ($boletinConfig?->nombre_institucion ?? 'Centro Educativo') . "_");
+    $waUrl = $telRepresentante
+        ? 'https://wa.me/' . preg_replace('/\D+/', '', $telRepresentante) . '?text=' . $msgWA
+        : null;
+@endphp
 <div class="action-bar no-print">
-    <div class="d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
         <a href="{{ route('admin.boletines.index') }}" class="btn btn-sm btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>Volver
         </a>
         <div>
-            <span class="fw-bold" style="color:var(--primary);">
-                {{ optional($matricula->estudiante)->nombre_completo }}
-            </span>
+            <span class="fw-bold" style="color:var(--primary);">{{ $nombreEst }}</span>
             <span class="text-muted ms-2" style="font-size:.82rem;">{{ optional($matricula->grupo)->nombre_completo }}</span>
         </div>
+        {{-- Badge ranking --}}
+        @if(!empty($ranking['puesto']))
+        <span class="badge rounded-pill" style="background:#1e3a6e;color:#fff;font-size:.78rem;padding:.4em .9em;">
+            <i class="bi bi-trophy me-1" style="color:#fbbf24;"></i>
+            Puesto {{ $ranking['puesto'] }} de {{ $ranking['total'] }}
+        </span>
+        @endif
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
+        @if(!$vistaDocente)
+        <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalObservacion">
+            <i class="bi bi-chat-left-text me-1"></i>Observación
+        </button>
+        @endif
+        @if($waUrl)
+        <a href="{{ $waUrl }}" target="_blank" class="btn btn-sm" style="background:#25D366;color:#fff;border:none;">
+            <i class="bi bi-whatsapp me-1"></i>WhatsApp
+        </a>
+        @endif
+        <a href="{{ route('admin.boletines.pdf-anual', $matricula) }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-file-earmark-bar-graph me-1"></i>PDF Anual
+        </a>
         <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">
             <i class="bi bi-printer me-1"></i>Imprimir
         </button>
-        <a href="{{ route('admin.boletines.pdf', [$matricula, $periodo]) }}"
-           class="btn btn-sm btn-danger">
-            <i class="bi bi-file-earmark-pdf me-1"></i>Descargar PDF
+        <a href="{{ route('admin.boletines.pdf', [$matricula, $periodo]) }}" class="btn btn-sm btn-danger">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF Período
         </a>
     </div>
 </div>
@@ -493,6 +521,7 @@
                     @foreach($periodos as $p)
                         <th>{{ $p->nombre_corto ?? 'P'.$p->numero }}</th>
                     @endforeach
+                    <th style="background:#0f4c81;white-space:nowrap;">Progreso</th>
                     <th style="background:#c0392b;">Prom. Anual</th>
                     <th style="background:#c0392b;">Indicador</th>
                 </tr>
@@ -507,6 +536,7 @@
                         'Insuficiente' => 'ind-i',
                         default        => 'ind-v',
                     };
+                    $pg = $progreso[$row['asignacion']->id] ?? null;
                 @endphp
                 <tr>
                     <td>
@@ -542,6 +572,24 @@
                         {{ $nota !== null ? number_format($nota, 1) : '—' }}
                     </td>
                     @endforeach
+                    {{-- Columna progreso --}}
+                    <td style="text-align:center;font-size:.85rem;font-weight:700;">
+                        @if($pg)
+                            @if($pg['direccion'] === 'sube')
+                                <span style="color:#15803d;" title="Mejoró {{ abs($pg['diff']) }} puntos">
+                                    <i class="bi bi-arrow-up-circle-fill"></i> +{{ abs($pg['diff']) }}
+                                </span>
+                            @elseif($pg['direccion'] === 'baja')
+                                <span style="color:#dc2626;" title="Bajó {{ abs($pg['diff']) }} puntos">
+                                    <i class="bi bi-arrow-down-circle-fill"></i> -{{ abs($pg['diff']) }}
+                                </span>
+                            @else
+                                <span style="color:#9ca3af;" title="Sin cambio"><i class="bi bi-dash-circle"></i></span>
+                            @endif
+                        @else
+                            <span style="color:#d1d5db;">—</span>
+                        @endif
+                    </td>
                     @php
                         $prom = $row['promedio'];
                         $pcls = match(true) {
@@ -567,7 +615,7 @@
 
                 {{-- Promedio General --}}
                 <tr class="prom-row">
-                    <td colspan="{{ $periodos->count() + 1 }}" style="text-align:right;padding-right:1rem;letter-spacing:.05em;">
+                    <td colspan="{{ $periodos->count() + 2 }}" style="text-align:right;padding-right:1rem;letter-spacing:.05em;">
                         PROMEDIO GENERAL ANUAL
                     </td>
                     <td>
@@ -588,6 +636,16 @@
             </tbody>
         </table>
     </div>
+
+    {{-- ── Gráfica de barras por materia (no se imprime) ─────────────────── --}}
+    @if(!empty($tablaNotas) && count($tablaNotas) > 0)
+    <div style="padding:1rem 1.75rem 1.25rem;" class="no-print">
+        <div style="font-size:.72rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#1e3a6e;border-bottom:2px solid #1e3a6e;padding-bottom:.35rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem;">
+            <i class="bi bi-bar-chart-fill"></i> Rendimiento Visual por Materia
+        </div>
+        <canvas id="chartNotas" style="max-height:220px;"></canvas>
+    </div>
+    @endif
     @endif
 
     {{-- ── 4. INDICADORES DE LOGRO ──────────────────────────────────────── --}}
@@ -810,8 +868,105 @@
         @if($boletinConfig && $boletinConfig->pie_pagina)
             &nbsp;·&nbsp; {{ $boletinConfig->pie_pagina }}
         @endif
+        @if(!empty($rankingGrupo['puesto']))
+        &nbsp;·&nbsp; <strong>Puesto {{ $rankingGrupo['puesto'] }} de {{ $rankingGrupo['total'] }}</strong> en el grupo
+        @endif
     </div>
 
 </div>{{-- .boletin-container --}}
+
+{{-- ══ MODAL: Agregar Observación ══ --}}
+@if(!$vistaDocente)
+<div class="modal fade" id="modalObservacion" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow" style="border-radius:14px;">
+            <div class="modal-header border-0" style="background:#1e3a6e;border-radius:14px 14px 0 0;">
+                <h6 class="modal-title text-white fw-bold"><i class="bi bi-chat-left-text me-2"></i>Agregar Observación</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ route('admin.boletines.obs.guardar', [$matricula, $periodo]) }}">
+                @csrf
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Tipo de observación</label>
+                        <select name="tipo" class="form-select form-select-sm">
+                            <option value="academica">Académica</option>
+                            <option value="conducta">Conducta</option>
+                            <option value="sugerencia">Sugerencia</option>
+                            <option value="general">General</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Observación</label>
+                        <textarea name="contenido" class="form-control" rows="4" required
+                            placeholder="Escriba la observación para este período..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-sm btn-primary" style="border-radius:8px;">
+                        <i class="bi bi-check-lg me-1"></i>Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
+@push('scripts')
+@if(!empty($tablaNotas) && count($tablaNotas) > 0)
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const canvas = document.getElementById('chartNotas');
+    if (!canvas) return;
+
+    const labels  = @json(collect($tablaNotas)->pluck('asignatura')->toArray());
+    const notas   = @json(collect($tablaNotas)->map(fn($r) => $r['promedio'])->toArray());
+    const colors  = notas.map(n => n === null ? '#E5E7EB' : (n >= 90 ? '#16A34A' : (n >= 75 ? '#2563EB' : (n >= 60 ? '#D97706' : '#DC2626'))));
+
+    new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Promedio Anual',
+                data: notas,
+                backgroundColor: colors,
+                borderRadius: 6,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ' Promedio: ' + (ctx.raw ?? '—')
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    min: 0, max: 100,
+                    grid: { color: '#F3F4F6' },
+                    ticks: { font: { size: 11 } }
+                },
+                x: {
+                    ticks: {
+                        font: { size: 10 },
+                        maxRotation: 35
+                    },
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+});
+</script>
+@endif
+@endpush
 
 @endsection

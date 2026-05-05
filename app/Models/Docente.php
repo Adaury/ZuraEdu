@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -10,6 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Docente extends Model
 {
+    use BelongsToTenant;
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
@@ -82,5 +85,10 @@ class Docente extends Model
     public function especialidadesCoordinadas(): HasMany
     {
         return $this->hasMany(EspecialidadTecnica::class, 'coordinador_id');
+    }
+
+    public function evaluaciones(): HasMany
+    {
+        return $this->hasMany(EvaluacionDocente::class);
     }
 }

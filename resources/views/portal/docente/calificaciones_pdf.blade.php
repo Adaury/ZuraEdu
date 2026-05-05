@@ -74,7 +74,7 @@
             @foreach($periodos as $p)
                 @if($esTecnica)
                     @php $nota = $calMap[$mat->id . '_' . $p->id]?->first()?->nota_final ?? null; @endphp
-                    <td class="{{ $nota !== null && $nota < 60 ? 'nota-bad' : ($nota !== null && $nota >= 90 ? 'nota-ok' : '') }}">
+                    <td class="{{ $nota !== null && $nota < 70 ? 'nota-bad' : ($nota !== null && $nota >= 90 ? 'nota-ok' : '') }}">
                         {{ $nota ?? '—' }}
                     </td>
                 @else
@@ -84,12 +84,12 @@
                     <td>{{ $cal?->{"p{$pn}_c3"} ?? '—' }}</td>
                     <td>{{ $cal?->{"p{$pn}_c4"} ?? '—' }}</td>
                     @php $pr = $cal?->{"p{$pn}_prom"} ?? null; @endphp
-                    <td class="{{ $pr !== null && $pr < 60 ? 'nota-bad' : ($pr !== null && $pr >= 90 ? 'nota-ok' : '') }}">
+                    <td class="{{ $pr !== null && $pr < 70 ? 'nota-bad' : ($pr !== null && $pr >= 90 ? 'nota-ok' : '') }}">
                         {{ $pr ?? '—' }}
                     </td>
                 @endif
             @endforeach
-            <td class="{{ $promFinal !== null && $promFinal < 60 ? 'nota-bad' : ($promFinal !== null && $promFinal >= 90 ? 'nota-ok' : '') }}">
+            <td class="{{ $promFinal !== null && $promFinal < 70 ? 'nota-bad' : ($promFinal !== null && $promFinal >= 90 ? 'nota-ok' : '') }}">
                 {{ $promFinal ?? '—' }}
             </td>
         </tr>

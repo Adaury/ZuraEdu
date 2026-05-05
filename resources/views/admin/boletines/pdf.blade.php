@@ -691,6 +691,7 @@ body {
             @foreach($periodos as $p)
                 <th style="width:40px;">{{ $p->nombre_corto ?? 'P'.$p->numero }}</th>
             @endforeach
+            <th style="width:38px;background:#0f4c81;color:#fff;font-size:6.5pt;font-weight:800;padding:5px 3px;text-align:center;">Prog.</th>
             <th class="th-prom" style="width:56px;">Prom.<br>Anual</th>
             <th class="th-prom" style="width:70px;">Indicador</th>
         </tr>
@@ -702,6 +703,7 @@ body {
             $ind  = $row['indicador'] ?? null;
             $pCls = $gc($pAn);
             $iCls = $ic($ind);
+            $pg   = $progreso[$row['asignacion']->id] ?? null;
         @endphp
         <tr>
             <td class="td-mat">{{ $row['asignatura'] }}</td>
@@ -713,6 +715,19 @@ body {
             @endphp
             <td class="{{ $cls }}">{{ $nota !== null ? number_format($nota,1) : '—' }}</td>
             @endforeach
+            <td style="text-align:center;font-size:7.5pt;font-weight:800;">
+                @if($pg)
+                    @if($pg['direccion']==='sube')
+                        <span style="color:#15803d;">↑{{ abs($pg['diff']) }}</span>
+                    @elseif($pg['direccion']==='baja')
+                        <span style="color:#dc2626;">↓{{ abs($pg['diff']) }}</span>
+                    @else
+                        <span style="color:#9ca3af;">—</span>
+                    @endif
+                @else
+                    <span style="color:#d1d5db;">—</span>
+                @endif
+            </td>
             <td class="{{ $pCls }}" style="font-weight:800;">
                 {{ $pAn !== null ? number_format($pAn,1) : '—' }}
             </td>
@@ -967,13 +982,20 @@ body {
 {{-- ══════════════════════════════════════════════════════════
      8. PIE DE PÁGINA
 ══════════════════════════════════════════════════════════ --}}
+@php
+    $rankP = $rankingGrupo['puesto'] ?? null;
+    $rankT = $rankingGrupo['total'] ?? null;
+    $verifyCode = strtoupper(substr(md5($matricula->id . $periodo->id . $schoolYear?->id), 0, 10));
+@endphp
 <div class="footer-bar">
     {{ $inst }}
     @if($boletinConfig && $boletinConfig->codigo)
-        &nbsp;·&nbsp; Código: {{ $boletinConfig->codigo }}
+        &nbsp;·&nbsp; Código CE: {{ $boletinConfig->codigo }}
     @endif
     &nbsp;·&nbsp; Año Escolar: {{ $schoolYear ? $schoolYear->nombre : '—' }}
-    &nbsp;·&nbsp; Generado el {{ now()->format('d/m/Y') }}
+    @if($rankP) &nbsp;·&nbsp; Puesto {{ $rankP }} de {{ $rankT }} @endif
+    &nbsp;·&nbsp; Generado: {{ now()->format('d/m/Y') }}
+    &nbsp;·&nbsp; Verificación: <strong>{{ $verifyCode }}</strong>
     @if($boletinConfig && $boletinConfig->pie_pagina)
         &nbsp;·&nbsp; {{ $boletinConfig->pie_pagina }}
     @endif

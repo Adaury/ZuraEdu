@@ -184,8 +184,8 @@
         <span class="badge" style="background:#ffe4e6;color:#9f1239;border:1px solid #fecdd3;">■ Competencia 4</span>
         <span class="badge" style="background:#fef3c7;color:#92400e;">Completivo = 50%CF + 50%CEC</span>
         <span class="badge" style="background:#fee2e2;color:#991b1b;">Extraordinario = 30%CF + 70%CEX</span>
-        <span class="badge" style="background:#dcfce7;color:#15803d;">A = Aprobado (≥60)</span>
-        <span class="badge" style="background:#fee2e2;color:#991b1b;">R = Reprobado (&lt;60)</span>
+        <span class="badge" style="background:#dcfce7;color:#15803d;">A = Aprobado (≥70)</span>
+        <span class="badge" style="background:#fee2e2;color:#991b1b;">R = Reprobado (&lt;70)</span>
     </div>
     <div class="d-flex align-items-center gap-2">
         <span class="unsaved-dot" id="unsaved-dot">
@@ -590,7 +590,7 @@ function colorNi(inp) {
     if (isNaN(v)) { _tip(inp,'Solo números'); return; }
     if (v < 0 || v > 100) { _tip(inp, v<0?'Mín 0':'Máx 100'); return; }
     if      (v >= 80) { inp.style.background='#dcfce7'; inp.style.color='#15803d'; }
-    else if (v >= 60) { inp.style.background='#fef9c3'; inp.style.color='#854d0e'; }
+    else if (v >= 70) { inp.style.background='#fef9c3'; inp.style.color='#854d0e'; }
     else              { inp.style.background='#fee2e2'; inp.style.color='#991b1b'; }
     marcarPendiente();
 }
@@ -614,7 +614,7 @@ function colorCc(el, val) {
     } else {
         el.classList.remove('c-nil','c-ok','c-mid','c-bad');
         if      (val >= 80) el.classList.add('c-ok');
-        else if (val >= 60) el.classList.add('c-mid');
+        else if (val >= 70) el.classList.add('c-mid');
         else                el.classList.add('c-bad');
     }
 }

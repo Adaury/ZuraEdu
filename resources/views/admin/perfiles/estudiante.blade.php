@@ -104,6 +104,10 @@
 
             {{-- Accesos rápidos a portales --}}
             <div class="mt-3 d-flex flex-column gap-2">
+                <a href="{{ route('admin.perfiles.estudiante.historial-academico', $estudiante) }}"
+                   class="btn btn-sm" style="background:#1d4ed8;color:#fff;border-radius:8px;">
+                    <i class="bi bi-clock-history me-1"></i>Historial Multi-año
+                </a>
                 <a href="{{ route('admin.perfiles.estudiante.informe-pdf', $estudiante) }}" target="_blank"
                    class="btn btn-sm" style="background:#1e3a6e;color:#fff;border-radius:8px;">
                     <i class="bi bi-file-earmark-person me-1"></i>Informe PDF
@@ -119,6 +123,10 @@
                 <a href="{{ route('admin.perfiles.estudiante.certificado-conducta', $estudiante) }}" target="_blank"
                    class="btn btn-sm btn-outline-success">
                     <i class="bi bi-award me-1"></i>Cert. Conducta
+                </a>
+                <a href="{{ route('admin.reconocimientos.historial-estudiante', $estudiante) }}"
+                   class="btn btn-sm" style="background:#7c3aed;color:#fff;border-radius:8px;">
+                    <i class="bi bi-trophy me-1"></i>Ver Reconocimientos
                 </a>
                 <a href="{{ route('portal.representante', $estudiante) }}" target="_blank"
                    class="btn btn-sm" style="background:#1d4ed8;color:#fff;border-radius:8px;">

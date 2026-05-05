@@ -1,6 +1,6 @@
-@extends('layouts.admin')
+﻿@extends('layouts.admin')
 
-@section('title', 'Editor de Página Principal')
+@section('page-title', 'Editor de Página Principal')
 
 @section('content')
 <div class="container-fluid px-4">

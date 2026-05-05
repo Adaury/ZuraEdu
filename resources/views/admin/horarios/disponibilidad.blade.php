@@ -1,6 +1,6 @@
-@extends('layouts.admin')
+﻿@extends('layouts.admin')
 
-@section('title', 'Disponibilidad Docentes')
+@section('page-title', 'Disponibilidad Docentes')
 
 @section('content')
 <x-breadcrumb :items="[

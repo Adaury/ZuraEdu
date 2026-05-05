@@ -134,7 +134,7 @@ tbody td.left { text-align: left; }
             <td>{{ $cal->comp1_p2 ?? '—' }}</td>
             <td>{{ $cal->comp1_p3 ?? '—' }}</td>
             <td>{{ $cal->comp1_p4 ?? '—' }}</td>
-            <td class="{{ $cal->nota_final !== null ? ($cal->nota_final >= 60 ? 'nota-ap' : 'nota-rep') : '' }}">
+            <td class="{{ $cal->nota_final !== null ? ($cal->nota_final >= 70 ? 'nota-ap' : 'nota-rep') : '' }}">
                 {{ $cal->nota_final !== null ? number_format($cal->nota_final, 1) : '—' }}
             </td>
             <td>

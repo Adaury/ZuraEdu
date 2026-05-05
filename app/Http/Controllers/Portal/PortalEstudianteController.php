@@ -8,15 +8,23 @@ use App\Models\Asistencia;
 use App\Models\CalificacionAcademica;
 use App\Models\Calificacion;
 use App\Models\Comunicado;
+use App\Models\Encuesta;
+use App\Models\Evento;
 use App\Models\FranjaHoraria;
 use App\Models\Horario;
 use App\Models\HorarioDetalle;
+use App\Models\InscripcionEvento;
+use App\Models\IntegranteProyecto;
 use App\Models\Matricula;
 use App\Models\Notificacion;
 use App\Models\Observacion;
 use App\Models\Periodo;
 use App\Models\Planificacion;
+use App\Models\InsigniaEstudiante;
+use App\Models\ProyectoEscolar;
+use App\Models\PuntoEstudiante;
 use App\Models\RecursoMateria;
+use App\Models\RespuestaEncuesta;
 use App\Models\SchoolYear;
 use Illuminate\Http\Request;
 
@@ -128,12 +136,59 @@ class PortalEstudianteController extends Controller
                 ->get()
             : collect();
 
+        // ZuraClass — resumen para el estudiante
+        $zuraClasesData = null;
+        if ($matricula) {
+            $misClases = \App\Models\ClaseVirtual::with(['asignacion.asignatura', 'asignacion.docente'])
+                ->whereHas('asignacion', fn($q) =>
+                    $q->where('grupo_id', $matricula->grupo_id)
+                      ->where('school_year_id', $matricula->school_year_id)
+                      ->where('activo', true)
+                )
+                ->where('activo', true)
+                ->get();
+
+            // Tareas pendientes
+            $tareasPendientes = [];
+            $tareasVencidas   = 0;
+            foreach ($misClases as $clase) {
+                $materiales = $clase->materialesPublicados()
+                    ->whereIn('tipo', ['tarea', 'evaluacion'])
+                    ->whereDoesntHave('entregas', fn($q) =>
+                        $q->where('matricula_id', $matricula->id)
+                          ->whereIn('estado', ['entregado', 'calificado', 'atrasado'])
+                    )->get();
+                foreach ($materiales as $mat) {
+                    if ($mat->estaVencido()) {
+                        $tareasVencidas++;
+                    } else {
+                        $tareasPendientes[] = [
+                            'titulo'       => $mat->titulo,
+                            'clase'        => $clase->nombre,
+                            'asignatura'   => $clase->asignacion?->asignatura?->nombre,
+                            'fecha_limite' => $mat->fecha_limite,
+                            'clase_id'     => $clase->id,
+                            'material_id'  => $mat->id,
+                        ];
+                    }
+                }
+            }
+            usort($tareasPendientes, fn($a,$b) => $a['fecha_limite'] <=> $b['fecha_limite']);
+
+            $zuraClasesData = [
+                'totalClases'      => $misClases->count(),
+                'tareasPendientes' => array_slice($tareasPendientes, 0, 5),
+                'totalPendientes'  => count($tareasPendientes),
+                'tareasVencidas'   => $tareasVencidas,
+            ];
+        }
+
         return view('portal.estudiante.dashboard', compact(
             'estudiante', 'schoolYear', 'matricula', 'periodos',
             'calificaciones', 'calificacionesAcademicas', 'promedioGeneral',
             'resumenAsistencia', 'gridHorario', 'franjasHorario', 'horarioActivo', 'diasConfig',
             'comunicados', 'notificaciones', 'totalNoLeidas', 'observaciones',
-            'asignaciones', 'eventosCalendario'
+            'asignaciones', 'eventosCalendario', 'zuraClasesData'
         ));
     }
 
@@ -249,7 +304,7 @@ class PortalEstudianteController extends Controller
                     if ($notaPeriodo !== null) $notasValidas[] = $notaPeriodo;
                 }
                 $promedio  = count($notasValidas) ? round(array_sum($notasValidas) / count($notasValidas), 2) : null;
-                $situacion = $promedio !== null ? ($promedio >= 65 ? 'A' : 'R') : null;
+                $situacion = $promedio !== null ? ($promedio >= 70 ? 'A' : 'R') : null;
             } else {
                 $cal = $calificacionesAcademicas->get($asi->id);
                 foreach ($periodos as $p) {
@@ -1291,6 +1346,115 @@ class PortalEstudianteController extends Controller
         ])->deleteFileAfterSend(true);
     }
 
+    // ── Mis Logros ───────────────────────────────────────────────────────
+    public function logros()
+    {
+        $estudiante = $this->getEstudiante();
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->with(['grupo.grado', 'grupo.seccion'])
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()->first();
+
+        $logros = [];
+
+        // ── Asistencia Perfecta (≥ 95%) ──
+        $resumenAsist = $this->calcularResumenAsistencia($matricula);
+        $pctAsist = $resumenAsist['porcentaje'];
+        $logros['asistencia_perfecta'] = [
+            'titulo'      => 'Asistencia Perfecta',
+            'descripcion' => 'Mantiene un porcentaje de asistencia del 95% o más.',
+            'icono'       => 'bi-calendar-check-fill',
+            'obtenido'    => $pctAsist !== null && $pctAsist >= 95,
+            'valor'       => $pctAsist !== null ? $pctAsist . '%' : null,
+        ];
+
+        // ── Estudiante Destacado (promedio ≥ 85) ──
+        $todasNotas = collect();
+        if ($matricula) {
+            $cals = Calificacion::with('periodo')
+                ->where('matricula_id', $matricula->id)
+                ->where('publicado', true)
+                ->whereNotNull('nota_final')
+                ->pluck('nota_final');
+
+            $calsAcad = CalificacionAcademica::where('matricula_id', $matricula->id)
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->whereNotNull('nota_final')
+                ->pluck('nota_final');
+
+            $todasNotas = $cals->merge($calsAcad)->filter();
+        }
+        $promedioGeneral = $todasNotas->count() ? round($todasNotas->avg(), 1) : null;
+        $logros['estudiante_destacado'] = [
+            'titulo'      => 'Estudiante Destacado',
+            'descripcion' => 'Promedio general de 85 puntos o más.',
+            'icono'       => 'bi-star-fill',
+            'obtenido'    => $promedioGeneral !== null && $promedioGeneral >= 85,
+            'valor'       => $promedioGeneral,
+        ];
+
+        // ── Mejora Continua (P2 > P1 o P3 > P2) ──
+        $mejoraContinua = false;
+        $detalleMejora  = null;
+        if ($matricula && $schoolYear) {
+            $periodos = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+            $promediosPorPeriodo = [];
+
+            foreach ($periodos as $periodo) {
+                $notas = Calificacion::where('matricula_id', $matricula->id)
+                    ->where('periodo_id', $periodo->id)
+                    ->where('publicado', true)
+                    ->whereNotNull('nota_final')
+                    ->pluck('nota_final');
+                if ($notas->count()) {
+                    $promediosPorPeriodo[$periodo->numero] = round($notas->avg(), 1);
+                }
+            }
+
+            $numeros = array_keys($promediosPorPeriodo);
+            sort($numeros);
+            for ($i = 1; $i < count($numeros); $i++) {
+                $prev = $promediosPorPeriodo[$numeros[$i - 1]];
+                $curr = $promediosPorPeriodo[$numeros[$i]];
+                if ($curr > $prev) {
+                    $mejoraContinua = true;
+                    $detalleMejora  = "P{$numeros[$i-1]}: {$prev} → P{$numeros[$i]}: {$curr}";
+                    break;
+                }
+            }
+        }
+        $logros['mejora_continua'] = [
+            'titulo'      => 'Mejora Continua',
+            'descripcion' => 'El promedio de un período supera al anterior (P2 > P1 o P3 > P2).',
+            'icono'       => 'bi-graph-up-arrow',
+            'obtenido'    => $mejoraContinua,
+            'valor'       => $detalleMejora,
+        ];
+
+        // ── Sin Faltas Disciplinarias ──
+        $sinFaltas = true;
+        if ($matricula) {
+            $hayFaltas = \DB::table('faltas_disciplinarias')
+                ->where('matricula_id', $matricula->id)
+                ->exists();
+            $sinFaltas = ! $hayFaltas;
+        }
+        $logros['sin_faltas'] = [
+            'titulo'      => 'Sin Faltas Disciplinarias',
+            'descripcion' => 'No registra faltas disciplinarias en el período actual.',
+            'icono'       => 'bi-shield-check',
+            'obtenido'    => $sinFaltas,
+            'valor'       => null,
+        ];
+
+        return view('portal.estudiante.logros', compact(
+            'estudiante', 'schoolYear', 'matricula', 'logros', 'promedioGeneral'
+        ));
+    }
+
     private function cargarHorario($matricula, $schoolYear): array
     {
         $grid    = [];
@@ -1321,5 +1485,313 @@ class PortalEstudianteController extends Controller
         }
 
         return [$grid, $franjas, $horario, $dias];
+    }
+
+    // ── Encuestas disponibles para el estudiante ─────────────────────────
+    public function encuestas()
+    {
+        $encuestas = Encuesta::activas()
+            ->dirigidaA('estudiantes')
+            ->withCount('preguntas')
+            ->latest()
+            ->get()
+            ->map(function ($encuesta) {
+                $encuesta->_ya_respondio = $encuesta->yaRespondio(auth()->id());
+                return $encuesta;
+            });
+
+        return view('portal.estudiante.encuestas', compact('encuestas'));
+    }
+
+    // ── Mostrar formulario de respuesta (GET) ─────────────────────────────
+    public function verEncuesta(Encuesta $encuesta)
+    {
+        abort_unless($encuesta->activo, 403, 'Esta encuesta no está disponible.');
+        abort_if($encuesta->fecha_cierre && $encuesta->fecha_cierre->isPast(), 403, 'La encuesta ha cerrado.');
+
+        if ($encuesta->yaRespondio(auth()->id())) {
+            return redirect()->route('portal.estudiante.encuestas')
+                             ->with('success', 'Ya has respondido esta encuesta anteriormente.');
+        }
+
+        $encuesta->load('preguntas.opciones');
+
+        return view('portal.estudiante.encuestas_responder', compact('encuesta'));
+    }
+
+    // ── Guardar respuestas (POST) ─────────────────────────────────────────
+    public function responderEncuesta(Request $request, Encuesta $encuesta)
+    {
+        abort_unless($encuesta->activo, 403, 'Esta encuesta no está disponible.');
+        abort_if($encuesta->fecha_cierre && $encuesta->fecha_cierre->isPast(), 403, 'La encuesta ha cerrado.');
+        abort_if($encuesta->yaRespondio(auth()->id()), 403, 'Ya respondiste esta encuesta.');
+
+        $encuesta->load('preguntas.opciones');
+
+        $rules = [];
+        foreach ($encuesta->preguntas as $pregunta) {
+            if ($pregunta->tipo === 'opcion_multiple') {
+                $rules["respuestas.{$pregunta->id}.opcion_id"] = "required|exists:opciones_pregunta,id";
+            } elseif ($pregunta->tipo === 'escala_1_5') {
+                $rules["respuestas.{$pregunta->id}.escala_valor"] = "required|integer|min:1|max:5";
+            } else {
+                $rules["respuestas.{$pregunta->id}.respuesta_texto"] = "required|string|max:1000";
+            }
+        }
+
+        $validated = $request->validate($rules);
+
+        foreach ($encuesta->preguntas as $pregunta) {
+            $dato = $validated['respuestas'][$pregunta->id] ?? [];
+            RespuestaEncuesta::create([
+                'encuesta_id'     => $encuesta->id,
+                'pregunta_id'     => $pregunta->id,
+                'user_id'         => auth()->id(),
+                'opcion_id'       => $dato['opcion_id'] ?? null,
+                'escala_valor'    => isset($dato['escala_valor']) ? (int) $dato['escala_valor'] : null,
+                'respuesta_texto' => $dato['respuesta_texto'] ?? null,
+            ]);
+        }
+
+        return redirect()->route('portal.estudiante.encuestas')
+                         ->with('success', '¡Gracias por participar! Tus respuestas han sido registradas.');
+    }
+
+    // ── Mis Documentos ───────────────────────────────────────────────────
+    public function misDocumentos()
+    {
+        $estudiante = $this->getEstudiante();
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->with(['grupo.grado', 'grupo.seccion'])
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()
+            ->first();
+
+        // Períodos del año escolar actual (para boletines por período)
+        $periodos = $schoolYear
+            ? Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
+            : collect();
+
+        return view('portal.estudiante.mis_documentos', compact(
+            'estudiante', 'schoolYear', 'matricula', 'periodos'
+        ));
+    }
+
+    // ── Eventos del centro ───────────────────────────────────────────────────
+    public function eventos()
+    {
+        $estudiante = $this->getEstudiante();
+
+        $eventos = Evento::activos()
+            ->withCount('inscripciones')
+            ->orderBy('fecha_inicio')
+            ->get()
+            ->map(function (Evento $evento) use ($estudiante) {
+                $evento->_inscrito = InscripcionEvento::where('evento_id', $evento->id)
+                    ->where('estudiante_id', $estudiante->id)
+                    ->exists();
+
+                $evento->_cupos_disponibles = is_null($evento->cupo_maximo)
+                    ? null
+                    : max(0, $evento->cupo_maximo - $evento->inscripciones_count);
+
+                $evento->_lleno = ! is_null($evento->cupo_maximo)
+                    && $evento->inscripciones_count >= $evento->cupo_maximo;
+
+                return $evento;
+            });
+
+        return view('portal.estudiante.eventos', compact('estudiante', 'eventos'));
+    }
+
+    // ── Inscribirse en un evento (POST) ──────────────────────────────────────
+    public function inscribirseEvento(Request $request, Evento $evento)
+    {
+        $estudiante = $this->getEstudiante();
+
+        abort_unless($evento->activo, 403, 'Este evento no está disponible.');
+
+        $yaInscrito = InscripcionEvento::where('evento_id', $evento->id)
+            ->where('estudiante_id', $estudiante->id)
+            ->exists();
+
+        if ($yaInscrito) {
+            return back()->with('info', 'Ya estás inscrito en este evento.');
+        }
+
+        if (! is_null($evento->cupo_maximo)) {
+            $inscritos = InscripcionEvento::where('evento_id', $evento->id)->count();
+            if ($inscritos >= $evento->cupo_maximo) {
+                return back()->with('error', 'Lo sentimos, el evento ya no tiene cupo disponible.');
+            }
+        }
+
+        InscripcionEvento::create([
+            'evento_id'         => $evento->id,
+            'estudiante_id'     => $estudiante->id,
+            'fecha_inscripcion' => now()->toDateString(),
+            'asistio'           => false,
+        ]);
+
+        return back()->with('success', '¡Te has inscrito en "' . $evento->nombre . '" exitosamente!');
+    }
+
+    // ── Proyectos escolares ──────────────────────────────────────────────────
+    public function proyectos()
+    {
+        $estudiante = $this->getEstudiante();
+        $schoolYear = SchoolYear::actual();
+
+        // Proyectos donde el estudiante es integrante
+        $misProyectos = ProyectoEscolar::with(['fases', 'integrantes.estudiante', 'tutor', 'schoolYear'])
+            ->whereHas('integrantes', fn($q) => $q->where('estudiante_id', $estudiante->id))
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function (ProyectoEscolar $proyecto) use ($estudiante) {
+                $integrante = $proyecto->integrantes->firstWhere('estudiante_id', $estudiante->id);
+                $proyecto->_rol       = $integrante?->rol ?? 'integrante';
+                $proyecto->_rol_label = $integrante?->rol_label ?? 'Integrante';
+                return $proyecto;
+            });
+
+        // Proyectos del año actual donde NO es integrante (para explorar)
+        $todosProyectos = ProyectoEscolar::with(['fases', 'integrantes', 'tutor'])
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->whereNotIn('id', $misProyectos->pluck('id'))
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function (ProyectoEscolar $proyecto) {
+                $proyecto->_rol       = null;
+                $proyecto->_rol_label = null;
+                return $proyecto;
+            });
+
+        return view('portal.estudiante.proyectos', compact(
+            'estudiante', 'schoolYear', 'misProyectos', 'todosProyectos'
+        ));
+    }
+
+    // ── Mis Tareas ────────────────────────────────────────────────────────
+    public function tareas()
+    {
+        $estudiante = $this->getEstudiante();
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->with(['grupo'])
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()
+            ->first();
+
+        if (! $matricula) {
+            return view('portal.estudiante.tareas', [
+                'tareas'    => collect(),
+                'entregas'  => collect(),
+                'estudiante'=> $estudiante,
+            ]);
+        }
+
+        // Asignaciones activas del grupo
+        $asignaciones = \App\Models\Asignacion::with('asignatura')
+            ->where('grupo_id', $matricula->grupo_id)
+            ->where('activo', true)
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->get();
+
+        $asignacionIds = $asignaciones->pluck('id');
+
+        // Tareas activas de esas asignaciones
+        $tareas = \App\Models\Tarea::with('asignacion.asignatura')
+            ->whereIn('asignacion_id', $asignacionIds)
+            ->where('activo', true)
+            ->orderBy('fecha_limite')
+            ->get();
+
+        // Entregas del estudiante
+        $entregas = \App\Models\EntregaTarea::where('estudiante_id', $estudiante->id)
+            ->whereIn('tarea_id', $tareas->pluck('id'))
+            ->get()
+            ->keyBy('tarea_id');
+
+        return view('portal.estudiante.tareas', compact('tareas', 'entregas', 'estudiante'));
+    }
+
+    // ── Mis Puntos (Gamificación) ────────────────────────────────────────
+    public function misPuntos()
+    {
+        $estudiante = $this->getEstudiante();
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->with(['grupo.grado', 'grupo.seccion'])
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()
+            ->first();
+
+        // ── Total de puntos y desglose por categoría ──────────────────
+        $totalPuntos = 0;
+        $historial   = collect();
+        $puntosCategoria = [];
+        $insigniasObtenidas = collect();
+        $ranking = collect();
+        $miPosicion = null;
+
+        if ($matricula) {
+            $totalPuntos = PuntoEstudiante::where('matricula_id', $matricula->id)->sum('puntos');
+
+            $historial = PuntoEstudiante::where('matricula_id', $matricula->id)
+                ->orderByDesc('fecha')
+                ->orderByDesc('id')
+                ->limit(50)
+                ->get();
+
+            // Desglose por categoría
+            foreach (PuntoEstudiante::CATEGORIAS as $cat => $info) {
+                $puntosCategoria[$cat] = PuntoEstudiante::where('matricula_id', $matricula->id)
+                    ->where('categoria', $cat)
+                    ->sum('puntos');
+            }
+
+            // Insignias obtenidas
+            $insigniasObtenidas = InsigniaEstudiante::where('matricula_id', $matricula->id)->get()->keyBy('tipo');
+
+            // Ranking del grupo (top 10)
+            $matriculasGrupo = Matricula::with('estudiante')
+                ->where('grupo_id', $matricula->grupo_id)
+                ->where('estado', 'activa')
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->get();
+
+            $ranking = $matriculasGrupo->map(function (Matricula $m) {
+                return [
+                    'matricula_id' => $m->id,
+                    'nombre'       => $m->estudiante?->nombre_completo ?? '—',
+                    'total'        => PuntoEstudiante::where('matricula_id', $m->id)->sum('puntos'),
+                ];
+            })->sortByDesc('total')->values()->take(10);
+
+            // Posición del estudiante en el grupo
+            $allRanking = $matriculasGrupo->map(function (Matricula $m) {
+                return [
+                    'matricula_id' => $m->id,
+                    'total'        => PuntoEstudiante::where('matricula_id', $m->id)->sum('puntos'),
+                ];
+            })->sortByDesc('total')->values();
+
+            $miPosicion = $allRanking->search(fn($r) => $r['matricula_id'] === $matricula->id);
+            $miPosicion = $miPosicion !== false ? $miPosicion + 1 : null;
+        }
+
+        return view('portal.estudiante.mis_puntos', compact(
+            'estudiante', 'schoolYear', 'matricula',
+            'totalPuntos', 'historial', 'puntosCategoria',
+            'insigniasObtenidas', 'ranking', 'miPosicion'
+        ));
     }
 }

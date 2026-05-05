@@ -78,12 +78,12 @@
         <select id="filtro-nota" onchange="filtrarEstudiantes()"
                 style="padding:.38rem .65rem;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.78rem;background:#fff;outline:none;color:#374151;">
             <option value="">Todas las notas</option>
-            <option value="aprobado">Aprobados (≥60)</option>
-            <option value="reprobado">Reprobados (&lt;60)</option>
+            <option value="aprobado">Aprobados (≥70)</option>
+            <option value="reprobado">Reprobados (&lt;70)</option>
             <option value="sin_nota">Sin nota</option>
             <option value="A">A (90-100)</option>
             <option value="B">B (75-89)</option>
-            <option value="C">C (60-74)</option>
+            <option value="C">C (70-74)</option>
         </select>
         <select id="filtro-asist" onchange="filtrarEstudiantes()"
                 style="padding:.38rem .65rem;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.78rem;background:#fff;outline:none;color:#374151;">
@@ -104,8 +104,8 @@
         <span class="dm-text-muted" style="font-size:.72rem;color:#64748b;font-weight:600;">Leyenda:</span>
         <span class="nota-badge nota-a" style="font-size:.68rem;">A (90-100)</span>
         <span class="nota-badge nota-b" style="font-size:.68rem;">B (75-89)</span>
-        <span class="nota-badge nota-c" style="font-size:.68rem;">C (60-74)</span>
-        <span class="nota-badge nota-f" style="font-size:.68rem;">F (&lt;60)</span>
+        <span class="nota-badge nota-c" style="font-size:.68rem;">C (70-74)</span>
+        <span class="nota-badge nota-f" style="font-size:.68rem;">F (&lt;70)</span>
     </div>
 
     <div id="lista-estudiantes" style="padding:0;">
@@ -118,7 +118,7 @@
             $nota   = $m->_nota;
             $letra  = $m->_letra;
             $asist  = $m->_asist;
-            $notaClass = $nota === null ? '' : ($nota >= 90 ? 'nota-a' : ($nota >= 75 ? 'nota-b' : ($nota >= 60 ? 'nota-c' : 'nota-f')));
+            $notaClass = $nota === null ? '' : ($nota >= 90 ? 'nota-a' : ($nota >= 75 ? 'nota-b' : ($nota >= 70 ? 'nota-c' : 'nota-f')));
             $asistColor = $asist === null ? '#9ca3af' : ($asist >= 80 ? '#15803d' : ($asist >= 60 ? '#d97706' : '#dc2626'));
         @endphp
         <div class="dm-list-item est-item"
@@ -222,12 +222,12 @@ function filtrarEstudiantes() {
 
         // Note filter
         let matchNota = true;
-        if (fnota === 'aprobado')  matchNota = nota !== null && nota >= 60;
-        else if (fnota === 'reprobado') matchNota = nota !== null && nota < 60;
+        if (fnota === 'aprobado')  matchNota = nota !== null && nota >= 70;
+        else if (fnota === 'reprobado') matchNota = nota !== null && nota < 70;
         else if (fnota === 'sin_nota')  matchNota = nota === null;
         else if (fnota === 'A')   matchNota = nota !== null && nota >= 90;
         else if (fnota === 'B')   matchNota = nota !== null && nota >= 75 && nota < 90;
-        else if (fnota === 'C')   matchNota = nota !== null && nota >= 60 && nota < 75;
+        else if (fnota === 'C')   matchNota = nota !== null && nota >= 70 && nota < 75;
 
         // Attendance filter
         let matchAsist = true;

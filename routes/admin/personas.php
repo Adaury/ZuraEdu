@@ -86,4 +86,6 @@ Route::get('perfiles/estudiantes/{estudiante}/certificado-notas', [PerfilEstudia
 Route::get('perfiles/estudiantes/{estudiante}/asistencia-pdf',     [PerfilEstudianteController::class, 'asistenciaPdf'])->name('perfiles.estudiante.asistencia-pdf');
 Route::get('perfiles/estudiantes/{estudiante}/asistencia-excel',   [PerfilEstudianteController::class, 'asistenciaExcel'])->name('perfiles.estudiante.asistencia-excel');
 Route::get('perfiles/estudiantes/{estudiante}/certificado-conducta',[PerfilEstudianteController::class, 'certificadoConducta'])->name('perfiles.estudiante.certificado-conducta');
+Route::get('perfiles/estudiantes/{estudiante}/historial-academico', [PerfilEstudianteController::class, 'historialAcademico'])->name('perfiles.estudiante.historial-academico');
+Route::get('perfiles/estudiantes/{estudiante}/historial-pdf',       [PerfilEstudianteController::class, 'historialPdf'])->name('perfiles.estudiante.historial-pdf');
 Route::get('estudiantes/{estudiante}/ficha-pdf',            [EstudianteController::class,        'fichaPdf'])->name('estudiantes.ficha-pdf');

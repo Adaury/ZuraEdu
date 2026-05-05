@@ -1,6 +1,6 @@
-@extends('layouts.admin')
+﻿@extends('layouts.admin')
 
-@section('title', $plan->titulo)
+@section('page-title', $plan->titulo)
 
 @section('content')
 <div class="container-fluid px-4">

@@ -1,0 +1,43 @@
+<?php
+
+namespace App\Http\Requests\Admin;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class UpdateDocenteRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()->hasAnyRole(['Administrador', 'Director', 'Coordinador Académico']);
+    }
+
+    public function rules(): array
+    {
+        $id = $this->route('docente')?->id ?? $this->route('docente');
+
+        return [
+            'cedula'           => "nullable|string|max:20|unique:docentes,cedula,{$id}",
+            'nombres'          => 'required|string|min:2|max:100',
+            'apellidos'        => 'required|string|min:2|max:100',
+            'fecha_nacimiento' => 'nullable|date|before:today',
+            'sexo'             => 'nullable|in:M,F',
+            'telefono'         => 'nullable|string|max:20',
+            'email'            => "nullable|email|max:150|unique:docentes,email,{$id}",
+            'direccion'        => 'nullable|string|max:500',
+            'especialidad'     => 'nullable|string|max:100',
+            'titulo_academico' => 'nullable|string|max:150',
+            'foto'             => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'estado'           => 'required|in:activo,inactivo',
+            'area'             => 'required|in:tecnica,administrativa,otro',
+            'cargo'            => 'nullable|string|max:150',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'cedula.unique' => 'Esta cédula ya está registrada en otro docente.',
+            'email.unique'  => 'Este correo ya está registrado para otro docente.',
+        ];
+    }
+}

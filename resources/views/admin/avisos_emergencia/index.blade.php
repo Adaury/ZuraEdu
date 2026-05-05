@@ -57,6 +57,7 @@
                             <th class="text-center px-5 py-3.5 font-semibold text-gray-600 dark:text-gray-300">Enviados</th>
                             <th class="text-left px-5 py-3.5 font-semibold text-gray-600 dark:text-gray-300">Por</th>
                             <th class="text-left px-5 py-3.5 font-semibold text-gray-600 dark:text-gray-300">Fecha</th>
+                            <th class="px-5 py-3.5"></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -98,6 +99,26 @@
                                 <td class="px-5 py-4 text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs">
                                     {{ $aviso->created_at->format('d/m/Y') }}<br>
                                     <span class="text-gray-400">{{ $aviso->created_at->format('H:i') }}</span>
+                                </td>
+
+                                {{-- Acciones --}}
+                                <td class="px-5 py-4 whitespace-nowrap text-right">
+                                    <div class="flex items-center justify-end gap-1">
+                                        <a href="{{ route('admin.avisos-emergencia.show', $aviso) }}"
+                                           class="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition"
+                                           title="Ver detalle">
+                                            <i class="bi bi-eye text-base"></i>
+                                        </a>
+                                        <form method="POST" action="{{ route('admin.avisos-emergencia.destroy', $aviso) }}"
+                                              onsubmit="return confirm('¿Eliminar este aviso del historial?')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit"
+                                                    class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                                                    title="Eliminar">
+                                                <i class="bi bi-trash text-base"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
 
                             </tr>

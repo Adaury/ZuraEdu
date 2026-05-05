@@ -42,6 +42,23 @@ class AvisoEmergenciaController extends Controller
         return view('admin.avisos_emergencia.create', compact('grupos', 'tipos', 'destinatarios'));
     }
 
+    // ── Detalle ───────────────────────────────────────────────────────────
+
+    public function show(AvisoEmergencia $aviso)
+    {
+        $aviso->load(['enviadoPor', 'grupo.grado', 'grupo.seccion']);
+        return view('admin.avisos_emergencia.show', compact('aviso'));
+    }
+
+    // ── Eliminar del historial ────────────────────────────────────────────
+
+    public function destroy(AvisoEmergencia $aviso)
+    {
+        $aviso->delete();
+        return redirect()->route('admin.avisos-emergencia.index')
+            ->with('success', 'Aviso eliminado del historial.');
+    }
+
     // ── Guardar y enviar ─────────────────────────────────────────────────
 
     public function store(Request $request)

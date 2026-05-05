@@ -8,6 +8,8 @@ use App\Http\Controllers\Portal\PortalDocenteController;
 use App\Http\Controllers\Portal\PlanificacionDocenteController;
 use App\Http\Controllers\Portal\PlanClaseDocenteController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\DemoAutoController;
 use App\Http\Controllers\Admin\DocenteSetupController;
 use App\Http\Controllers\PortalRepresentanteController;
 
@@ -27,9 +29,19 @@ use App\Http\Controllers\PortalRepresentanteController;
 
 Route::get('/', fn () => view('landing'))->name('landing');
 
+// ── Página de institución suspendida (accesible aunque el tenant no esté activo) ──
+Route::get('/suspended', fn () => view('tenant-suspended'))->name('tenant.suspended');
+
+// ── Onboarding / Registro de nuevas instituciones ─────────────────────────
+Route::get('/onboarding',  [OnboardingController::class, 'show'])->name('onboarding');
+Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store')->middleware('throttle:5,10');
+
+// ── Demo automática (admin completo con datos ficticios) ──────────────────
+Route::get('/demo', [DemoAutoController::class, 'enter'])->name('demo.auto')->middleware('throttle:20,1');
+
 Route::get('/demo/{rol}', [AuthController::class, 'demoLogin'])
     ->name('demo.login')
-    ->where('rol', 'admin|docente|padre|estudiante');
+    ->where('rol', 'docente|padre|estudiante');
 
 Route::get('/login',  [AuthController::class, 'showLogin'])->name('login')->middleware('guest');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post')->middleware('throttle:5,1');
@@ -75,6 +87,11 @@ Route::get('/portal/representante/{estudiante}', [PortalRepresentanteController:
 Route::get('/verificar-matricula',  [\App\Http\Controllers\VerificacionMatriculaController::class, 'index'])->name('verificar-matricula');
 Route::post('/verificar-matricula', [\App\Http\Controllers\VerificacionMatriculaController::class, 'buscar'])->name('verificar-matricula.buscar')->middleware('throttle:10,1');
 
+// ── Pre-matrícula pública (sin login) ────────────────────────────────────
+Route::get('/inscripcion',              [\App\Http\Controllers\PreMatriculaController::class, 'create'])->name('inscripcion');
+Route::post('/inscripcion',             [\App\Http\Controllers\PreMatriculaController::class, 'store'])->name('inscripcion.store')->middleware('throttle:5,1');
+Route::get('/inscripcion/confirmacion', [\App\Http\Controllers\PreMatriculaController::class, 'confirmacion'])->name('inscripcion.confirmacion');
+
 // ══════════════════════════════════════════════════════════════════════════
 //  PORTALES AUTENTICADOS (multi-rol)
 // ══════════════════════════════════════════════════════════════════════════
@@ -103,11 +120,39 @@ Route::prefix('portal/estudiante')->name('portal.estudiante.')->middleware(['aut
     Route::get('/planificaciones/pdf',   [PortalEstudianteController::class, 'planificacionesPdf'])->name('planificaciones.pdf');
     Route::get('/planificaciones/excel', [PortalEstudianteController::class, 'planificacionesExcel'])->name('planificaciones.excel');
     Route::get('/planificaciones',       [PortalEstudianteController::class, 'planificaciones'])->name('planificaciones');
+    Route::get('/logros',                [PortalEstudianteController::class, 'logros'])->name('logros');
+    Route::get('/tareas',                [PortalEstudianteController::class, 'tareas'])->name('tareas');
+    Route::get('/mis-documentos',        [PortalEstudianteController::class, 'misDocumentos'])->name('mis-documentos');
     Route::get('/asignacion/{asignacion}/recursos/pdf',   [PortalEstudianteController::class, 'recursosPdf'])->name('recursos.pdf');
     Route::get('/asignacion/{asignacion}/recursos/excel', [PortalEstudianteController::class, 'recursosExcel'])->name('recursos.excel');
     Route::get('/asignacion/{asignacion}/recursos',       [PortalEstudianteController::class, 'recursos'])->name('recursos');
     Route::patch('/notificaciones/{notificacion}/leer', [PortalEstudianteController::class, 'marcarNotificacionLeida'])->name('notif.leer');
     Route::post('/notificaciones/leer-todas',           [PortalEstudianteController::class, 'marcarTodasLeidas'])->name('notif.leer-todas');
+    Route::get('/encuestas',                            [PortalEstudianteController::class, 'encuestas'])->name('encuestas');
+    Route::get('/encuestas/{encuesta}',                 [PortalEstudianteController::class, 'verEncuesta'])->name('encuestas.responder');
+    Route::post('/encuestas/{encuesta}',                [PortalEstudianteController::class, 'responderEncuesta'])->name('encuestas.guardar');
+    Route::get('/eventos',                              [PortalEstudianteController::class, 'eventos'])->name('eventos');
+    Route::post('/eventos/{evento}/inscribirse',        [PortalEstudianteController::class, 'inscribirseEvento'])->name('eventos.inscribirse');
+    Route::get('/proyectos',                            [PortalEstudianteController::class, 'proyectos'])->name('proyectos');
+    Route::get('/mis-puntos',                           [PortalEstudianteController::class, 'misPuntos'])->name('mis-puntos');
+    Route::prefix('classroom')->name('classroom.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Portal\ClassroomEstudianteController::class, 'index'])->name('index');
+        Route::get('/tareas-pendientes', [\App\Http\Controllers\Portal\ClassroomEstudianteController::class, 'tareasPendientes'])->name('pendientes');
+        Route::get('/{claseVirtual}', [\App\Http\Controllers\Portal\ClassroomEstudianteController::class, 'show'])->name('show');
+        Route::post('/{claseVirtual}/material/{material}/entregar', [\App\Http\Controllers\Portal\ClassroomEstudianteController::class, 'entregarTarea'])->name('entregar');
+        Route::post('/{claseVirtual}/material/{material}/comentar', [\App\Http\Controllers\Portal\ClassroomEstudianteController::class, 'comentar'])->name('comentar');
+        // Chat — estudiante
+        Route::get('/{claseVirtual}/chat',              [\App\Http\Controllers\Portal\ClassroomChatController::class, 'index'])->name('chat.index');
+        Route::post('/{claseVirtual}/chat',             [\App\Http\Controllers\Portal\ClassroomChatController::class, 'store'])->name('chat.store');
+        Route::delete('/{claseVirtual}/chat/{message}', [\App\Http\Controllers\Portal\ClassroomChatController::class, 'destroy'])->name('chat.destroy');
+        // Quiz
+        Route::get('/{claseVirtual}/material/{material}/quiz', [\App\Http\Controllers\Portal\QuizEstudianteController::class, 'iniciar'])->name('quiz.iniciar');
+        Route::post('/{claseVirtual}/material/{material}/quiz/comenzar', [\App\Http\Controllers\Portal\QuizEstudianteController::class, 'comenzar'])->name('quiz.comenzar');
+        Route::get('/{claseVirtual}/material/{material}/quiz/{intento}', [\App\Http\Controllers\Portal\QuizEstudianteController::class, 'tomar'])->name('quiz.tomar');
+        Route::post('/quiz/{intento}/guardar', [\App\Http\Controllers\Portal\QuizEstudianteController::class, 'guardarRespuesta'])->name('quiz.guardar');
+        Route::post('/{claseVirtual}/material/{material}/quiz/{intento}/enviar', [\App\Http\Controllers\Portal\QuizEstudianteController::class, 'enviar'])->name('quiz.enviar');
+        Route::get('/{claseVirtual}/material/{material}/quiz/{intento}/resultado', [\App\Http\Controllers\Portal\QuizEstudianteController::class, 'resultado'])->name('quiz.resultado');
+    });
 });
 
 // ── Portal Padre / Representante ──────────────────────────────────────────
@@ -140,6 +185,12 @@ Route::prefix('portal/padre')->name('portal.padre.')->middleware(['auth', 'activ
     Route::get('/comunicados/excel',             [PortalPadreController::class, 'comunicadosExcel'])->name('comunicados.excel');
     Route::get('/comunicados',                   [PortalPadreController::class, 'comunicados'])->name('comunicados');
     Route::post('/notificaciones/leer-todas',    [PortalPadreController::class, 'marcarTodasLeidas'])->name('notif.leer-todas');
+    Route::get('/encuestas',                     [PortalPadreController::class, 'encuestas'])->name('encuestas');
+    Route::get('/encuestas/{encuesta}',          [PortalPadreController::class, 'verEncuesta'])->name('encuestas.responder');
+    Route::post('/encuestas/{encuesta}',         [PortalPadreController::class, 'responderEncuesta'])->name('encuestas.guardar');
+    Route::get('/hijo/{estudiante}/documentos',  [PortalPadreController::class, 'documentosHijo'])->name('hijo.documentos');
+    Route::get('/hijo/{estudiante}/classroom', [\App\Http\Controllers\Portal\ClassroomPadreController::class, 'index'])->name('hijo.classroom.index');
+    Route::get('/hijo/{estudiante}/classroom/{claseVirtual}', [\App\Http\Controllers\Portal\ClassroomPadreController::class, 'show'])->name('hijo.classroom.show');
 });
 
 // ── Portal Docente ────────────────────────────────────────────────────────
@@ -186,6 +237,55 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::get('/mis-planificaciones/pdf',     [PortalDocenteController::class, 'misPlanificacionesPdf'])->name('mis-planificaciones.pdf');
     Route::get('/mis-planificaciones/excel',   [PortalDocenteController::class, 'misPlanificacionesExcel'])->name('mis-planificaciones.excel');
     Route::get('/mis-planificaciones',         [PortalDocenteController::class, 'misPlanificaciones'])->name('mis-planificaciones');
+    Route::get('/mis-estadisticas',            [PortalDocenteController::class, 'misEstadisticas'])->name('mis-estadisticas');
+    Route::get('/mis-estudiantes',             [PortalDocenteController::class, 'misEstudiantes'])->name('mis-estudiantes');
+    Route::prefix('classroom')->name('classroom.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'index'])->name('index');
+        Route::get('/{claseVirtual}', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'show'])->name('show');
+        Route::get('/{claseVirtual}/personas', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'personas'])->name('personas');
+        Route::get('/{claseVirtual}/calificaciones', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'calificacionesResumen'])->name('calificaciones');
+        Route::get('/{claseVirtual}/recursos', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'recursos'])->name('recursos');
+        Route::post('/{claseVirtual}/recursos', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'guardarRecurso'])->name('recursos.guardar');
+        Route::delete('/{claseVirtual}/recursos/{recurso}', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'eliminarRecurso'])->name('recursos.eliminar');
+        Route::get('/{claseVirtual}/material/nuevo', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'crearMaterial'])->name('crear_material');
+        Route::post('/{claseVirtual}/material', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'guardarMaterial'])->name('guardar_material');
+        Route::get('/{claseVirtual}/material/{material}/editar', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'editarMaterial'])->name('editar_material');
+        Route::put('/{claseVirtual}/material/{material}', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'actualizarMaterial'])->name('actualizar_material');
+        Route::delete('/{claseVirtual}/material/{material}', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'eliminarMaterial'])->name('eliminar_material');
+        Route::get('/{claseVirtual}/material/{material}/entregas', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'verEntregas'])->name('entregas');
+        Route::get('/{claseVirtual}/material/{material}/entrega/{entrega}', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'verEntregaDetalle'])->name('entrega_detalle');
+        Route::patch('/{claseVirtual}/entrega/{entrega}/calificar', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'calificarEntrega'])->name('calificar_entrega');
+        Route::patch('/{claseVirtual}/entrega/{entrega}/devolver', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'devolverEntrega'])->name('devolver_entrega');
+        Route::post('/{claseVirtual}/material/{material}/archivo', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'subirArchivo'])->name('subir_archivo');
+        Route::delete('/{claseVirtual}/archivo/{archivo}', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'eliminarArchivo'])->name('eliminar_archivo');
+        Route::post('/{claseVirtual}/sincronizar-notas', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'sincronizarNotas'])->name('sincronizar_notas');
+        Route::post('/{claseVirtual}/generar-codigo', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'generarCodigo'])->name('generar_codigo');
+        // Meeting (Jitsi)
+        Route::post('/{claseVirtual}/meeting/iniciar',  [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'iniciarMeeting'])->name('meeting.iniciar');
+        Route::post('/{claseVirtual}/meeting/terminar', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'terminarMeeting'])->name('meeting.terminar');
+        // Chat — docente
+        Route::get('/{claseVirtual}/chat',              [\App\Http\Controllers\Portal\ClassroomChatController::class, 'index'])->name('chat.index');
+        Route::post('/{claseVirtual}/chat',             [\App\Http\Controllers\Portal\ClassroomChatController::class, 'store'])->name('chat.store');
+        Route::patch('/{claseVirtual}/chat/{message}/pin', [\App\Http\Controllers\Portal\ClassroomChatController::class, 'togglePin'])->name('chat.pin');
+        Route::delete('/{claseVirtual}/chat/{message}', [\App\Http\Controllers\Portal\ClassroomChatController::class, 'destroy'])->name('chat.destroy');
+        // Quiz management (docente)
+        Route::get('/{claseVirtual}/material/{material}/quiz/crear',      [\App\Http\Controllers\Portal\QuizDocenteController::class, 'crear'])->name('quiz.crear');
+        Route::post('/{claseVirtual}/material/{material}/quiz',           [\App\Http\Controllers\Portal\QuizDocenteController::class, 'guardar'])->name('quiz.guardar');
+        Route::get('/{claseVirtual}/material/{material}/quiz/editar',     [\App\Http\Controllers\Portal\QuizDocenteController::class, 'editar'])->name('quiz.editar');
+        Route::put('/{claseVirtual}/material/{material}/quiz',            [\App\Http\Controllers\Portal\QuizDocenteController::class, 'actualizar'])->name('quiz.actualizar');
+        Route::delete('/{claseVirtual}/material/{material}/quiz',         [\App\Http\Controllers\Portal\QuizDocenteController::class, 'eliminar'])->name('quiz.eliminar');
+        Route::get('/{claseVirtual}/material/{material}/quiz/resultados', [\App\Http\Controllers\Portal\QuizDocenteController::class, 'resultados'])->name('quiz.resultados');
+    });
+    Route::prefix('/asignacion/{asignacion}/tareas')->name('tareas.')->group(function () {
+        Route::get('/',                    [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'index'])->name('index');
+        Route::get('/crear',               [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'create'])->name('create');
+        Route::post('/',                   [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'store'])->name('store');
+        Route::get('/{tarea}/editar',      [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'edit'])->name('edit');
+        Route::put('/{tarea}',             [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'update'])->name('update');
+        Route::delete('/{tarea}',          [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'destroy'])->name('destroy');
+        Route::get('/{tarea}/entregas',    [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'entregas'])->name('entregas');
+        Route::patch('/{tarea}/calificar', [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'calificar'])->name('calificar');
+    });
     Route::post('/notificaciones/leer-todas',  [PortalDocenteController::class, 'marcarTodasLeidas'])->name('notif.leer-todas');
     Route::get('/notificaciones',              [PortalDocenteController::class, 'notificaciones'])->name('notificaciones');
     // Planes de Clase
@@ -238,10 +338,113 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.acc
     Route::get('/dashboard',       [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/stats', [DashboardController::class, 'statsJson'])->name('dashboard.stats');
 
+    // ── Módulos base (disponibles en todos los planes) ───────────────────────
+    require __DIR__ . '/admin/billing.php';
     require __DIR__ . '/admin/personas.php';
     require __DIR__ . '/admin/academico.php';
-    require __DIR__ . '/admin/horarios.php';
     require __DIR__ . '/admin/reportes.php';
     require __DIR__ . '/admin/sistema.php';
-    require __DIR__ . '/admin/pagos.php';
+    require __DIR__ . '/admin/exportacion_masiva.php';
+    require __DIR__ . '/admin/kpis.php';
+    require __DIR__ . '/admin/cierre_ano.php';
+    require __DIR__ . '/admin/importaciones.php';
+    require __DIR__ . '/admin/pre_matriculas.php';
+    require __DIR__ . '/admin/galeria.php';
+    require __DIR__ . '/admin/eventos.php';
+    require __DIR__ . '/admin/encuestas.php';
+    require __DIR__ . '/admin/avisos_emergencia.php';
+    require __DIR__ . '/admin/soporte.php';
+    require __DIR__ . '/admin/recursos.php';
+
+    // ── Plan Pro: módulos intermedios ─────────────────────────────────────────
+    Route::middleware('tenant.feature:horarios')->group(function () {
+        require __DIR__ . '/admin/horarios.php';
+    });
+    Route::middleware('tenant.feature:classroom')->group(function () {
+        require __DIR__ . '/admin/classroom.php';
+    });
+    Route::middleware('tenant.feature:disciplina')->group(function () {
+        require __DIR__ . '/admin/disciplina.php';
+    });
+    Route::middleware('tenant.feature:tutorias')->group(function () {
+        require __DIR__ . '/admin/tutorias.php';
+    });
+    Route::middleware('tenant.feature:seguimiento_social')->group(function () {
+        require __DIR__ . '/admin/seguimiento_social.php';
+    });
+    Route::middleware('tenant.feature:gamificacion')->group(function () {
+        require __DIR__ . '/admin/gamificacion.php';
+    });
+
+    // ── Plan Premium: módulos avanzados ───────────────────────────────────────
+    Route::middleware('tenant.feature:pagos')->group(function () {
+        require __DIR__ . '/admin/pagos.php';
+        require __DIR__ . '/admin/becas.php';
+    });
+    Route::middleware('tenant.feature:nomina')->group(function () {
+        require __DIR__ . '/admin/nomina.php';
+    });
+    Route::middleware('tenant.feature:biblioteca')->group(function () {
+        require __DIR__ . '/admin/biblioteca.php';
+    });
+    Route::middleware('tenant.feature:inventario')->group(function () {
+        require __DIR__ . '/admin/inventario.php';
+        require __DIR__ . '/admin/equipos.php';
+    });
+    Route::middleware('tenant.feature:cafeteria')->group(function () {
+        require __DIR__ . '/admin/cafeteria.php';
+    });
+    Route::middleware('tenant.feature:proyectos')->group(function () {
+        require __DIR__ . '/admin/proyectos.php';
+    });
+    Route::middleware('tenant.feature:reconocimientos')->group(function () {
+        require __DIR__ . '/admin/reconocimientos.php';
+    });
+    Route::middleware('tenant.feature:evaluaciones_docentes')->group(function () {
+        require __DIR__ . '/admin/evaluaciones_docentes.php';
+    });
+    Route::middleware('tenant.feature:transporte')->group(function () {
+        require __DIR__ . '/admin/transporte.php';
+    });
+    Route::middleware('tenant.feature:salud')->group(function () {
+        require __DIR__ . '/admin/salud.php';
+    });
+    Route::middleware('tenant.feature:reuniones')->group(function () {
+        require __DIR__ . '/admin/reuniones.php';
+    });
+});
+
+// ── Galería pública ───────────────────────────────────────────────────────
+Route::get('/galeria', [\App\Http\Controllers\Admin\GaleriaController::class, 'galeriaPublica'])->name('galeria.publica');
+
+// ── Webhook Stripe (público, sin CSRF) ────────────────────────────────────
+Route::post('/webhook/stripe', [\App\Http\Controllers\WebhookStripeController::class, 'handle'])
+    ->name('webhook.stripe')
+    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+
+// ══════════════════════════════════════════════════════════════════════════
+//  SUPER ADMIN — Panel de la Plataforma ZuraEdu
+// ══════════════════════════════════════════════════════════════════════════
+Route::prefix('superadmin')->name('superadmin.')->middleware(['auth', 'super_admin'])->group(function () {
+    Route::get('/', [\App\Http\Controllers\SuperAdmin\TenantController::class, 'index'])->name('dashboard');
+
+    // Gestión de tenants (instituciones)
+    Route::prefix('tenants')->name('tenants.')->group(function () {
+        Route::get('/',                              [\App\Http\Controllers\SuperAdmin\TenantController::class, 'index'])->name('index');
+        Route::get('/create',                        [\App\Http\Controllers\SuperAdmin\TenantController::class, 'create'])->name('create');
+        Route::post('/',                             [\App\Http\Controllers\SuperAdmin\TenantController::class, 'store'])->name('store');
+        Route::post('/exit-panel',                   [\App\Http\Controllers\SuperAdmin\TenantController::class, 'exitPanel'])->name('exit-panel');
+
+        // Rutas con parámetro {tenant} — deben ir después de las estáticas
+        Route::get('/{tenant}',                      [\App\Http\Controllers\SuperAdmin\TenantController::class, 'show'])->name('show');
+        Route::get('/{tenant}/edit',                 [\App\Http\Controllers\SuperAdmin\TenantController::class, 'edit'])->name('edit');
+        Route::put('/{tenant}',                      [\App\Http\Controllers\SuperAdmin\TenantController::class, 'update'])->name('update');
+        Route::post('/{tenant}/toggle-estado',       [\App\Http\Controllers\SuperAdmin\TenantController::class, 'toggleEstado'])->name('toggle-estado');
+        Route::delete('/{tenant}',                   [\App\Http\Controllers\SuperAdmin\TenantController::class, 'destroy'])->name('destroy');
+        Route::post('/{tenant}/enter-panel',         [\App\Http\Controllers\SuperAdmin\TenantController::class, 'enterPanel'])->name('enter-panel');
+
+        // Gestión de suscripciones y módulos
+        Route::post('/{tenant}/subscriptions',       [\App\Http\Controllers\SuperAdmin\SubscriptionController::class, 'store'])->name('subscriptions.store');
+        Route::post('/{tenant}/toggle-feature',      [\App\Http\Controllers\SuperAdmin\SubscriptionController::class, 'toggleFeature'])->name('toggle-feature');
+    });
 });

@@ -341,12 +341,16 @@ class PagoController extends Controller
     public function configIndex()
     {
         $config = [
-            'payments_gateway'   => Setting::get('payments_gateway', 'stripe'),
-            'payments_stripe_pk' => Setting::get('payments_stripe_pk', ''),
-            'payments_stripe_sk' => Setting::get('payments_stripe_sk', ''),
-            'payments_currency'  => Setting::get('payments_currency', 'DOP'),
-            'payments_concept'   => Setting::get('payments_concept', 'Cuota escolar mensual'),
-            'module_payments'    => Setting::get('module_payments', '0'),
+            'payments_gateway'              => Setting::get('payments_gateway', 'stripe'),
+            'payments_stripe_pk'            => Setting::get('payments_stripe_pk', ''),
+            'payments_stripe_sk'            => Setting::get('payments_stripe_sk', ''),
+            'payments_cardnet_merchant_id'  => Setting::get('payments_cardnet_merchant_id', ''),
+            'payments_cardnet_terminal_id'  => Setting::get('payments_cardnet_terminal_id', '00000001'),
+            'payments_cardnet_secret_key'   => Setting::get('payments_cardnet_secret_key', ''),
+            'payments_cardnet_sandbox'      => Setting::get('payments_cardnet_sandbox', '1'),
+            'payments_currency'             => Setting::get('payments_currency', 'DOP'),
+            'payments_concept'              => Setting::get('payments_concept', 'Cuota escolar mensual'),
+            'module_payments'               => Setting::get('module_payments', '0'),
         ];
 
         return view('admin.pagos.config', compact('config'));
@@ -356,21 +360,29 @@ class PagoController extends Controller
     public function configUpdate(Request $request)
     {
         $data = $request->validate([
-            'payments_gateway'   => 'required|in:stripe,cardnet,manual',
-            'payments_stripe_pk' => 'nullable|string|max:255',
-            'payments_stripe_sk' => 'nullable|string|max:255',
-            'payments_currency'  => 'required|string|max:10',
-            'payments_concept'   => 'required|string|max:255',
-            'module_payments'    => 'nullable|boolean',
+            'payments_gateway'             => 'required|in:stripe,cardnet,manual',
+            'payments_stripe_pk'           => 'nullable|string|max:255',
+            'payments_stripe_sk'           => 'nullable|string|max:255',
+            'payments_cardnet_merchant_id' => 'nullable|string|max:50',
+            'payments_cardnet_terminal_id' => 'nullable|string|max:20',
+            'payments_cardnet_secret_key'  => 'nullable|string|max:255',
+            'payments_cardnet_sandbox'     => 'nullable|boolean',
+            'payments_currency'            => 'required|string|max:10',
+            'payments_concept'             => 'required|string|max:255',
+            'module_payments'              => 'nullable|boolean',
         ]);
 
         Setting::setMany([
-            'payments_gateway'   => $data['payments_gateway'],
-            'payments_stripe_pk' => $data['payments_stripe_pk'] ?? '',
-            'payments_stripe_sk' => $data['payments_stripe_sk'] ?? '',
-            'payments_currency'  => $data['payments_currency'],
-            'payments_concept'   => $data['payments_concept'],
-            'module_payments'    => $request->boolean('module_payments') ? '1' : '0',
+            'payments_gateway'             => $data['payments_gateway'],
+            'payments_stripe_pk'           => $data['payments_stripe_pk'] ?? '',
+            'payments_stripe_sk'           => $data['payments_stripe_sk'] ?? '',
+            'payments_cardnet_merchant_id' => $data['payments_cardnet_merchant_id'] ?? '',
+            'payments_cardnet_terminal_id' => $data['payments_cardnet_terminal_id'] ?? '00000001',
+            'payments_cardnet_secret_key'  => $data['payments_cardnet_secret_key'] ?? '',
+            'payments_cardnet_sandbox'     => $request->boolean('payments_cardnet_sandbox') ? '1' : '0',
+            'payments_currency'            => $data['payments_currency'],
+            'payments_concept'             => $data['payments_concept'],
+            'module_payments'              => $request->boolean('module_payments') ? '1' : '0',
         ]);
 
         // Sincronizar también en config_institucional

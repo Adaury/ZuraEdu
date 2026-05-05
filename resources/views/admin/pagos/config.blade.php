@@ -77,7 +77,7 @@
             Selecciona <strong>Manual</strong> si solo vas a registrar pagos en efectivo/transferencia desde el admin.
         </p>
         <div class="gateway-options" id="gatewayOptions">
-            @foreach(['manual' => ['Manual', 'Efectivo / Transferencia'], 'stripe' => ['Stripe', 'Tarjeta en línea'], 'cardnet' => ['CardNet', 'RD — Próximamente']] as $val => [$name, $desc])
+            @foreach(['manual' => ['Manual', 'Efectivo / Transferencia'], 'stripe' => ['Stripe', 'Tarjeta en línea'], 'cardnet' => ['CardNet', 'RD — Pago en línea']] as $val => [$name, $desc])
             <label class="gateway-card {{ $config['payments_gateway']==$val ? 'selected':'' }}" for="gw_{{ $val }}">
                 <input type="radio" name="payments_gateway" id="gw_{{ $val }}" value="{{ $val }}"
                        {{ $config['payments_gateway']==$val ? 'checked':'' }}>
@@ -108,6 +108,44 @@
             </div>
         </div>
 
+        {{-- Claves CardNet --}}
+        <div id="cardnetFields" style="{{ $config['payments_gateway']==='cardnet' ? '' : 'display:none;' }}">
+            <div class="alert alert-info py-2 mb-3" style="font-size:.8rem;border-radius:8px;">
+                <i class="bi bi-shield-lock me-1"></i>
+                Credenciales en <strong>CardNet RD → Portal de Comercios</strong>. Contacta a tu ejecutivo de CardNet para obtenerlas.
+            </div>
+            <div class="mb-3">
+                <label class="form-label-custom">Merchant ID</label>
+                <input type="text" name="payments_cardnet_merchant_id" class="form-control form-control-sm font-monospace"
+                       value="{{ old('payments_cardnet_merchant_id', $config['payments_cardnet_merchant_id']) }}"
+                       placeholder="Ej: 349000001">
+            </div>
+            <div class="mb-3">
+                <label class="form-label-custom">Terminal ID</label>
+                <input type="text" name="payments_cardnet_terminal_id" class="form-control form-control-sm font-monospace"
+                       value="{{ old('payments_cardnet_terminal_id', $config['payments_cardnet_terminal_id']) }}"
+                       placeholder="00000001">
+                <div class="form-text">Generalmente <code>00000001</code> para el primer terminal.</div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label-custom">Secret Key</label>
+                <input type="password" name="payments_cardnet_secret_key" class="form-control form-control-sm font-monospace"
+                       value="{{ old('payments_cardnet_secret_key', $config['payments_cardnet_secret_key']) }}"
+                       placeholder="Clave secreta CardNet">
+                <div class="form-text text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Nunca compartas esta clave.</div>
+            </div>
+            <div class="toggle-row mb-4">
+                <div>
+                    <label style="font-size:.87rem;font-weight:600;color:#374151;margin:0;cursor:pointer;" for="switchSandbox">Modo Sandbox (pruebas)</label>
+                    <div style="font-size:.75rem;color:#6b7280;margin-top:.15rem;">Actívalo para usar el ambiente de pruebas de CardNet. Desactívalo en producción.</div>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="payments_cardnet_sandbox" id="switchSandbox"
+                           value="1" {{ $config['payments_cardnet_sandbox'] ? 'checked' : '' }}>
+                </div>
+            </div>
+        </div>
+
         <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary btn-sm px-4">
                 <i class="bi bi-check-lg me-1"></i>Guardar Configuración
@@ -120,11 +158,15 @@
 
 @push('scripts')
 <script>
+function updateGatewayFields(value) {
+    document.getElementById('stripeFields').style.display  = value === 'stripe'  ? '' : 'none';
+    document.getElementById('cardnetFields').style.display = value === 'cardnet' ? '' : 'none';
+}
 document.querySelectorAll('[name=payments_gateway]').forEach(function(radio) {
     radio.addEventListener('change', function() {
         document.querySelectorAll('.gateway-card').forEach(c => c.classList.remove('selected'));
         this.closest('.gateway-card').classList.add('selected');
-        document.getElementById('stripeFields').style.display = this.value === 'stripe' ? '' : 'none';
+        updateGatewayFields(this.value);
     });
 });
 </script>

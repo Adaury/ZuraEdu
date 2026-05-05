@@ -422,6 +422,13 @@ Route::post('/webhook/stripe', [\App\Http\Controllers\WebhookStripeController::c
     ->name('webhook.stripe')
     ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 
+// ── CardNet RD — Pago en Línea ────────────────────────────────────────────
+Route::get('/cardnet/checkout/{token}', [\App\Http\Controllers\CardNetController::class, 'checkout'])->name('cardnet.checkout');
+Route::get('/cardnet/retorno',          [\App\Http\Controllers\CardNetController::class, 'retorno'])->name('cardnet.retorno');
+Route::post('/cardnet/notify',          [\App\Http\Controllers\CardNetController::class, 'notify'])
+    ->name('cardnet.notify')
+    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+
 // ══════════════════════════════════════════════════════════════════════════
 //  SUPER ADMIN — Panel de la Plataforma ZuraEdu
 // ══════════════════════════════════════════════════════════════════════════

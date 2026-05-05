@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Helpers\Setting;
+use App\Services\CardNetService;
 use Illuminate\Support\Facades\Log;
 
 class PaymentService
@@ -60,7 +61,25 @@ class PaymentService
 
     private static function cardnetCheckout(string $description, float $amount, array $metadata): array
     {
-        // TODO: Integración CardNet RD — https://developers.cardnet.com.do
-        throw new \RuntimeException('Integración CardNet pendiente. Usa Stripe por ahora.');
+        if (! CardNetService::isConfigured()) {
+            throw new \RuntimeException('CardNet no configurado. Ve a Pagos → Configuración y completa Merchant ID y Secret Key.');
+        }
+
+        $pagoId  = $metadata['pago_id'] ?? mt_rand(100000, 999999);
+        $orderId = CardNetService::generateOrderId((int) $pagoId);
+
+        $checkout = CardNetService::createCheckoutParams($orderId, $amount, array_merge($metadata, [
+            'description' => $description,
+        ]));
+
+        // Guardamos los parámetros del form en caché para que el endpoint
+        // /cardnet/checkout los recupere y renderice el auto-submit.
+        $token = \Illuminate\Support\Str::uuid()->toString();
+        cache()->put("cardnet_form_{$token}", $checkout, now()->addMinutes(30));
+
+        return [
+            'url' => config('app.url') . "/cardnet/checkout/{$token}",
+            'id'  => $orderId,
+        ];
     }
 }

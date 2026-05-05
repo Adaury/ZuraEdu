@@ -30,6 +30,10 @@
             </div>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
+            <a href="{{ route('admin.encuestas.edit', $encuesta) }}"
+               class="px-3 py-2 text-sm border border-indigo-300 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-900/20 rounded-lg transition">
+                Editar
+            </a>
             <form method="POST" action="{{ route('admin.encuestas.toggle-activo', $encuesta) }}">
                 @csrf @method('PATCH')
                 <button type="submit"

@@ -92,6 +92,66 @@ class EncuestaController extends Controller
         return view('admin.encuestas.show', compact('encuesta', 'estadisticas', 'totalParticipantes'));
     }
 
+    // ── Edit ──────────────────────────────────────────────────────────────
+    public function edit(Encuesta $encuesta)
+    {
+        $encuesta->load(['preguntas.opciones']);
+        return view('admin.encuestas.edit', compact('encuesta'));
+    }
+
+    // ── Update ────────────────────────────────────────────────────────────
+    public function update(Request $request, Encuesta $encuesta)
+    {
+        $data = $request->validate([
+            'titulo'       => 'required|string|max:255',
+            'descripcion'  => 'nullable|string',
+            'dirigida_a'   => 'required|in:padres,estudiantes,todos',
+            'activo'       => 'boolean',
+            'fecha_cierre' => 'nullable|date',
+            'preguntas'    => 'required|array|min:1',
+            'preguntas.*.texto'      => 'required|string',
+            'preguntas.*.tipo'       => 'required|in:opcion_multiple,texto_libre,escala_1_5',
+            'preguntas.*.opciones'   => 'nullable|array',
+            'preguntas.*.opciones.*' => 'nullable|string',
+        ]);
+
+        $encuesta->update([
+            'titulo'       => $data['titulo'],
+            'descripcion'  => $data['descripcion'] ?? null,
+            'dirigida_a'   => $data['dirigida_a'],
+            'activo'       => $request->boolean('activo'),
+            'fecha_cierre' => $data['fecha_cierre'] ?? null,
+        ]);
+
+        // Regenerar preguntas y opciones
+        $encuesta->preguntas()->each(fn($p) => $p->opciones()->delete());
+        $encuesta->preguntas()->delete();
+
+        foreach ($data['preguntas'] as $orden => $preguntaData) {
+            $pregunta = PreguntaEncuesta::create([
+                'encuesta_id' => $encuesta->id,
+                'texto'       => $preguntaData['texto'],
+                'tipo'        => $preguntaData['tipo'],
+                'orden'       => $orden,
+            ]);
+
+            if ($preguntaData['tipo'] === 'opcion_multiple' && ! empty($preguntaData['opciones'])) {
+                foreach (array_values(array_filter($preguntaData['opciones'])) as $opOrden => $textoOpcion) {
+                    if (trim($textoOpcion) !== '') {
+                        OpcionPregunta::create([
+                            'pregunta_id' => $pregunta->id,
+                            'texto'       => trim($textoOpcion),
+                            'orden'       => $opOrden,
+                        ]);
+                    }
+                }
+            }
+        }
+
+        return redirect()->route('admin.encuestas.show', $encuesta)
+                         ->with('success', 'Encuesta actualizada correctamente.');
+    }
+
     // ── Destroy ───────────────────────────────────────────────────────────
     public function destroy(Encuesta $encuesta)
     {

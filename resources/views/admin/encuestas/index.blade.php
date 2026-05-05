@@ -83,6 +83,14 @@
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-center gap-2">
+                                {{-- Editar --}}
+                                <a href="{{ route('admin.encuestas.edit', $encuesta) }}"
+                                   title="Editar encuesta"
+                                   class="p-1.5 rounded-lg text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-400 transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </a>
                                 {{-- Ver resultados --}}
                                 <a href="{{ route('admin.encuestas.show', $encuesta) }}"
                                    title="Ver resultados"

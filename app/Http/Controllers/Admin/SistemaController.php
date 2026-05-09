@@ -26,7 +26,30 @@ class SistemaController extends Controller
     public function index()
     {
         $settings = DB::table('system_settings')->pluck('value', 'key');
-        return view('admin.sistema.index', compact('settings'));
+
+        // Datos institucionales
+        $inst = \App\Models\ConfigInstitucional::withoutGlobalScopes()
+            ->pluck('valor', 'clave');
+
+        // Módulos disponibles
+        $modulos = [
+            'pagos'         => ['label' => 'Pagos y Colegiaturas',   'icon' => 'bi-credit-card-fill',    'color' => '#2563eb'],
+            'biblioteca'    => ['label' => 'Biblioteca',             'icon' => 'bi-book-fill',           'color' => '#7c3aed'],
+            'cafeteria'     => ['label' => 'Cafetería',              'icon' => 'bi-cup-hot-fill',        'color' => '#ea580c'],
+            'transporte'    => ['label' => 'Transporte',             'icon' => 'bi-bus-front-fill',      'color' => '#0891b2'],
+            'salud'         => ['label' => 'Salud y Enfermería',     'icon' => 'bi-heart-pulse-fill',    'color' => '#dc2626'],
+            'gamificacion'  => ['label' => 'Gamificación',           'icon' => 'bi-trophy-fill',         'color' => '#d97706'],
+            'becas'         => ['label' => 'Becas',                  'icon' => 'bi-award-fill',          'color' => '#059669'],
+            'inventario'    => ['label' => 'Inventario',             'icon' => 'bi-boxes',               'color' => '#64748b'],
+            'disciplina'    => ['label' => 'Disciplina',             'icon' => 'bi-clipboard2-x-fill',   'color' => '#9333ea'],
+            'seguimiento'   => ['label' => 'Seguimiento Social',     'icon' => 'bi-person-heart',        'color' => '#0d9488'],
+            'encuestas'     => ['label' => 'Encuestas',              'icon' => 'bi-bar-chart-fill',      'color' => '#4f46e5'],
+            'reuniones'     => ['label' => 'Reuniones',              'icon' => 'bi-people-fill',         'color' => '#be185d'],
+            'proyectos'     => ['label' => 'Proyectos',              'icon' => 'bi-kanban-fill',         'color' => '#1d4ed8'],
+            'zuraclass'     => ['label' => 'ZuraClass (Aula Virtual)','icon' => 'bi-mortarboard-fill',   'color' => '#7c3aed'],
+        ];
+
+        return view('admin.sistema.index', compact('settings', 'inst', 'modulos'));
     }
 
     public function update(Request $request)
@@ -49,6 +72,62 @@ class SistemaController extends Controller
         Cache::forget('system_settings_branding');
 
         return back()->with('success', 'Configuración del sistema actualizada.');
+    }
+
+    // ── Datos Institucionales ───────────────────────────────────────────────
+    public function updateInstitucional(Request $request)
+    {
+        $data = $request->validate([
+            'nombre_institucion'    => 'nullable|string|max:200',
+            'nombre_director'       => 'nullable|string|max:150',
+            'cargo_director'        => 'nullable|string|max:100',
+            'codigo_centro'         => 'nullable|string|max:30',
+            'nivel_educativo'       => 'nullable|string|max:100',
+            'telefono'              => 'nullable|string|max:30',
+            'email_institucional'   => 'nullable|email|max:150',
+            'direccion'             => 'nullable|string|max:300',
+            'municipio'             => 'nullable|string|max:100',
+            'provincia'             => 'nullable|string|max:100',
+            'regional'              => 'nullable|string|max:100',
+            'distrito'              => 'nullable|string|max:100',
+            'tipo_institucion'      => 'nullable|in:publico,privado,semi-privado',
+        ]);
+
+        foreach ($data as $clave => $valor) {
+            \App\Models\ConfigInstitucional::withoutGlobalScopes()->updateOrCreate(
+                ['clave' => $clave],
+                ['valor' => $valor ?? '', 'tipo' => 'string', 'grupo' => 'institucional']
+            );
+        }
+
+        // Limpiar caché para que se reflejen los cambios inmediatamente
+        \Illuminate\Support\Facades\Cache::forget('config_t_nombre_institucion');
+        foreach (array_keys($data) as $k) {
+            \Illuminate\Support\Facades\Cache::forget("config_t_{$k}");
+        }
+
+        return back()->with('success', 'Datos institucionales actualizados correctamente.')->with('tab', 'institucional');
+    }
+
+    // ── Módulos Activos ─────────────────────────────────────────────────────
+    public function updateModulos(Request $request)
+    {
+        $modulos = [
+            'pagos', 'biblioteca', 'cafeteria', 'transporte', 'salud',
+            'gamificacion', 'becas', 'inventario', 'disciplina',
+            'seguimiento', 'encuestas', 'reuniones', 'proyectos', 'zuraclass',
+        ];
+
+        foreach ($modulos as $modulo) {
+            $activo = $request->boolean("modulo_{$modulo}") ? '1' : '0';
+            \App\Models\ConfigInstitucional::withoutGlobalScopes()->updateOrCreate(
+                ['clave' => "modulo_{$modulo}_activo"],
+                ['valor' => $activo, 'tipo' => 'boolean', 'grupo' => 'modulos']
+            );
+            \Illuminate\Support\Facades\Cache::forget("config_t_modulo_{$modulo}_activo");
+        }
+
+        return back()->with('success', 'Módulos actualizados correctamente.')->with('tab', 'modulos');
     }
 
     public function uploadLogo(Request $request)

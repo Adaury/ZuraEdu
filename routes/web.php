@@ -142,6 +142,14 @@ Route::prefix('portal/estudiante')->name('portal.estudiante.')->middleware(['aut
     Route::post('/mis-pagos/{pago}/pagar-online',       [PortalEstudianteController::class, 'iniciarPago'])->name('mis-pagos.pagar-online');
     Route::get('/mi-saldo-cafeteria',                   [PortalEstudianteController::class, 'miSaldoCafeteria'])->name('mi-saldo-cafeteria');
     Route::get('/mi-ruta-transporte',                   [PortalEstudianteController::class, 'miRutaTransporte'])->name('mi-ruta-transporte');
+    Route::get('/historial-academico',                  [PortalEstudianteController::class, 'historialAcademico'])->name('historial-academico');
+    // Solicitudes propias del estudiante
+    Route::prefix('solicitudes')->name('solicitudes.')->group(function () {
+        Route::get('/',                                 [\App\Http\Controllers\Portal\SolicitudesEstudianteController::class, 'index'])->name('index');
+        Route::get('/nueva',                            [\App\Http\Controllers\Portal\SolicitudesEstudianteController::class, 'create'])->name('create');
+        Route::post('/',                                [\App\Http\Controllers\Portal\SolicitudesEstudianteController::class, 'store'])->name('store');
+        Route::get('/{solicitud}',                      [\App\Http\Controllers\Portal\SolicitudesEstudianteController::class, 'show'])->name('show');
+    });
     Route::prefix('classroom')->name('classroom.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Portal\ClassroomEstudianteController::class, 'index'])->name('index');
         Route::get('/tareas-pendientes', [\App\Http\Controllers\Portal\ClassroomEstudianteController::class, 'tareasPendientes'])->name('pendientes');

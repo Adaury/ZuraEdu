@@ -2,7 +2,8 @@
     Sidebar Portal Estudiante
     activeKey: dashboard | boletin | horario | asistencia | observaciones |
                comunicados | encuestas | classroom | tareas | eventos |
-               mis-documentos | mensajes | mis-prestamos | mis-puntos
+               mis-documentos | mensajes | mis-prestamos | mis-puntos |
+               solicitudes | historial | constancia
 --}}
 @php $ak = $activeKey ?? 'dashboard'; @endphp
 
@@ -135,9 +136,29 @@ try { $moduleTransport = \App\Helpers\Setting::get('transporte','0');        } c
 @endif
 @endif
 
+{{-- ── GESTIONES ── --}}
+<div class="prt-sidebar-section mt-2">Gestiones</div>
+
+<a href="{{ route('portal.estudiante.solicitudes.index') }}"
+   class="prt-sidebar-link {{ $ak === 'solicitudes' ? 'active' : '' }}">
+    <i class="bi bi-send-fill"></i>Mis Solicitudes
+    @php try { $solEstPend = \App\Models\SolicitudEstudiante::where('estudiante_id', auth()->user()->estudiante?->id ?? 0)->where('estado','pendiente')->count(); } catch(\Exception $e){ $solEstPend=0; } @endphp
+    @if($solEstPend > 0)
+    <span style="background:#d97706;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $solEstPend }}</span>
+    @endif
+</a>
+
 {{-- ── DOCUMENTOS ── --}}
 <div class="prt-sidebar-section mt-2">Documentos</div>
 
+<a href="{{ route('portal.estudiante.historial-academico') }}"
+   class="prt-sidebar-link {{ $ak === 'historial' ? 'active' : '' }}">
+    <i class="bi bi-clock-history"></i>Historial Académico
+</a>
+<a href="{{ route('portal.estudiante.constancia') }}"
+   class="prt-sidebar-link {{ $ak === 'constancia' ? 'active' : '' }}">
+    <i class="bi bi-file-earmark-arrow-down-fill"></i>Mi Constancia
+</a>
 <a href="{{ route('portal.estudiante.notificaciones') }}"
    class="prt-sidebar-link {{ $ak === 'notificaciones' ? 'active' : '' }}">
     <i class="bi bi-bell-fill"></i>Notificaciones

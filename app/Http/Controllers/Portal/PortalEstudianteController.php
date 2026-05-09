@@ -1898,6 +1898,46 @@ class PortalEstudianteController extends Controller
         ));
     }
 
+    public function historialAcademico()
+    {
+        $estudiante = $this->getEstudiante();
+
+        $matriculas = $estudiante->matriculas()
+            ->with(['schoolYear', 'grupo.grado', 'grupo.seccion'])
+            ->orderByDesc('school_year_id')
+            ->get()
+            ->map(function (Matricula $m) {
+                // Promedio CalificacionAcademica (MINERD)
+                $notaFinal = CalificacionAcademica::where('matricula_id', $m->id)
+                    ->whereNotNull('nota_final')
+                    ->avg('nota_final');
+
+                // Si no hay MINERD, intentar con Calificacion técnica
+                if (is_null($notaFinal)) {
+                    $notaFinal = \App\Models\Calificacion::where('matricula_id', $m->id)
+                        ->whereNotNull('nota_final')
+                        ->avg('nota_final');
+                }
+
+                // Asistencia total vs presentes
+                $totalAsist    = \App\Models\Asistencia::where('matricula_id', $m->id)->count();
+                $presenteAsist = \App\Models\Asistencia::where('matricula_id', $m->id)->where('estado', 'presente')->count();
+                $pctAsistencia = $totalAsist > 0 ? round($presenteAsist / $totalAsist * 100, 1) : null;
+
+                // Conteo de asignaturas con calificación
+                $asignaturas = CalificacionAcademica::where('matricula_id', $m->id)->distinct('asignacion_id')->count('asignacion_id');
+
+                return [
+                    'matricula'      => $m,
+                    'nota_promedio'  => $notaFinal ? round($notaFinal, 1) : null,
+                    'pct_asistencia' => $pctAsistencia,
+                    'asignaturas'    => $asignaturas,
+                ];
+            });
+
+        return view('portal.estudiante.historial_academico', compact('estudiante', 'matriculas'));
+    }
+
     public function miRutaTransporte()
     {
         $estudiante = $this->getEstudiante();

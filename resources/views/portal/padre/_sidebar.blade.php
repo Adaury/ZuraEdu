@@ -93,6 +93,17 @@ try { $moduleTransport = \App\Helpers\Setting::get('transporte','0'); } catch(\E
 @endif
 @endif
 
+{{-- ── SOLICITUDES ── --}}
+<div class="prt-sidebar-section mt-2">Gestiones</div>
+<a href="{{ route('portal.padre.solicitudes.index') }}"
+   class="prt-sidebar-link {{ $ak === 'solicitudes' ? 'active' : '' }}">
+    <i class="bi bi-send-fill"></i>Mis Solicitudes
+    @php try { $solPend = \App\Models\SolicitudRepresentante::whereHas('representante', fn($r) => $r->where('user_id', auth()->id()))->where('estado','pendiente')->count(); } catch(\Exception $e){ $solPend=0; } @endphp
+    @if($solPend > 0)
+    <span style="background:#d97706;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $solPend }}</span>
+    @endif
+</a>
+
 {{-- ── COMUNICACIÓN ── --}}
 <div class="prt-sidebar-section mt-2">Comunicación</div>
 

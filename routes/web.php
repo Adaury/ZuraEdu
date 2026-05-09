@@ -203,6 +203,12 @@ Route::prefix('portal/padre')->name('portal.padre.')->middleware(['auth', 'activ
     Route::get('/hijo/{estudiante}/logros',     [PortalPadreController::class, 'logrosHijo'])->name('hijo.logros');
     Route::get('/hijo/{estudiante}/proyectos',  [PortalPadreController::class, 'proyectosHijo'])->name('hijo.proyectos');
     Route::post('/hijo/{estudiante}/pagos/{pago}/pagar-online', [PortalPadreController::class, 'iniciarPagoHijo'])->name('hijo.pagos.pagar-online');
+
+    // ── Solicitudes ──────────────────────────────────────────────────────────
+    Route::get('/solicitudes',                    [\App\Http\Controllers\Portal\SolicitudesController::class, 'index'])->name('solicitudes.index');
+    Route::get('/solicitudes/nueva',              [\App\Http\Controllers\Portal\SolicitudesController::class, 'create'])->name('solicitudes.create');
+    Route::post('/solicitudes',                   [\App\Http\Controllers\Portal\SolicitudesController::class, 'store'])->name('solicitudes.store');
+    Route::get('/solicitudes/{solicitud}',        [\App\Http\Controllers\Portal\SolicitudesController::class, 'show'])->name('solicitudes.show');
 });
 
 // ── Portal Docente ────────────────────────────────────────────────────────
@@ -373,6 +379,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.acc
     require __DIR__ . '/admin/avisos_emergencia.php';
     require __DIR__ . '/admin/soporte.php';
     require __DIR__ . '/admin/recursos.php';
+    require __DIR__ . '/admin/solicitudes.php';
 
     // ── Plan Pro: módulos intermedios ─────────────────────────────────────────
     Route::middleware('tenant.feature:horarios')->group(function () {

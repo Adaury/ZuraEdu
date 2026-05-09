@@ -71,6 +71,25 @@
         </table>
       </div>
 
+      {{-- Código de seguimiento --}}
+      @if($preMatricula->codigo)
+      <div style="background:#eff6ff;border:2px solid #93c5fd;border-radius:12px;padding:16px 20px;text-align:center;margin-bottom:20px;">
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#1e40af;margin-bottom:6px;">
+          Su Código de Seguimiento
+        </div>
+        <div style="font-size:1.5rem;font-weight:900;letter-spacing:.12em;color:#1e3a8a;font-family:'Courier New',monospace;">
+          {{ $preMatricula->codigo }}
+        </div>
+        <div style="font-size:.76rem;color:#3b82f6;margin-top:6px;">
+          Use este código para consultar el estado de su solicitud en cualquier momento
+        </div>
+        <a href="{{ url('/inscripcion/consulta?codigo=' . $preMatricula->codigo) }}"
+           style="display:inline-block;margin-top:10px;padding:8px 18px;background:#1d4ed8;color:#fff;border-radius:8px;font-size:.8rem;font-weight:700;text-decoration:none;">
+          Consultar Estado en Línea →
+        </a>
+      </div>
+      @endif
+
       <p style="margin:0 0 8px;color:#6b7280;font-size:.85rem;line-height:1.7;">
         Recibirá otro correo cuando su solicitud sea revisada por el personal administrativo.
         Si tiene alguna pregunta, puede contactarnos a través de nuestros canales oficiales.

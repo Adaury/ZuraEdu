@@ -141,6 +141,11 @@
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>
                         Ver demo
                     </a>
+                    <a href="{{ route('inscripcion') }}"
+                       class="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-base font-semibold text-white/80 border-2 border-white/15 hover:border-emerald-400/60 hover:text-white hover:bg-emerald-500/10 transition-all duration-200">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a3 3 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z"/></svg>
+                        Pre-matrícula en línea
+                    </a>
                 </div>
 
                 {{-- Trust indicators --}}
@@ -701,6 +706,8 @@
                 <ul class="space-y-2.5">
                     <li><a href="{{ route('onboarding') }}" class="text-sm text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">Crear escuela gratis</a></li>
                     <li><a href="{{ route('login') }}" class="text-sm text-slate-400 hover:text-white transition-colors">Iniciar sesión</a></li>
+                    <li><a href="{{ route('inscripcion') }}" class="text-sm text-slate-400 hover:text-white transition-colors">Pre-matrícula en línea</a></li>
+                    <li><a href="{{ route('inscripcion.consulta') }}" class="text-sm text-slate-400 hover:text-white transition-colors">Consultar solicitud</a></li>
                     <li><a href="{{ route('verificar-matricula') }}" class="text-sm text-slate-400 hover:text-white transition-colors">Verificar matrícula</a></li>
                     <li><a href="{{ route('help.registro') }}" class="text-sm text-slate-400 hover:text-white transition-colors">Ayuda</a></li>
                 </ul>

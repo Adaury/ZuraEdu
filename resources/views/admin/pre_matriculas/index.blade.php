@@ -164,7 +164,10 @@
                     <td class="text-muted" style="font-size:.76rem;">{{ $s->id }}</td>
                     <td>
                         <div class="nombre-pm">{{ $s->nombre_completo }}</div>
-                        <div style="font-size:.75rem;color:#94a3b8;">{{ $s->fecha_nacimiento->format('d/m/Y') }}</div>
+                        <div style="font-size:.72rem;color:#94a3b8;">{{ $s->fecha_nacimiento->format('d/m/Y') }}</div>
+                        @if($s->codigo)
+                        <div style="font-size:.68rem;color:#3b82f6;font-family:monospace;font-weight:700;letter-spacing:.05em;">{{ $s->codigo }}</div>
+                        @endif
                     </td>
                     <td><span style="background:#eef2ff;color:#4f46e5;border-radius:6px;padding:.15rem .55rem;font-size:.76rem;font-weight:700;">{{ $s->grado_solicitado }}</span></td>
                     <td>

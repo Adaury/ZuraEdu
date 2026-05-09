@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\PreMatriculaConfirmacion;
 use App\Models\AlertaSistema;
+use App\Models\ConfigInstitucional;
 use App\Models\PreMatricula;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -11,80 +12,115 @@ use Illuminate\Support\Facades\Mail;
 
 class PreMatriculaController extends Controller
 {
-    /**
-     * Muestra el formulario público de pre-matrícula.
-     */
+    private function instData(): array
+    {
+        return [
+            'inst' => ConfigInstitucional::get('nombre_institucion', config('app.name')),
+            'logo' => ConfigInstitucional::get('logo_url'),
+        ];
+    }
+
     public function create()
     {
         $grados = PreMatricula::gradosDisponibles();
-        return view('inscripcion', compact('grados'));
+        return view('inscripcion', array_merge(compact('grados'), $this->instData()));
     }
 
-    /**
-     * Procesa y guarda la solicitud de pre-matrícula.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nombres'               => ['required', 'string', 'max:100'],
-            'apellidos'             => ['required', 'string', 'max:100'],
-            'fecha_nacimiento'      => ['required', 'date', 'before:today'],
-            'grado_solicitado'      => ['required', 'string', 'max:80'],
-            'nombre_representante'  => ['required', 'string', 'max:150'],
-            'cedula_representante'  => ['required', 'string', 'max:20'],
-            'telefono'              => ['required', 'string', 'max:30'],
-            'email'                 => ['required', 'email', 'max:150'],
-            'direccion'             => ['required', 'string', 'max:300'],
-        ], [
-            'nombres.required'              => 'El nombre del estudiante es obligatorio.',
-            'apellidos.required'            => 'El apellido del estudiante es obligatorio.',
-            'fecha_nacimiento.required'     => 'La fecha de nacimiento es obligatoria.',
-            'fecha_nacimiento.before'       => 'La fecha de nacimiento debe ser anterior a hoy.',
-            'grado_solicitado.required'     => 'Debe seleccionar el grado solicitado.',
-            'nombre_representante.required' => 'El nombre del representante es obligatorio.',
-            'cedula_representante.required' => 'La cédula del representante es obligatoria.',
-            'telefono.required'             => 'El teléfono es obligatorio.',
-            'email.required'                => 'El correo electrónico es obligatorio.',
-            'email.email'                   => 'Ingrese un correo electrónico válido.',
-            'direccion.required'            => 'La dirección es obligatoria.',
+            'nombres'                => ['required', 'string', 'max:100'],
+            'apellidos'              => ['required', 'string', 'max:100'],
+            'fecha_nacimiento'       => ['required', 'date', 'before:today'],
+            'genero'                 => ['required', 'in:Masculino,Femenino,Otro'],
+            'lugar_nacimiento'       => ['nullable', 'string', 'max:150'],
+            'cedula_estudiante'      => ['nullable', 'string', 'max:20'],
+            'grado_solicitado'       => ['required', 'string', 'max:80'],
+            'nombre_representante'   => ['required', 'string', 'max:150'],
+            'cedula_representante'   => ['required', 'string', 'max:20'],
+            'relacion_representante' => ['required', 'in:Padre,Madre,Tutor/a,Otro'],
+            'telefono'               => ['required', 'string', 'max:30'],
+            'email'                  => ['required', 'email', 'max:150'],
+            'direccion'              => ['required', 'string', 'max:300'],
+            'cedula_rep_doc'         => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:3072'],
+            'acta_nacimiento_doc'    => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:3072'],
+            'foto_doc'               => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:2048'],
         ]);
 
-        $preMatricula = PreMatricula::create($validated);
+        $codigo = PreMatricula::generateCodigo();
 
-        // ── Notificar a admins/directores ─────────────────────────────────────
-        $admins = User::role(['Administrador', 'Director'])->get();
-        foreach ($admins as $admin) {
-            try {
-                AlertaSistema::create([
-                    'tipo'            => 'otro',
-                    'titulo'          => 'Nueva solicitud de pre-matrícula',
-                    'mensaje'         => "Nueva solicitud de pre-matrícula de {$preMatricula->nombre_completo} para {$preMatricula->grado_solicitado}.",
-                    'nivel'           => 'info',
-                    'destinatario_id' => $admin->id,
-                    'referencia_tipo' => 'PreMatricula',
-                    'referencia_id'   => $preMatricula->id,
-                ]);
-            } catch (\Throwable $e) {
-                // Alerta no crítica — no bloquear el flujo
+        $documentos = [];
+        foreach ([
+            'cedula_rep_doc'      => 'cedula_representante',
+            'acta_nacimiento_doc' => 'acta_nacimiento',
+            'foto_doc'            => 'foto_estudiante',
+        ] as $field => $key) {
+            if ($request->hasFile($field)) {
+                $documentos[$key] = $request->file($field)->store("pre_matriculas/{$codigo}", 'public');
             }
         }
 
-        // ── Email de confirmación al solicitante ──────────────────────────────
-        try {
-            Mail::to($preMatricula->email)->queue(new PreMatriculaConfirmacion($preMatricula));
-        } catch (\Throwable $e) {
-            // El guardado ya ocurrió; el email falla en silencio
-        }
+        $pm = PreMatricula::withoutGlobalScopes()->create([
+            'codigo'                 => $codigo,
+            'nombres'                => $validated['nombres'],
+            'apellidos'              => $validated['apellidos'],
+            'fecha_nacimiento'       => $validated['fecha_nacimiento'],
+            'genero'                 => $validated['genero'],
+            'lugar_nacimiento'       => $validated['lugar_nacimiento'] ?? null,
+            'cedula_estudiante'      => $validated['cedula_estudiante'] ?? null,
+            'grado_solicitado'       => $validated['grado_solicitado'],
+            'nombre_representante'   => $validated['nombre_representante'],
+            'cedula_representante'   => $validated['cedula_representante'],
+            'relacion_representante' => $validated['relacion_representante'],
+            'telefono'               => $validated['telefono'],
+            'email'                  => $validated['email'],
+            'direccion'              => $validated['direccion'],
+            'estado'                 => 'pendiente',
+            'documentos'             => $documentos ?: null,
+        ]);
 
-        return redirect()->route('inscripcion.confirmacion')
-            ->with('pre_matricula_id', $preMatricula->id);
+        try { Mail::to($pm->email)->queue(new PreMatriculaConfirmacion($pm)); } catch (\Throwable $e) {}
+
+        try {
+            foreach (User::role(['Administrador', 'Director'])->get() as $admin) {
+                AlertaSistema::create([
+                    'tipo'            => 'otro',
+                    'titulo'          => 'Nueva solicitud de pre-matricula',
+                    'mensaje'         => "Nueva pre-matricula ({$pm->codigo}): {$pm->nombre_completo} para {$pm->grado_solicitado}.",
+                    'nivel'           => 'info',
+                    'destinatario_id' => $admin->id,
+                    'referencia_tipo' => 'PreMatricula',
+                    'referencia_id'   => $pm->id,
+                ]);
+            }
+        } catch (\Throwable $e) {}
+
+        return redirect()->route('inscripcion.confirmacion', $codigo);
     }
 
-    /**
-     * Página de confirmación post-envío.
-     */
-    public function confirmacion()
+    public function confirmacion(string $codigo)
     {
-        return view('inscripcion-confirmacion');
+        $pm = PreMatricula::withoutGlobalScopes()
+            ->where('codigo', strtoupper($codigo))
+            ->firstOrFail();
+
+        return view('inscripcion-confirmacion', array_merge(compact('pm'), $this->instData()));
+    }
+
+    public function consulta(Request $request)
+    {
+        $pm       = null;
+        $error    = null;
+        $busqueda = $request->input('codigo', '');
+
+        if ($request->filled('codigo')) {
+            $codigo = strtoupper(trim($request->codigo));
+            $pm = PreMatricula::withoutGlobalScopes()->where('codigo', $codigo)->first();
+            if (! $pm) {
+                $error = 'No se encontro ninguna solicitud con ese codigo. Verifique e intente nuevamente.';
+            }
+        }
+
+        return view('inscripcion-consulta', array_merge(compact('pm', 'error', 'busqueda'), $this->instData()));
     }
 }

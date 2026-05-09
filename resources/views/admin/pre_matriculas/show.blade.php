@@ -71,6 +71,16 @@
                 <span>Datos del Estudiante</span>
             </div>
             <div class="detail-body">
+                {{-- Código de seguimiento --}}
+                @if($preMatricula->codigo)
+                <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:.6rem;">
+                    <i class="bi bi-key-fill" style="color:#1d4ed8;"></i>
+                    <div>
+                        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#1e40af;">Código de seguimiento</div>
+                        <div style="font-size:1.05rem;font-weight:900;letter-spacing:.1em;color:#1e3a8a;font-family:monospace;">{{ $preMatricula->codigo }}</div>
+                    </div>
+                </div>
+                @endif
                 <div class="info-grid">
                     <div class="info-item">
                         <label>Nombres</label>
@@ -85,6 +95,18 @@
                         <span>{{ $preMatricula->fecha_nacimiento->format('d/m/Y') }}</span>
                     </div>
                     <div class="info-item">
+                        <label>Género</label>
+                        <span>{{ $preMatricula->genero ?? '—' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Lugar de Nacimiento</label>
+                        <span>{{ $preMatricula->lugar_nacimiento ?? '—' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Cédula del Estudiante</label>
+                        <span>{{ $preMatricula->cedula_estudiante ?? '—' }}</span>
+                    </div>
+                    <div class="info-item" style="grid-column:1/-1;">
                         <label>Grado Solicitado</label>
                         <span style="background:#eef2ff;color:#4f46e5;border-radius:6px;padding:.2rem .6rem;font-weight:700;">
                             {{ $preMatricula->grado_solicitado }}
@@ -107,6 +129,10 @@
                         <span>{{ $preMatricula->nombre_representante }}</span>
                     </div>
                     <div class="info-item">
+                        <label>Relación</label>
+                        <span>{{ $preMatricula->relacion_representante ?? '—' }}</span>
+                    </div>
+                    <div class="info-item">
                         <label>Cédula</label>
                         <span>{{ $preMatricula->cedula_representante }}</span>
                     </div>
@@ -114,7 +140,7 @@
                         <label>Teléfono</label>
                         <span>{{ $preMatricula->telefono }}</span>
                     </div>
-                    <div class="info-item">
+                    <div class="info-item" style="grid-column:1/-1;">
                         <label>Correo Electrónico</label>
                         <span>{{ $preMatricula->email }}</span>
                     </div>
@@ -125,6 +151,28 @@
                         <span>{{ $preMatricula->direccion }}</span>
                     </div>
                 </div>
+                {{-- Documentos adjuntos --}}
+                @if($preMatricula->documentos)
+                <div class="mt-3">
+                    <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:.5rem;">Documentos Adjuntos</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach($preMatricula->documentos as $key => $path)
+                        <a href="{{ Storage::url($path) }}" target="_blank"
+                           style="display:inline-flex;align-items:center;gap:.35rem;background:#d1fae5;color:#065f46;border-radius:8px;padding:.35rem .75rem;font-size:.78rem;font-weight:700;text-decoration:none;"
+                           title="{{ $path }}">
+                            <i class="bi bi-file-earmark-check-fill"></i>
+                            {{ match($key) {
+                                'cedula_representante' => 'Cédula Rep.',
+                                'acta_nacimiento'      => 'Acta Nacimiento',
+                                'foto_estudiante'      => 'Foto Estudiante',
+                                default => $key
+                            } }}
+                            <i class="bi bi-box-arrow-up-right" style="font-size:.65rem;"></i>
+                        </a>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
             </div>
         </div>
 

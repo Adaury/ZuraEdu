@@ -88,9 +88,10 @@ Route::get('/verificar-matricula',  [\App\Http\Controllers\VerificacionMatricula
 Route::post('/verificar-matricula', [\App\Http\Controllers\VerificacionMatriculaController::class, 'buscar'])->name('verificar-matricula.buscar')->middleware('throttle:10,1');
 
 // ── Pre-matrícula pública (sin login) ────────────────────────────────────
-Route::get('/inscripcion',              [\App\Http\Controllers\PreMatriculaController::class, 'create'])->name('inscripcion');
-Route::post('/inscripcion',             [\App\Http\Controllers\PreMatriculaController::class, 'store'])->name('inscripcion.store')->middleware('throttle:5,1');
-Route::get('/inscripcion/confirmacion', [\App\Http\Controllers\PreMatriculaController::class, 'confirmacion'])->name('inscripcion.confirmacion');
+Route::get('/inscripcion',                          [\App\Http\Controllers\PreMatriculaController::class, 'create'])->name('inscripcion');
+Route::post('/inscripcion',                         [\App\Http\Controllers\PreMatriculaController::class, 'store'])->name('inscripcion.store')->middleware('throttle:5,1');
+Route::get('/inscripcion/confirmacion/{codigo}',    [\App\Http\Controllers\PreMatriculaController::class, 'confirmacion'])->name('inscripcion.confirmacion');
+Route::get('/inscripcion/consulta',                 [\App\Http\Controllers\PreMatriculaController::class, 'consulta'])->name('inscripcion.consulta')->middleware('throttle:20,1');
 
 // ══════════════════════════════════════════════════════════════════════════
 //  PORTALES AUTENTICADOS (multi-rol)

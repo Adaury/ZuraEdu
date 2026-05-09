@@ -13,21 +13,28 @@ class PreMatricula extends Model
     protected $table = 'pre_matriculas';
 
     protected $fillable = [
+        'codigo',
         'nombres',
         'apellidos',
         'fecha_nacimiento',
+        'genero',
+        'lugar_nacimiento',
+        'cedula_estudiante',
         'grado_solicitado',
         'nombre_representante',
         'cedula_representante',
+        'relacion_representante',
         'telefono',
         'email',
         'direccion',
         'estado',
         'notas_admin',
+        'documentos',
     ];
 
     protected $casts = [
         'fecha_nacimiento' => 'date',
+        'documentos'       => 'array',
     ];
 
     // ── Accessors ─────────────────────────────────────────────────────────────
@@ -64,6 +71,15 @@ class PreMatricula extends Model
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    public static function generateCodigo(): string
+    {
+        do {
+            $codigo = 'PM-' . strtoupper(substr(str_replace(['+', '/', '='], '', base64_encode(random_bytes(6))), 0, 8));
+        } while (static::withoutGlobalScopes()->where('codigo', $codigo)->exists());
+
+        return $codigo;
+    }
 
     public static function gradosDisponibles(): array
     {

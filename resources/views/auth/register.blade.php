@@ -1,10 +1,13 @@
+@php
+    $ls = \Illuminate\Support\Facades\DB::table('system_settings')->pluck('value','key');
+@endphp
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Solicitar Acceso — PSAC SGE</title>
+    <title>Solicitar Acceso — {{ $ls['system_abbr'] ?? $ls['system_name'] ?? 'SGE' }}</title>
 
     <!-- Google Fonts: Inter -->
     
@@ -409,11 +412,11 @@
         <div class="col-lg-5 panel-left">
             <div class="panel-left-content">
 
-                <div class="logo-badge">PSAC</div>
+                <div class="logo-badge">{{ strtoupper(substr($ls['system_abbr'] ?? $ls['system_name'] ?? 'SGE', 0, 4)) }}</div>
 
                 <div>
-                    <p class="school-name">Politécnico Salesiano<br>Arquides Calderón</p>
-                    <p class="school-subtitle mb-0">Sistema de Gestión Escolar</p>
+                    <p class="school-name">{!! nl2br(e($ls['login_titulo'] ?? $ls['system_name'] ?? 'Sistema de Gestión Escolar')) !!}</p>
+                    <p class="school-subtitle mb-0">{{ $ls['login_subtitulo'] ?? $ls['system_sub'] ?? 'Sistema de Gestión Escolar' }}</p>
                 </div>
 
                 <div class="steps-info">
@@ -468,7 +471,8 @@
             @endif
 
             <p class="panel-left-footer">
-                &copy; 2026 PSAC &middot; Nivel Secundario &middot; República Dominicana
+                &copy; {{ date('Y') }} {{ $ls['system_abbr'] ?? $ls['system_name'] ?? 'SGE' }}
+                @if(!empty($ls['system_sub'])) &middot; {{ $ls['system_sub'] }} @endif
             </p>
         </div>{{-- /.panel-left --}}
 

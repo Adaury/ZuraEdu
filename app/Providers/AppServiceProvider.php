@@ -78,16 +78,16 @@ class AppServiceProvider extends ServiceProvider
                         ->whereIn('key', ['system_name', 'system_abbr', 'system_logo', 'system_sub'])
                         ->pluck('value', 'key');
                     return [
-                        'system_name' => $rows['system_name'] ?? 'PSAC',
-                        'system_abbr' => $rows['system_abbr'] ?? 'PSAC',
+                        'system_name' => $rows['system_name'] ?? 'Zura',
+                        'system_abbr' => $rows['system_abbr'] ?? 'SGE',
                         'system_sub'  => $rows['system_sub']  ?? 'Gestión Escolar',
                         'system_logo' => $rows['system_logo'] ?? null,
                     ];
                 });
             } catch (\Exception $e) {
                 $systemSettings = [
-                    'system_name' => 'PSAC',
-                    'system_abbr' => 'PSAC',
+                    'system_name' => 'Zura',
+                    'system_abbr' => 'SGE',
                     'system_sub'  => 'Gestión Escolar',
                     'system_logo' => null,
                 ];

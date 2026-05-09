@@ -1512,10 +1512,10 @@ if(auth()->check()) {
                      alt="{{ $systemSettings['system_abbr'] }}"
                      style="width:38px;height:38px;border-radius:8px;object-fit:contain;background:#fff;padding:2px;">
             @else
-                <div class="logo-badge">{{ $systemSettings['system_abbr'] ?? 'PSAC' }}</div>
+                <div class="logo-badge">{{ $systemSettings['system_abbr'] ?? 'SGE' }}</div>
             @endif
             <div class="logo-text">
-                <div class="system-name">{{ $systemSettings['system_name'] ?? 'PSAC' }}</div>
+                <div class="system-name">{{ $systemSettings['system_name'] ?? 'Zura' }}</div>
                 <div class="system-sub">{{ $systemSettings['system_sub'] ?? 'Gestión Escolar' }}</div>
             </div>
         </a>

@@ -28,6 +28,9 @@
 [data-theme="dark"] .ra-bloque-portal { background:#1e293b; border-color:#334155; }
 .section-bar { background:#1d4ed8; color:#fff; border-radius:6px; padding:.4rem .85rem; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:.7rem; }
 .section-bar.green { background:#15803d; }
+.zura-ia-panel { transition: all .2s; }
+[data-theme="dark"] .zura-ia-panel { background:#0c2a3e !important; border-color:#0ea5e9 !important; }
+@keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
 </style>
 @endpush
 
@@ -54,6 +57,15 @@
     <ul style="margin:0;padding-left:1.2rem;">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
 </div>
 @endif
+
+{{-- Banner IA --}}
+<div style="background:linear-gradient(135deg,#eff6ff,#f5f3ff);border:1.5px solid #c4b5fd;border-radius:10px;padding:.7rem 1rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;">
+    <i class="bi bi-stars" style="color:#7c3aed;font-size:1.1rem;flex-shrink:0;"></i>
+    <div style="flex:1;min-width:0;">
+        <div style="font-size:.76rem;font-weight:800;color:#5b21b6;">ZuraIA disponible en cada RA</div>
+        <div style="font-size:.73rem;color:#6d28d9;line-height:1.4;">Haz clic en <strong>"Generar con ZuraIA"</strong> dentro de cada bloque RA para que la inteligencia artificial complete la descripción, elementos de capacidad, actividades, instrumentos y contenidos automáticamente.</div>
+    </div>
+</div>
 
 @if(isset($planificacion))
 <form method="POST" action="{{ route('portal.docente.planificacion.update', [$asignacion, $planificacion]) }}">
@@ -176,6 +188,9 @@
 
 @push('scripts')
 <script>
+const IA_RA_URL = "{{ route('portal.docente.planificacion.ia.ra', $asignacion) }}";
+const IA_CSRF   = document.querySelector('meta[name="csrf-token"]')?.content ?? '{{ csrf_token() }}';
+
 let raCount = {{ count($raItems) }};
 function agregarRA() {
     const tpl = document.getElementById('ra-template').innerHTML.replace(/__IDX__/g, raCount);
@@ -196,6 +211,94 @@ function agregarFecha(btn) {
         <button type="button" onclick="this.closest('.fecha-row').remove()"
             style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:.25rem .5rem;cursor:pointer;font-size:.8rem;"><i class="bi bi-x"></i></button>
     </div>`);
+}
+
+// ── ZuraIA: abrir/cerrar panel ────────────────────────────────────────────
+function abrirIaRA(btn) {
+    const bloque = btn.closest('.ra-bloque-portal');
+    const panel  = bloque.querySelector('.zura-ia-panel');
+    const visible = panel.style.display !== 'none';
+    panel.style.display = visible ? 'none' : 'block';
+    // Pre-llenar código y nivel si el docente ya los puso
+    if (!visible) {
+        const codVal = bloque.querySelector('.campo-ra-codigo')?.value;
+        const nivVal = bloque.querySelector('.campo-nivel')?.value;
+        if (codVal) panel.querySelector('.ia-ra-codigo').value = codVal;
+        if (nivVal) {
+            const sel = panel.querySelector('.ia-nivel');
+            [...sel.options].forEach(o => { o.selected = o.text.toLowerCase().includes(nivVal.toLowerCase()); });
+        }
+    }
+}
+
+// ── ZuraIA: ejecutar generación RA ────────────────────────────────────────
+async function ejecutarIaRA(btn) {
+    const panel   = btn.closest('.zura-ia-panel');
+    const bloque  = btn.closest('.ra-bloque-portal');
+    const spinner = panel.querySelector('.ia-spinner');
+    const errEl   = panel.querySelector('.ia-error');
+    const btnTxt  = panel.querySelector('.ia-btn-txt');
+
+    const payload = {
+        ra_hint:          panel.querySelector('.ia-hint').value.trim(),
+        ra_codigo:        panel.querySelector('.ia-ra-codigo').value.trim(),
+        nivel_taxonomico: panel.querySelector('.ia-nivel').value,
+        contexto:         panel.querySelector('.ia-contexto').value.trim(),
+        familia_profesional: document.querySelector('input[name="familia_profesional"]')?.value ?? '',
+        modulo:           document.querySelector('input[name="modulo_nombre"]')?.value ?? '',
+    };
+
+    btn.disabled = true;
+    btnTxt.textContent = 'Generando…';
+    spinner.style.display = 'inline-flex';
+    errEl.style.display = 'none';
+
+    try {
+        const res = await fetch(IA_RA_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': IA_CSRF, 'Accept': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+
+        if (!res.ok || json.error) {
+            errEl.textContent = json.error ?? 'Error al generar. Intente de nuevo.';
+            errEl.style.display = 'inline';
+            return;
+        }
+
+        // Aplicar al formulario del bloque RA
+        if (json.ra_descripcion)
+            bloque.querySelector('.campo-ra-descripcion').value = json.ra_descripcion;
+        if (json.elementos_capacidad)
+            bloque.querySelector('.campo-elementos').value = Array.isArray(json.elementos_capacidad)
+                ? json.elementos_capacidad.join('\n') : json.elementos_capacidad;
+        if (json.actividades)
+            bloque.querySelector('.campo-actividades').value = json.actividades;
+        if (json.instrumentos_evaluacion)
+            bloque.querySelector('.campo-instrumentos').value = json.instrumentos_evaluacion;
+        if (json.contenidos)
+            bloque.querySelector('.campo-contenidos').value = json.contenidos;
+
+        // Autocompletar código y nivel si estaban vacíos
+        const codInput = bloque.querySelector('.campo-ra-codigo');
+        const nivInput = bloque.querySelector('.campo-nivel');
+        if (!codInput.value && payload.ra_codigo) codInput.value = payload.ra_codigo;
+        if (!nivInput.value) nivInput.value = payload.nivel_taxonomico;
+
+        // Cerrar panel y dar feedback visual
+        panel.style.display = 'none';
+        bloque.style.borderColor = '#22c55e';
+        setTimeout(() => { bloque.style.borderColor = ''; }, 2000);
+
+    } catch (e) {
+        errEl.textContent = 'Error de conexión. Verifique su red.';
+        errEl.style.display = 'inline';
+    } finally {
+        btn.disabled = false;
+        btnTxt.textContent = 'Generar con IA';
+        spinner.style.display = 'none';
+    }
 }
 </script>
 @endpush

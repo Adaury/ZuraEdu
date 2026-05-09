@@ -25,6 +25,13 @@
 .prt-inp:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 2px #bfdbfe; }
 [data-theme="dark"] .prt-inp { background:#1e293b; border-color:#334155; color:#e2e8f0; }
 .act-badge-bar { display:inline-block; border-radius:5px; padding:.15rem .5rem; font-size:.72rem; font-weight:700; margin-bottom:.3rem; }
+.zura-ia-float { position:fixed; bottom:1.25rem; right:1.25rem; z-index:1050; }
+.zura-ia-fab { background:linear-gradient(135deg,#1d4ed8,#7c3aed); color:#fff; border:none; border-radius:50px; padding:.6rem 1.1rem; font-size:.82rem; font-weight:700; cursor:pointer; box-shadow:0 4px 18px rgba(29,78,216,.35); display:flex; align-items:center; gap:.45rem; }
+.zura-ia-drawer { display:none; position:fixed; bottom:4.5rem; right:1.25rem; width:340px; max-width:calc(100vw - 2rem); background:#fff; border:1.5px solid #7dd3fc; border-radius:14px; box-shadow:0 8px 32px rgba(0,0,0,.14); z-index:1050; overflow:hidden; }
+[data-theme="dark"] .zura-ia-drawer { background:#0f172a; border-color:#0ea5e9; }
+.zura-ia-drawer-header { background:linear-gradient(135deg,#1d4ed8,#7c3aed); color:#fff; padding:.65rem 1rem; display:flex; justify-content:space-between; align-items:center; }
+.zura-ia-drawer-body { padding:1rem; }
+@keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
 </style>
 @endpush
 
@@ -197,7 +204,7 @@
 </div>
 
 {{-- Botones --}}
-<div style="display:flex;justify-content:flex-end;gap:.5rem;margin-bottom:1.5rem;">
+<div style="display:flex;justify-content:flex-end;gap:.5rem;margin-bottom:5rem;">
     <a href="{{ route('portal.docente.planificacion.index', $asignacion) }}"
        style="background:#f1f5f9;color:#374151;border-radius:8px;padding:.5rem 1.2rem;font-size:.82rem;font-weight:700;text-decoration:none;">
         Cancelar
@@ -209,4 +216,140 @@
 </div>
 
 </form>
+
+{{-- ZuraIA Floating Button + Drawer --}}
+<div class="zura-ia-float">
+
+    {{-- Drawer --}}
+    <div class="zura-ia-drawer" id="zuraIaDrawer">
+        <div class="zura-ia-drawer-header">
+            <span style="font-size:.82rem;font-weight:800;display:flex;align-items:center;gap:.4rem;">
+                <i class="bi bi-stars"></i> ZuraIA — Asistente de Actividad
+            </span>
+            <button type="button" onclick="toggleZuraDrawer()"
+                    style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;padding:.15rem .45rem;cursor:pointer;font-size:.85rem;">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="zura-ia-drawer-body">
+            <div style="font-size:.74rem;color:#64748b;margin-bottom:.75rem;line-height:1.5;">
+                Describe brevemente la actividad y la IA generará el contenido completo de inicio, desarrollo y cierre.
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:.55rem;">
+                <div>
+                    <label style="font-size:.71rem;font-weight:700;color:#374151;display:block;margin-bottom:.2rem;">¿Qué quieres lograr con esta actividad?</label>
+                    <textarea id="ia-objetivo-hint" class="prt-inp" rows="2"
+                              placeholder="Ej: Que los estudiantes creen su primera página web con HTML..."></textarea>
+                </div>
+                <div>
+                    <label style="font-size:.71rem;font-weight:700;color:#374151;display:block;margin-bottom:.2rem;">Código RA (opcional)</label>
+                    <input type="text" id="ia-ra-codigo-act" class="prt-inp" placeholder="RA2.1">
+                </div>
+                <div>
+                    <label style="font-size:.71rem;font-weight:700;color:#374151;display:block;margin-bottom:.2rem;">Contexto adicional <span style="font-weight:400;color:#94a3b8;">(opcional)</span></label>
+                    <input type="text" id="ia-contexto-act" class="prt-inp"
+                           placeholder="Ej: laboratorio de informática, 3er año...">
+                </div>
+
+                <div style="display:flex;align-items:center;gap:.5rem;margin-top:.25rem;">
+                    <button type="button" onclick="ejecutarIaActividad()"
+                            id="ia-act-btn"
+                            style="background:linear-gradient(135deg,#1d4ed8,#7c3aed);color:#fff;border:none;border-radius:7px;padding:.4rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:.4rem;flex:1;justify-content:center;">
+                        <i class="bi bi-stars"></i>
+                        <span id="ia-act-btn-txt">Generar con IA</span>
+                    </button>
+                </div>
+                <div id="ia-act-spinner" style="display:none;font-size:.78rem;color:#0369a1;text-align:center;">
+                    <i class="bi bi-arrow-repeat" style="animation:spin 1s linear infinite;"></i> Generando contenido…
+                </div>
+                <div id="ia-act-error" style="display:none;font-size:.76rem;color:#dc2626;text-align:center;"></div>
+            </div>
+        </div>
+    </div>
+
+    {{-- FAB --}}
+    <button type="button" class="zura-ia-fab" onclick="toggleZuraDrawer()">
+        <i class="bi bi-stars"></i> ZuraIA
+    </button>
+</div>
+
+@push('scripts')
+<script>
+const IA_ACT_URL = "{{ route('portal.docente.planificacion.ia.actividad', $asignacion) }}";
+const IA_ACT_CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '{{ csrf_token() }}';
+
+function toggleZuraDrawer() {
+    const d = document.getElementById('zuraIaDrawer');
+    d.style.display = d.style.display === 'block' ? 'none' : 'block';
+}
+
+async function ejecutarIaActividad() {
+    const btn     = document.getElementById('ia-act-btn');
+    const btnTxt  = document.getElementById('ia-act-btn-txt');
+    const spinner = document.getElementById('ia-act-spinner');
+    const errEl   = document.getElementById('ia-act-error');
+
+    const payload = {
+        objetivo_hint: document.getElementById('ia-objetivo-hint').value.trim(),
+        ra_codigo:     document.getElementById('ia-ra-codigo-act').value.trim() || document.querySelector('input[name="ra_codigo"]')?.value || '',
+        contexto:      document.getElementById('ia-contexto-act').value.trim(),
+    };
+
+    btn.disabled = true;
+    btnTxt.textContent = 'Generando…';
+    spinner.style.display = 'block';
+    errEl.style.display = 'none';
+
+    try {
+        const res = await fetch(IA_ACT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': IA_ACT_CSRF, 'Accept': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+
+        if (!res.ok || json.error) {
+            errEl.textContent = json.error ?? 'Error al generar. Intente de nuevo.';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        // Rellenar campos del formulario
+        const set = (name, val) => {
+            if (!val) return;
+            const el = document.querySelector(`[name="${name}"]`);
+            if (el) el.value = val;
+        };
+
+        set('objetivo', json.objetivo);
+        set('act_inicio', json.act_inicio);
+        set('act_desarrollo', json.act_desarrollo);
+        set('act_cierre', json.act_cierre);
+        set('estrategias', json.estrategias);
+        set('recursos', json.recursos);
+        set('instrumentos_evaluacion', json.instrumentos_evaluacion);
+
+        // Cerrar drawer con feedback
+        document.getElementById('zuraIaDrawer').style.display = 'none';
+        const fab = document.querySelector('.zura-ia-fab');
+        fab.style.background = 'linear-gradient(135deg,#15803d,#22c55e)';
+        fab.innerHTML = '<i class="bi bi-check-circle-fill"></i> ¡Aplicado!';
+        setTimeout(() => {
+            fab.style.background = '';
+            fab.innerHTML = '<i class="bi bi-stars"></i> ZuraIA';
+        }, 3000);
+
+    } catch (e) {
+        errEl.textContent = 'Error de conexión. Verifique su red.';
+        errEl.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        btnTxt.textContent = 'Generar con IA';
+        spinner.style.display = 'none';
+    }
+}
+</script>
+@endpush
+
 @endsection

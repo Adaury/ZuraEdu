@@ -7,6 +7,7 @@ use App\Http\Controllers\Portal\PortalPadreController;
 use App\Http\Controllers\Portal\PortalDocenteController;
 use App\Http\Controllers\Portal\PlanificacionDocenteController;
 use App\Http\Controllers\Portal\PlanClaseDocenteController;
+use App\Http\Controllers\Portal\PlanificacionAIController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\DemoAutoController;
@@ -339,6 +340,10 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::put('/{planificacion}',           [PlanificacionDocenteController::class, 'update'])->name('update');
         Route::patch('/{planificacion}/publicado',[PlanificacionDocenteController::class, 'togglePublicado'])->name('toggle-publicado');
         Route::delete('/{planificacion}',        [PlanificacionDocenteController::class, 'destroy'])->name('destroy');
+        // IA endpoints
+        Route::post('/ia/ra',       [PlanificacionAIController::class, 'generarRA'])->name('ia.ra');
+        Route::post('/ia/actividad',[PlanificacionAIController::class, 'generarActividad'])->name('ia.actividad');
+        Route::post('/ia/mejorar',  [PlanificacionAIController::class, 'mejorarTexto'])->name('ia.mejorar');
     });
 });
 

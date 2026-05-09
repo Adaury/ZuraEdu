@@ -146,7 +146,7 @@ class PagoController extends Controller
             'fecha_vencimiento' => 'required|date',
             'fecha_pago'        => 'nullable|date',
             'estado'            => 'required|in:pendiente,pagado,vencido,cancelado',
-            'metodo_pago'       => 'nullable|in:efectivo,transferencia,tarjeta,stripe,otro',
+            'metodo_pago'       => 'nullable|in:efectivo,transferencia,tarjeta,stripe,cardnet,otro',
             'referencia'        => 'nullable|string|max:100',
             'notas'             => 'nullable|string|max:500',
         ]);
@@ -175,7 +175,7 @@ class PagoController extends Controller
             'fecha_vencimiento' => 'required|date',
             'fecha_pago'        => 'nullable|date',
             'estado'            => 'required|in:pendiente,pagado,vencido,cancelado',
-            'metodo_pago'       => 'nullable|in:efectivo,transferencia,tarjeta,stripe,otro',
+            'metodo_pago'       => 'nullable|in:efectivo,transferencia,tarjeta,stripe,cardnet,otro',
             'referencia'        => 'nullable|string|max:100',
             'notas'             => 'nullable|string|max:500',
         ]);
@@ -189,7 +189,7 @@ class PagoController extends Controller
     public function marcarPagado(Request $request, Pago $pago)
     {
         $data = $request->validate([
-            'metodo_pago' => 'required|in:efectivo,transferencia,tarjeta,stripe,otro',
+            'metodo_pago' => 'required|in:efectivo,transferencia,tarjeta,stripe,cardnet,otro',
             'referencia'  => 'nullable|string|max:100',
         ]);
 

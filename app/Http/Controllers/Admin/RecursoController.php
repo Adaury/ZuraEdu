@@ -63,7 +63,7 @@ class RecursoController extends Controller
         $data['activo'] = $request->boolean('activo', true);
         RecursoFisico::create($data);
 
-        return redirect()->route('recursos.index')->with('success', 'Recurso creado correctamente.');
+        return redirect()->route('admin.recursos.index')->with('success', 'Recurso creado correctamente.');
     }
 
     public function edit(RecursoFisico $recurso)
@@ -86,7 +86,7 @@ class RecursoController extends Controller
         $data['activo'] = $request->boolean('activo', true);
         $recurso->update($data);
 
-        return redirect()->route('recursos.index')->with('success', 'Recurso actualizado.');
+        return redirect()->route('admin.recursos.index')->with('success', 'Recurso actualizado.');
     }
 
     public function destroy(RecursoFisico $recurso)
@@ -102,7 +102,7 @@ class RecursoController extends Controller
         }
 
         $recurso->delete();
-        return redirect()->route('recursos.index')->with('success', 'Recurso eliminado.');
+        return redirect()->route('admin.recursos.index')->with('success', 'Recurso eliminado.');
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -194,7 +194,7 @@ class RecursoController extends Controller
         ]);
 
         return redirect()
-            ->route('recursos.reservas', $recurso)
+            ->route('admin.recursos.reservas', $recurso)
             ->with('success', 'Reserva enviada. Queda pendiente de aprobación.');
     }
 
@@ -235,6 +235,99 @@ class RecursoController extends Controller
 
         $reserva->delete();
         return back()->with('success', 'Reserva cancelada.');
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  EXCEL LISTA DE RECURSOS
+    // ══════════════════════════════════════════════════════════════════════
+
+    public function listaExcel(Request $request)
+    {
+        $query = RecursoFisico::withCount([
+            'reservas as reservas_pendientes' => fn($q) => $q->where('estado', 'pendiente'),
+        ]);
+
+        if ($request->filled('tipo'))   $query->where('tipo', $request->tipo);
+        if ($request->filled('activo')) $query->where('activo', $request->activo === '1');
+        if ($request->filled('q')) {
+            $q = $request->q;
+            $query->where(fn($sq) => $sq->where('nombre', 'like', "%{$q}%")->orWhere('ubicacion', 'like', "%{$q}%"));
+        }
+
+        $recursos = $query->orderBy('tipo')->orderBy('nombre')->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Recursos');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '1e40af']],
+        ];
+
+        $ws->mergeCells('A1:H1');
+        $ws->setCellValue('A1', 'Recursos y Aulas — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Nombre', 'Tipo', 'Capacidad', 'Ubicación', 'Descripción', 'Pendientes', 'Estado'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:H3')->applyFromArray($hdrStyle);
+
+        foreach ($recursos as $i => $rec) {
+            $row = $i + 4;
+            $tipoLabel = RecursoFisico::TIPOS[$rec->tipo]['label'] ?? ucfirst($rec->tipo);
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $rec->nombre);
+            $ws->setCellValue("C{$row}", $tipoLabel);
+            $ws->setCellValue("D{$row}", $rec->capacidad ?? '—');
+            $ws->setCellValue("E{$row}", $rec->ubicacion ?? '—');
+            $ws->setCellValue("F{$row}", $rec->descripcion ?? '—');
+            $ws->setCellValue("G{$row}", $rec->reservas_pendientes);
+            $ws->setCellValue("H{$row}", $rec->activo ? 'Activo' : 'Inactivo');
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:H{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('eff6ff');
+            }
+        }
+
+        foreach (range('A', 'H') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'rec_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'recursos_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  PDF LISTA DE RECURSOS
+    // ══════════════════════════════════════════════════════════════════════
+
+    public function listaPdf(Request $request)
+    {
+        $query = RecursoFisico::withCount([
+            'reservas as reservas_pendientes' => fn($q) => $q->where('estado', 'pendiente'),
+        ]);
+
+        if ($request->filled('tipo'))   $query->where('tipo', $request->tipo);
+        if ($request->filled('activo')) $query->where('activo', $request->activo === '1');
+        if ($request->filled('q')) {
+            $q = $request->q;
+            $query->where(fn($sq) => $sq->where('nombre', 'like', "%{$q}%")->orWhere('ubicacion', 'like', "%{$q}%"));
+        }
+
+        $recursos = $query->orderBy('tipo')->orderBy('nombre')->get();
+        $inst     = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'admin.recursos.lista_pdf',
+            compact('recursos', 'inst')
+        )->setPaper('letter', 'landscape');
+
+        return $pdf->download('recursos_' . now()->format('Ymd') . '.pdf');
     }
 
     // ══════════════════════════════════════════════════════════════════════

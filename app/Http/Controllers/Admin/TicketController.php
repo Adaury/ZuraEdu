@@ -206,6 +206,87 @@ class TicketController extends Controller
         return back()->with('success', 'Estado actualizado.');
     }
 
+    // ── Excel de tickets (solo admin) ─────────────────────────────────────
+    public function listaExcel(Request $request)
+    {
+        if (! $this->esAdmin()) abort(403);
+
+        $query = TicketSoporte::with(['solicitante', 'asignadoA'])->latest();
+
+        if ($request->filled('estado'))    $query->conEstado($request->estado);
+        if ($request->filled('categoria')) $query->conCategoria($request->categoria);
+        if ($request->filled('prioridad')) $query->conPrioridad($request->prioridad);
+
+        $tickets = $query->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Tickets');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '1e3a6e']],
+        ];
+
+        $ws->mergeCells('A1:H1');
+        $ws->setCellValue('A1', 'Tickets de Soporte — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Título', 'Solicitante', 'Categoría', 'Prioridad', 'Estado', 'Asignado A', 'Fecha'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:H3')->applyFromArray($hdrStyle);
+
+        $bgEstado = ['abierto' => 'dbeafe', 'en_proceso' => 'fef3c7', 'resuelto' => 'd1fae5', 'cerrado' => 'f3f4f6'];
+
+        foreach ($tickets as $i => $t) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $t->titulo);
+            $ws->setCellValue("C{$row}", $t->solicitante?->name ?? '—');
+            $ws->setCellValue("D{$row}", TicketSoporte::CATEGORIAS[$t->categoria] ?? $t->categoria);
+            $ws->setCellValue("E{$row}", TicketSoporte::PRIORIDADES[$t->prioridad] ?? $t->prioridad);
+            $ws->setCellValue("F{$row}", TicketSoporte::ESTADOS[$t->estado] ?? $t->estado);
+            $ws->setCellValue("G{$row}", $t->asignadoA?->name ?? '—');
+            $ws->setCellValue("H{$row}", $t->created_at->format('d/m/Y H:i'));
+            $bg = $bgEstado[$t->estado] ?? 'ffffff';
+            $ws->getStyle("A{$row}:H{$row}")->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB($bg);
+        }
+
+        foreach (range('A', 'H') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'tkt_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'tickets_soporte_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    // ── Lista PDF ─────────────────────────────────────────────────────────
+    public function listaPdf(Request $request)
+    {
+        if (! $this->esAdmin()) abort(403);
+
+        $query = TicketSoporte::with(['solicitante', 'asignadoA'])->latest();
+
+        if ($request->filled('estado'))    $query->conEstado($request->estado);
+        if ($request->filled('categoria')) $query->conCategoria($request->categoria);
+        if ($request->filled('prioridad')) $query->conPrioridad($request->prioridad);
+
+        $tickets = $query->get();
+        $inst    = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'admin.soporte.lista_pdf',
+            compact('tickets', 'inst')
+        )->setPaper('letter', 'landscape');
+
+        return $pdf->download('tickets_soporte_' . now()->format('Ymd') . '.pdf');
+    }
+
     // ── Asignar ticket (solo admin) ───────────────────────────────────────
     public function asignar(Request $request, TicketSoporte $soporte)
     {

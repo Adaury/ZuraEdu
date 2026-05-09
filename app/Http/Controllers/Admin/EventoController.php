@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Evento;
 use App\Models\Estudiante;
 use App\Models\Grupo;
-use App\Models\Matricula;
 use App\Models\InscripcionEvento;
+use App\Models\Matricula;
+use App\Models\Notificacion;
 use App\Models\SchoolYear;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class EventoController extends Controller
@@ -66,7 +68,19 @@ class EventoController extends Controller
 
         $data['activo'] = $request->boolean('activo', true);
 
-        Evento::create($data);
+        $evento = Evento::create($data);
+
+        if ($evento->activo) {
+            try {
+                $fecha   = $evento->fecha_inicio->format('d/m/Y');
+                $titulo  = "🎉 Nuevo evento: {$evento->nombre}";
+                $mensaje = "Se ha publicado un nuevo evento para el {$fecha}" . ($evento->lugar ? " en {$evento->lugar}" : '') . '.';
+                $userIds = User::where('activo', true)->pluck('id')->toArray();
+                if (!empty($userIds)) {
+                    Notificacion::enviarA($userIds, 'general', $titulo, $mensaje, ['evento_id' => $evento->id]);
+                }
+            } catch (\Throwable) {}
+        }
 
         return redirect()->route('admin.eventos.index')
                          ->with('success', 'Evento creado correctamente.');
@@ -198,6 +212,8 @@ class EventoController extends Controller
         $hoy = now()->toDateString();
         $insertados = 0;
 
+        $estudiantesInscritos = collect();
+
         foreach ($ids as $estudianteId) {
             $existe = InscripcionEvento::where('evento_id', $evento->id)
                 ->where('estudiante_id', $estudianteId)
@@ -211,7 +227,28 @@ class EventoController extends Controller
                     'asistio'          => false,
                 ]);
                 $insertados++;
+                $estudiantesInscritos->push($estudianteId);
             }
+        }
+
+        if ($estudiantesInscritos->isNotEmpty()) {
+            try {
+                $fecha   = $evento->fecha_inicio->format('d/m/Y');
+                $titulo  = "📋 Inscripción a evento: {$evento->nombre}";
+                $mensaje = "Has sido inscrito/a en el evento «{$evento->nombre}» programado para el {$fecha}.";
+                $estudiantes = \App\Models\Estudiante::with('representantes')
+                    ->whereIn('id', $estudiantesInscritos)->get();
+                $userIds = [];
+                foreach ($estudiantes as $est) {
+                    if ($est->user_id) $userIds[] = $est->user_id;
+                    foreach ($est->representantes as $rep) {
+                        if ($rep->user_id) $userIds[] = $rep->user_id;
+                    }
+                }
+                if (!empty($userIds)) {
+                    Notificacion::enviarA(array_unique($userIds), 'general', $titulo, $mensaje, ['evento_id' => $evento->id]);
+                }
+            } catch (\Throwable) {}
         }
 
         return back()->with('success', "{$insertados} estudiante(s) inscritos correctamente.");
@@ -248,6 +285,59 @@ class EventoController extends Controller
 
     // ── PDF de inscritos ──────────────────────────────────────────────────
 
+    public function inscritosExcel(Evento $evento)
+    {
+        $inscripciones = $evento->inscripciones()
+            ->with('estudiante.matriculas.grupo.grado')
+            ->get()
+            ->sortBy('estudiante.apellidos');
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Inscritos');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '1e3a6e']],
+        ];
+
+        $ws->mergeCells('A1:F1');
+        $ws->setCellValue('A1', 'Inscritos: ' . $evento->nombre . ' — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Nombre', 'Apellidos', 'Cédula', 'Grupo', 'Asistió'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:F3')->applyFromArray($hdrStyle);
+
+        foreach ($inscripciones->values() as $i => $ins) {
+            $row = $i + 4;
+            $est = $ins->estudiante;
+            $matricula = $est?->matriculas->first();
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $est?->nombres ?? '—');
+            $ws->setCellValue("C{$row}", $est?->apellidos ?? '—');
+            $ws->setCellValue("D{$row}", $est?->cedula ?? '—');
+            $ws->setCellValue("E{$row}", $matricula?->grupo?->nombre_completo ?? '—');
+            $ws->setCellValue("F{$row}", $ins->asistio ? 'Sí' : 'No');
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:F{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('eff6ff');
+            }
+        }
+
+        foreach (range('A', 'F') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'evt_') . '.xlsx';
+        $writer->save($tmp);
+
+        $slug = \Illuminate\Support\Str::slug($evento->nombre ?? 'evento');
+        return response()->download($tmp, "inscritos_{$slug}_" . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
     public function inscritosPdf(Evento $evento)
     {
         $evento->loadCount('inscripciones');
@@ -269,5 +359,88 @@ class EventoController extends Controller
 
         $slug = \Illuminate\Support\Str::slug($evento->nombre ?? 'evento');
         return $pdf->download("inscritos_{$slug}.pdf");
+    }
+
+    // ── Lista Excel de eventos ────────────────────────────────────────────
+
+    public function listaExcel(Request $request)
+    {
+        $query = Evento::withCount('inscripciones');
+
+        if ($request->filled('tipo'))        $query->where('tipo', $request->tipo);
+        if ($request->filled('fecha_desde')) $query->where('fecha_inicio', '>=', $request->fecha_desde);
+        if ($request->filled('fecha_hasta')) $query->where('fecha_inicio', '<=', $request->fecha_hasta);
+        if ($request->filled('activo'))      $query->where('activo', $request->activo === '1');
+        if ($request->filled('q'))           $query->where('nombre', 'like', '%' . $request->q . '%');
+
+        $eventos = $query->orderByDesc('fecha_inicio')->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Eventos');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '1e3a6e']],
+        ];
+
+        $ws->mergeCells('A1:H1');
+        $ws->setCellValue('A1', 'Eventos Extracurriculares — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        $tiposLabels = ['academico' => 'Académico', 'deportivo' => 'Deportivo', 'cultural' => 'Cultural', 'social' => 'Social', 'otro' => 'Otro'];
+
+        foreach (['#', 'Nombre', 'Tipo', 'Fecha Inicio', 'Fecha Fin', 'Lugar', 'Inscritos', 'Estado'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:H3')->applyFromArray($hdrStyle);
+
+        foreach ($eventos as $i => $evt) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $evt->nombre);
+            $ws->setCellValue("C{$row}", $tiposLabels[$evt->tipo] ?? $evt->tipo);
+            $ws->setCellValue("D{$row}", $evt->fecha_inicio ? \Carbon\Carbon::parse($evt->fecha_inicio)->format('d/m/Y') : '—');
+            $ws->setCellValue("E{$row}", $evt->fecha_fin ? \Carbon\Carbon::parse($evt->fecha_fin)->format('d/m/Y') : '—');
+            $ws->setCellValue("F{$row}", $evt->lugar ?? '—');
+            $ws->setCellValue("G{$row}", $evt->inscripciones_count);
+            $ws->setCellValue("H{$row}", $evt->activo ? 'Activo' : 'Inactivo');
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:H{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('eff6ff');
+            }
+        }
+
+        foreach (range('A', 'H') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'evts_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'eventos_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    // ── Lista PDF ─────────────────────────────────────────────────────────
+    public function listaPdf(Request $request)
+    {
+        $query = Evento::withCount('inscripciones');
+
+        if ($request->filled('tipo'))        $query->where('tipo', $request->tipo);
+        if ($request->filled('fecha_desde')) $query->where('fecha_inicio', '>=', $request->fecha_desde);
+        if ($request->filled('fecha_hasta')) $query->where('fecha_inicio', '<=', $request->fecha_hasta);
+        if ($request->filled('activo'))      $query->where('activo', $request->activo === '1');
+        if ($request->filled('q'))           $query->where('nombre', 'like', '%' . $request->q . '%');
+
+        $eventos = $query->orderByDesc('fecha_inicio')->get();
+        $inst    = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'admin.eventos.lista_pdf',
+            compact('eventos', 'inst')
+        )->setPaper('letter', 'landscape');
+
+        return $pdf->download('eventos_' . now()->format('Ymd') . '.pdf');
     }
 }

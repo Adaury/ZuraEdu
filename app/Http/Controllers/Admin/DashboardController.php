@@ -20,7 +20,13 @@ use App\Models\SchoolYear;
 use App\Models\AlertaSistema;
 use App\Models\ClaseVirtual;
 use App\Models\EntregaClassroom;
+use App\Models\Evento;
+use App\Models\FaltaDisciplinaria;
+use App\Models\IncidenteMedico;
 use App\Models\Matricula;
+use App\Models\PreMatricula;
+use App\Models\Reunion;
+use App\Models\RutaTransporte;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -214,6 +220,98 @@ class DashboardController extends Controller
             }
         }
 
+        // ── Agenda próximos 7 días (solo admin) ──────────────────────────
+        $agendaProxima = null;
+        $preMatriculasPendientes = 0;
+        if (!$isDocente) {
+            $agendaProxima = Cache::remember('dashboard_agenda_proxima', 120, function () {
+                $hoy   = now()->toDateString();
+                $en7   = now()->addDays(7)->toDateString();
+                $reuniones = Reunion::where('estado', 'programada')
+                    ->whereBetween('fecha', [$hoy, $en7])
+                    ->orderBy('fecha')
+                    ->get()
+                    ->map(fn($r) => [
+                        'tipo'   => 'reunion',
+                        'fecha'  => $r->fecha,
+                        'titulo' => $r->titulo,
+                        'sub'    => Reunion::tiposLabel()[$r->tipo] ?? $r->tipo,
+                        'lugar'  => $r->lugar,
+                        'icon'   => 'bi-people-fill',
+                        'color'  => '#2563eb',
+                        'bg'     => '#eff6ff',
+                        'route'  => route('admin.reuniones.show', $r),
+                    ]);
+                $eventos = Evento::where('activo', true)
+                    ->whereBetween('fecha_inicio', [$hoy, $en7])
+                    ->orderBy('fecha_inicio')
+                    ->get()
+                    ->map(fn($e) => [
+                        'tipo'   => 'evento',
+                        'fecha'  => $e->fecha_inicio,
+                        'titulo' => $e->nombre,
+                        'sub'    => ucfirst($e->tipo),
+                        'lugar'  => $e->lugar,
+                        'icon'   => 'bi-calendar-event-fill',
+                        'color'  => '#059669',
+                        'bg'     => '#d1fae5',
+                        'route'  => route('admin.eventos.show', $e),
+                    ]);
+                return $reuniones->merge($eventos)->sortBy('fecha')->values();
+            });
+            $preMatriculasPendientes = Cache::remember('dashboard_prematriculas_pendientes', 120,
+                fn() => PreMatricula::where('estado', 'pendiente')->count()
+            );
+        }
+
+        // ── Transporte (solo admin) ───────────────────────────────────────
+        $transporteStats = null;
+        if (!$isDocente) {
+            $transporteStats = Cache::remember('dashboard_transporte', 300, function () {
+                $rutas = RutaTransporte::withCount('estudiantesRuta as ocupacion')
+                    ->where('activo', true)
+                    ->get();
+                return [
+                    'total_rutas'  => $rutas->count(),
+                    'total_cap'    => $rutas->sum('capacidad'),
+                    'total_pasaj'  => $rutas->sum('ocupacion'),
+                    'rutas_llenas' => $rutas->filter(fn($r) => $r->capacidad > 0 && ($r->ocupacion / $r->capacidad) >= 0.8)->count(),
+                ];
+            });
+        }
+
+        // ── Disciplina reciente (solo admin) ──────────────────────────────
+        $recentDisciplina     = null;
+        $pendientesDisciplina = 0;
+        if (!$isDocente) {
+            $recentDisciplina = Cache::remember('dashboard_recent_disciplina', 120, fn() =>
+                FaltaDisciplinaria::with('estudiante')
+                    ->latest('fecha')
+                    ->take(5)
+                    ->get()
+            );
+            $pendientesDisciplina = Cache::remember('dashboard_pendientes_disciplina', 120, fn() =>
+                FaltaDisciplinaria::where('resuelto', false)->count()
+            );
+        }
+
+        // ── Incidentes médicos recientes (solo admin) ─────────────────────
+        $recentSalud          = null;
+        $totalIncidentesMes   = 0;
+        if (!$isDocente) {
+            $recentSalud = Cache::remember('dashboard_recent_salud', 120, fn() =>
+                IncidenteMedico::with('estudiante')
+                    ->latest('fecha')
+                    ->take(4)
+                    ->get()
+            );
+            $totalIncidentesMes = Cache::remember('dashboard_incidentes_mes', 120, fn() =>
+                IncidenteMedico::whereMonth('fecha', now()->month)
+                    ->whereYear('fecha', now()->year)
+                    ->count()
+            );
+        }
+
         // Alertas académicas recientes no leídas (solo admin/director)
         $alertasAcad = null;
         if (!$isDocente && $schoolYear) {
@@ -244,7 +342,14 @@ class DashboardController extends Controller
             'statsPagos',
             'chartData',
             'alertasAcad',
-            'zuraClassData'
+            'zuraClassData',
+            'recentDisciplina',
+            'pendientesDisciplina',
+            'recentSalud',
+            'totalIncidentesMes',
+            'transporteStats',
+            'agendaProxima',
+            'preMatriculasPendientes'
         ));
     }
 

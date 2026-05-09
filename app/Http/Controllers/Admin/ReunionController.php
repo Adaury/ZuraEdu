@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AcuerdoReunion;
 use App\Models\ConfigInstitucional;
+use App\Models\Notificacion;
 use App\Models\Reunion;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -65,6 +66,24 @@ class ReunionController extends Controller
         ]);
 
         $reunion = Reunion::create($data);
+
+        try {
+            $fecha   = $reunion->fecha->format('d/m/Y');
+            $titulo  = "📅 Nueva reunión programada: {$reunion->titulo}";
+            $mensaje = "Se ha programado una reunión el {$fecha}" . ($reunion->lugar ? " en {$reunion->lugar}" : '') . '.';
+
+            $roles = match ($reunion->tipo) {
+                'reunion_padres'    => ['Padre', 'Representante'],
+                'reunion_docentes'  => ['Docente'],
+                'consejo_directivo' => ['Admin', 'Director'],
+                default             => ['Admin', 'Director', 'Docente'],
+            };
+
+            $userIds = User::role($roles)->where('activo', true)->pluck('id')->toArray();
+            if (!empty($userIds)) {
+                Notificacion::enviarA($userIds, 'general', $titulo, $mensaje, ['reunion_id' => $reunion->id]);
+            }
+        } catch (\Throwable) {}
 
         return redirect()
             ->route('admin.reuniones.show', $reunion)
@@ -143,6 +162,96 @@ class ReunionController extends Controller
         $acuerdo->update(['cumplido' => !$acuerdo->cumplido]);
 
         return back()->with('success', $acuerdo->cumplido ? 'Marcado como cumplido.' : 'Marcado como pendiente.');
+    }
+
+    // ── Lista Excel ───────────────────────────────────────────────────────────
+    public function listaExcel(Request $request)
+    {
+        $query = Reunion::with('convocante')->latest('fecha');
+
+        if ($request->filled('tipo'))   $query->where('tipo', $request->tipo);
+        if ($request->filled('estado')) $query->where('estado', $request->estado);
+        if ($request->filled('buscar')) {
+            $q = $request->buscar;
+            $query->where(fn($sq) =>
+                $sq->where('titulo', 'like', "%{$q}%")->orWhere('lugar', 'like', "%{$q}%")
+            );
+        }
+
+        $reuniones = $query->get();
+        $tipos     = Reunion::tiposLabel();
+        $estados   = Reunion::estadosLabel();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Reuniones');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                       'startColor' => ['rgb' => '1e40af']],
+        ];
+
+        $ws->mergeCells('A1:F1');
+        $ws->setCellValue('A1', 'Lista de Reuniones — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['Fecha', 'Título', 'Tipo', 'Lugar', 'Convocante', 'Estado'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:F3')->applyFromArray($hdrStyle);
+
+        foreach ($reuniones->values() as $i => $r) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $r->fecha?->format('d/m/Y') ?? '—');
+            $ws->setCellValue("B{$row}", $r->titulo);
+            $ws->setCellValue("C{$row}", $tipos[$r->tipo] ?? $r->tipo);
+            $ws->setCellValue("D{$row}", $r->lugar ?? '—');
+            $ws->setCellValue("E{$row}", $r->convocante?->name ?? '—');
+            $ws->setCellValue("F{$row}", $estados[$r->estado] ?? $r->estado);
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:F{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('dbeafe');
+            }
+        }
+
+        foreach (range('A', 'F') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'reuniones_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'reuniones_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    // ── Lista PDF ─────────────────────────────────────────────────────────────
+    public function listaPdf(Request $request)
+    {
+        $query = Reunion::with('convocante')->latest('fecha');
+
+        if ($request->filled('tipo'))   $query->where('tipo', $request->tipo);
+        if ($request->filled('estado')) $query->where('estado', $request->estado);
+        if ($request->filled('buscar')) {
+            $q = $request->buscar;
+            $query->where(fn($sq) =>
+                $sq->where('titulo', 'like', "%{$q}%")->orWhere('lugar', 'like', "%{$q}%")
+            );
+        }
+
+        $reuniones = $query->get();
+        $tipos     = Reunion::tiposLabel();
+        $estados   = Reunion::estadosLabel();
+        $inst      = ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'admin.reuniones.lista_pdf',
+            compact('reuniones', 'tipos', 'estados', 'inst')
+        )->setPaper('letter', 'landscape');
+
+        return $pdf->download('reuniones_' . now()->format('Ymd') . '.pdf');
     }
 
     // ── PDF del Acta ──────────────────────────────────────────────────────

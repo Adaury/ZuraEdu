@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Docente;
 use App\Models\Grupo;
+use App\Models\Notificacion;
 use App\Models\SchoolYear;
 use App\Models\SesionTutoria;
 use App\Models\Tutoria;
@@ -67,10 +68,56 @@ class TutoriaController extends Controller
                 ->with('error', 'Este grupo ya tiene un tutor asignado para el año escolar seleccionado.');
         }
 
-        Tutoria::create($request->only(['docente_id', 'grupo_id', 'school_year_id', 'descripcion']) + ['activo' => true]);
+        $tutoria = Tutoria::create(
+            $request->only(['docente_id', 'grupo_id', 'school_year_id', 'descripcion']) + ['activo' => true]
+        );
+
+        try {
+            $tutoria->load(['docente.user', 'grupo.grado', 'grupo.seccion']);
+            if ($tutoria->docente?->user_id) {
+                $grupo = $tutoria->grupo;
+                $nombreGrupo = $grupo ? "{$grupo->grado?->nombre} {$grupo->seccion?->nombre}" : '—';
+                Notificacion::enviar(
+                    $tutoria->docente->user_id,
+                    'academica',
+                    '👥 Asignación de tutoría',
+                    "Has sido asignado/a como docente tutor/a del grupo {$nombreGrupo}."
+                );
+            }
+        } catch (\Throwable) {}
 
         return redirect()->route('admin.tutorias.index')
             ->with('success', 'Tutor asignado correctamente al grupo.');
+    }
+
+    public function edit(Tutoria $tutoria)
+    {
+        $docentes = Docente::activos()->orderBy('apellidos')->get();
+        return view('admin.tutorias.edit', compact('tutoria', 'docentes'));
+    }
+
+    public function update(Request $request, Tutoria $tutoria)
+    {
+        $request->validate([
+            'docente_id'  => 'required|exists:docentes,id',
+            'descripcion' => 'nullable|string|max:500',
+        ]);
+
+        $tutoria->update([
+            'docente_id'  => $request->docente_id,
+            'descripcion' => $request->descripcion,
+            'activo'      => $request->boolean('activo', true),
+        ]);
+
+        return redirect()->route('admin.tutorias.index')
+            ->with('success', 'Tutoría actualizada correctamente.');
+    }
+
+    public function toggleActivo(Tutoria $tutoria)
+    {
+        $tutoria->update(['activo' => ! $tutoria->activo]);
+
+        return back()->with('success', 'Estado de la tutoría actualizado.');
     }
 
     public function destroy(Tutoria $tutoria)
@@ -145,6 +192,81 @@ class TutoriaController extends Controller
 
         return redirect()->route('admin.tutorias.sesiones', $tutoria)
             ->with('success', 'Sesión eliminada.');
+    }
+
+    // ── Lista Excel ───────────────────────────────────────────────────────────
+
+    public function listaExcel(Request $request)
+    {
+        $yearId   = $request->integer('year_id') ?: SchoolYear::actual()?->id;
+
+        $tutorias = Tutoria::with(['docente', 'grupo.grado', 'grupo.seccion', 'sesiones'])
+            ->when($yearId, fn($q) => $q->where('school_year_id', $yearId))
+            ->orderBy('grupo_id')
+            ->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Tutorías');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                       'startColor' => ['rgb' => '4338ca']],
+        ];
+
+        $ws->mergeCells('A1:F1');
+        $ws->setCellValue('A1', 'Lista de Tutorías — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Grupo', 'Docente Tutor', 'Sesiones', 'Año Escolar', 'Estado'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:F3')->applyFromArray($hdrStyle);
+
+        foreach ($tutorias->values() as $i => $t) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $t->grupo?->nombre_completo ?? '—');
+            $ws->setCellValue("C{$row}", $t->docente?->nombre_completo ?? '—');
+            $ws->setCellValue("D{$row}", $t->sesiones->count());
+            $ws->setCellValue("E{$row}", $t->schoolYear?->nombre ?? '—');
+            $ws->setCellValue("F{$row}", $t->activo ? 'Activo' : 'Inactivo');
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:F{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('eef2ff');
+            }
+        }
+
+        foreach (range('A', 'F') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'tutorias_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'tutorias_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    // ── Lista PDF ─────────────────────────────────────────────────────────────
+
+    public function listaPdf(Request $request)
+    {
+        $yearId = $request->integer('year_id') ?: SchoolYear::actual()?->id;
+
+        $tutorias = Tutoria::with(['docente', 'grupo.grado', 'grupo.seccion', 'sesiones'])
+            ->when($yearId, fn($q) => $q->where('school_year_id', $yearId))
+            ->orderBy('grupo_id')
+            ->get();
+
+        $inst = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $pdf = Pdf::loadView('admin.tutorias.lista_pdf', compact('tutorias', 'inst'))
+            ->setPaper('letter', 'landscape');
+
+        return $pdf->download('tutorias_' . now()->format('Ymd') . '.pdf');
     }
 
     // ── Informe PDF ───────────────────────────────────────────────────────────

@@ -19,8 +19,14 @@ use App\Models\Matricula;
 use App\Models\Notificacion;
 use App\Models\Observacion;
 use App\Models\Periodo;
+use App\Models\InsigniaEstudiante;
+use App\Models\PuntoEstudiante;
+use App\Models\ProyectoEscolar;
+use App\Models\Reconocimiento;
 use App\Models\Representante;
+use App\Models\Pago;
 use App\Models\SchoolYear;
+use App\Services\CardNetService;
 use Illuminate\Http\Request;
 
 class PortalPadreController extends Controller
@@ -220,12 +226,37 @@ class PortalPadreController extends Controller
         // ── Comparativo de notas por período (para gráfica Chart.js) ──
         $comparativoChart = $this->calcularComparativoPeriodos($matricula, $periodos, $calificaciones, $calificacionesAcademicas);
 
+        // ── Gamificación del hijo ──
+        $gamificacionActiva = tenant_can('gamificacion');
+        $totalPuntosHijo   = 0;
+        $insigniasHijo     = collect();
+        $posicionHijo      = null;
+
+        if ($matricula && $gamificacionActiva) {
+            $totalPuntosHijo = PuntoEstudiante::where('matricula_id', $matricula->id)->sum('puntos');
+            $insigniasHijo   = InsigniaEstudiante::where('matricula_id', $matricula->id)->get()->keyBy('tipo');
+
+            $todosDelGrupo = Matricula::where('grupo_id', $matricula->grupo_id)
+                ->where('estado', 'activa')
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->get()
+                ->map(fn($m) => ['id' => $m->id, 'total' => PuntoEstudiante::where('matricula_id', $m->id)->sum('puntos')])
+                ->sortByDesc('total')->values();
+            $idx = $todosDelGrupo->search(fn($r) => $r['id'] === $matricula->id);
+            $posicionHijo = $idx !== false ? $idx + 1 : null;
+        }
+
+        $reconocimientosCount = Reconocimiento::where('estudiante_id', $estudiante->id)->count();
+        $proyectosCount = ProyectoEscolar::whereHas('integrantes', fn($q) => $q->where('estudiante_id', $estudiante->id))->count();
+
         return view('portal.padre.hijo', compact(
             'representante', 'estudiante', 'matricula', 'schoolYear', 'periodos',
             'calificaciones', 'calificacionesAcademicas',
             'resumenAsistencia', 'gridHorario', 'franjasHorario', 'horarioActivo', 'diasConfig',
             'observaciones', 'planificaciones', 'asignaciones',
-            'pagosHijo', 'resumenPagos', 'comparativoChart'
+            'pagosHijo', 'resumenPagos', 'comparativoChart',
+            'gamificacionActiva', 'totalPuntosHijo', 'insigniasHijo', 'posicionHijo',
+            'reconocimientosCount', 'proyectosCount'
         ));
     }
 
@@ -371,6 +402,33 @@ class PortalPadreController extends Controller
 
         $slug = \Illuminate\Support\Str::slug($estudiante->nombre_completo ?? 'estudiante');
         return $pdf->download("estado_cuenta_{$slug}.pdf");
+    }
+
+    // ── Pago en línea de cuota del hijo ─────────────────────────────────
+    public function iniciarPagoHijo(Estudiante $estudiante, Pago $pago)
+    {
+        $representante = $this->getRepresentante();
+        if (! $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists()) abort(403);
+
+        // Verificar que el pago pertenece a la matrícula activa del hijo
+        $matricula = $estudiante->matriculas()->where('id', $pago->matricula_id)->first();
+        abort_if(! $matricula, 403);
+        abort_if(! in_array($pago->estado, ['pendiente', 'vencido']), 422, 'Este pago ya no puede procesarse en línea.');
+
+        if (! CardNetService::isConfigured()) {
+            return back()->with('error', 'El pago en línea no está configurado. Contacta la administración.');
+        }
+
+        $orderId = 'P' . str_pad($pago->id, 11, '0', STR_PAD_LEFT);
+        $result  = CardNetService::createCheckoutParams($orderId, (float) $pago->monto, [
+            'pago_id' => $pago->id,
+            'origen'  => 'portal_padre',
+        ]);
+
+        $token = \Illuminate\Support\Str::random(32);
+        cache()->put("cardnet_form_{$token}", $result, now()->addMinutes(20));
+
+        return redirect()->route('cardnet.checkout', $token);
     }
 
     // ── PDF boletín del hijo ─────────────────────────────────────────────
@@ -1579,5 +1637,72 @@ class PortalPadreController extends Controller
 
         return redirect()->route('portal.padre.encuestas')
                          ->with('success', '¡Gracias por participar! Tus respuestas han sido registradas.');
+    }
+
+    public function saldoCafeteriaHijo(Estudiante $estudiante)
+    {
+        $representante = $this->getRepresentante();
+        $esHijo = $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists();
+        if (! $esHijo) abort(403, 'No tienes acceso a la información de este estudiante.');
+
+        $saldo          = \App\Models\VentaCafeteria::saldoEstudiante($estudiante->id);
+        $historial      = \App\Models\VentaCafeteria::where('estudiante_id', $estudiante->id)
+                            ->latest()->limit(50)->get();
+        $totalRecargado = \App\Models\VentaCafeteria::where('estudiante_id', $estudiante->id)
+                            ->where('tipo', 'recarga')->sum('monto');
+        $totalGastado   = \App\Models\VentaCafeteria::where('estudiante_id', $estudiante->id)
+                            ->where('tipo', 'venta')->sum('monto');
+
+        return view('portal.padre.cafeteria_hijo', compact(
+            'estudiante', 'saldo', 'historial', 'totalRecargado', 'totalGastado'
+        ));
+    }
+
+    public function rutaTransporteHijo(Estudiante $estudiante)
+    {
+        $representante = $this->getRepresentante();
+        $esHijo = $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists();
+        if (! $esHijo) abort(403, 'No tienes acceso a la información de este estudiante.');
+
+        $asignacion = \App\Models\EstudianteRuta::where('estudiante_id', $estudiante->id)
+                        ->with(['ruta.paradas', 'parada'])
+                        ->latest()->first();
+        $ruta = $asignacion?->ruta;
+
+        return view('portal.padre.transporte_hijo', compact(
+            'estudiante', 'asignacion', 'ruta'
+        ));
+    }
+
+    // ── Reconocimientos del hijo ──────────────────────────────────────────
+    public function logrosHijo(Estudiante $estudiante)
+    {
+        $representante = $this->getRepresentante();
+        if (! $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists()) {
+            abort(403);
+        }
+
+        $reconocimientos = Reconocimiento::with('tipo')
+            ->where('estudiante_id', $estudiante->id)
+            ->latest('fecha')
+            ->get();
+
+        return view('portal.padre.logros_hijo', compact('estudiante', 'reconocimientos'));
+    }
+
+    // ── Proyectos del hijo ────────────────────────────────────────────────
+    public function proyectosHijo(Estudiante $estudiante)
+    {
+        $representante = $this->getRepresentante();
+        if (! $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists()) {
+            abort(403);
+        }
+
+        $proyectos = ProyectoEscolar::with(['tutor', 'fases'])
+            ->whereHas('integrantes', fn($q) => $q->where('estudiante_id', $estudiante->id))
+            ->latest()
+            ->get();
+
+        return view('portal.padre.proyectos_hijo', compact('estudiante', 'proyectos'));
     }
 }

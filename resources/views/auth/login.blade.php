@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Iniciar Sesión — PSAC SGE</title>
+    <title>Iniciar Sesión — {{ $ls['system_name'] ?? 'ZuraEdu' }}</title>
 
     <!-- Google Fonts: Inter -->
     
@@ -348,13 +348,13 @@
 
                 {{-- Logo badge --}}
                 <div class="logo-badge" style="background-color:{{ $lAcc }};box-shadow:0 8px 24px {{ $lAcc }}70;">
-                    {{ strtoupper(substr($ls['system_abbr'] ?? 'SGE', 0, 4)) }}
+                    {{ strtoupper(substr($ls['system_abbr'] ?? 'ZE', 0, 4)) }}
                 </div>
 
                 {{-- School identity --}}
                 <div>
-                    <p class="school-name">{!! nl2br(e($ls['login_titulo'] ?? ($ls['system_name'] ?? 'Sistema de Gestión Escolar'))) !!}</p>
-                    <p class="school-subtitle mb-0">{{ $ls['login_subtitulo'] ?? 'Sistema de Gestión Escolar' }}</p>
+                    <p class="school-name">{!! nl2br(e($ls['login_titulo'] ?? ($ls['system_name'] ?? 'ZuraEdu'))) !!}</p>
+                    <p class="school-subtitle mb-0">{{ $ls['login_subtitulo'] ?? 'Plataforma de Gestión Escolar' }}</p>
                 </div>
 
                 {{-- Feature bullets --}}
@@ -376,7 +376,10 @@
             </div>{{-- /.panel-left-content --}}
 
             <p class="panel-left-footer">
-                &copy; 2026 PSAC &middot; Nivel Secundario &middot; República Dominicana
+                &copy; {{ date('Y') }} {{ $ls['system_abbr'] ?? 'ZuraEdu' }}
+                @if(!empty($ls['system_name']) && ($ls['system_abbr'] ?? '') !== ($ls['system_name'] ?? ''))
+                    &middot; {{ Illuminate\Support\Str::limit($ls['system_name'], 50) }}
+                @endif
             </p>
         </div>{{-- /.panel-left --}}
 
@@ -426,7 +429,7 @@
                                 name="email"
                                 class="form-control rounded-3"
                                 style="border-top-left-radius:0!important;border-bottom-left-radius:0!important;"
-                                placeholder="usuario@psac.edu.do"
+                                placeholder="usuario@correo.com"
                                 value="{{ old('email') }}"
                                 autocomplete="email"
                                 autofocus

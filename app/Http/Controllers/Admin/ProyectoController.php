@@ -7,6 +7,7 @@ use App\Models\ConfigInstitucional;
 use App\Models\Estudiante;
 use App\Models\FaseProyecto;
 use App\Models\IntegranteProyecto;
+use App\Models\Notificacion;
 use App\Models\ProyectoEscolar;
 use App\Models\SchoolYear;
 use App\Models\User;
@@ -96,7 +97,19 @@ class ProyectoController extends Controller
 
         $proyecto = ProyectoEscolar::create($data);
 
-        return redirect()->route('proyectos.show', $proyecto)
+        try {
+            if ($proyecto->tutor_id) {
+                $area = ProyectoEscolar::AREAS[$proyecto->area] ?? $proyecto->area;
+                Notificacion::enviar(
+                    $proyecto->tutor_id,
+                    'academica',
+                    '📁 Proyecto asignado',
+                    "Se te ha asignado como tutor/a del proyecto «{$proyecto->titulo}» (Área: {$area})."
+                );
+            }
+        } catch (\Throwable) {}
+
+        return redirect()->route('admin.proyectos.show', $proyecto)
             ->with('success', 'Proyecto creado exitosamente.');
     }
 
@@ -148,7 +161,7 @@ class ProyectoController extends Controller
 
         $proyecto->update($data);
 
-        return redirect()->route('proyectos.show', $proyecto)
+        return redirect()->route('admin.proyectos.show', $proyecto)
             ->with('success', 'Proyecto actualizado.');
     }
 
@@ -158,7 +171,7 @@ class ProyectoController extends Controller
     {
         $proyecto->delete();
 
-        return redirect()->route('proyectos.index')
+        return redirect()->route('admin.proyectos.index')
             ->with('success', 'Proyecto eliminado.');
     }
 
@@ -242,5 +255,83 @@ class ProyectoController extends Controller
         $nombre = str_replace(' ', '_', $estudiante->nombres . '_' . $estudiante->apellidos);
 
         return $pdf->download("certificado_proyecto_{$nombre}.pdf");
+    }
+
+    public function listaExcel(Request $request)
+    {
+        $query = ProyectoEscolar::with(['tutor', 'schoolYear', 'integrantes.estudiante', 'fases']);
+
+        if ($request->filled('school_year_id')) {
+            $query->where('school_year_id', $request->school_year_id);
+        }
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        $proyectos = $query->orderBy('titulo')->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Proyectos');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '1e3a6e']],
+        ];
+
+        $ws->mergeCells('A1:H1');
+        $ws->setCellValue('A1', 'Lista de Proyectos Escolares — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Título', 'Área', 'Tutor', 'Estado', 'Fecha Inicio', 'Fases', 'Integrantes'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:H3')->applyFromArray($hdrStyle);
+
+        foreach ($proyectos as $i => $p) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $p->titulo);
+            $ws->setCellValue("C{$row}", $p->area ?? '—');
+            $ws->setCellValue("D{$row}", $p->tutor?->name ?? '—');
+            $ws->setCellValue("E{$row}", ucfirst($p->estado ?? '—'));
+            $ws->setCellValue("F{$row}", $p->fecha_inicio?->format('d/m/Y') ?? '—');
+            $ws->setCellValue("G{$row}", $p->fases->count() . ' (' . $p->fases->where('completada', true)->count() . ' completadas)');
+            $integrantes = $p->integrantes->map(fn($int) => ($int->estudiante?->nombres ?? '') . ' ' . ($int->estudiante?->apellidos ?? ''))->filter()->implode(', ');
+            $ws->setCellValue("H{$row}", $integrantes ?: '—');
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:H{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('eff6ff');
+            }
+        }
+
+        foreach (range('A', 'H') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'proy_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'proyectos_escolares_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    // ── Lista PDF ─────────────────────────────────────────────────────────────
+    public function listaPdf(Request $request)
+    {
+        $query = ProyectoEscolar::with(['tutor', 'schoolYear', 'integrantes.estudiante', 'fases']);
+
+        if ($request->filled('school_year_id')) $query->where('school_year_id', $request->school_year_id);
+        if ($request->filled('estado'))         $query->where('estado', $request->estado);
+
+        $proyectos = $query->orderBy('titulo')->get();
+        $inst      = ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'admin.proyectos.lista_pdf',
+            compact('proyectos', 'inst')
+        )->setPaper('letter', 'landscape');
+
+        return $pdf->download('proyectos_escolares_' . now()->format('Ymd') . '.pdf');
     }
 }

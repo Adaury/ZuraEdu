@@ -12,7 +12,13 @@
             </h4>
             <small class="text-muted">Catálogo de libros y control de inventario</small>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ route('admin.biblioteca.catalogo.pdf') }}" target="_blank" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-file-earmark-pdf me-1"></i>PDF Catálogo
+            </a>
+            <a href="{{ route('admin.biblioteca.catalogo.excel') }}" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-file-earmark-excel me-1"></i>Excel Catálogo
+            </a>
             <a href="{{ route('admin.biblioteca.prestamos.index') }}" class="btn btn-outline-primary btn-sm">
                 <i class="bi bi-arrow-left-right me-1"></i>Ver Préstamos
             </a>
@@ -179,6 +185,10 @@
                             </td>
                             <td class="text-end">
                                 <div class="d-flex justify-content-end gap-1">
+                                    <a href="{{ route('admin.biblioteca.libros.show', $libro) }}"
+                                       class="btn btn-sm btn-outline-secondary" title="Ver detalle">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
                                     <a href="{{ route('admin.biblioteca.libros.edit', $libro) }}"
                                        class="btn btn-sm btn-outline-primary" title="Editar">
                                         <i class="bi bi-pencil"></i>

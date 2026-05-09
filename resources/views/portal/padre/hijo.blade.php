@@ -17,6 +17,11 @@
         @endif
     </a>
     @endif
+    @if($gamificacionActiva && $matricula)
+    <a href="#gamificacion" class="prt-sidebar-link">
+        <i class="bi bi-controller"></i>Gamificación
+    </a>
+    @endif
 @endsection
 
 @section('bottom-nav')
@@ -120,6 +125,24 @@
             <div class="prt-stat-lbl">Observaciones</div>
         </div>
     </div>
+    @if($reconocimientosCount > 0)
+    <a href="{{ route('portal.padre.hijo.logros', $estudiante) }}" class="prt-stat" style="text-decoration:none;">
+        <div class="prt-stat-icon" style="background:#fef3c7;color:#b45309;"><i class="bi bi-trophy-fill"></i></div>
+        <div>
+            <div class="prt-stat-val">{{ $reconocimientosCount }}</div>
+            <div class="prt-stat-lbl">Reconocimientos</div>
+        </div>
+    </a>
+    @endif
+    @if($proyectosCount > 0)
+    <a href="{{ route('portal.padre.hijo.proyectos', $estudiante) }}" class="prt-stat" style="text-decoration:none;">
+        <div class="prt-stat-icon" style="background:#e0f2fe;color:#0369a1;"><i class="bi bi-lightbulb-fill"></i></div>
+        <div>
+            <div class="prt-stat-val">{{ $proyectosCount }}</div>
+            <div class="prt-stat-lbl">Proyectos</div>
+        </div>
+    </a>
+    @endif
 </div>
 
 {{-- ── Materias ────────────────────────────────────────────────────── --}}
@@ -510,7 +533,50 @@
 </div>
 @endif
 
-{{-- ── Pagos / Colegiaturas ────────────────────────────────────────────── --}}
+{{-- ── Gamificación ─────────────────────────────────────────────────────── --}}
+@if($gamificacionActiva && $matricula)
+<div class="prt-card" id="gamificacion" style="margin-top:.5rem;">
+    <div class="prt-card-header" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">
+        <i class="bi bi-controller" style="color:#fff;font-size:1rem;"></i>
+        <h3 style="color:#fff;margin:0;">Puntos y Gamificación</h3>
+    </div>
+    <div class="prt-card-body">
+        {{-- Resumen --}}
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:1rem;">
+            <div style="background:#eef2ff;border-radius:10px;padding:.7rem;text-align:center;">
+                <div style="font-size:1.05rem;font-weight:800;color:#4338ca;">{{ number_format($totalPuntosHijo) }}</div>
+                <div style="font-size:.68rem;color:#4f46e5;font-weight:600;">Puntos</div>
+            </div>
+            <div style="background:#fef3c7;border-radius:10px;padding:.7rem;text-align:center;">
+                <div style="font-size:1.05rem;font-weight:800;color:#92400e;">{{ $insigniasHijo->count() }}</div>
+                <div style="font-size:.68rem;color:#78350f;font-weight:600;">Insignias</div>
+            </div>
+            <div style="background:#f0fdf4;border-radius:10px;padding:.7rem;text-align:center;">
+                <div style="font-size:1.05rem;font-weight:800;color:#065f46;">{{ $posicionHijo ? '#'.$posicionHijo : '—' }}</div>
+                <div style="font-size:.68rem;color:#166534;font-weight:600;">Posición</div>
+            </div>
+        </div>
+
+        {{-- Insignias --}}
+        @if($insigniasHijo->isNotEmpty())
+        <p style="font-size:.75rem;font-weight:700;color:#374151;margin-bottom:.5rem;">Insignias obtenidas:</p>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem;">
+            @foreach(\App\Models\InsigniaEstudiante::TIPOS as $tipo => $info)
+            @if(isset($insigniasHijo[$tipo]))
+            <div style="display:flex;align-items:center;gap:.4rem;background:{{ $info['bg'] }};border-radius:20px;padding:.3rem .7rem;font-size:.72rem;font-weight:600;">
+                <i class="bi {{ $info['icono'] }}" style="color:{{ $info['color'] }};"></i>
+                {{ $info['label'] }}
+            </div>
+            @endif
+            @endforeach
+        </div>
+        @else
+        <p style="font-size:.78rem;color:#9ca3af;text-align:center;padding:.75rem 0;">Aún no ha obtenido insignias.</p>
+        @endif
+    </div>
+</div>
+@endif
+
 @if($resumenPagos !== null)
 <div class="prt-card" id="pagos" style="margin-top:.5rem;">
     <div class="prt-card-header" style="background:linear-gradient(135deg,#0f766e,#14b8a6);">
@@ -550,12 +616,14 @@
 
         {{-- Lista de pagos --}}
         @if($pagosHijo->isNotEmpty())
+        @php $cardnetActivo = \App\Services\CardNetService::isConfigured(); @endphp
         <div style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
             @foreach($pagosHijo->take(8) as $pg)
             @php
                 $bg    = match($pg->estado) { 'pagado'=>'#f0fdf4', 'vencido'=>'#fef2f2', default=>'#fffbeb' };
                 $color = match($pg->estado) { 'pagado'=>'#065f46', 'vencido'=>'#991b1b', default=>'#92400e' };
                 $label = match($pg->estado) { 'pagado'=>'Pagado', 'vencido'=>'Vencido', 'cancelado'=>'Cancelado', default=>'Pendiente' };
+                $puedeOnline = in_array($pg->estado, ['pendiente','vencido']) && $cardnetActivo;
             @endphp
             <div style="display:flex;align-items:center;gap:.75rem;padding:.65rem .85rem;border-bottom:1px solid #f3f4f6;background:{{ $loop->even ? '#fafafa' : '#fff' }};">
                 <div style="flex:1;min-width:0;">
@@ -564,6 +632,14 @@
                 </div>
                 <div style="font-size:.85rem;font-weight:800;color:#1e293b;white-space:nowrap;">RD$ {{ number_format($pg->monto,2) }}</div>
                 <span style="background:{{ $bg }};color:{{ $color }};border-radius:20px;padding:.18rem .55rem;font-size:.68rem;font-weight:700;white-space:nowrap;">{{ $label }}</span>
+                @if($puedeOnline)
+                <form method="POST" action="{{ route('portal.padre.hijo.pagos.pagar-online', [$estudiante, $pg]) }}" style="margin:0;">
+                    @csrf
+                    <button type="submit" style="background:#1d4ed8;color:#fff;border:none;border-radius:6px;padding:.2rem .6rem;font-size:.68rem;font-weight:700;cursor:pointer;white-space:nowrap;">
+                        <i class="bi bi-credit-card-2-front me-1"></i>Pagar
+                    </button>
+                </form>
+                @endif
             </div>
             @endforeach
             @if($pagosHijo->count() > 8)

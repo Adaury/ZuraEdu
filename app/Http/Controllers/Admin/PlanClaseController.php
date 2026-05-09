@@ -208,6 +208,106 @@ class PlanClaseController extends Controller
         return Storage::disk('public')->download($planesClase->archivo_path, $planesClase->archivo_nombre);
     }
 
+    // ── Excel lista ──────────────────────────────────────────────────────
+
+    public function listaExcel(Request $request)
+    {
+        $schoolYear = SchoolYear::actual();
+        $user       = Auth::user();
+
+        $query = PlanClase::with(['docente', 'asignacion.asignatura', 'asignacion.grupo'])
+            ->where('school_year_id', $schoolYear?->id)
+            ->latest();
+
+        if ($user->hasRole('Docente') && $user->docente) {
+            $query->where('docente_id', $user->docente->id);
+        }
+
+        if ($request->filled('area'))    $query->where('area', $request->area);
+        if ($request->filled('docente')) $query->where('docente_id', $request->docente);
+        if ($request->filled('search'))  $query->where('titulo', 'like', '%'.$request->search.'%');
+
+        $planes = $query->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Planes de Clase');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '1d4ed8']],
+        ];
+
+        $ws->mergeCells('A1:H1');
+        $ws->setCellValue('A1', 'Planes de Clase — ' . ($schoolYear?->nombre ?? '') . ' — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Título', 'Área', 'Tipo', 'Docente', 'Asignatura / Grupo', 'Fecha Inicio', 'Publicado'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:H3')->applyFromArray($hdrStyle);
+
+        $tipoLabels = ['diaria' => 'Diaria', 'semanal' => 'Semanal', 'quincenal' => 'Quincenal', 'mensual' => 'Mensual'];
+
+        foreach ($planes->values() as $i => $plan) {
+            $row = $i + 4;
+            $asignacion = $plan->asignacion;
+            $grupo = $asignacion?->grupo?->nombre ?? '—';
+            $asignatura = $asignacion?->asignatura?->nombre ?? '—';
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $plan->titulo);
+            $ws->setCellValue("C{$row}", ucfirst($plan->area));
+            $ws->setCellValue("D{$row}", $tipoLabels[$plan->tipo_plan] ?? $plan->tipo_plan);
+            $ws->setCellValue("E{$row}", $plan->docente?->nombre_completo ?? '—');
+            $ws->setCellValue("F{$row}", "{$asignatura} / {$grupo}");
+            $ws->setCellValue("G{$row}", $plan->fecha_inicio ? \Carbon\Carbon::parse($plan->fecha_inicio)->format('d/m/Y') : '—');
+            $ws->setCellValue("H{$row}", $plan->publicado ? 'Sí' : 'No');
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:H{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('eff6ff');
+            }
+        }
+
+        foreach (range('A', 'H') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'planes_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'planes_clase_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    // ── Lista PDF ────────────────────────────────────────────────────────
+    public function listaPdf(Request $request)
+    {
+        $schoolYear = SchoolYear::actual();
+        $user       = Auth::user();
+
+        $query = PlanClase::with(['docente', 'asignacion.asignatura', 'asignacion.grupo'])
+            ->where('school_year_id', $schoolYear?->id)
+            ->latest();
+
+        if ($user->hasRole('Docente') && $user->docente) {
+            $query->where('docente_id', $user->docente->id);
+        }
+
+        if ($request->filled('area'))    $query->where('area', $request->area);
+        if ($request->filled('docente')) $query->where('docente_id', $request->docente);
+        if ($request->filled('search'))  $query->where('titulo', 'like', '%'.$request->search.'%');
+
+        $planes = $query->get();
+        $inst   = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'admin.planes_clase.lista_pdf',
+            compact('planes', 'schoolYear', 'inst')
+        )->setPaper('letter', 'landscape');
+
+        return $pdf->download('planes_clase_' . now()->format('Ymd') . '.pdf');
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────
     private function guardarMomentos(PlanClase $plan, array $momentos): void
     {

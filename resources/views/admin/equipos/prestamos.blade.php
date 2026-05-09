@@ -13,6 +13,10 @@
             <small class="text-muted">Control de préstamos y devoluciones</small>
         </div>
         <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ route('admin.equipos.prestamos.excel', request()->query()) }}"
+               class="btn btn-outline-success btn-sm">
+                <i class="bi bi-file-earmark-excel me-1"></i>Excel
+            </a>
             {{-- Verificar vencidos --}}
             <form method="POST" action="{{ route('admin.equipos.verificar-vencidos') }}">
                 @csrf

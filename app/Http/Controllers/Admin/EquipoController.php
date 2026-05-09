@@ -198,6 +198,158 @@ class EquipoController extends Controller
     }
 
     // ══════════════════════════════════════════════════════════════════════
+    //  EXCEL LISTA INVENTARIO
+    // ══════════════════════════════════════════════════════════════════════
+
+    public function listaExcel(Request $request)
+    {
+        $query = Equipo::query();
+
+        if ($request->filled('tipo'))   $query->where('tipo', $request->tipo);
+        if ($request->filled('estado')) $query->where('estado', $request->estado);
+        if ($request->filled('q')) {
+            $q = $request->q;
+            $query->where(fn($sq) => $sq->where('nombre', 'like', "%{$q}%")->orWhere('codigo', 'like', "%{$q}%"));
+        }
+
+        $equipos = $query->orderBy('nombre')->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Inventario Equipos');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '1e3a8a']],
+        ];
+
+        $estadoColors = ['disponible' => 'd1fae5', 'prestado' => 'fef9c3', 'mantenimiento' => 'ffedd5', 'baja' => 'f3f4f6'];
+
+        $ws->mergeCells('A1:F1');
+        $ws->setCellValue('A1', 'Inventario de Equipos Tecnológicos — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Nombre', 'Código', 'Tipo', 'Estado', 'Descripción'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:F3')->applyFromArray($hdrStyle);
+
+        foreach ($equipos->values() as $i => $eq) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $eq->nombre);
+            $ws->setCellValue("C{$row}", $eq->codigo ?? '—');
+            $ws->setCellValue("D{$row}", Equipo::TIPOS[$eq->tipo] ?? $eq->tipo);
+            $ws->setCellValue("E{$row}", Equipo::ESTADOS[$eq->estado] ?? $eq->estado);
+            $ws->setCellValue("F{$row}", $eq->descripcion ?? '—');
+            $color = $estadoColors[$eq->estado] ?? 'f9fafb';
+            $ws->getStyle("A{$row}:F{$row}")->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB($color);
+        }
+
+        foreach (range('A', 'F') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'equipos_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'inventario_equipos_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  PDF LISTA INVENTARIO
+    // ══════════════════════════════════════════════════════════════════════
+
+    public function listaPdf(Request $request)
+    {
+        $query = Equipo::query();
+
+        if ($request->filled('tipo'))   $query->where('tipo', $request->tipo);
+        if ($request->filled('estado')) $query->where('estado', $request->estado);
+        if ($request->filled('q')) {
+            $q = $request->q;
+            $query->where(fn($sq) => $sq->where('nombre', 'like', "%{$q}%")->orWhere('codigo', 'like', "%{$q}%"));
+        }
+
+        $equipos = $query->orderBy('nombre')->get();
+        $inst    = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'admin.equipos.lista_pdf',
+            compact('equipos', 'inst')
+        )->setPaper('letter', 'landscape');
+
+        return $pdf->download('inventario_equipos_' . now()->format('Ymd') . '.pdf');
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  EXCEL PRÉSTAMOS
+    // ══════════════════════════════════════════════════════════════════════
+
+    public function prestamosExcel(Request $request)
+    {
+        $query = PrestamoEquipo::with(['equipo', 'usuario']);
+
+        if ($request->filled('estado')) $query->where('estado', $request->estado);
+        if ($request->filled('q')) {
+            $q = $request->q;
+            $query->where(fn($sq) =>
+                $sq->whereHas('usuario', fn($s) => $s->where('name', 'like', "%{$q}%"))
+                   ->orWhereHas('equipo', fn($s) => $s->where('nombre', 'like', "%{$q}%"))
+            );
+        }
+
+        $prestamos = $query->orderByDesc('fecha_prestamo')->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Préstamos Equipos');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                       'startColor' => ['rgb' => '1e3a8a']],
+        ];
+
+        $ws->mergeCells('A1:G1');
+        $ws->setCellValue('A1', 'Préstamos de Equipos — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Equipo', 'Código', 'Usuario', 'F. Préstamo', 'F. Vencimiento', 'Estado'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:G3')->applyFromArray($hdrStyle);
+
+        foreach ($prestamos->values() as $i => $p) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $p->equipo?->nombre ?? '—');
+            $ws->setCellValue("C{$row}", $p->equipo?->codigo ?? '—');
+            $ws->setCellValue("D{$row}", $p->usuario?->name ?? '—');
+            $ws->setCellValue("E{$row}", $p->fecha_prestamo?->format('d/m/Y') ?? '—');
+            $ws->setCellValue("F{$row}", $p->fecha_vencimiento?->format('d/m/Y') ?? '—');
+            $ws->setCellValue("G{$row}", ucfirst($p->estado));
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:G{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('dbeafe');
+            }
+        }
+
+        foreach (range('A', 'G') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'prestamos_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'prestamos_equipos_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
     //  COMPROBANTE PDF
     // ══════════════════════════════════════════════════════════════════════
 

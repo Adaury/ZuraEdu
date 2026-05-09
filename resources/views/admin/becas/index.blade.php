@@ -34,6 +34,10 @@
                 </svg>
                 Reporte PDF
             </a>
+            <a href="{{ route('admin.becas.reporte-excel') }}"
+               class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-emerald-300 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-700">
+                <i class="bi bi-file-earmark-excel"></i>Excel
+            </a>
             <a href="{{ route('admin.becas.create') }}"
                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-700 transition shadow-sm">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

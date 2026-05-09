@@ -107,6 +107,15 @@ class BibliotecaController extends Controller
             ->with('success', 'Libro actualizado correctamente.');
     }
 
+    public function show(Libro $libro)
+    {
+        $prestamosActivos   = $libro->prestamos()->with('estudiante')->activos()->orderByDesc('fecha_prestamo')->get();
+        $prestamosVencidos  = $libro->prestamos()->with('estudiante')->vencidos()->orderByDesc('fecha_vencimiento')->get();
+        $historial          = $libro->prestamos()->with('estudiante')->devueltos()->orderByDesc('fecha_devolucion')->limit(30)->get();
+
+        return view('admin.biblioteca.show', compact('libro', 'prestamosActivos', 'prestamosVencidos', 'historial'));
+    }
+
     public function destroy(Libro $libro)
     {
         if ($libro->prestamos()->activos()->exists()) {
@@ -202,6 +211,173 @@ class BibliotecaController extends Controller
         });
 
         return back()->with('success', 'Devolución registrada correctamente.');
+    }
+
+    public function renovar(Request $request, PrestamoBiblioteca $prestamo)
+    {
+        if ($prestamo->estado === 'devuelto') {
+            return back()->with('error', 'No se puede renovar un préstamo ya devuelto.');
+        }
+
+        $data = $request->validate([
+            'nueva_fecha' => ['required', 'date', 'after:today'],
+        ]);
+
+        $prestamo->update([
+            'fecha_vencimiento' => $data['nueva_fecha'],
+            'estado'            => 'activo',
+        ]);
+
+        return back()->with('success', 'Préstamo renovado hasta el ' . \Carbon\Carbon::parse($data['nueva_fecha'])->format('d/m/Y') . '.');
+    }
+
+    public function reportePdf(Request $request)
+    {
+        $estado = $request->input('estado', 'todos');
+
+        $query = PrestamoBiblioteca::with(['libro', 'estudiante']);
+
+        if ($estado !== 'todos') {
+            $query->where('estado', $estado);
+        }
+
+        $prestamos = $query->orderByDesc('fecha_prestamo')->get();
+
+        $totalActivos   = $prestamos->where('estado', 'activo')->count();
+        $totalVencidos  = $prestamos->where('estado', 'vencido')->count();
+        $totalDevueltos = $prestamos->where('estado', 'devuelto')->count();
+
+        $config = \App\Models\ConfigInstitucional::first();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.biblioteca.reporte_pdf', compact(
+            'prestamos', 'estado', 'totalActivos', 'totalVencidos', 'totalDevueltos', 'config'
+        ))->setPaper('a4', 'portrait');
+
+        return $pdf->download('reporte_prestamos_biblioteca.pdf');
+    }
+
+    public function catalogoExcel()
+    {
+        $libros = Libro::orderBy('categoria')->orderBy('titulo')->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Catálogo');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '1e3a6e']],
+        ];
+
+        $ws->mergeCells('A1:G1');
+        $ws->setCellValue('A1', 'Catálogo de Biblioteca — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Título', 'Autor', 'ISBN', 'Categoría', 'Total Ejemplares', 'Disponibles'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:G3')->applyFromArray($hdrStyle);
+
+        foreach ($libros as $i => $libro) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $libro->titulo);
+            $ws->setCellValue("C{$row}", $libro->autor ?? '—');
+            $ws->setCellValue("D{$row}", $libro->isbn ?? '—');
+            $ws->setCellValue("E{$row}", $libro->categoria ?? '—');
+            $ws->setCellValue("F{$row}", $libro->cantidad_total);
+            $ws->setCellValue("G{$row}", $libro->cantidad_disponible);
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:G{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('eff6ff');
+            }
+        }
+
+        foreach (range('A', 'G') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'bib_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'catalogo_biblioteca_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    public function reporteExcel(Request $request)
+    {
+        $query = PrestamoBiblioteca::with(['libro', 'estudiante']);
+
+        if ($request->filled('estado')) {
+            match ($request->estado) {
+                'activo'    => $query->activos(),
+                'vencido'   => $query->vencidos(),
+                'devuelto'  => $query->devueltos(),
+                default     => null,
+            };
+        }
+
+        $prestamos = $query->orderByDesc('fecha_prestamo')->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Préstamos');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '1e3a6e']],
+        ];
+
+        $ws->mergeCells('A1:G1');
+        $ws->setCellValue('A1', 'Reporte de Préstamos — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Estudiante', 'Libro', 'Fecha Préstamo', 'Fecha Devolución', 'Estado', 'Renovaciones'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:G3')->applyFromArray($hdrStyle);
+
+        foreach ($prestamos as $i => $p) {
+            $row = $i + 4;
+            $est = $p->estudiante;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", ($est->nombres ?? '') . ' ' . ($est->apellidos ?? ''));
+            $ws->setCellValue("C{$row}", $p->libro?->titulo ?? '—');
+            $ws->setCellValue("D{$row}", $p->fecha_prestamo?->format('d/m/Y') ?? '—');
+            $ws->setCellValue("E{$row}", $p->fecha_devolucion ? $p->fecha_devolucion->format('d/m/Y') : ($p->fecha_vencimiento?->format('d/m/Y') ?? '—'));
+            $ws->setCellValue("F{$row}", $p->devuelto ? 'Devuelto' : ($p->fecha_vencimiento?->isPast() ? 'Vencido' : 'Activo'));
+            $ws->setCellValue("G{$row}", $p->renovaciones ?? 0);
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:G{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('eff6ff');
+            }
+        }
+
+        foreach (range('A', 'G') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'prest_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'prestamos_biblioteca_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    public function catalogoPdf()
+    {
+        $libros = Libro::orderBy('categoria')->orderBy('titulo')->get();
+        $config = \App\Models\ConfigInstitucional::first();
+
+        $totalLibros      = $libros->count();
+        $totalEjemplares  = $libros->sum('cantidad_total');
+        $totalDisponibles = $libros->sum('cantidad_disponible');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.biblioteca.catalogo_pdf', compact(
+            'libros', 'totalLibros', 'totalEjemplares', 'totalDisponibles', 'config'
+        ))->setPaper('a4', 'portrait');
+
+        return $pdf->download('catalogo_biblioteca.pdf');
     }
 
     // ══════════════════════════════════════════════════════════════════════

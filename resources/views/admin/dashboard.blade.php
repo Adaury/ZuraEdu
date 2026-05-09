@@ -926,6 +926,246 @@
 @endif
 @endunless
 
+{{-- ── Transporte ───────────────────────────────────────────────────────── --}}
+@unless($isDocente)
+@if(!empty($transporteStats) && $transporteStats['total_rutas'] > 0)
+@php
+    $tPct = $transporteStats['total_cap'] > 0
+        ? round(($transporteStats['total_pasaj'] / $transporteStats['total_cap']) * 100)
+        : 0;
+    $tColor = $tPct >= 90 ? '#dc2626' : ($tPct >= 70 ? '#d97706' : '#059669');
+    $tBar   = $tPct >= 90 ? '#dc2626' : ($tPct >= 70 ? '#f59e0b' : '#10b981');
+@endphp
+<div class="card border-0 mb-4" style="border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.06);overflow:hidden;">
+    <div class="card-body py-3 px-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-3">
+                <div style="width:44px;height:44px;border-radius:12px;background:#eff6ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="bi bi-bus-front-fill" style="color:#1d4ed8;font-size:1.2rem;"></i>
+                </div>
+                <div>
+                    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;">Transporte Escolar</div>
+                    <div style="font-size:.92rem;font-weight:800;color:#1e293b;">
+                        {{ $transporteStats['total_rutas'] }} ruta{{ $transporteStats['total_rutas'] != 1 ? 's' : '' }} activa{{ $transporteStats['total_rutas'] != 1 ? 's' : '' }}
+                        <span style="font-size:.78rem;color:#64748b;font-weight:500;">—
+                            {{ $transporteStats['total_pasaj'] }} / {{ $transporteStats['total_cap'] }} pasajeros ({{ $tPct }}%)
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                @if($transporteStats['rutas_llenas'] > 0)
+                <span style="background:#fef3c7;color:#92400e;border-radius:99px;padding:.25rem .75rem;font-size:.75rem;font-weight:700;">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                    {{ $transporteStats['rutas_llenas'] }} ruta{{ $transporteStats['rutas_llenas'] != 1 ? 's' : '' }} al {{ $tPct >= 90 ? '90' : '80' }}%+
+                </span>
+                @endif
+                <div style="min-width:140px;">
+                    <div class="d-flex justify-content-between" style="font-size:.7rem;color:#6b7280;margin-bottom:3px;">
+                        <span>Ocupación global</span>
+                        <span style="color:{{ $tColor }};font-weight:700;">{{ $tPct }}%</span>
+                    </div>
+                    <div style="background:#e5e7eb;border-radius:99px;height:6px;overflow:hidden;">
+                        <div style="width:{{ min($tPct,100) }}%;background:{{ $tBar }};height:100%;border-radius:99px;transition:width .3s;"></div>
+                    </div>
+                </div>
+                <a href="{{ route('admin.transporte.index') }}"
+                   style="font-size:.78rem;color:#1d4ed8;text-decoration:none;font-weight:600;white-space:nowrap;">
+                    Ver rutas <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+@endunless
+
+{{-- ── Agenda próximos 7 días + Pre-matrículas ─────────────────────────── --}}
+@unless($isDocente)
+@if(($agendaProxima && $agendaProxima->isNotEmpty()) || $preMatriculasPendientes > 0)
+<div class="row g-3 mb-4">
+
+    {{-- Agenda --}}
+    @if($agendaProxima && $agendaProxima->isNotEmpty())
+    <div class="{{ $preMatriculasPendientes > 0 ? 'col-md-8' : 'col-12' }}">
+        <div class="card border-0 h-100" style="border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.06);overflow:hidden;">
+            <div class="card-header border-0 py-3 px-4 d-flex align-items-center gap-2"
+                 style="background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff;">
+                <i class="bi bi-calendar2-week-fill" style="font-size:1rem;"></i>
+                <span style="font-weight:700;font-size:.92rem;">Agenda — Próximos 7 días</span>
+                <span style="background:rgba(255,255,255,.2);border-radius:99px;padding:.15rem .6rem;font-size:.72rem;font-weight:700;">
+                    {{ $agendaProxima->count() }} evento{{ $agendaProxima->count() != 1 ? 's' : '' }}
+                </span>
+            </div>
+            <div class="card-body p-0">
+                @foreach($agendaProxima as $item)
+                <a href="{{ $item['route'] }}" class="d-flex align-items-center gap-3 px-4 py-2 border-bottom text-decoration-none"
+                   style="background:{{ $loop->even ? '#f8fafc' : '#fff' }};transition:background .15s;"
+                   onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='{{ $loop->even ? '#f8fafc' : '#fff' }}'">
+                    <div style="width:36px;height:36px;border-radius:10px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:{{ $item['bg'] }};">
+                        <i class="bi {{ $item['icon'] }}" style="color:{{ $item['color'] }};font-size:.85rem;"></i>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:.83rem;font-weight:700;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                            {{ $item['titulo'] }}
+                        </div>
+                        <div style="font-size:.73rem;color:#64748b;">
+                            <span style="background:{{ $item['bg'] }};color:{{ $item['color'] }};border-radius:4px;padding:.05rem .35rem;font-weight:700;">{{ $item['sub'] }}</span>
+                            @if($item['lugar']) <span class="ms-1">· {{ $item['lugar'] }}</span> @endif
+                        </div>
+                    </div>
+                    <div style="font-size:.75rem;color:#94a3b8;white-space:nowrap;flex-shrink:0;text-align:right;">
+                        @php
+                            $diff = now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($item['fecha'])->startOfDay(), false);
+                        @endphp
+                        @if($diff === 0)
+                            <span style="color:#dc2626;font-weight:700;">Hoy</span>
+                        @elseif($diff === 1)
+                            <span style="color:#d97706;font-weight:700;">Mañana</span>
+                        @else
+                            En {{ $diff }} días
+                        @endif
+                        <div>{{ \Carbon\Carbon::parse($item['fecha'])->format('d/m') }}</div>
+                    </div>
+                </a>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Pre-matrículas pendientes --}}
+    @if($preMatriculasPendientes > 0)
+    <div class="{{ ($agendaProxima && $agendaProxima->isNotEmpty()) ? 'col-md-4' : 'col-12' }}">
+        <a href="{{ route('admin.pre-matriculas.index', ['estado' => 'pendiente']) }}"
+           class="card border-0 h-100 text-decoration-none"
+           style="border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.06);overflow:hidden;display:block;">
+            <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-4"
+                 style="background:linear-gradient(135deg,#fef9c3,#fef3c7);">
+                <div style="width:56px;height:56px;border-radius:16px;background:#fbbf24;display:flex;align-items:center;justify-content:center;margin-bottom:.75rem;">
+                    <i class="bi bi-person-lines-fill" style="color:#fff;font-size:1.5rem;"></i>
+                </div>
+                <div style="font-size:2.5rem;font-weight:900;color:#92400e;line-height:1;">{{ $preMatriculasPendientes }}</div>
+                <div style="font-size:.8rem;font-weight:700;color:#a16207;text-transform:uppercase;letter-spacing:.05em;margin-top:.25rem;">
+                    Pre-matrículas pendientes
+                </div>
+                <div style="margin-top:.75rem;font-size:.75rem;color:#b45309;background:rgba(251,191,36,.3);border-radius:99px;padding:.25rem .75rem;">
+                    Revisar y resolver <i class="bi bi-arrow-right ms-1"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+    @endif
+
+</div>
+@endif
+@endunless
+
+{{-- ── Disciplina & Salud ───────────────────────────────────────────────── --}}
+@unless($isDocente)
+@if(($recentDisciplina && $recentDisciplina->isNotEmpty()) || ($recentSalud && $recentSalud->isNotEmpty()))
+<div class="row g-3 mb-4">
+
+    {{-- Widget: Faltas Disciplinarias Recientes --}}
+    @if($recentDisciplina && $recentDisciplina->isNotEmpty())
+    <div class="{{ ($recentSalud && $recentSalud->isNotEmpty()) ? 'col-md-6' : 'col-12' }}">
+        <div class="card border-0 h-100" style="border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.06);overflow:hidden;">
+            <div class="card-header border-0 py-3 px-4 d-flex align-items-center gap-2"
+                 style="background:linear-gradient(135deg,#6d28d9,#8b5cf6);color:#fff;">
+                <i class="bi bi-shield-exclamation" style="font-size:1rem;"></i>
+                <span style="font-weight:700;font-size:.92rem;">Disciplina — Recientes</span>
+                @if($pendientesDisciplina > 0)
+                <span style="background:rgba(255,255,255,.22);border-radius:99px;padding:.15rem .6rem;font-size:.72rem;font-weight:700;">
+                    {{ $pendientesDisciplina }} pendiente{{ $pendientesDisciplina != 1 ? 's' : '' }}
+                </span>
+                @endif
+                <a href="{{ route('admin.disciplina.index') }}" class="ms-auto"
+                   style="font-size:.75rem;color:rgba(255,255,255,.9);text-decoration:none;">
+                    Ver todo <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body p-0">
+                @foreach($recentDisciplina as $falta)
+                @php $ti = $falta->tipo_info; @endphp
+                <div class="d-flex align-items-center gap-3 px-4 py-2 border-bottom"
+                     style="background:{{ $loop->even ? '#faf5ff' : '#fff' }};">
+                    <div style="width:30px;height:30px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:{{ $ti['bg'] }};">
+                        <i class="bi {{ $ti['icon'] }}" style="color:{{ $ti['color'] }};font-size:.8rem;"></i>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:.82rem;font-weight:700;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                            {{ $falta->estudiante?->nombre_completo ?? '—' }}
+                        </div>
+                        <div style="font-size:.73rem;color:#64748b;">
+                            <span style="background:{{ $ti['bg'] }};color:{{ $ti['color'] }};border-radius:4px;padding:.05rem .35rem;font-weight:700;">{{ $ti['label'] }}</span>
+                        </div>
+                    </div>
+                    <div style="font-size:.72rem;color:#9ca3af;white-space:nowrap;flex-shrink:0;">
+                        {{ $falta->fecha->format('d/m') }}
+                    </div>
+                    <div style="flex-shrink:0;">
+                        @if($falta->resuelto)
+                            <span style="background:#d1fae5;color:#065f46;border-radius:99px;padding:.1rem .5rem;font-size:.68rem;font-weight:700;">Resuelto</span>
+                        @else
+                            <span style="background:#fee2e2;color:#991b1b;border-radius:99px;padding:.1rem .5rem;font-size:.68rem;font-weight:700;">Pendiente</span>
+                        @endif
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Widget: Incidentes Médicos Recientes --}}
+    @if($recentSalud && $recentSalud->isNotEmpty())
+    <div class="{{ ($recentDisciplina && $recentDisciplina->isNotEmpty()) ? 'col-md-6' : 'col-12' }}">
+        <div class="card border-0 h-100" style="border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.06);overflow:hidden;">
+            <div class="card-header border-0 py-3 px-4 d-flex align-items-center gap-2"
+                 style="background:linear-gradient(135deg,#0369a1,#0ea5e9);color:#fff;">
+                <i class="bi bi-heart-pulse-fill" style="font-size:1rem;"></i>
+                <span style="font-weight:700;font-size:.92rem;">Salud — Recientes</span>
+                @if($totalIncidentesMes > 0)
+                <span style="background:rgba(255,255,255,.22);border-radius:99px;padding:.15rem .6rem;font-size:.72rem;font-weight:700;">
+                    {{ $totalIncidentesMes }} este mes
+                </span>
+                @endif
+                <a href="{{ route('admin.salud.incidentes') }}" class="ms-auto"
+                   style="font-size:.75rem;color:rgba(255,255,255,.9);text-decoration:none;">
+                    Ver todo <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body p-0">
+                @foreach($recentSalud as $inc)
+                @php $ti = $inc->tipo_info; @endphp
+                <div class="d-flex align-items-center gap-3 px-4 py-2 border-bottom"
+                     style="background:{{ $loop->even ? '#f0f9ff' : '#fff' }};">
+                    <div style="width:30px;height:30px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:{{ $ti['bg'] }};">
+                        <i class="bi {{ $ti['icon'] }}" style="color:{{ $ti['color'] }};font-size:.8rem;"></i>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:.82rem;font-weight:700;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                            {{ $inc->estudiante?->nombre_completo ?? '—' }}
+                        </div>
+                        <div style="font-size:.73rem;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                            {{ $inc->descripcion ? \Illuminate\Support\Str::limit($inc->descripcion, 40) : '—' }}
+                        </div>
+                    </div>
+                    <div style="flex-shrink:0;text-align:right;">
+                        <div style="font-size:.72rem;color:#9ca3af;white-space:nowrap;">{{ $inc->fecha->format('d/m') }}</div>
+                        <span style="background:{{ $ti['bg'] }};color:{{ $ti['color'] }};border-radius:4px;padding:.05rem .35rem;font-size:.68rem;font-weight:700;">{{ $ti['label'] }}</span>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
+
+</div>
+@endif
+@endunless
+
 {{-- ── Gráficas de resumen ─────────────────────────────────────────────── --}}
 @unless($isDocente)
 @if(!empty($chartData))

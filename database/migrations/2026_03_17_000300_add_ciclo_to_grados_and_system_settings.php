@@ -31,8 +31,8 @@ return new class extends Migration
         // Seed default settings
         DB::table('system_settings')->insert([
             ['key' => 'system_logo',     'value' => null,                                            'created_at' => now(), 'updated_at' => now()],
-            ['key' => 'system_name',     'value' => 'Politécnico Salesiano Arquides Calderón (PSAC)', 'created_at' => now(), 'updated_at' => now()],
-            ['key' => 'system_abbr',     'value' => 'PSAC',                                          'created_at' => now(), 'updated_at' => now()],
+            ['key' => 'system_name',     'value' => 'ZuraEdu',                                       'created_at' => now(), 'updated_at' => now()],
+            ['key' => 'system_abbr',     'value' => 'ZE',                                            'created_at' => now(), 'updated_at' => now()],
             ['key' => 'session_timeout', 'value' => '120',                                            'created_at' => now(), 'updated_at' => now()],
             ['key' => 'max_login_attempts','value'=> '5',                                             'created_at' => now(), 'updated_at' => now()],
         ]);

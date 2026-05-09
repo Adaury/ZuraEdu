@@ -8,6 +8,7 @@ use App\Models\Beca;
 use App\Models\BecaEstudiante;
 use App\Models\ConfigInstitucional;
 use App\Models\Matricula;
+use App\Models\Notificacion;
 use App\Models\SchoolYear;
 use Illuminate\Http\Request;
 
@@ -197,6 +198,26 @@ class BecaController extends Controller
             BecaEstudiante::create($data);
         }
 
+        try {
+            $becaEst = BecaEstudiante::where('beca_id', $data['beca_id'])
+                ->where('matricula_id', $data['matricula_id'])
+                ->with(['beca', 'matricula.estudiante.representantes'])
+                ->first();
+            $estudiante = $becaEst?->matricula?->estudiante;
+            if ($estudiante && $becaEst?->beca) {
+                $titulo  = '🎓 Beca asignada';
+                $mensaje = "{$estudiante->nombre_completo} ha recibido la beca «{$becaEst->beca->nombre}».";
+                if ($estudiante->user_id) {
+                    Notificacion::enviar($estudiante->user_id, 'general', $titulo, $mensaje);
+                }
+                foreach ($estudiante->representantes ?? [] as $rep) {
+                    if ($rep->user_id) {
+                        Notificacion::enviar($rep->user_id, 'general', $titulo, $mensaje);
+                    }
+                }
+            }
+        } catch (\Throwable) {}
+
         return redirect()->route('admin.becas.becados')
             ->with('success', 'Beca asignada correctamente.');
     }
@@ -204,7 +225,24 @@ class BecaController extends Controller
     // ── Revocar beca ──────────────────────────────────────────────────────
     public function revocarBeca(BecaEstudiante $becaEstudiante)
     {
+        $becaEstudiante->load(['beca', 'matricula.estudiante.representantes']);
         $becaEstudiante->update(['activo' => false, 'fecha_fin' => today()]);
+
+        try {
+            $estudiante = $becaEstudiante->matricula?->estudiante;
+            if ($estudiante && $becaEstudiante->beca) {
+                $titulo  = 'ℹ️ Beca revocada';
+                $mensaje = "La beca «{$becaEstudiante->beca->nombre}» de {$estudiante->nombre_completo} ha sido revocada.";
+                if ($estudiante->user_id) {
+                    Notificacion::enviar($estudiante->user_id, 'general', $titulo, $mensaje);
+                }
+                foreach ($estudiante->representantes ?? [] as $rep) {
+                    if ($rep->user_id) {
+                        Notificacion::enviar($rep->user_id, 'general', $titulo, $mensaje);
+                    }
+                }
+            }
+        } catch (\Throwable) {}
 
         return back()->with('success', 'Beca revocada.');
     }
@@ -256,5 +294,68 @@ class BecaController extends Controller
         )->setPaper('letter', 'portrait');
 
         return $pdf->download('becas_' . now()->format('Ymd') . '.pdf');
+    }
+
+    public function reporteExcel(Request $request)
+    {
+        $syActual   = SchoolYear::actual();
+        $montoCuota = (float) Setting::get('payments_monto_cuota', 0);
+        $mon        = Setting::get('payments_currency', 'DOP');
+
+        $becados = BecaEstudiante::with([
+                'beca',
+                'matricula.estudiante',
+                'matricula.grupo.grado',
+                'matricula.grupo.seccion',
+            ])
+            ->whereHas('matricula', fn($m) => $m->where('school_year_id', $syActual?->id))
+            ->where('activo', true)
+            ->get()
+            ->sortBy('matricula.estudiante.apellidos');
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Becados');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '065f46']],
+        ];
+
+        $ws->mergeCells('A1:G1');
+        $ws->setCellValue('A1', 'Lista de Becados ' . ($syActual?->nombre ?? '') . ' — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Estudiante', 'Grupo', 'Beca', 'Tipo', 'Descuento %', "Desc. Mensual ({$mon})"] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:G3')->applyFromArray($hdrStyle);
+
+        foreach ($becados->values() as $i => $be) {
+            $row  = $i + 4;
+            $est  = $be->matricula?->estudiante;
+            $desc = $be->beca?->calcularDescuento($montoCuota) ?? 0;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $est?->nombre_completo ?? '—');
+            $ws->setCellValue("C{$row}", $be->matricula?->grupo?->nombre_completo ?? '—');
+            $ws->setCellValue("D{$row}", $be->beca?->nombre ?? '—');
+            $ws->setCellValue("E{$row}", ucfirst($be->beca?->tipo ?? '—'));
+            $ws->setCellValue("F{$row}", $be->beca?->porcentaje ?? 0);
+            $ws->setCellValue("G{$row}", number_format($desc, 2));
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:G{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('ecfdf5');
+            }
+        }
+
+        foreach (range('A', 'G') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'beca_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'becas_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 }

@@ -5,8 +5,10 @@ use App\Http\Controllers\Admin\RecursoController;
 // ── Módulo de Gestión de Recursos y Aulas ─────────────────────────────────
 Route::prefix('recursos')->name('recursos.')->group(function () {
 
-    // Vista general de disponibilidad (debe ir antes del {recurso} param)
+    // Vista general de disponibilidad y Excel lista (deben ir antes del {recurso} param)
     Route::get('/disponibilidad', [RecursoController::class, 'disponibilidad'])->name('disponibilidad');
+    Route::get('/lista/excel',    [RecursoController::class, 'listaExcel'])->name('lista-excel');
+    Route::get('/lista/pdf',      [RecursoController::class, 'listaPdf'])->name('lista-pdf');
 
     // CRUD recursos físicos
     Route::get('/',                    [RecursoController::class, 'index'])->name('index');

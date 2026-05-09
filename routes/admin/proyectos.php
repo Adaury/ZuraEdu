@@ -7,6 +7,8 @@ Route::prefix('proyectos')->name('proyectos.')->group(function () {
 
     // CRUD principal
     Route::get('/',                          [ProyectoController::class, 'index'])->name('index');
+    Route::get('/lista/excel',               [ProyectoController::class, 'listaExcel'])->name('lista-excel');
+    Route::get('/lista/pdf',                 [ProyectoController::class, 'listaPdf'])->name('lista-pdf');
     Route::get('/nuevo',                     [ProyectoController::class, 'create'])->name('create');
     Route::post('/',                         [ProyectoController::class, 'store'])->name('store');
     Route::get('/{proyecto}',                [ProyectoController::class, 'show'])->name('show');

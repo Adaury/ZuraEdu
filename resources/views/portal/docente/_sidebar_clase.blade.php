@@ -16,6 +16,10 @@ $ak  = $activeKey ?? '';
    class="prt-sidebar-link {{ $ak === 'dashboard' ? 'active' : '' }}">
     <i class="bi bi-house-fill"></i>Inicio
 </a>
+<a href="{{ route('portal.docente.horario') }}"
+   class="prt-sidebar-link {{ $ak === 'horario' ? 'active' : '' }}">
+    <i class="bi bi-calendar3"></i>Mi Horario
+</a>
 <a href="{{ route('portal.docente.classroom.index') }}"
    class="prt-sidebar-link {{ $ak === 'classroom' ? 'active' : '' }}">
     <i class="bi bi-easel2-fill"></i>Mi Classroom
@@ -28,6 +32,21 @@ $ak  = $activeKey ?? '';
    class="prt-sidebar-link {{ $ak === 'mis-estadisticas' ? 'active' : '' }}">
     <i class="bi bi-bar-chart-fill"></i>Estadísticas
 </a>
+@php
+try {
+    $docenteSb = auth()->user()->docente ?? null;
+    $tutoriasSb = $docenteSb ? \App\Models\Tutoria::where('docente_id', $docenteSb->id)
+        ->where('activo', true)
+        ->count() : 0;
+} catch(\Exception $e){ $tutoriasSb = 0; }
+@endphp
+@if($tutoriasSb > 0)
+<a href="{{ route('portal.docente.mis-tutorias') }}"
+   class="prt-sidebar-link {{ $ak === 'mis-tutorias' ? 'active' : '' }}">
+    <i class="bi bi-person-hearts"></i>Mis Tutorías
+    <span style="background:#7c3aed;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $tutoriasSb }}</span>
+</a>
+@endif
 
 {{-- ── ESTA CLASE ── --}}
 @if(isset($asignacion))

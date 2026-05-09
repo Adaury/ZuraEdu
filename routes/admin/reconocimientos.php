@@ -16,6 +16,8 @@ Route::prefix('reconocimientos')->name('reconocimientos.')->group(function () {
     // Acciones especiales
     Route::patch('/{reconocimiento}/entregar', [ReconocimientoController::class, 'marcarEntregado'])->name('entregar');
     Route::get('/{reconocimiento}/diploma-pdf', [ReconocimientoController::class, 'diplomaPdf'])->name('diploma-pdf');
+    Route::get('/lista/excel', [ReconocimientoController::class, 'listaExcel'])->name('lista-excel');
+    Route::get('/lista/pdf',   [ReconocimientoController::class, 'listaPdf'])->name('lista-pdf');
 });
 
 // Historial por estudiante (fuera del prefix para URL más limpia)

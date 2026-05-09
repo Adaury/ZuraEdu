@@ -220,6 +220,84 @@ class DisciplinaController extends Controller
         }
     }
 
+    public function listaExcel(Request $request)
+    {
+        $query = FaltaDisciplinaria::with(['estudiante', 'docente']);
+
+        if ($request->filled('estudiante_id')) {
+            $query->where('estudiante_id', $request->estudiante_id);
+        }
+        if ($request->filled('tipo')) {
+            $query->where('tipo', $request->tipo);
+        }
+        if ($request->filled('resuelto')) {
+            $query->where('resuelto', $request->resuelto === '1');
+        }
+
+        $faltas = $query->latest('fecha')->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Disciplina');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '7c3aed']],
+        ];
+
+        $ws->mergeCells('A1:G1');
+        $ws->setCellValue('A1', 'Registro de Disciplina — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Fecha', 'Estudiante', 'Tipo', 'Descripción', 'Docente', 'Estado'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:G3')->applyFromArray($hdrStyle);
+
+        foreach ($faltas as $i => $f) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $f->fecha?->format('d/m/Y') ?? '—');
+            $ws->setCellValue("C{$row}", $f->estudiante?->nombre_completo ?? '—');
+            $ws->setCellValue("D{$row}", ucfirst($f->tipo ?? '—'));
+            $ws->setCellValue("E{$row}", $f->descripcion ?? '—');
+            $ws->setCellValue("F{$row}", $f->docente?->nombre_completo ?? '—');
+            $ws->setCellValue("G{$row}", $f->resuelto ? 'Resuelto' : 'Pendiente');
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:G{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('f5f3ff');
+            }
+        }
+
+        foreach (range('A', 'G') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'disc_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'disciplina_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    // ── Lista PDF ─────────────────────────────────────────────────────────
+    public function listaPdf(Request $request)
+    {
+        $query = FaltaDisciplinaria::with(['estudiante', 'docente']);
+
+        if ($request->filled('estudiante_id')) $query->where('estudiante_id', $request->estudiante_id);
+        if ($request->filled('tipo'))          $query->where('tipo', $request->tipo);
+        if ($request->filled('resuelto'))      $query->where('resuelto', $request->resuelto === '1');
+
+        $faltas = $query->latest('fecha')->get();
+        $inst   = ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $pdf = Pdf::loadView('admin.disciplina.lista_pdf', compact('faltas', 'inst'))
+            ->setPaper('letter', 'landscape');
+
+        return $pdf->download('disciplina_' . now()->format('Ymd') . '.pdf');
+    }
+
     private function crearAlertaSuspension(FaltaDisciplinaria $falta): void
     {
         try {

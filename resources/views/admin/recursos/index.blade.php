@@ -12,6 +12,14 @@
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Gestión de espacios físicos y equipos disponibles</p>
         </div>
         <div class="flex gap-2">
+            <a href="{{ route('admin.recursos.lista-pdf', request()->query()) }}"
+               class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition">
+                <i class="bi bi-file-earmark-pdf"></i>PDF
+            </a>
+            <a href="{{ route('admin.recursos.lista-excel', request()->query()) }}"
+               class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition">
+                <i class="bi bi-file-earmark-excel"></i>Excel
+            </a>
             <a href="{{ route('admin.recursos.disponibilidad') }}"
                class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

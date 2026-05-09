@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\TransporteController;
 Route::prefix('transporte')->name('transporte.')->group(function () {
 
     Route::get('/',                                           [TransporteController::class, 'index'])->name('index');
+    Route::get('/lista/excel',                                [TransporteController::class, 'listaExcel'])->name('lista-excel');
+    Route::get('/lista/pdf',                                  [TransporteController::class, 'listaPdf'])->name('lista-pdf');
     Route::get('/nueva',                                      [TransporteController::class, 'create'])->name('create');
     Route::post('/',                                          [TransporteController::class, 'store'])->name('store');
     Route::get('/{ruta}',                                     [TransporteController::class, 'show'])->name('show');
@@ -25,4 +27,7 @@ Route::prefix('transporte')->name('transporte.')->group(function () {
 
     // PDF
     Route::get('/{ruta}/pasajeros-pdf',                       [TransporteController::class, 'pasajerosPdf'])->name('pasajeros.pdf');
+
+    // Excel
+    Route::get('/{ruta}/pasajeros-excel',                     [TransporteController::class, 'pasajerosExcel'])->name('pasajeros.excel');
 });

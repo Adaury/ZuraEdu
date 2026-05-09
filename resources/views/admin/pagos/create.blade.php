@@ -84,6 +84,8 @@
                         <option value="efectivo">Efectivo</option>
                         <option value="transferencia">Transferencia</option>
                         <option value="tarjeta">Tarjeta</option>
+                        <option value="stripe">Stripe</option>
+                        <option value="cardnet">CardNet</option>
                         <option value="otro">Otro</option>
                     </select>
                 </div>

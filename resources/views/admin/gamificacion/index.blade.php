@@ -80,24 +80,36 @@
 
         {{-- Ranking del grupo --}}
         <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+            <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2 flex-wrap">
                 <h2 class="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                     <i class="bi bi-trophy-fill text-yellow-500"></i>
                     Ranking del Grupo
                 </h2>
-                {{-- Generar puntos automáticos --}}
-                @if($grupoId)
-                <form method="POST" action="{{ route('admin.gamificacion.generar-puntos') }}"
-                      onsubmit="return confirm('¿Generar puntos automáticos para este grupo?')">
-                    @csrf
-                    <input type="hidden" name="grupo_id" value="{{ $grupoId }}">
-                    <button type="submit"
-                        class="inline-flex items-center gap-2 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition font-medium">
-                        <i class="bi bi-lightning-charge-fill"></i>
-                        Generar Automático
-                    </button>
-                </form>
-                @endif
+                <div class="flex items-center gap-2">
+                    @if($grupoId)
+                    {{-- PDF ranking --}}
+                    <a href="{{ route('admin.gamificacion.ranking-pdf', ['grupo_id' => $grupoId]) }}" target="_blank"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg transition font-medium">
+                        <i class="bi bi-file-earmark-pdf-fill"></i> PDF
+                    </a>
+                    {{-- Excel ranking --}}
+                    <a href="{{ route('admin.gamificacion.ranking-excel', ['grupo_id' => $grupoId]) }}"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg transition font-medium">
+                        <i class="bi bi-file-earmark-excel-fill"></i> Excel
+                    </a>
+                    {{-- Generar puntos automáticos --}}
+                    <form method="POST" action="{{ route('admin.gamificacion.generar-puntos') }}"
+                          onsubmit="return confirm('¿Generar puntos automáticos para este grupo?')">
+                        @csrf
+                        <input type="hidden" name="grupo_id" value="{{ $grupoId }}">
+                        <button type="submit"
+                            class="inline-flex items-center gap-2 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition font-medium">
+                            <i class="bi bi-lightning-charge-fill"></i>
+                            Generar Automático
+                        </button>
+                    </form>
+                    @endif
+                </div>
             </div>
 
             <div class="overflow-x-auto">
@@ -147,11 +159,17 @@
                                     @endif
                                 </td>
                                 <td class="px-4 py-3 text-center">
-                                    <button
-                                        @click="abrirModal({{ $item['matricula']->id }}, '{{ addslashes($item['matricula']->estudiante?->nombre_completo ?? '') }}')"
-                                        class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg transition font-medium">
-                                        <i class="bi bi-plus-circle-fill"></i> Puntos
-                                    </button>
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <button
+                                            @click="abrirModal({{ $item['matricula']->id }}, '{{ addslashes($item['matricula']->estudiante?->nombre_completo ?? '') }}')"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg transition font-medium">
+                                            <i class="bi bi-plus-circle-fill"></i> Puntos
+                                        </button>
+                                        <a href="{{ route('admin.gamificacion.detalle', $item['matricula']) }}"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition font-medium">
+                                            <i class="bi bi-eye-fill"></i> Ver
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         @empty

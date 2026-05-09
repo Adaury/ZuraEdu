@@ -25,5 +25,5 @@ Route::prefix('cafeteria')->name('cafeteria.')->group(function () {
 
     // ── Reportes ───────────────────────────────────────────────────────────
     Route::get('/reporte-pdf',                   [CafeteriaController::class, 'reportePdf'])->name('reporte-pdf');
-    Route::get('/reporte-excel',                 [CafeteriaController::class, 'reporteCsv'])->name('reporte-csv');
+    Route::get('/reporte-excel',                 [CafeteriaController::class, 'reporteExcel'])->name('reporte-csv');
 });

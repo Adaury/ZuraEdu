@@ -28,9 +28,21 @@
         </h4>
         <p class="text-muted small mb-0 mt-1">Gestión de solicitudes y reporte de incidencias</p>
     </div>
-    <a href="{{ route('admin.soporte.create') }}" class="btn btn-primary btn-sm">
-        <i class="bi bi-plus-circle me-1"></i>Nuevo Ticket
-    </a>
+    <div class="d-flex gap-2">
+        @if($esAdmin)
+        <a href="{{ route('admin.soporte.lista-pdf', request()->query()) }}"
+           class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
+        <a href="{{ route('admin.soporte.lista-excel', request()->query()) }}"
+           class="btn btn-outline-success btn-sm">
+            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+        </a>
+        @endif
+        <a href="{{ route('admin.soporte.create') }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>Nuevo Ticket
+        </a>
+    </div>
 </div>
 
 @if(session('success'))

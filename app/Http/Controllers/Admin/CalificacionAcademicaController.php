@@ -9,6 +9,7 @@ use App\Models\CalificacionAudit;
 use App\Models\Docente;
 use App\Models\IndicadorAprendizaje;
 use App\Models\Matricula;
+use App\Models\Notificacion;
 use App\Models\Periodo;
 use App\Models\SchoolYear;
 use App\Mail\BoletinDisponible;
@@ -304,6 +305,27 @@ class CalificacionAcademicaController extends Controller
                     }
                 }
             }
+        }
+
+        // Notificación in-app cuando se publican (no al despublicar)
+        if ($nuevoEstado && isset($asignacion) && $asignacion && isset($matriculas)) {
+            try {
+                $materia = $asignacion->asignatura->nombre ?? 'una materia';
+                $titulo  = '📊 Calificaciones publicadas';
+                $mensaje = "Las calificaciones de {$materia} ya están disponibles en tu portal.";
+                foreach ($matriculas as $mat) {
+                    $est = $mat->estudiante;
+                    if (!$est) continue;
+                    if ($est->user_id) {
+                        Notificacion::enviar($est->user_id, 'academica', $titulo, $mensaje);
+                    }
+                    foreach ($est->representantes as $rep) {
+                        if ($rep->user_id) {
+                            Notificacion::enviar($rep->user_id, 'academica', $titulo, $mensaje);
+                        }
+                    }
+                }
+            } catch (\Throwable) {}
         }
 
         $msg = $nuevoEstado

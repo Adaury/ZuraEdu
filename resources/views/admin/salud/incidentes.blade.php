@@ -12,9 +12,19 @@
         </h4>
         <small class="text-muted">Registro de accidentes, enfermedades y atenciones médicas</small>
     </div>
-    <a href="{{ route('admin.salud.incidentes.crear') }}" class="btn btn-warning btn-sm">
-        <i class="bi bi-plus-lg me-1"></i>Registrar incidente
-    </a>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ route('admin.salud.incidentes.pdf', request()->query()) }}"
+           class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
+        <a href="{{ route('admin.salud.incidentes.excel', request()->query()) }}"
+           class="btn btn-outline-success btn-sm">
+            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+        </a>
+        <a href="{{ route('admin.salud.incidentes.crear') }}" class="btn btn-warning btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Registrar incidente
+        </a>
+    </div>
 </div>
 
 {{-- Alertas ─────────────────────────────────────────────────────────────── --}}

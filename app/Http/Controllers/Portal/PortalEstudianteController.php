@@ -21,6 +21,8 @@ use App\Models\Observacion;
 use App\Models\Periodo;
 use App\Models\Planificacion;
 use App\Models\InsigniaEstudiante;
+use App\Models\Pago;
+use App\Services\CardNetService;
 use App\Models\ProyectoEscolar;
 use App\Models\PuntoEstudiante;
 use App\Models\RecursoMateria;
@@ -1792,6 +1794,120 @@ class PortalEstudianteController extends Controller
             'estudiante', 'schoolYear', 'matricula',
             'totalPuntos', 'historial', 'puntosCategoria',
             'insigniasObtenidas', 'ranking', 'miPosicion'
+        ));
+    }
+
+    public function misPrestamos()
+    {
+        $estudiante = $this->getEstudiante();
+        $schoolYear = SchoolYear::actual();
+
+        $prestamosActivos = \App\Models\PrestamoBiblioteca::with('libro')
+            ->where('estudiante_id', $estudiante->id)
+            ->whereIn('estado', ['activo', 'vencido'])
+            ->orderBy('fecha_vencimiento')
+            ->get();
+
+        $historial = \App\Models\PrestamoBiblioteca::with('libro')
+            ->where('estudiante_id', $estudiante->id)
+            ->where('estado', 'devuelto')
+            ->orderByDesc('fecha_devolucion')
+            ->limit(20)
+            ->get();
+
+        return view('portal.estudiante.mis_prestamos', compact(
+            'estudiante', 'schoolYear', 'prestamosActivos', 'historial'
+        ));
+    }
+
+    public function misPagos()
+    {
+        $estudiante = $this->getEstudiante();
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()
+            ->first();
+
+        if (!$matricula) {
+            return view('portal.estudiante.mis_pagos', [
+                'estudiante' => $estudiante,
+                'pagos'      => collect(),
+                'totales'    => ['pagado' => 0, 'pendiente' => 0, 'vencido' => 0],
+                'matricula'  => null,
+            ]);
+        }
+
+        Pago::sincronizarVencidos();
+
+        $pagos = Pago::where('matricula_id', $matricula->id)
+            ->orderByDesc('fecha_vencimiento')
+            ->get();
+
+        $totales = [
+            'pagado'    => $pagos->where('estado', 'pagado')->sum('monto'),
+            'pendiente' => $pagos->where('estado', 'pendiente')->sum('monto'),
+            'vencido'   => $pagos->where('estado', 'vencido')->sum('monto'),
+        ];
+
+        return view('portal.estudiante.mis_pagos', compact(
+            'estudiante', 'schoolYear', 'matricula', 'pagos', 'totales'
+        ));
+    }
+
+    public function iniciarPago(Pago $pago)
+    {
+        $estudiante = $this->getEstudiante();
+
+        // Verificar que el pago pertenece a este estudiante
+        $matricula = $estudiante->matriculas()->where('id', $pago->matricula_id)->first();
+        abort_if(! $matricula, 403);
+        abort_if(! in_array($pago->estado, ['pendiente', 'vencido']), 422, 'Este pago ya no puede procesarse en línea.');
+
+        if (! CardNetService::isConfigured()) {
+            return back()->with('error', 'El pago en línea no está configurado. Contacta la administración.');
+        }
+
+        $orderId = 'P' . str_pad($pago->id, 11, '0', STR_PAD_LEFT);
+        $result  = CardNetService::createCheckoutParams($orderId, (float) $pago->monto, [
+            'pago_id'    => $pago->id,
+            'origen'     => 'portal_estudiante',
+        ]);
+
+        $token = \Illuminate\Support\Str::random(32);
+        cache()->put("cardnet_form_{$token}", $result, now()->addMinutes(20));
+
+        return redirect()->route('cardnet.checkout', $token);
+    }
+
+    public function miSaldoCafeteria()
+    {
+        $estudiante     = $this->getEstudiante();
+        $saldo          = \App\Models\VentaCafeteria::saldoEstudiante($estudiante->id);
+        $historial      = \App\Models\VentaCafeteria::where('estudiante_id', $estudiante->id)
+                            ->latest()->limit(50)->get();
+        $totalRecargado = \App\Models\VentaCafeteria::where('estudiante_id', $estudiante->id)
+                            ->where('tipo', 'recarga')->sum('monto');
+        $totalGastado   = \App\Models\VentaCafeteria::where('estudiante_id', $estudiante->id)
+                            ->where('tipo', 'venta')->sum('monto');
+
+        return view('portal.estudiante.mi_saldo_cafeteria', compact(
+            'estudiante', 'saldo', 'historial', 'totalRecargado', 'totalGastado'
+        ));
+    }
+
+    public function miRutaTransporte()
+    {
+        $estudiante = $this->getEstudiante();
+        $asignacion = \App\Models\EstudianteRuta::where('estudiante_id', $estudiante->id)
+                        ->with(['ruta.paradas', 'parada'])
+                        ->latest()->first();
+        $ruta = $asignacion?->ruta;
+
+        return view('portal.estudiante.mi_ruta_transporte', compact(
+            'estudiante', 'asignacion', 'ruta'
         ));
     }
 }

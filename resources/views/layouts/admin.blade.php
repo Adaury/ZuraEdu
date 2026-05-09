@@ -1822,6 +1822,11 @@ if(auth()->check()) {
                         <i class="bi bi-file-zip"></i>Exportación Masiva
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.importaciones.index') }}" class="{{ request()->routeIs('admin.importaciones*') ? 'active' : '' }}">
+                        <i class="bi bi-cloud-upload"></i>Importaciones
+                    </a>
+                </li>
                 @endif
             </ul>
             @endif
@@ -1874,6 +1879,11 @@ if(auth()->check()) {
                 <li class="nav-item">
                     <a href="{{ route('admin.avisos-emergencia.index') }}" class="{{ request()->routeIs('admin.avisos-emergencia*') ? 'active' : '' }}">
                         <i class="bi bi-exclamation-octagon-fill" style="color:#ef4444;"></i>Avisos Emergencia
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.encuestas.index') }}" class="{{ request()->routeIs('admin.encuestas*') ? 'active' : '' }}">
+                        <i class="bi bi-patch-question"></i>Encuestas
                     </a>
                 </li>
                 @endif
@@ -2012,6 +2022,16 @@ if(auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('admin.familias.index') }}" class="{{ request()->routeIs('admin.familias*') ? 'active' : '' }}">
+                        <i class="bi bi-collection"></i>Familias Profesionales
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.especialidades.index') }}" class="{{ request()->routeIs('admin.especialidades*') ? 'active' : '' }}">
+                        <i class="bi bi-tools"></i>Especialidades Técnicas
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.periodos.index') }}" class="{{ request()->routeIs('admin.periodos*') ? 'active' : '' }}">
                         <i class="bi bi-calendar3"></i>Períodos
                     </a>
@@ -2116,6 +2136,11 @@ if(auth()->check()) {
                 <li class="nav-item">
                     <a href="{{ route('admin.sistema.demo-trial') }}" class="{{ request()->routeIs('admin.sistema.demo-trial') ? 'active' : '' }}">
                         <i class="bi bi-play-circle"></i>Demo & Prueba
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.billing.index') }}" class="{{ request()->routeIs('admin.billing*') ? 'active' : '' }}">
+                        <i class="bi bi-credit-card"></i>Facturación
                     </a>
                 </li>
             </ul>

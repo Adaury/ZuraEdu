@@ -34,3 +34,13 @@ Route::post('salud/incidentes',
 Route::delete('salud/incidentes/{incidente}',
     [SaludController::class, 'eliminarIncidente'])
     ->name('salud.incidentes.eliminar');
+
+// Excel incidentes
+Route::get('salud/incidentes/excel',
+    [SaludController::class, 'incidentesExcel'])
+    ->name('salud.incidentes.excel');
+
+// PDF lista de incidentes
+Route::get('salud/incidentes/pdf',
+    [SaludController::class, 'incidentesPdf'])
+    ->name('salud.incidentes.pdf');

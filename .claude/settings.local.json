@@ -185,7 +185,14 @@
       "Bash(\"C:/laragon/bin/php/php-8.1.10-Win32-vs16-x64/php.exe\" -l C:/laragon/www/sge/app/Models/ClassroomMessage.php)",
       "Bash(\"C:/laragon/bin/php/php-8.1.10-Win32-vs16-x64/php.exe\" -l C:/laragon/www/sge/app/Events/NewClassroomMessage.php)",
       "Bash(\"C:/laragon/bin/php/php-8.1.10-Win32-vs16-x64/php.exe\" -l C:/laragon/www/sge/app/Models/ClaseVirtual.php)",
-      "Bash(\"C:/laragon/bin/php/php-8.1.10-Win32-vs16-x64/php.exe\" \"C:/laragon/www/sge/artisan\" view:cache)"
+      "Bash(\"C:/laragon/bin/php/php-8.1.10-Win32-vs16-x64/php.exe\" \"C:/laragon/www/sge/artisan\" view:cache)",
+      "Bash(\"C:/laragon/bin/php/php-8.1.10-Win32-vs16-x64/php.exe\" \"C:/laragon/www/sge/artisan\" migrate:status)",
+      "Bash(findstr /i \"error fail seeding seeder running database\")",
+      "Bash(awk '{print $NF}')",
+      "Bash(Get-ChildItem -Path \"C:\\\\laragon\\\\www\\\\sge\\\\app\\\\Http\\\\Controllers\\\\Portal\" -Filter \"*.php\")",
+      "Bash(Select-Object Name)",
+      "PowerShell(Get-ChildItem \"C:\\\\laragon\\\\bin\\\\php\" -Directory | Select-Object -Last 1 | ForEach-Object { $_.FullName })",
+      "PowerShell(Get-Content *)"
     ]
   }
 }

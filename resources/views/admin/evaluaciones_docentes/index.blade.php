@@ -47,6 +47,14 @@
         <a href="{{ route('admin.evaluaciones-docentes.dashboard') }}" class="btn btn-sm btn-outline-primary">
             <i class="bi bi-bar-chart-line me-1"></i>Dashboard
         </a>
+        <a href="{{ route('admin.evaluaciones-docentes.lista-pdf', request()->query()) }}"
+           class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
+        <a href="{{ route('admin.evaluaciones-docentes.lista-excel', request()->query()) }}"
+           class="btn btn-sm btn-outline-success">
+            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+        </a>
         <a href="{{ route('admin.evaluaciones-docentes.create') }}" class="btn btn-sm px-3 py-2 fw-600"
            style="background:var(--primary);color:#fff;border-radius:8px;font-size:.85rem;font-weight:600;">
             <i class="bi bi-plus-lg me-1"></i>Nueva Evaluación

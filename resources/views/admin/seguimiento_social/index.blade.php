@@ -18,11 +18,23 @@
         </h1>
         <p class="text-muted mb-0 mt-1" style="font-size:.82rem;">Gestión de casos y seguimiento de estudiantes</p>
     </div>
-    <a href="{{ route('admin.seguimiento-social.create') }}"
-       class="btn fw-semibold"
-       style="background:var(--primary);color:#fff;border-radius:8px;padding:.45rem 1.1rem;font-size:.85rem;">
-        <i class="bi bi-plus-lg me-1"></i>Nuevo Caso
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{{ route('admin.seguimiento-social.lista-pdf', request()->query()) }}"
+           class="btn btn-outline-danger fw-semibold"
+           style="border-radius:8px;padding:.45rem 1rem;font-size:.85rem;">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
+        <a href="{{ route('admin.seguimiento-social.lista-excel', request()->query()) }}"
+           class="btn btn-outline-success fw-semibold"
+           style="border-radius:8px;padding:.45rem 1rem;font-size:.85rem;">
+            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+        </a>
+        <a href="{{ route('admin.seguimiento-social.create') }}"
+           class="btn fw-semibold"
+           style="background:var(--primary);color:#fff;border-radius:8px;padding:.45rem 1.1rem;font-size:.85rem;">
+            <i class="bi bi-plus-lg me-1"></i>Nuevo Caso
+        </a>
+    </div>
 </div>
 
 @if(session('success'))

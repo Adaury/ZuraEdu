@@ -13,6 +13,14 @@
             <small class="text-muted">Inventario y control de estado de equipos</small>
         </div>
         <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ route('admin.equipos.lista-pdf', request()->query()) }}"
+               class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+            </a>
+            <a href="{{ route('admin.equipos.lista-excel', request()->query()) }}"
+               class="btn btn-outline-success btn-sm">
+                <i class="bi bi-file-earmark-excel me-1"></i>Excel
+            </a>
             <a href="{{ route('admin.equipos.prestamos.index') }}" class="btn btn-outline-primary btn-sm">
                 <i class="bi bi-arrow-left-right me-1"></i>Ver Préstamos
             </a>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ArticuloInventario;
 use App\Models\MovimientoInventario;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class InventarioController extends Controller
 {
@@ -186,6 +187,66 @@ class InventarioController extends Controller
         return $pdf->download('inventario_' . now()->format('Ymd') . '.pdf');
     }
 
+    public function historialGlobal(Request $request)
+    {
+        $query = MovimientoInventario::with(['articulo', 'usuario'])->latest();
+
+        if ($request->filled('tipo')) {
+            $query->where('tipo', $request->tipo);
+        }
+        if ($request->filled('articulo_id')) {
+            $query->where('articulo_id', $request->articulo_id);
+        }
+        if ($request->filled('fecha_desde')) {
+            $query->whereDate('created_at', '>=', $request->fecha_desde);
+        }
+        if ($request->filled('fecha_hasta')) {
+            $query->whereDate('created_at', '<=', $request->fecha_hasta);
+        }
+
+        $movimientos = $query->paginate(30)->withQueryString();
+
+        $tipos     = MovimientoInventario::TIPOS;
+        $articulos = ArticuloInventario::orderBy('nombre')->pluck('nombre', 'id');
+
+        $totalEntradas = MovimientoInventario::where('tipo', 'entrada')->sum('cantidad');
+        $totalSalidas  = MovimientoInventario::where('tipo', 'salida')->sum('cantidad');
+        $totalAjustes  = MovimientoInventario::where('tipo', 'ajuste')->count();
+
+        return view('admin.inventario.historial', compact(
+            'movimientos', 'tipos', 'articulos',
+            'totalEntradas', 'totalSalidas', 'totalAjustes'
+        ));
+    }
+
+    public function alertas()
+    {
+        $sinStock   = ArticuloInventario::where('cantidad_disponible', 0)->orderBy('nombre')->get();
+        $stockBajo  = ArticuloInventario::where('cantidad_disponible', '>', 0)
+            ->whereRaw('cantidad_disponible <= cantidad_total * 0.25')
+            ->orderBy('cantidad_disponible')
+            ->get();
+        $malEstado  = ArticuloInventario::where('estado', 'malo')->orderBy('nombre')->get();
+        $reparacion = ArticuloInventario::where('estado', 'reparacion')->orderBy('nombre')->get();
+
+        return view('admin.inventario.alertas', compact(
+            'sinStock', 'stockBajo', 'malEstado', 'reparacion'
+        ));
+    }
+
+    public function movimientosPdf(ArticuloInventario $articulo)
+    {
+        $movimientos = $articulo->movimientos()->with('usuario')->latest()->get();
+        $inst        = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'admin.inventario.movimientos_pdf',
+            compact('articulo', 'movimientos', 'inst')
+        )->setPaper('letter', 'portrait');
+
+        return $pdf->download('movimientos_' . Str::slug($articulo->nombre) . '_' . now()->format('Ymd') . '.pdf');
+    }
+
     public function inventarioExcel()
     {
         $articulos = ArticuloInventario::with([
@@ -242,6 +303,112 @@ class InventarioController extends Controller
         $writer->save($tmp);
 
         return response()->download($tmp, 'inventario_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    public function historialExcel(Request $request)
+    {
+        $query = MovimientoInventario::with(['articulo', 'usuario'])->latest();
+
+        if ($request->filled('tipo'))        $query->where('tipo', $request->tipo);
+        if ($request->filled('articulo_id')) $query->where('articulo_id', $request->articulo_id);
+        if ($request->filled('fecha_desde')) $query->whereDate('created_at', '>=', $request->fecha_desde);
+        if ($request->filled('fecha_hasta')) $query->whereDate('created_at', '<=', $request->fecha_hasta);
+
+        $movimientos = $query->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Historial Inventario');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                       'startColor' => ['rgb' => '1e3a6e']],
+        ];
+
+        $ws->mergeCells('A1:F1');
+        $ws->setCellValue('A1', 'Historial de Movimientos — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Fecha', 'Artículo', 'Tipo', 'Cantidad', 'Usuario'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:F3')->applyFromArray($hdrStyle);
+
+        foreach ($movimientos->values() as $i => $m) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $m->created_at?->format('d/m/Y H:i') ?? '—');
+            $ws->setCellValue("C{$row}", $m->articulo?->nombre ?? '—');
+            $ws->setCellValue("D{$row}", ucfirst($m->tipo));
+            $ws->setCellValue("E{$row}", $m->cantidad);
+            $ws->setCellValue("F{$row}", $m->usuario?->name ?? '—');
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:F{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('dbeafe');
+            }
+        }
+
+        foreach (range('A', 'F') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'historial_inv_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'historial_inventario_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    public function movimientosExcel(ArticuloInventario $articulo)
+    {
+        $movimientos = $articulo->movimientos()->with('usuario')->latest()->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Movimientos');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                       'startColor' => ['rgb' => '1e3a6e']],
+        ];
+
+        $ws->mergeCells('A1:E1');
+        $ws->setCellValue('A1', 'Movimientos — ' . $articulo->nombre . ' — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Fecha', 'Tipo', 'Cantidad', 'Usuario'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:E3')->applyFromArray($hdrStyle);
+
+        foreach ($movimientos->values() as $i => $m) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $m->created_at?->format('d/m/Y H:i') ?? '—');
+            $ws->setCellValue("C{$row}", ucfirst($m->tipo));
+            $ws->setCellValue("D{$row}", $m->cantidad);
+            $ws->setCellValue("E{$row}", $m->usuario?->name ?? '—');
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:E{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('dbeafe');
+            }
+        }
+
+        foreach (range('A', 'E') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'mov_inv_') . '.xlsx';
+        $writer->save($tmp);
+
+        $nombre = 'movimientos_' . Str::slug($articulo->nombre) . '_' . now()->format('Ymd') . '.xlsx';
+
+        return response()->download($tmp, $nombre, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);
     }

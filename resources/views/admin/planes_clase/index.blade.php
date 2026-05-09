@@ -12,9 +12,19 @@
                 <li class="breadcrumb-item active">Planes de Clase</li>
             </ol></nav>
         </div>
-        <a href="{{ route('admin.planes-clase.create') }}" class="btn btn-primary">
-            <i class="bi bi-plus-circle me-1"></i> Nuevo Plan
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('admin.planes-clase.lista-pdf', request()->query()) }}"
+               class="btn btn-outline-danger">
+                <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+            </a>
+            <a href="{{ route('admin.planes-clase.lista-excel', request()->query()) }}"
+               class="btn btn-outline-success">
+                <i class="bi bi-file-earmark-excel me-1"></i>Excel
+            </a>
+            <a href="{{ route('admin.planes-clase.create') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Nuevo Plan
+            </a>
+        </div>
     </div>
 
     {{-- Filters --}}

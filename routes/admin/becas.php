@@ -18,6 +18,7 @@ Route::prefix('becas')->name('becas.')->group(function () {
     Route::post('/asignar',                             [BecaController::class, 'asignarBeca'])->name('asignar');
     Route::delete('/revocar/{becaEstudiante}',          [BecaController::class, 'revocarBeca'])->name('revocar');
 
-    // Reporte PDF
-    Route::get('/reporte-pdf',  [BecaController::class, 'reportePdf'])->name('reporte-pdf');
+    // Reportes
+    Route::get('/reporte-pdf',   [BecaController::class, 'reportePdf'])->name('reporte-pdf');
+    Route::get('/reporte-excel', [BecaController::class, 'reporteExcel'])->name('reporte-excel');
 });

@@ -21,6 +21,13 @@
                     <i class="bi bi-clock-history me-1"></i>Verificar Vencidos
                 </button>
             </form>
+            <a href="{{ route('admin.biblioteca.prestamos.pdf') }}" target="_blank"
+               class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+            </a>
+            <a href="{{ route('admin.biblioteca.prestamos.excel') }}" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-file-earmark-excel me-1"></i>Excel
+            </a>
             <a href="{{ route('admin.biblioteca.prestamos.create') }}" class="btn btn-primary btn-sm">
                 <i class="bi bi-plus-lg me-1"></i>Nuevo Préstamo
             </a>
@@ -168,14 +175,20 @@
                             </td>
                             <td class="text-end">
                                 @if($prestamo->estado !== 'devuelto')
-                                <form method="POST"
-                                      action="{{ route('admin.biblioteca.prestamos.devolver', $prestamo) }}"
-                                      onsubmit="return confirm('¿Confirmar devolución del libro «{{ addslashes($prestamo->libro?->titulo) }}»?')">
-                                    @csrf @method('PATCH')
-                                    <button type="submit" class="btn btn-sm btn-success" title="Registrar devolución">
-                                        <i class="bi bi-arrow-return-left me-1"></i>Devolver
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <form method="POST"
+                                          action="{{ route('admin.biblioteca.prestamos.devolver', $prestamo) }}"
+                                          onsubmit="return confirm('¿Confirmar devolución del libro «{{ addslashes($prestamo->libro?->titulo) }}»?')">
+                                        @csrf @method('PATCH')
+                                        <button type="submit" class="btn btn-sm btn-success" title="Registrar devolución">
+                                            <i class="bi bi-arrow-return-left me-1"></i>Devolver
+                                        </button>
+                                    </form>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" title="Renovar préstamo"
+                                            onclick="abrirRenovar({{ $prestamo->id }}, '{{ $prestamo->fecha_vencimiento?->format('Y-m-d') }}')">
+                                        <i class="bi bi-arrow-clockwise"></i>
                                     </button>
-                                </form>
+                                </div>
                                 @else
                                 <span class="text-muted small">Devuelto</span>
                                 @endif
@@ -197,4 +210,47 @@
     </div>
 
 </div>
+
+{{-- Modal renovar préstamo --}}
+<div class="modal fade" id="modalRenovar" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-3">
+                <h6 class="modal-title fw-bold">
+                    <i class="bi bi-arrow-clockwise text-primary me-2"></i>Renovar Préstamo
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formRenovar" method="POST">
+                @csrf @method('PATCH')
+                <div class="modal-body">
+                    <label class="form-label fw-semibold">Nueva fecha de vencimiento</label>
+                    <input type="date" name="nueva_fecha" id="inputNuevaFecha" class="form-control" required>
+                    <small class="text-muted">Debe ser posterior a hoy.</small>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>Renovar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+function abrirRenovar(prestamoId, fechaActual) {
+    const form = document.getElementById('formRenovar');
+    form.action = `/admin/biblioteca/prestamos/${prestamoId}/renovar`;
+    const input = document.getElementById('inputNuevaFecha');
+    const d = new Date();
+    d.setDate(d.getDate() + 14);
+    input.value = d.toISOString().split('T')[0];
+    input.min = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0];
+    new bootstrap.Modal(document.getElementById('modalRenovar')).show();
+}
+</script>
+@endpush
 @endsection

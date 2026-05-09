@@ -39,6 +39,12 @@
 <div class="page-header">
     <h1><i class="bi bi-archive-fill me-2" style="color:var(--primary)"></i>Inventario Escolar</h1>
     <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ route('admin.inventario.alertas') }}" class="btn btn-warning btn-sm">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>Alertas
+        </a>
+        <a href="{{ route('admin.inventario.historial') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-clock-history me-1"></i>Historial
+        </a>
         <a href="{{ route('admin.inventario.pdf', request()->query()) }}"
            class="btn btn-danger btn-sm">
             <i class="bi bi-file-earmark-pdf-fill me-1"></i>PDF

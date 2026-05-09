@@ -22,4 +22,9 @@ Route::prefix('equipos')->name('equipos.')->group(function () {
 
     // ── Alertas ───────────────────────────────────────────────────────────
     Route::post('/verificar-vencidos',    [EquipoController::class, 'verificarVencidos'])->name('verificar-vencidos');
+
+    // ── Excel ─────────────────────────────────────────────────────────────
+    Route::get('/lista/excel',            [EquipoController::class, 'listaExcel'])->name('lista-excel');
+    Route::get('/lista/pdf',              [EquipoController::class, 'listaPdf'])->name('lista-pdf');
+    Route::get('/prestamos/excel',        [EquipoController::class, 'prestamosExcel'])->name('prestamos.excel');
 });

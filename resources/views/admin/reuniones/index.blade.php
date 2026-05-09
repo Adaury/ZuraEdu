@@ -11,9 +11,19 @@
             Gestión de reuniones institucionales y sus acuerdos
         </p>
     </div>
-    <a href="{{ route('admin.reuniones.create') }}" class="btn btn-primary" style="border-radius:8px;">
-        <i class="bi bi-plus-lg me-1"></i>Nueva Reunión
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{{ route('admin.reuniones.lista-pdf', request()->query()) }}"
+           class="btn btn-outline-danger" style="border-radius:8px;">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
+        <a href="{{ route('admin.reuniones.lista-excel', request()->query()) }}"
+           class="btn btn-outline-success" style="border-radius:8px;">
+            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+        </a>
+        <a href="{{ route('admin.reuniones.create') }}" class="btn btn-primary" style="border-radius:8px;">
+            <i class="bi bi-plus-lg me-1"></i>Nueva Reunión
+        </a>
+    </div>
 </div>
 
 @if(session('success'))

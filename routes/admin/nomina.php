@@ -8,7 +8,10 @@ Route::prefix('nomina')->name('nomina.')->group(function () {
     Route::get('/nuevo',                               [NominaController::class, 'create'])->name('create');
     Route::post('/',                                   [NominaController::class, 'store'])->name('store');
     Route::get('/excel',                               [NominaController::class, 'excel'])->name('excel');
+    Route::get('/pdf',                                 [NominaController::class, 'nominaPdf'])->name('pdf');
     Route::get('/reporte-csv',                         [NominaController::class, 'reporteCsv'])->name('reporte-csv');
+    Route::get('/resumen-anual',                       [NominaController::class, 'resumenAnual'])->name('resumen-anual');
+    Route::get('/resumen-anual/pdf',                   [NominaController::class, 'resumenAnualPdf'])->name('resumen-anual.pdf');
     Route::post('/procesar-mes',                       [NominaController::class, 'procesarMes'])->name('procesar-mes');
     Route::post('/marcar-todos-pagados',               [NominaController::class, 'marcarTodosPagados'])->name('marcar-todos-pagados');
     Route::get('/{nomina}',                            [NominaController::class, 'show'])->name('show');

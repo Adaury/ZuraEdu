@@ -30,6 +30,10 @@
             </div>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
+            <a href="{{ route('admin.encuestas.resultados-excel', $encuesta) }}"
+               class="px-3 py-2 text-sm border border-emerald-300 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/20 rounded-lg transition">
+                <i class="bi bi-file-earmark-excel me-1"></i>Excel
+            </a>
             <a href="{{ route('admin.encuestas.edit', $encuesta) }}"
                class="px-3 py-2 text-sm border border-indigo-300 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-900/20 rounded-lg transition">
                 Editar

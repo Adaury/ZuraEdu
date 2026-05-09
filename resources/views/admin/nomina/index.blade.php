@@ -30,6 +30,12 @@ $mesLabel = ($mesesNombres[$numMes] ?? $numMes) . ' ' . $anioMes;
                 <i class="bi bi-gear me-1"></i>Procesar mes
             </button>
         </form>
+        <a href="{{ route('admin.nomina.resumen-anual') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-calendar3 me-1"></i>Resumen Anual
+        </a>
+        <a href="{{ route('admin.nomina.pdf', ['mes'=>$mes]) }}" target="_blank" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
         <a href="{{ route('admin.nomina.excel', ['mes'=>$mes]) }}" class="btn btn-sm btn-outline-success">
             <i class="bi bi-file-earmark-excel me-1"></i>Excel
         </a>
@@ -82,11 +88,19 @@ $mesLabel = ($mesesNombres[$numMes] ?? $numMes) . ' ' . $anioMes;
             <label class="form-label small fw-semibold mb-1">Mes</label>
             <input type="month" name="mes" value="{{ $mes }}" class="form-control form-control-sm">
         </div>
+        <div>
+            <label class="form-label small fw-semibold mb-1">Estado</label>
+            <select name="estado" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="" {{ !$estado ? 'selected':'' }}>Todos</option>
+                <option value="pagado"   {{ $estado==='pagado'   ? 'selected':'' }}>Pagados</option>
+                <option value="pendiente"{{ $estado==='pendiente'? 'selected':'' }}>Pendientes</option>
+            </select>
+        </div>
         <div class="d-flex gap-2">
             <button type="submit" class="btn btn-sm btn-primary" style="border-radius:8px;">
                 <i class="bi bi-search me-1"></i>Filtrar
             </button>
-            @if($buscar)
+            @if($buscar || $estado)
             <a href="{{ route('admin.nomina.index', ['mes'=>$mes]) }}" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;">✕</a>
             @endif
         </div>

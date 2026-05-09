@@ -5,9 +5,13 @@ use App\Http\Controllers\Admin\EventoController;
 // ── Eventos Extracurriculares ──────────────────────────────────────────────
 Route::prefix('eventos')->name('eventos.')->group(function () {
 
-    // PDF de inscritos (antes del resource para evitar colisión)
-    Route::get('{evento}/inscritos-pdf', [EventoController::class, 'inscritosPdf'])
-         ->name('inscritos-pdf');
+    // Lista Excel / PDF de todos los eventos
+    Route::get('lista/excel', [EventoController::class, 'listaExcel'])->name('lista-excel');
+    Route::get('lista/pdf',   [EventoController::class, 'listaPdf'])->name('lista-pdf');
+
+    // PDF / Excel de inscritos (antes del resource para evitar colisión)
+    Route::get('{evento}/inscritos-pdf',   [EventoController::class, 'inscritosPdf'])->name('inscritos-pdf');
+    Route::get('{evento}/inscritos-excel', [EventoController::class, 'inscritosExcel'])->name('inscritos-excel');
 
     // Toggle activo
     Route::patch('{evento}/toggle', [EventoController::class, 'toggleActivo'])

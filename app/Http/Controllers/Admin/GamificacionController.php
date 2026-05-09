@@ -72,10 +72,13 @@ class GamificacionController extends Controller
             'fecha'        => ['required', 'date'],
         ]);
 
-        $punto = PuntoEstudiante::create($data);
-
-        // Verificar si se desbloquean insignias por acumulado
+        PuntoEstudiante::create($data);
         $this->verificarInsigniasAcumulado($data['matricula_id']);
+
+        $redirect = $request->input('_redirect');
+        if ($redirect && str_starts_with($redirect, url('/'))) {
+            return redirect($redirect)->with('success', "Se asignaron {$data['puntos']} puntos correctamente.");
+        }
 
         return back()->with('success', "Se asignaron {$data['puntos']} puntos correctamente.");
     }
@@ -136,6 +139,159 @@ class GamificacionController extends Controller
         }
 
         return back()->with('success', "Se generaron {$generados} registros de puntos para el grupo.");
+    }
+
+    // ── Detalle de un estudiante ─────────────────────────────────────────
+    public function detalle(Request $request, \App\Models\Matricula $matricula)
+    {
+        $matricula->load(['estudiante', 'grupo.grado', 'grupo.seccion']);
+        $schoolYear = SchoolYear::actual();
+
+        $totalPuntos = PuntoEstudiante::where('matricula_id', $matricula->id)->sum('puntos');
+        $insigniasObtenidas = InsigniaEstudiante::where('matricula_id', $matricula->id)->get()->keyBy('tipo');
+
+        $historial = PuntoEstudiante::where('matricula_id', $matricula->id)
+            ->orderByDesc('fecha')->orderByDesc('id')
+            ->get();
+
+        $puntosCategoria = [];
+        foreach (PuntoEstudiante::CATEGORIAS as $cat => $info) {
+            $puntosCategoria[$cat] = PuntoEstudiante::where('matricula_id', $matricula->id)
+                ->where('categoria', $cat)->sum('puntos');
+        }
+
+        $posicion = null;
+        if ($matricula->grupo_id) {
+            $ranking = Matricula::where('grupo_id', $matricula->grupo_id)
+                ->where('estado', 'activa')
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->get()
+                ->map(fn($m) => ['id' => $m->id, 'total' => PuntoEstudiante::where('matricula_id', $m->id)->sum('puntos')])
+                ->sortByDesc('total')->values();
+            $idx = $ranking->search(fn($r) => $r['id'] === $matricula->id);
+            $posicion = $idx !== false ? $idx + 1 : null;
+        }
+
+        return view('admin.gamificacion.detalle', compact(
+            'matricula', 'totalPuntos', 'insigniasObtenidas',
+            'historial', 'puntosCategoria', 'posicion', 'schoolYear'
+        ));
+    }
+
+    // ── Eliminar un punto ────────────────────────────────────────────────
+    public function eliminarPunto(PuntoEstudiante $punto)
+    {
+        $punto->delete();
+        return back()->with('success', 'Punto eliminado correctamente.');
+    }
+
+    // ── PDF del ranking del grupo ────────────────────────────────────────
+    public function rankingPdf(Request $request)
+    {
+        $schoolYear = SchoolYear::actual();
+        $grupos = Grupo::with(['grado', 'seccion'])
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->orderBy('grado_id')->orderBy('seccion_id')->get();
+
+        $grupoId = $request->input('grupo_id', $grupos->first()?->id);
+        $grupo   = $grupos->find($grupoId);
+
+        $ranking = collect();
+        if ($grupoId) {
+            $ranking = Matricula::with(['estudiante', 'grupo.grado', 'grupo.seccion'])
+                ->where('grupo_id', $grupoId)
+                ->where('estado', 'activa')
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->get()
+                ->map(function (Matricula $m) {
+                    return [
+                        'matricula'  => $m,
+                        'total'      => PuntoEstudiante::where('matricula_id', $m->id)->sum('puntos'),
+                        'insignias'  => InsigniaEstudiante::where('matricula_id', $m->id)->count(),
+                    ];
+                })
+                ->sortByDesc('total')->values();
+        }
+
+        $config = \App\Models\ConfigInstitucional::first();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.gamificacion.ranking_pdf', compact('ranking', 'grupo', 'schoolYear', 'config'))
+            ->setPaper('a4', 'portrait');
+
+        $nombreGrupo = $grupo ? str_replace(' ', '_', trim(($grupo->grado?->nombre ?? '') . '_' . ($grupo->seccion?->nombre ?? ''))) : 'grupo';
+
+        return $pdf->download("ranking_gamificacion_{$nombreGrupo}.pdf");
+    }
+
+    public function rankingExcel(Request $request)
+    {
+        $schoolYear = SchoolYear::actual();
+        $grupos = Grupo::with(['grado', 'seccion'])
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->orderBy('grado_id')->orderBy('seccion_id')->get();
+
+        $grupoId = $request->input('grupo_id', $grupos->first()?->id);
+        $grupo   = $grupos->find($grupoId);
+
+        $ranking = collect();
+        if ($grupoId) {
+            $ranking = Matricula::with(['estudiante', 'grupo.grado', 'grupo.seccion'])
+                ->where('grupo_id', $grupoId)
+                ->where('estado', 'activa')
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->get()
+                ->map(fn($m) => [
+                    'matricula' => $m,
+                    'total'     => PuntoEstudiante::where('matricula_id', $m->id)->sum('puntos'),
+                    'insignias' => InsigniaEstudiante::where('matricula_id', $m->id)->count(),
+                ])
+                ->sortByDesc('total')->values();
+        }
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Ranking');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '4338ca']],
+        ];
+
+        $titulo = 'Ranking de Gamificación — ' . ($grupo ? ($grupo->grado?->nombre . ' ' . $grupo->seccion?->nombre) : 'Todos') . ' — ' . now()->format('d/m/Y');
+        $ws->mergeCells('A1:F1');
+        $ws->setCellValue('A1', $titulo);
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Nombre', 'Apellidos', 'Grupo', 'Puntos', 'Insignias'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:F3')->applyFromArray($hdrStyle);
+
+        foreach ($ranking as $i => $item) {
+            $row = $i + 4;
+            $est = $item['matricula']->estudiante;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $est?->nombres ?? '—');
+            $ws->setCellValue("C{$row}", $est?->apellidos ?? '—');
+            $ws->setCellValue("D{$row}", $item['matricula']->grupo?->nombre_completo ?? '—');
+            $ws->setCellValue("E{$row}", $item['total']);
+            $ws->setCellValue("F{$row}", $item['insignias']);
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:F{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('eef2ff');
+            }
+        }
+
+        foreach (range('A', 'F') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'gami_') . '.xlsx';
+        $writer->save($tmp);
+
+        $nombreGrupo = $grupo ? str_replace(' ', '_', trim(($grupo->grado?->nombre ?? '') . '_' . ($grupo->seccion?->nombre ?? ''))) : 'todos';
+        return response()->download($tmp, "ranking_gamificacion_{$nombreGrupo}_" . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 
     // ── Helpers privados ──────────────────────────────────────────────────

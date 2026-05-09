@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ConfigInstitucional;
 use App\Models\NominaEmpleado;
+use App\Models\Notificacion;
 use App\Models\PagoNomina;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -24,6 +25,12 @@ class NominaController extends Controller
             ->when($buscar, fn($q) => $q->whereHas('user', fn($u) =>
                 $u->where('name', 'like', "%{$buscar}%")
                   ->orWhere('email', 'like', "%{$buscar}%")
+            ))
+            ->when($estado === 'pagado', fn($q) => $q->whereHas('pagos',
+                fn($p) => $p->where('mes', $filtroMes)->where('pagado', true)
+            ))
+            ->when($estado === 'pendiente', fn($q) => $q->whereDoesntHave('pagos',
+                fn($p) => $p->where('mes', $filtroMes)->where('pagado', true)
             ))
             ->orderByDesc('activo')
             ->orderBy('id')
@@ -237,6 +244,20 @@ class NominaController extends Controller
             'referencia_pago' => $data['referencia_pago'] ?? null,
         ]);
 
+        try {
+            $nomina->load('user');
+            if ($nomina->user_id) {
+                $neto     = number_format($pago->salario_neto, 2);
+                $mesLabel = \Carbon\Carbon::createFromFormat('Y-m', $mes)->translatedFormat('F Y');
+                Notificacion::enviar(
+                    $nomina->user_id,
+                    'general',
+                    '💰 Pago de nómina procesado',
+                    "Tu salario correspondiente a {$mesLabel} (neto: {$neto}) ha sido procesado."
+                );
+            }
+        } catch (\Throwable) {}
+
         return back()->with('success', 'Pago registrado correctamente para '.$nomina->user->name.'.');
     }
 
@@ -292,55 +313,167 @@ class NominaController extends Controller
         $empleados = NominaEmpleado::with(['user', 'pagos' => fn($q) => $q->where('mes', $mes)])
             ->activos()->orderBy('id')->get();
 
-        $mesLabel  = $this->mesLabel($mes);
-        $filename  = 'nomina_' . $mes . '.csv';
-        $headers   = ['Content-Type'=>'text/csv; charset=UTF-8','Content-Disposition'=>"attachment; filename=\"{$filename}\""];
+        $mesLabel = $this->mesLabel($mes);
 
-        $callback = function () use ($empleados, $mes, $mesLabel) {
-            $fh = fopen('php://output', 'w');
-            fputs($fh, "\xEF\xBB\xBF");
-            fputcsv($fh, ['NÓMINA DE EMPLEADOS — ' . strtoupper($mesLabel)]);
-            fputcsv($fh, []);
-            fputcsv($fh, ['#','Nombre','Cédula','Cargo','Contrato',
-                          'Salario Bruto','Horas Extra','Bonificación','Otros Ingresos',
-                          'TSS','ISR','Otras Deducciones','Total Deducciones',
-                          'Salario Neto','Estado Pago','Fecha Pago','Método']);
-            foreach ($empleados as $i => $emp) {
-                $p = $emp->pagos->first();
-                fputcsv($fh, [
-                    $i+1,
-                    $emp->user->name ?? '—',
-                    $emp->cedula ?? '—',
-                    $emp->cargo,
-                    $emp->tipo_contrato_label,
-                    number_format($p?->salario_bruto ?? $emp->salario_base, 2),
-                    number_format($p?->horas_extra ?? 0, 2),
-                    number_format($p?->bonificacion ?? 0, 2),
-                    number_format($p?->otros_ingresos ?? 0, 2),
-                    number_format($p?->desc_tss ?? $emp->calcularTSS(), 2),
-                    number_format($p?->desc_isr ?? $emp->calcularISR(), 2),
-                    number_format($p?->desc_otros ?? 0, 2),
-                    number_format($p?->deducciones ?? ($emp->calcularTSS()+$emp->calcularISR()), 2),
-                    number_format($p?->salario_neto ?? ($emp->salario_base-$emp->calcularTSS()-$emp->calcularISR()), 2),
-                    $p && $p->pagado ? 'Pagado' : 'Pendiente',
-                    $p?->fecha_pago?->format('d/m/Y') ?? '—',
-                    $p?->metodo_pago ?? '—',
-                ]);
-            }
-            // Totales
-            fputcsv($fh, []);
-            $pagos = $empleados->map(fn($e) => $e->pagos->first())->filter();
-            fputcsv($fh, ['','TOTALES','','','',
-                number_format($pagos->sum('salario_bruto'),2),'','','',
-                number_format($pagos->sum('desc_tss'),2),
-                number_format($pagos->sum('desc_isr'),2),
-                number_format($pagos->sum('desc_otros'),2),
-                number_format($pagos->sum('deducciones'),2),
-                number_format($pagos->sum('salario_neto'),2)]);
-            fclose($fh);
-        };
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Nómina');
 
-        return response()->stream($callback, 200, $headers);
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '1e3a6e']],
+        ];
+
+        $ws->mergeCells('A1:Q1');
+        $ws->setCellValue('A1', 'NÓMINA DE EMPLEADOS — ' . strtoupper($mesLabel));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(13);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        $cols = ['#','Nombre','Cédula','Cargo','Contrato',
+                 'Salario Bruto','Horas Extra','Bonificación','Otros Ingresos',
+                 'TSS','ISR','Otras Ded.','Total Ded.',
+                 'Salario Neto','Estado Pago','Fecha Pago','Método'];
+        foreach ($cols as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:Q3')->applyFromArray($hdrStyle);
+
+        foreach ($empleados as $i => $emp) {
+            $row = $i + 4;
+            $p   = $emp->pagos->first();
+            $pagado = $p && $p->pagado;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $emp->user->name ?? '—');
+            $ws->setCellValue("C{$row}", $emp->cedula ?? '—');
+            $ws->setCellValue("D{$row}", $emp->cargo);
+            $ws->setCellValue("E{$row}", $emp->tipo_contrato_label ?? $emp->tipo_contrato);
+            $ws->setCellValue("F{$row}", $p?->salario_bruto ?? $emp->salario_base);
+            $ws->setCellValue("G{$row}", $p?->horas_extra ?? 0);
+            $ws->setCellValue("H{$row}", $p?->bonificacion ?? 0);
+            $ws->setCellValue("I{$row}", $p?->otros_ingresos ?? 0);
+            $ws->setCellValue("J{$row}", $p?->desc_tss ?? $emp->calcularTSS());
+            $ws->setCellValue("K{$row}", $p?->desc_isr ?? $emp->calcularISR());
+            $ws->setCellValue("L{$row}", $p?->desc_otros ?? 0);
+            $ws->setCellValue("M{$row}", $p?->deducciones ?? ($emp->calcularTSS() + $emp->calcularISR()));
+            $ws->setCellValue("N{$row}", $p?->salario_neto ?? ($emp->salario_base - $emp->calcularTSS() - $emp->calcularISR()));
+            $ws->setCellValue("O{$row}", $pagado ? 'Pagado' : 'Pendiente');
+            $ws->setCellValue("P{$row}", $p?->fecha_pago?->format('d/m/Y') ?? '—');
+            $ws->setCellValue("Q{$row}", $p?->metodo_pago ?? '—');
+
+            $bg = $pagado ? 'd1fae5' : 'fef9c3';
+            $ws->getStyle("A{$row}:Q{$row}")->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB($bg);
+        }
+
+        // Fila de totales
+        $totRow = $empleados->count() + 4;
+        $pagos  = $empleados->map(fn($e) => $e->pagos->first())->filter();
+        $ws->setCellValue("B{$totRow}", 'TOTALES');
+        $ws->setCellValue("F{$totRow}", $pagos->sum('salario_bruto'));
+        $ws->setCellValue("J{$totRow}", $pagos->sum('desc_tss'));
+        $ws->setCellValue("K{$totRow}", $pagos->sum('desc_isr'));
+        $ws->setCellValue("L{$totRow}", $pagos->sum('desc_otros'));
+        $ws->setCellValue("M{$totRow}", $pagos->sum('deducciones'));
+        $ws->setCellValue("N{$totRow}", $pagos->sum('salario_neto'));
+        $ws->getStyle("A{$totRow}:Q{$totRow}")->getFont()->setBold(true);
+        $ws->getStyle("A{$totRow}:Q{$totRow}")->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('e0e7ff');
+
+        foreach (range('A', 'Q') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'nom_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'nomina_' . $mes . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    // ── PDF de nómina mensual ──────────────────────────────────────────────
+    public function nominaPdf(Request $request)
+    {
+        $mes = $request->input('mes', now()->format('Y-m'));
+        if (!preg_match('/^\d{4}-\d{2}$/', $mes)) $mes = now()->format('Y-m');
+
+        $empleados = NominaEmpleado::with(['user', 'pagos' => fn($q) => $q->where('mes', $mes)])
+            ->activos()->orderBy('id')->get();
+
+        $mesLabel = $this->mesLabel($mes);
+        $inst     = ConfigInstitucional::get('nombre_institucion', config('app.name'));
+        $dir      = ConfigInstitucional::get('nombre_director', '');
+
+        $totales = [
+            'bruto'   => $empleados->sum(fn($e) => $e->pagos->first()?->salario_bruto   ?? $e->salario_base),
+            'tss'     => $empleados->sum(fn($e) => $e->pagos->first()?->desc_tss         ?? $e->calcularTSS()),
+            'isr'     => $empleados->sum(fn($e) => $e->pagos->first()?->desc_isr         ?? $e->calcularISR()),
+            'deduc'   => $empleados->sum(fn($e) => $e->pagos->first()?->deducciones      ?? ($e->calcularTSS() + $e->calcularISR())),
+            'neto'    => $empleados->sum(fn($e) => $e->pagos->first()?->salario_neto     ?? ($e->salario_base - $e->calcularTSS() - $e->calcularISR())),
+            'pagados' => $empleados->filter(fn($e) => $e->pagos->first()?->pagado)->count(),
+        ];
+
+        $pdf = Pdf::loadView('admin.nomina.nomina_pdf',
+            compact('empleados', 'mes', 'mesLabel', 'inst', 'dir', 'totales')
+        )->setPaper('letter', 'landscape');
+
+        return $pdf->download('nomina_' . $mes . '.pdf');
+    }
+
+    // ── Resumen anual (vista HTML) ─────────────────────────────────────────
+    public function resumenAnual(Request $request)
+    {
+        $anio = (int) $request->input('anio', now()->year);
+
+        $meses = collect(range(1, 12))->map(function ($m) use ($anio) {
+            $mesStr = $anio . '-' . str_pad($m, 2, '0', STR_PAD_LEFT);
+            $pagos  = PagoNomina::where('mes', $mesStr)->get();
+
+            return [
+                'mes'       => $mesStr,
+                'nombre'    => PagoNomina::MESES[str_pad($m, 2, '0', STR_PAD_LEFT)] ?? $m,
+                'empleados' => $pagos->count(),
+                'bruto'     => $pagos->sum('salario_bruto'),
+                'deduc'     => $pagos->sum('deducciones'),
+                'neto'      => $pagos->sum('salario_neto'),
+                'pagados'   => $pagos->where('pagado', true)->count(),
+            ];
+        });
+
+        $totalEmpleados = NominaEmpleado::activos()->count();
+        $inst           = ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        return view('admin.nomina.resumen_anual', compact('meses', 'anio', 'totalEmpleados', 'inst'));
+    }
+
+    // ── Resumen anual PDF ──────────────────────────────────────────────────
+    public function resumenAnualPdf(Request $request)
+    {
+        $anio = (int) $request->input('anio', now()->year);
+
+        $meses = collect(range(1, 12))->map(function ($m) use ($anio) {
+            $mesStr = $anio . '-' . str_pad($m, 2, '0', STR_PAD_LEFT);
+            $pagos  = PagoNomina::where('mes', $mesStr)->get();
+
+            return [
+                'mes'     => $mesStr,
+                'nombre'  => PagoNomina::MESES[str_pad($m, 2, '0', STR_PAD_LEFT)] ?? $m,
+                'bruto'   => $pagos->sum('salario_bruto'),
+                'tss'     => $pagos->sum('desc_tss'),
+                'isr'     => $pagos->sum('desc_isr'),
+                'deduc'   => $pagos->sum('deducciones'),
+                'neto'    => $pagos->sum('salario_neto'),
+                'pagados' => $pagos->where('pagado', true)->count(),
+                'total'   => $pagos->count(),
+            ];
+        });
+
+        $inst = ConfigInstitucional::get('nombre_institucion', config('app.name'));
+        $dir  = ConfigInstitucional::get('nombre_director', '');
+
+        $pdf = Pdf::loadView('admin.nomina.resumen_anual_pdf',
+            compact('meses', 'anio', 'inst', 'dir')
+        )->setPaper('letter', 'portrait');
+
+        return $pdf->download('nomina_resumen_' . $anio . '.pdf');
     }
 
     // ── Reporte CSV (alias legacy) ─────────────────────────────────────────

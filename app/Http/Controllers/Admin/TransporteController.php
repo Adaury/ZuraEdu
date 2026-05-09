@@ -220,6 +220,144 @@ class TransporteController extends Controller
         return back()->with('success', 'Estudiante removido de la ruta.');
     }
 
+    // ── EXCEL LISTA DE RUTAS ────────────────────────────────────────────────────
+
+    public function listaExcel(Request $request)
+    {
+        $query = RutaTransporte::withCount('estudiantesRuta');
+
+        if ($request->filled('q')) {
+            $q = $request->q;
+            $query->where(fn($sq) => $sq->where('nombre', 'like', "%{$q}%")
+                ->orWhere('conductor', 'like', "%{$q}%")
+                ->orWhere('vehiculo', 'like', "%{$q}%"));
+        }
+
+        if ($request->filled('activo')) $query->where('activo', $request->activo === '1');
+
+        $rutas = $query->orderBy('nombre')->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Rutas Transporte');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '0f4c81']],
+        ];
+
+        $ws->mergeCells('A1:G1');
+        $ws->setCellValue('A1', 'Rutas de Transporte Escolar — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Nombre', 'Conductor', 'Vehículo', 'Capacidad', 'Pasajeros', 'Estado'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:G3')->applyFromArray($hdrStyle);
+
+        foreach ($rutas->values() as $i => $ruta) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $ruta->nombre);
+            $ws->setCellValue("C{$row}", $ruta->conductor ?? '—');
+            $ws->setCellValue("D{$row}", $ruta->vehiculo ?? '—');
+            $ws->setCellValue("E{$row}", $ruta->capacidad);
+            $ws->setCellValue("F{$row}", $ruta->estudiantes_ruta_count);
+            $ws->setCellValue("G{$row}", $ruta->activo ? 'Activa' : 'Inactiva');
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:G{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('dbeafe');
+            }
+        }
+
+        foreach (range('A', 'G') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'rutas_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'rutas_transporte_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    // ── PDF LISTA DE RUTAS ───────────────────────────────────────────────────
+
+    public function listaPdf(Request $request)
+    {
+        $query = RutaTransporte::withCount('estudiantesRuta');
+
+        if ($request->filled('q')) {
+            $q = $request->q;
+            $query->where(fn($sq) => $sq->where('nombre', 'like', "%{$q}%")
+                ->orWhere('conductor', 'like', "%{$q}%")
+                ->orWhere('vehiculo', 'like', "%{$q}%"));
+        }
+
+        if ($request->filled('activo')) $query->where('activo', $request->activo === '1');
+
+        $rutas = $query->orderBy('nombre')->get();
+        $inst  = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'admin.transporte.lista_pdf',
+            compact('rutas', 'inst')
+        )->setPaper('letter', 'landscape');
+
+        return $pdf->download('rutas_transporte_' . now()->format('Ymd') . '.pdf');
+    }
+
+    // ── EXCEL PASAJEROS ──────────────────────────────────────────────────────
+
+    public function pasajerosExcel(RutaTransporte $ruta)
+    {
+        $ruta->load(['paradas', 'estudiantesRuta.estudiante', 'estudiantesRuta.parada']);
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Pasajeros');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                       'startColor' => ['rgb' => '0f4c81']],
+        ];
+
+        $ws->mergeCells('A1:D1');
+        $ws->setCellValue('A1', 'Pasajeros — ' . $ruta->nombre . ' — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Estudiante', 'Parada', 'Tipo'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:D3')->applyFromArray($hdrStyle);
+
+        foreach ($ruta->estudiantesRuta->values() as $i => $er) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $er->estudiante?->nombre_completo ?? '—');
+            $ws->setCellValue("C{$row}", $er->parada?->nombre ?? 'Sin parada');
+            $ws->setCellValue("D{$row}", ucfirst($er->tipo));
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:D{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('dbeafe');
+            }
+        }
+
+        foreach (range('A', 'D') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'pasajeros_') . '.xlsx';
+        $writer->save($tmp);
+
+        $nombre = 'pasajeros_' . \Illuminate\Support\Str::slug($ruta->nombre) . '_' . now()->format('Ymd') . '.xlsx';
+
+        return response()->download($tmp, $nombre, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
     // ── PDF PASAJEROS ────────────────────────────────────────────────────────
 
     public function pasajerosPdf(RutaTransporte $ruta)

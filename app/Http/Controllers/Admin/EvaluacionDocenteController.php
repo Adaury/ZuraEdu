@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ConfigInstitucional;
 use App\Models\Docente;
 use App\Models\EvaluacionDocente;
+use App\Models\Notificacion;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -96,6 +97,20 @@ class EvaluacionDocenteController extends Controller
 
         $evaluacion = EvaluacionDocente::create($data);
 
+        try {
+            $evaluacion->load('docente');
+            $docente = $evaluacion->docente;
+            if ($docente?->user_id) {
+                $nivel = $evaluacion->nivelDesempeno()['label'] ?? 'registrado';
+                Notificacion::enviar(
+                    $docente->user_id,
+                    'academica',
+                    '📋 Evaluación de desempeño registrada',
+                    "Se ha registrado tu evaluación de desempeño del período «{$evaluacion->periodo_evaluado}». Nivel: {$nivel}."
+                );
+            }
+        } catch (\Throwable) {}
+
         return redirect()
             ->route('admin.evaluaciones-docentes.show', $evaluacion)
             ->with('success', 'Evaluación registrada correctamente.');
@@ -119,6 +134,81 @@ class EvaluacionDocenteController extends Controller
         return redirect()
             ->route('admin.evaluaciones-docentes.index')
             ->with('success', 'Evaluación eliminada correctamente.');
+    }
+
+    // ── Excel ──────────────────────────────────────────────────────────────
+    public function listaExcel(Request $request)
+    {
+        $query = EvaluacionDocente::with(['docente', 'evaluador'])->orderByDesc('created_at');
+
+        if ($request->filled('docente_id')) $query->where('docente_id', $request->docente_id);
+        if ($request->filled('periodo'))    $query->where('periodo_evaluado', 'like', '%' . $request->periodo . '%');
+
+        $evaluaciones = $query->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Evaluaciones Docentes');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                       'startColor' => ['rgb' => '1e3a8a']],
+        ];
+
+        $ws->mergeCells('A1:G1');
+        $ws->setCellValue('A1', 'Evaluaciones de Desempeño Docente — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Docente', 'Período', 'Promedio', 'Nivel', 'Evaluador', 'Fecha'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:G3')->applyFromArray($hdrStyle);
+
+        foreach ($evaluaciones->values() as $i => $ev) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $ev->docente?->nombre_completo ?? '—');
+            $ws->setCellValue("C{$row}", $ev->periodo_evaluado);
+            $ws->setCellValue("D{$row}", number_format($ev->promedio, 2));
+            $ws->setCellValue("E{$row}", $ev->nivel_desempeno ?? '—');
+            $ws->setCellValue("F{$row}", $ev->evaluador?->name ?? '—');
+            $ws->setCellValue("G{$row}", $ev->created_at?->format('d/m/Y') ?? '—');
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:G{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('dbeafe');
+            }
+        }
+
+        foreach (range('A', 'G') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'evaluaciones_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'evaluaciones_docentes_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    // ── Lista PDF ──────────────────────────────────────────────────────────
+    public function listaPdf(Request $request)
+    {
+        $query = EvaluacionDocente::with(['docente', 'evaluador'])->orderByDesc('created_at');
+
+        if ($request->filled('docente_id')) $query->where('docente_id', $request->docente_id);
+        if ($request->filled('periodo'))    $query->where('periodo_evaluado', 'like', '%' . $request->periodo . '%');
+
+        $evaluaciones = $query->get();
+        $inst         = ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $pdf = Pdf::loadView(
+            'admin.evaluaciones_docentes.lista_pdf',
+            compact('evaluaciones', 'inst')
+        )->setPaper('letter', 'landscape');
+
+        return $pdf->download('evaluaciones_docentes_' . now()->format('Ymd') . '.pdf');
     }
 
     // ── PDF ────────────────────────────────────────────────────────────────

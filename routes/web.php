@@ -135,6 +135,11 @@ Route::prefix('portal/estudiante')->name('portal.estudiante.')->middleware(['aut
     Route::post('/eventos/{evento}/inscribirse',        [PortalEstudianteController::class, 'inscribirseEvento'])->name('eventos.inscribirse');
     Route::get('/proyectos',                            [PortalEstudianteController::class, 'proyectos'])->name('proyectos');
     Route::get('/mis-puntos',                           [PortalEstudianteController::class, 'misPuntos'])->name('mis-puntos');
+    Route::get('/mis-prestamos',                        [PortalEstudianteController::class, 'misPrestamos'])->name('mis-prestamos');
+    Route::get('/mis-pagos',                            [PortalEstudianteController::class, 'misPagos'])->name('mis-pagos');
+    Route::post('/mis-pagos/{pago}/pagar-online',       [PortalEstudianteController::class, 'iniciarPago'])->name('mis-pagos.pagar-online');
+    Route::get('/mi-saldo-cafeteria',                   [PortalEstudianteController::class, 'miSaldoCafeteria'])->name('mi-saldo-cafeteria');
+    Route::get('/mi-ruta-transporte',                   [PortalEstudianteController::class, 'miRutaTransporte'])->name('mi-ruta-transporte');
     Route::prefix('classroom')->name('classroom.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Portal\ClassroomEstudianteController::class, 'index'])->name('index');
         Route::get('/tareas-pendientes', [\App\Http\Controllers\Portal\ClassroomEstudianteController::class, 'tareasPendientes'])->name('pendientes');
@@ -191,6 +196,11 @@ Route::prefix('portal/padre')->name('portal.padre.')->middleware(['auth', 'activ
     Route::get('/hijo/{estudiante}/documentos',  [PortalPadreController::class, 'documentosHijo'])->name('hijo.documentos');
     Route::get('/hijo/{estudiante}/classroom', [\App\Http\Controllers\Portal\ClassroomPadreController::class, 'index'])->name('hijo.classroom.index');
     Route::get('/hijo/{estudiante}/classroom/{claseVirtual}', [\App\Http\Controllers\Portal\ClassroomPadreController::class, 'show'])->name('hijo.classroom.show');
+    Route::get('/hijo/{estudiante}/cafeteria',  [PortalPadreController::class, 'saldoCafeteriaHijo'])->name('hijo.cafeteria');
+    Route::get('/hijo/{estudiante}/transporte', [PortalPadreController::class, 'rutaTransporteHijo'])->name('hijo.transporte');
+    Route::get('/hijo/{estudiante}/logros',     [PortalPadreController::class, 'logrosHijo'])->name('hijo.logros');
+    Route::get('/hijo/{estudiante}/proyectos',  [PortalPadreController::class, 'proyectosHijo'])->name('hijo.proyectos');
+    Route::post('/hijo/{estudiante}/pagos/{pago}/pagar-online', [PortalPadreController::class, 'iniciarPagoHijo'])->name('hijo.pagos.pagar-online');
 });
 
 // ── Portal Docente ────────────────────────────────────────────────────────
@@ -239,6 +249,8 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::get('/mis-planificaciones',         [PortalDocenteController::class, 'misPlanificaciones'])->name('mis-planificaciones');
     Route::get('/mis-estadisticas',            [PortalDocenteController::class, 'misEstadisticas'])->name('mis-estadisticas');
     Route::get('/mis-estudiantes',             [PortalDocenteController::class, 'misEstudiantes'])->name('mis-estudiantes');
+    Route::get('/mis-tutorias',                [PortalDocenteController::class, 'misTutorias'])->name('mis-tutorias');
+    Route::post('/mis-tutorias/{tutoria}/sesion', [PortalDocenteController::class, 'registrarSesionTutoria'])->name('mis-tutorias.sesion.store');
     Route::prefix('classroom')->name('classroom.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'index'])->name('index');
         Route::get('/{claseVirtual}', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'show'])->name('show');

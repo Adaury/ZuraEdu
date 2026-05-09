@@ -7,6 +7,8 @@ Route::prefix('seguimiento-social')->name('seguimiento-social.')->group(function
 
     Route::get('/',                            [SeguimientoSocialController::class, 'index'])->name('index');
     Route::get('/crear',                       [SeguimientoSocialController::class, 'create'])->name('create');
+    Route::get('/lista/excel',                 [SeguimientoSocialController::class, 'listaExcel'])->name('lista-excel');
+    Route::get('/lista/pdf',                   [SeguimientoSocialController::class, 'listaPdf'])->name('lista-pdf');
     Route::post('/',                           [SeguimientoSocialController::class, 'store'])->name('store');
     Route::get('/{caso}',                      [SeguimientoSocialController::class, 'show'])->name('show');
     Route::put('/{caso}',                      [SeguimientoSocialController::class, 'update'])->name('update');

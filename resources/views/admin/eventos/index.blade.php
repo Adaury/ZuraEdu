@@ -9,9 +9,19 @@
         </h4>
         <p class="text-muted mb-0 mt-1" style="font-size:.85rem;">Gestión de eventos académicos, deportivos, culturales y sociales</p>
     </div>
-    <a href="{{ route('admin.eventos.create') }}" class="btn btn-primary" style="border-radius:8px;">
-        <i class="bi bi-plus-lg me-1"></i>Nuevo Evento
-    </a>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ route('admin.eventos.lista-pdf', request()->query()) }}"
+           class="btn btn-outline-danger" style="border-radius:8px;">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
+        <a href="{{ route('admin.eventos.lista-excel', request()->query()) }}"
+           class="btn btn-outline-success" style="border-radius:8px;">
+            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+        </a>
+        <a href="{{ route('admin.eventos.create') }}" class="btn btn-primary" style="border-radius:8px;">
+            <i class="bi bi-plus-lg me-1"></i>Nuevo Evento
+        </a>
+    </div>
 </div>
 
 {{-- Alertas de sesión --}}

@@ -78,6 +78,14 @@
         </p>
     </div>
     <div class="d-flex gap-2">
+        <a href="{{ route('admin.tutorias.lista-pdf', request()->query()) }}"
+           class="btn btn-sm btn-outline-danger fw-semibold" style="border-radius:8px;">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
+        <a href="{{ route('admin.tutorias.lista-excel', request()->query()) }}"
+           class="btn btn-sm btn-outline-success fw-semibold" style="border-radius:8px;">
+            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+        </a>
         <a href="{{ route('admin.tutorias.create') }}"
            class="btn btn-sm fw-semibold"
            style="background:var(--primary);color:#fff;border-radius:8px;padding:.45rem 1rem;">
@@ -189,6 +197,20 @@
                                title="Ver sesiones">
                                 <i class="bi bi-calendar-check"></i>
                             </a>
+                            <a href="{{ route('admin.tutorias.edit', $tutoria) }}"
+                               class="btn btn-sm"
+                               style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:6px;font-size:.75rem;padding:.3rem .6rem;"
+                               title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form action="{{ route('admin.tutorias.toggle', $tutoria) }}" method="POST" class="d-inline">
+                                @csrf @method('PATCH')
+                                <button type="submit" class="btn btn-sm"
+                                        style="background:#fefce8;color:#854d0e;border:1px solid #fde68a;border-radius:6px;font-size:.75rem;padding:.3rem .6rem;"
+                                        title="{{ $tutoria->activo ? 'Desactivar' : 'Activar' }}">
+                                    <i class="bi bi-toggle-{{ $tutoria->activo ? 'on' : 'off' }}"></i>
+                                </button>
+                            </form>
                             <a href="{{ route('admin.tutorias.informe-pdf', $tutoria) }}"
                                class="btn btn-sm"
                                style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;font-size:.75rem;padding:.3rem .6rem;"

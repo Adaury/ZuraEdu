@@ -59,6 +59,59 @@ class AvisoEmergenciaController extends Controller
             ->with('success', 'Aviso eliminado del historial.');
     }
 
+    // ── Historial Excel ───────────────────────────────────────────────────
+
+    public function historialExcel()
+    {
+        $avisos = AvisoEmergencia::with(['enviadoPor', 'grupo.grado', 'grupo.seccion'])
+            ->latest()
+            ->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Avisos');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'dc2626']],
+        ];
+
+        $ws->mergeCells('A1:G1');
+        $ws->setCellValue('A1', 'Historial de Avisos de Emergencia — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Tipo', 'Título', 'Destinatarios', 'Enviados', 'Enviado por', 'Fecha'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:G3')->applyFromArray($hdrStyle);
+
+        $bgTipo = ['emergencia' => 'fee2e2', 'suspension' => 'fed7aa', 'actividad' => 'dbeafe', 'informativo' => 'f3f4f6'];
+
+        foreach ($avisos as $i => $a) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", AvisoEmergencia::TIPOS[$a->tipo] ?? $a->tipo);
+            $ws->setCellValue("C{$row}", $a->titulo);
+            $ws->setCellValue("D{$row}", $a->destinatarios_label);
+            $ws->setCellValue("E{$row}", $a->total_enviados ?? 0);
+            $ws->setCellValue("F{$row}", $a->enviadoPor?->nombre_completo ?? '—');
+            $ws->setCellValue("G{$row}", $a->created_at->format('d/m/Y H:i'));
+            $bg = $bgTipo[$a->tipo] ?? 'ffffff';
+            $ws->getStyle("A{$row}:G{$row}")->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB($bg);
+        }
+
+        foreach (range('A', 'G') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'avisos_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'avisos_emergencia_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
     // ── Guardar y enviar ─────────────────────────────────────────────────
 
     public function store(Request $request)

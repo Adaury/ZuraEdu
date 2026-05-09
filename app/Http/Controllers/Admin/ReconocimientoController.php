@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ConfigInstitucional;
 use App\Models\Estudiante;
+use App\Models\Notificacion;
 use App\Models\Reconocimiento;
 use App\Models\TipoReconocimiento;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -88,9 +89,24 @@ class ReconocimientoController extends Controller
         $data['emitido_por_id'] = auth()->id();
         $data['entregado']      = false;
 
-        Reconocimiento::create($data);
+        $rec = Reconocimiento::create($data);
 
-        return redirect()->route('reconocimientos.index')
+        try {
+            $rec->load(['estudiante.representantes', 'tipo']);
+            $nombre  = $rec->estudiante?->nombre_completo ?? 'el estudiante';
+            $titulo  = '🏆 Reconocimiento otorgado';
+            $mensaje = "Se ha otorgado un reconocimiento a {$nombre}: {$rec->titulo}";
+            if ($rec->estudiante?->user_id) {
+                Notificacion::enviar($rec->estudiante->user_id, 'academica', $titulo, $mensaje);
+            }
+            foreach ($rec->estudiante?->representantes ?? [] as $rep) {
+                if ($rep->user_id) {
+                    Notificacion::enviar($rep->user_id, 'academica', $titulo, $mensaje);
+                }
+            }
+        } catch (\Throwable) {}
+
+        return redirect()->route('admin.reconocimientos.index')
                          ->with('success', 'Reconocimiento registrado correctamente.');
     }
 
@@ -116,7 +132,7 @@ class ReconocimientoController extends Controller
 
         $reconocimiento->update($data);
 
-        return redirect()->route('reconocimientos.index')
+        return redirect()->route('admin.reconocimientos.index')
                          ->with('success', 'Reconocimiento actualizado.');
     }
 
@@ -137,6 +153,21 @@ class ReconocimientoController extends Controller
             'entregado'     => true,
             'fecha_entrega' => now()->toDateString(),
         ]);
+
+        try {
+            $reconocimiento->load(['estudiante.representantes']);
+            $nombre  = $reconocimiento->estudiante?->nombre_completo ?? 'el estudiante';
+            $titulo  = '🎖️ Reconocimiento entregado';
+            $mensaje = "El reconocimiento «{$reconocimiento->titulo}» fue entregado a {$nombre}.";
+            if ($reconocimiento->estudiante?->user_id) {
+                Notificacion::enviar($reconocimiento->estudiante->user_id, 'academica', $titulo, $mensaje);
+            }
+            foreach ($reconocimiento->estudiante?->representantes ?? [] as $rep) {
+                if ($rep->user_id) {
+                    Notificacion::enviar($rep->user_id, 'academica', $titulo, $mensaje);
+                }
+            }
+        } catch (\Throwable) {}
 
         return back()->with('success', 'Reconocimiento marcado como entregado.');
     }
@@ -164,6 +195,77 @@ class ReconocimientoController extends Controller
         $nombre = 'diploma_' . str($reconocimiento->estudiante->apellidos)->slug() . '_' . now()->format('Ymd') . '.pdf';
 
         return $pdf->download($nombre);
+    }
+
+    public function listaExcel(Request $request)
+    {
+        $query = Reconocimiento::with(['estudiante', 'tipo', 'emitidoPor']);
+
+        if ($request->filled('tipo_id'))       $query->where('tipo_id', $request->tipo_id);
+        if ($request->filled('estudiante_id')) $query->where('estudiante_id', $request->estudiante_id);
+        if ($request->filled('entregado'))     $query->where('entregado', $request->entregado === '1');
+
+        $recs = $query->latest('fecha')->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Reconocimientos');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'b45309']],
+        ];
+
+        $ws->mergeCells('A1:F1');
+        $ws->setCellValue('A1', 'Lista de Reconocimientos — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Fecha', 'Estudiante', 'Tipo', 'Título', 'Estado'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:F3')->applyFromArray($hdrStyle);
+
+        foreach ($recs as $i => $r) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $r->fecha?->format('d/m/Y') ?? '—');
+            $ws->setCellValue("C{$row}", $r->estudiante?->nombre_completo ?? '—');
+            $ws->setCellValue("D{$row}", $r->tipo?->nombre ?? '—');
+            $ws->setCellValue("E{$row}", $r->titulo ?? '—');
+            $ws->setCellValue("F{$row}", $r->entregado ? 'Entregado' : 'Pendiente');
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:F{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('fffbeb');
+            }
+        }
+
+        foreach (range('A', 'F') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'rec_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'reconocimientos_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    // ── Lista PDF ─────────────────────────────────────────────────────────
+    public function listaPdf(Request $request)
+    {
+        $query = Reconocimiento::with(['estudiante', 'tipo', 'emitidoPor']);
+
+        if ($request->filled('tipo_id'))       $query->where('tipo_id', $request->tipo_id);
+        if ($request->filled('estudiante_id')) $query->where('estudiante_id', $request->estudiante_id);
+        if ($request->filled('entregado'))     $query->where('entregado', $request->entregado === '1');
+
+        $recs = $query->latest('fecha')->get();
+        $inst = ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $pdf = Pdf::loadView('admin.reconocimientos.lista_pdf', compact('recs', 'inst'))
+            ->setPaper('letter', 'landscape');
+
+        return $pdf->download('reconocimientos_' . now()->format('Ymd') . '.pdf');
     }
 
     // ── Historial por Estudiante ──────────────────────────────────────────

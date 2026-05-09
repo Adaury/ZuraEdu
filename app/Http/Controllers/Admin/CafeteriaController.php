@@ -54,7 +54,7 @@ class CafeteriaController extends Controller
 
         ProductoCafeteria::create($data);
 
-        return redirect()->route('cafeteria.productos.index')
+        return redirect()->route('admin.cafeteria.productos.index')
             ->with('success', 'Producto creado correctamente.');
     }
 
@@ -77,7 +77,7 @@ class CafeteriaController extends Controller
 
         $producto->update($data);
 
-        return redirect()->route('cafeteria.productos.index')
+        return redirect()->route('admin.cafeteria.productos.index')
             ->with('success', 'Producto actualizado correctamente.');
     }
 
@@ -252,7 +252,7 @@ class CafeteriaController extends Controller
         return $pdf->download('cafeteria_' . $fecha . '.pdf');
     }
 
-    public function reporteCsv(Request $request)
+    public function reporteExcel(Request $request)
     {
         $fecha  = $request->filled('fecha') ? $request->fecha : today()->toDateString();
         $ventas = VentaCafeteria::with(['estudiante', 'producto', 'creadoPor'])
@@ -260,34 +260,63 @@ class CafeteriaController extends Controller
             ->latest()
             ->get();
 
-        $headers = [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="cafeteria_' . $fecha . '.csv"',
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Cafetería');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '065f46']],
         ];
 
-        $callback = function () use ($ventas) {
-            $handle = fopen('php://output', 'w');
-            // BOM para Excel
-            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+        $ws->mergeCells('A1:I1');
+        $ws->setCellValue('A1', 'Reporte Cafetería — ' . \Carbon\Carbon::parse($fecha)->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
-            fputcsv($handle, ['#', 'Fecha/Hora', 'Estudiante', 'Tipo', 'Producto/Descripcion', 'Monto', 'Saldo Anterior', 'Saldo Nuevo', 'Registrado por']);
+        foreach (['#', 'Fecha/Hora', 'Estudiante', 'Tipo', 'Producto/Descripción', 'Monto', 'Saldo Anterior', 'Saldo Nuevo', 'Registrado por'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:I3')->applyFromArray($hdrStyle);
 
-            foreach ($ventas as $i => $v) {
-                fputcsv($handle, [
-                    $i + 1,
-                    $v->created_at->format('d/m/Y H:i'),
-                    $v->estudiante?->nombre_completo ?? '—',
-                    ucfirst($v->tipo),
-                    $v->producto?->nombre ?? $v->descripcion ?? '—',
-                    number_format($v->monto, 2),
-                    number_format($v->saldo_anterior, 2),
-                    number_format($v->saldo_nuevo, 2),
-                    $v->creadoPor?->name ?? '—',
-                ]);
+        $totalVentas = $totalRecargas = 0;
+        foreach ($ventas as $i => $v) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $v->created_at->format('d/m/Y H:i'));
+            $ws->setCellValue("C{$row}", $v->estudiante?->nombre_completo ?? '—');
+            $ws->setCellValue("D{$row}", ucfirst($v->tipo));
+            $ws->setCellValue("E{$row}", $v->producto?->nombre ?? $v->descripcion ?? '—');
+            $ws->setCellValue("F{$row}", $v->monto);
+            $ws->setCellValue("G{$row}", $v->saldo_anterior);
+            $ws->setCellValue("H{$row}", $v->saldo_nuevo);
+            $ws->setCellValue("I{$row}", $v->creadoPor?->name ?? '—');
+            if ($v->tipo === 'venta') {
+                $totalVentas += $v->monto;
+                $bg = 'fff7ed';
+            } else {
+                $totalRecargas += $v->monto;
+                $bg = 'f0fdf4';
             }
-            fclose($handle);
-        };
+            $ws->getStyle("A{$row}:I{$row}")->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB($bg);
+        }
 
-        return response()->stream($callback, 200, $headers);
+        // Fila de totales
+        $totRow = $ventas->count() + 4;
+        $ws->setCellValue("D{$totRow}", 'TOTAL VENTAS');
+        $ws->setCellValue("F{$totRow}", $totalVentas);
+        $ws->setCellValue("D" . ($totRow + 1), 'TOTAL RECARGAS');
+        $ws->setCellValue("F" . ($totRow + 1), $totalRecargas);
+        $ws->getStyle("D{$totRow}:F" . ($totRow + 1))->getFont()->setBold(true);
+
+        foreach (range('A', 'I') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'caf_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'cafeteria_' . $fecha . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 }

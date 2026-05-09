@@ -52,11 +52,21 @@
         </h4>
         <p class="text-muted small mb-0">Gestión de solicitudes de inscripción en línea</p>
     </div>
-    @if($conteos['pendiente'] > 0)
-    <span class="badge bg-warning text-dark fs-6 px-3 py-2">
-        <i class="bi bi-clock-fill me-1"></i> {{ $conteos['pendiente'] }} pendiente{{ $conteos['pendiente'] != 1 ? 's' : '' }}
-    </span>
-    @endif
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        @if($conteos['pendiente'] > 0)
+        <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+            <i class="bi bi-clock-fill me-1"></i> {{ $conteos['pendiente'] }} pendiente{{ $conteos['pendiente'] != 1 ? 's' : '' }}
+        </span>
+        @endif
+        <a href="{{ route('admin.pre-matriculas.lista-pdf', request()->query()) }}"
+           class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
+        <a href="{{ route('admin.pre-matriculas.lista-excel', request()->query()) }}"
+           class="btn btn-outline-success btn-sm">
+            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+        </a>
+    </div>
 </div>
 
 {{-- Flash --}}

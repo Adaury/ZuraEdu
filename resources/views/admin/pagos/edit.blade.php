@@ -71,7 +71,7 @@
                 <div class="col-6">
                     <label class="form-label-custom">Método de pago</label>
                     <select name="metodo_pago" class="form-select form-select-sm">
-                        @foreach(['efectivo','transferencia','tarjeta','stripe','otro'] as $met)
+                        @foreach(['efectivo','transferencia','tarjeta','stripe','cardnet','otro'] as $met)
                         <option value="{{ $met }}" {{ $pago->metodo_pago==$met ? 'selected':'' }}>{{ ucfirst($met) }}</option>
                         @endforeach
                     </select>

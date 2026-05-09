@@ -11,13 +11,23 @@
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Encuestas de Satisfacción</h1>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Crea y gestiona encuestas dirigidas a padres y/o estudiantes.</p>
         </div>
-        <a href="{{ route('admin.encuestas.create') }}"
-           class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            Nueva Encuesta
-        </a>
+        <div class="flex items-center gap-2">
+            <a href="{{ route('admin.encuestas.lista-pdf') }}"
+               class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition">
+                <i class="bi bi-file-earmark-pdf"></i>PDF
+            </a>
+            <a href="{{ route('admin.encuestas.lista-excel') }}"
+               class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition">
+                <i class="bi bi-file-earmark-excel"></i>Excel
+            </a>
+            <a href="{{ route('admin.encuestas.create') }}"
+               class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Nueva Encuesta
+            </a>
+        </div>
     </div>
 
     {{-- Flash --}}

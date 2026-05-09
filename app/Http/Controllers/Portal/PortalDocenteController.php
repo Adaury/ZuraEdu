@@ -2786,4 +2786,38 @@ class PortalDocenteController extends Controller
 
         return response()->json(['success' => true, 'pesos' => $pesosIndexados]);
     }
+
+    // ── Mis Tutorías ──────────────────────────────────────────────────────────
+    public function misTutorias()
+    {
+        $docente    = $this->getDocente();
+        $schoolYear = SchoolYear::actual();
+
+        $tutorias = \App\Models\Tutoria::with(['grupo.grado', 'grupo.seccion', 'grupo.estudiantes', 'sesiones'])
+            ->where('docente_id', $docente->id)
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->orderBy('grupo_id')
+            ->get();
+
+        return view('portal.docente.mis_tutorias', compact('docente', 'schoolYear', 'tutorias'));
+    }
+
+    public function registrarSesionTutoria(\Illuminate\Http\Request $request, \App\Models\Tutoria $tutoria)
+    {
+        $docente = $this->getDocente();
+        abort_unless($tutoria->docente_id === $docente->id, 403, 'No tienes acceso a esta tutoría.');
+
+        $data = $request->validate([
+            'fecha'                 => 'required|date',
+            'tema'                  => 'required|string|max:255',
+            'descripcion'           => 'nullable|string|max:2000',
+            'estudiantes_atendidos' => 'nullable|string|max:500',
+            'acuerdos'              => 'nullable|string|max:1000',
+            'proxima_sesion'        => 'nullable|date|after:fecha',
+        ]);
+
+        $tutoria->sesiones()->create($data);
+
+        return back()->with('success', 'Sesión registrada correctamente.');
+    }
 }

@@ -1,7 +1,8 @@
 {{--
     Sidebar Portal Padre/Representante
     activeKey: dashboard | hijo | boletin | horario | asistencia | observaciones |
-               classroom | documentos | comunicados | encuestas | mensajes
+               classroom | planificaciones | documentos | logros | proyectos |
+               cafeteria | transporte | comunicados | encuestas | mensajes
 --}}
 @php $ak = $activeKey ?? 'dashboard'; @endphp
 
@@ -44,15 +45,65 @@
    class="prt-sidebar-link {{ $ak === 'classroom' ? 'active' : '' }}">
     <i class="bi bi-easel2-fill"></i>Classroom
 </a>
+<a href="{{ route('portal.padre.hijo.planificaciones', $estudiante) }}"
+   class="prt-sidebar-link {{ $ak === 'planificaciones' ? 'active' : '' }}">
+    <i class="bi bi-journal-bookmark-fill"></i>Planificaciones
+</a>
 <a href="{{ route('portal.padre.hijo.documentos', $estudiante) }}"
    class="prt-sidebar-link {{ $ak === 'documentos' ? 'active' : '' }}">
     <i class="bi bi-folder2-open"></i>Documentos
 </a>
+<a href="{{ route('portal.padre.hijo.logros', $estudiante) }}"
+   class="prt-sidebar-link {{ $ak === 'logros' ? 'active' : '' }}">
+    <i class="bi bi-trophy-fill"></i>Reconocimientos
+</a>
+<a href="{{ route('portal.padre.hijo.proyectos', $estudiante) }}"
+   class="prt-sidebar-link {{ $ak === 'proyectos' ? 'active' : '' }}">
+    <i class="bi bi-lightbulb-fill"></i>Proyectos
+</a>
+@php
+try { $moduleCafeteria = \App\Helpers\Setting::get('cafeteria','0');  } catch(\Exception $e){ $moduleCafeteria = '0'; }
+try { $moduleTransport = \App\Helpers\Setting::get('transporte','0'); } catch(\Exception $e){ $moduleTransport = '0'; }
+@endphp
+<a href="{{ route('portal.padre.hijo.estado-cuenta', $estudiante) }}"
+   class="prt-sidebar-link {{ $ak === 'estado-cuenta' ? 'active' : '' }}">
+    <i class="bi bi-receipt"></i>Estado de Cuenta
+    @php
+    try {
+        $pagosPad = \App\Models\Pago::whereHas('matricula', fn($m) =>
+            $m->where('estudiante_id', $estudiante->id)->where('estado','activa')
+        )->whereIn('estado',['pendiente','vencido'])->count();
+    } catch(\Exception $e){ $pagosPad = 0; }
+    @endphp
+    @if($pagosPad > 0)
+    <span style="background:#dc2626;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $pagosPad }}</span>
+    @endif
+</a>
+@if($moduleCafeteria)
+<a href="{{ route('portal.padre.hijo.cafeteria', $estudiante) }}"
+   class="prt-sidebar-link {{ $ak === 'cafeteria' ? 'active' : '' }}">
+    <i class="bi bi-cup-hot-fill"></i>Cafetería
+</a>
+@endif
+@if($moduleTransport)
+<a href="{{ route('portal.padre.hijo.transporte', $estudiante) }}"
+   class="prt-sidebar-link {{ $ak === 'transporte' ? 'active' : '' }}">
+    <i class="bi bi-bus-front-fill"></i>Transporte
+</a>
+@endif
 @endif
 
 {{-- ── COMUNICACIÓN ── --}}
 <div class="prt-sidebar-section mt-2">Comunicación</div>
 
+<a href="{{ route('portal.padre.notificaciones') }}"
+   class="prt-sidebar-link {{ $ak === 'notificaciones' ? 'active' : '' }}">
+    <i class="bi bi-bell-fill"></i>Notificaciones
+    @php try { $notifPad = \App\Models\Notificacion::where('user_id', auth()->id())->where('leida', false)->count(); } catch(\Exception $e){ $notifPad=0; } @endphp
+    @if($notifPad > 0)
+    <span style="background:#6366f1;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $notifPad }}</span>
+    @endif
+</a>
 <a href="{{ route('portal.padre.comunicados') }}"
    class="prt-sidebar-link {{ $ak === 'comunicados' ? 'active' : '' }}">
     <i class="bi bi-megaphone-fill"></i>Noticias

@@ -113,11 +113,21 @@
     {{-- Historial de movimientos --}}
     <div class="col-lg-8">
         <div class="mov-card">
-            <div style="padding:.9rem 1.25rem; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between;">
+            <div style="padding:.9rem 1.25rem; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem;">
                 <h2 style="font-size:1rem; font-weight:800; color:var(--primary); margin:0;">
                     <i class="bi bi-clock-history me-1"></i>Historial de Movimientos
                 </h2>
-                <span style="font-size:.78rem; color:#9ca3af;">{{ $movimientos->total() }} registros</span>
+                <div class="d-flex align-items-center gap-2">
+                    <span style="font-size:.78rem; color:#9ca3af;">{{ $movimientos->total() }} registros</span>
+                    <a href="{{ route('admin.inventario.movimientos.pdf', $articulo) }}"
+                       class="btn btn-outline-danger btn-sm" style="font-size:.75rem;" title="Exportar PDF">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                    </a>
+                    <a href="{{ route('admin.inventario.movimientos.excel', $articulo) }}"
+                       class="btn btn-outline-success btn-sm" style="font-size:.75rem;" title="Exportar Excel">
+                        <i class="bi bi-file-earmark-excel me-1"></i>Excel
+                    </a>
+                </div>
             </div>
             <table class="table mb-0">
                 <thead class="thead">

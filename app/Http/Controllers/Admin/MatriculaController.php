@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Estudiante;
 use App\Models\Grupo;
 use App\Models\Matricula;
+use App\Models\Notificacion;
 use App\Models\SchoolYear;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -112,7 +113,24 @@ class MatriculaController extends Controller
         $data['numero_orden'] = Matricula::where('grupo_id', $data['grupo_id'])->count() + 1;
         $data['estado']       = 'activa';
 
-        Matricula::create($data);
+        $matricula = Matricula::create($data);
+
+        try {
+            $matricula->load(['estudiante.representantes', 'grupo.grado', 'grupo.seccion']);
+            $estudiante = $matricula->estudiante;
+            $grupo      = $matricula->grupo;
+            $nombre     = $grupo ? "{$grupo->grado?->nombre} {$grupo->seccion?->nombre}" : '—';
+            $titulo  = '✅ Matrícula confirmada';
+            $mensaje = "{$estudiante?->nombre_completo} ha sido matriculado/a en {$nombre} para el año escolar en curso.";
+            if ($estudiante?->user_id) {
+                Notificacion::enviar($estudiante->user_id, 'general', $titulo, $mensaje);
+            }
+            foreach ($estudiante?->representantes ?? [] as $rep) {
+                if ($rep->user_id) {
+                    Notificacion::enviar($rep->user_id, 'general', $titulo, $mensaje);
+                }
+            }
+        } catch (\Throwable) {}
 
         if ($request->filled('redirect_grupo_id')) {
             return redirect()->route('admin.grupos.show', $request->input('redirect_grupo_id'))

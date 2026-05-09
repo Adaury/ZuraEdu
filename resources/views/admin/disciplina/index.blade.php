@@ -12,9 +12,17 @@
         </h4>
         <small class="text-muted">Registro y seguimiento de faltas disciplinarias</small>
     </div>
-    <a href="{{ route('admin.disciplina.create') }}" class="btn btn-danger btn-sm">
-        <i class="bi bi-plus-circle me-1"></i>Registrar Falta
-    </a>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ route('admin.disciplina.lista-pdf', request()->query()) }}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
+        <a href="{{ route('admin.disciplina.lista-excel', request()->query()) }}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+        </a>
+        <a href="{{ route('admin.disciplina.create') }}" class="btn btn-danger btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>Registrar Falta
+        </a>
+    </div>
 </div>
 
 {{-- Tarjetas resumen por tipo --}}

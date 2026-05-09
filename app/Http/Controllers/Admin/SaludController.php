@@ -150,6 +150,97 @@ class SaludController extends Controller
         return back()->with('success', 'Incidente eliminado.');
     }
 
+    // ── Excel Incidentes ─────────────────────────────────────────────────
+
+    public function incidentesExcel(Request $request)
+    {
+        $query = IncidenteMedico::with('estudiante')->latest('fecha');
+
+        if ($request->filled('tipo'))          $query->where('tipo', $request->tipo);
+        if ($request->filled('estudiante_id')) $query->where('estudiante_id', $request->estudiante_id);
+        if ($request->filled('fecha_desde'))   $query->whereDate('fecha', '>=', $request->fecha_desde);
+        if ($request->filled('fecha_hasta'))   $query->whereDate('fecha', '<=', $request->fecha_hasta);
+        if ($request->filled('q')) {
+            $q = $request->q;
+            $query->where(fn($sq) =>
+                $sq->where('descripcion', 'like', "%{$q}%")
+                   ->orWhereHas('estudiante', fn($s) =>
+                       $s->where('nombres', 'like', "%{$q}%")->orWhere('apellidos', 'like', "%{$q}%")
+                   )
+            );
+        }
+
+        $incidentes = $query->get();
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $ss->getActiveSheet()->setTitle('Incidentes Médicos');
+
+        $hdrStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'ffffff']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                       'startColor' => ['rgb' => 'b45309']],
+        ];
+
+        $ws->mergeCells('A1:G1');
+        $ws->setCellValue('A1', 'Incidentes Médicos — ' . now()->format('d/m/Y'));
+        $ws->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+        $ws->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        foreach (['#', 'Fecha', 'Estudiante', 'Tipo', 'Descripción', 'Acción Tomada', 'Remitido A'] as $i => $h) {
+            $ws->setCellValue(chr(65 + $i) . '3', $h);
+        }
+        $ws->getStyle('A3:G3')->applyFromArray($hdrStyle);
+
+        foreach ($incidentes->values() as $i => $inc) {
+            $row = $i + 4;
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $inc->fecha?->format('d/m/Y') ?? '—');
+            $ws->setCellValue("C{$row}", $inc->estudiante?->nombre_completo ?? '—');
+            $ws->setCellValue("D{$row}", ucfirst($inc->tipo));
+            $ws->setCellValue("E{$row}", $inc->descripcion);
+            $ws->setCellValue("F{$row}", $inc->accion_tomada);
+            $ws->setCellValue("G{$row}", $inc->remitido_a ?? '—');
+            if ($i % 2 === 1) {
+                $ws->getStyle("A{$row}:G{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('fef3c7');
+            }
+        }
+
+        foreach (range('A', 'G') as $col) $ws->getColumnDimension($col)->setAutoSize(true);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $tmp    = tempnam(sys_get_temp_dir(), 'incidentes_') . '.xlsx';
+        $writer->save($tmp);
+
+        return response()->download($tmp, 'incidentes_medicos_' . now()->format('Ymd') . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    // ── PDF Lista de Incidentes ───────────────────────────────────────────
+
+    public function incidentesPdf(Request $request)
+    {
+        $query = IncidenteMedico::with('estudiante')->latest('fecha');
+
+        if ($request->filled('tipo'))          $query->where('tipo', $request->tipo);
+        if ($request->filled('estudiante_id')) $query->where('estudiante_id', $request->estudiante_id);
+        if ($request->filled('fecha_desde'))   $query->whereDate('fecha', '>=', $request->fecha_desde);
+        if ($request->filled('fecha_hasta'))   $query->whereDate('fecha', '<=', $request->fecha_hasta);
+
+        $incidentes = $query->get();
+        $tipos      = IncidenteMedico::TIPOS;
+        $inst       = ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'admin.salud.incidentes_pdf',
+            compact('incidentes', 'tipos', 'inst')
+        )->setPaper('letter', 'landscape');
+
+        return $pdf->download('incidentes_medicos_' . now()->format('Ymd') . '.pdf');
+    }
+
     // ── PDF Ficha Médica ──────────────────────────────────────────────────
 
     /**

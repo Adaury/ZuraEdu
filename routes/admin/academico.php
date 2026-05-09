@@ -166,6 +166,8 @@ Route::prefix('competencias')->name('competencias.')->group(function () {
 // ── Planes de Clase ───────────────────────────────────────────────────────
 Route::prefix('planes-clase')->name('planes-clase.')->group(function () {
     Route::get('/',                          [PlanClaseController::class, 'index'])->name('index');
+    Route::get('/lista/excel',               [PlanClaseController::class, 'listaExcel'])->name('lista-excel');
+    Route::get('/lista/pdf',                 [PlanClaseController::class, 'listaPdf'])->name('lista-pdf');
     Route::get('/crear',                     [PlanClaseController::class, 'create'])->name('create');
     Route::post('/',                         [PlanClaseController::class, 'store'])->name('store');
     Route::get('/{planesClase}',             [PlanClaseController::class, 'show'])->name('show');

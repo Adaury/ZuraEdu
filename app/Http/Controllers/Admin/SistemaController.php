@@ -443,6 +443,24 @@ class SistemaController extends Controller
     {
         $sy = \App\Models\SchoolYear::actual();
 
+        // ── KPIs básicos ──────────────────────────────────────────────────
+        $totalEstudiantes = \App\Models\Estudiante::activos()->count();
+        $totalDocentes    = \App\Models\Docente::activos()->count();
+        $totalGrupos      = $sy ? \App\Models\Grupo::where('school_year_id', $sy->id)->count() : 0;
+
+        $califs = $sy
+            ? \App\Models\CalificacionAcademica::where('school_year_id', $sy->id)->whereNotNull('nota_final')->get()
+            : collect();
+        $promedioGlobal = $califs->isNotEmpty() ? round($califs->avg('nota_final'), 1) : null;
+        $aprobados      = $califs->where('situacion', 'A')->count();
+        $reprobados     = $califs->where('situacion', 'R')->count();
+        $tasaAprobacion = ($aprobados + $reprobados) > 0
+            ? round($aprobados / ($aprobados + $reprobados) * 100, 1) : null;
+        $asistPromedio  = $sy
+            ? round(\App\Models\CalificacionAcademica::where('school_year_id', $sy->id)
+                ->whereNotNull('pct_asistencia')->avg('pct_asistencia') ?? 0, 1)
+            : null;
+
         $stats = [
             'usuarios_activos'   => \App\Models\User::where('activo', true)->count(),
             'usuarios_roles'     => \App\Models\User::select('id')
@@ -453,28 +471,175 @@ class SistemaController extends Controller
                 ->whereDate('created_at', today())->count(),
             'logins_semana'      => \App\Models\ActivityLog::where('accion', 'login')
                 ->where('created_at', '>=', now()->subDays(7))->count(),
-            'estudiantes'        => \App\Models\Estudiante::activos()->count(),
-            'docentes'           => \App\Models\Docente::activos()->count(),
-            'grupos'             => $sy ? \App\Models\Grupo::where('school_year_id', $sy->id)->count() : 0,
-            'calificaciones'     => $sy ? \App\Models\CalificacionAcademica::where('school_year_id', $sy->id)->count() : 0,
+            'estudiantes'        => $totalEstudiantes,
+            'docentes'           => $totalDocentes,
+            'grupos'             => $totalGrupos,
+            'calificaciones'     => $califs->count(),
             'asistencias'        => \App\Models\Asistencia::whereDate('created_at', today())->count(),
             'comunicados'        => \App\Models\Comunicado::whereDate('published_at', today())->count(),
             'notificaciones_hoy' => \App\Models\Notificacion::whereDate('created_at', today())->count(),
             'alertas_activas'    => \App\Models\AlertaSistema::where('leida', false)->count(),
+            'promedio_global'    => $promedioGlobal,
+            'tasa_aprobacion'    => $tasaAprobacion,
+            'asist_promedio'     => $asistPromedio,
+            'aprobados'          => $aprobados,
+            'reprobados'         => $reprobados,
+            'planificaciones'    => $sy ? \App\Models\Planificacion::where('school_year_id', $sy->id)->count() : 0,
+            'pre_matriculas_pendientes' => \App\Models\PreMatricula::where('estado', 'pendiente')->count(),
             'pagos_pendientes'   => \App\Models\ConfigInstitucional::moduloActivo('pagos')
                 ? \App\Models\Pago::whereHas('matricula', fn($m) => $m->where('school_year_id', $sy?->id))
                     ->whereIn('estado', ['pendiente', 'vencido'])->count()
                 : null,
         ];
 
-        // Actividad por día de la semana (últimos 7 días)
+        // ── Matrícula por grado ───────────────────────────────────────────
+        $porGrado = $sy ? \App\Models\Matricula::join('grupos', 'matriculas.grupo_id', '=', 'grupos.id')
+            ->join('grados', 'grupos.grado_id', '=', 'grados.id')
+            ->where('matriculas.school_year_id', $sy->id)
+            ->where('matriculas.estado', 'activa')
+            ->selectRaw('grados.nombre as grado, COUNT(*) as total')
+            ->groupBy('grados.nombre', 'grados.id')
+            ->orderBy('grados.id')
+            ->pluck('total', 'grado') : collect();
+
+        // ── Matrícula por sexo ────────────────────────────────────────────
+        $porSexo = $sy ? \App\Models\Matricula::join('estudiantes', 'matriculas.estudiante_id', '=', 'estudiantes.id')
+            ->where('matriculas.school_year_id', $sy->id)
+            ->where('matriculas.estado', 'activa')
+            ->selectRaw('estudiantes.sexo, COUNT(*) as total')
+            ->groupBy('estudiantes.sexo')
+            ->pluck('total', 'sexo') : collect();
+
+        // ── Top 5 grupos por rendimiento ──────────────────────────────────
+        $topGrupos = $sy ? \App\Models\RendimientoCache::where('school_year_id', $sy->id)
+            ->whereNull('periodo_id')
+            ->with(['grupo.grado', 'grupo.seccion'])
+            ->orderByDesc('promedio_grupo')
+            ->limit(8)->get() : collect();
+
+        // ── Pagos cobrado vs pendiente (últimos 6 meses) ──────────────────
+        $moduloPagos = \App\Models\ConfigInstitucional::moduloActivo('pagos');
+        $pagosResumen = null;
+        if ($moduloPagos && $sy) {
+            $pagosQ = \App\Models\Pago::whereHas('matricula', fn($m) => $m->where('school_year_id', $sy->id))->get();
+            $pagosResumen = [
+                'cobrado'   => $pagosQ->where('estado', 'pagado')->sum('monto'),
+                'pendiente' => $pagosQ->where('estado', 'pendiente')->sum('monto'),
+                'vencido'   => $pagosQ->where('estado', 'vencido')->sum('monto'),
+                'deudores'  => $pagosQ->where('estado', 'vencido')->unique('matricula_id')->count(),
+            ];
+        }
+
+        // ── Actividad por día (últimos 7 días) ────────────────────────────
         $actividadPorDia = \App\Models\ActivityLog::where('created_at', '>=', now()->subDays(6))
             ->selectRaw('DATE(created_at) as dia, COUNT(*) as total')
             ->groupBy('dia')
             ->orderBy('dia')
             ->pluck('total', 'dia');
 
-        return view('admin.sistema.estadisticas', compact('stats', 'actividadPorDia', 'sy'));
+        // ── Logins por hora hoy ───────────────────────────────────────────
+        $loginsPorHora = \App\Models\ActivityLog::where('accion', 'login')
+            ->whereDate('created_at', today())
+            ->selectRaw('HOUR(created_at) as hora, COUNT(*) as total')
+            ->groupBy('hora')
+            ->orderBy('hora')
+            ->pluck('total', 'hora');
+
+        $inst = \App\Models\ConfigInstitucional::withoutGlobalScopes()->where('clave', 'nombre_institucion')->value('valor')
+            ?? config('app.name');
+
+        return view('admin.sistema.estadisticas', compact(
+            'stats', 'actividadPorDia', 'loginsPorHora', 'sy',
+            'porGrado', 'porSexo', 'topGrupos',
+            'moduloPagos', 'pagosResumen', 'inst'
+        ));
+    }
+
+    // ── Estadísticas Excel ────────────────────────────────────────────────
+    public function estadisticasExcel()
+    {
+        $sy = \App\Models\SchoolYear::actual();
+
+        $rows = [
+            ['REPORTE DE ESTADÍSTICAS — ' . (\App\Models\ConfigInstitucional::withoutGlobalScopes()->where('clave','nombre_institucion')->value('valor') ?? config('app.name'))],
+            ['Año escolar: ' . ($sy?->nombre ?? '—'), '', 'Generado: ' . now()->format('d/m/Y H:i')],
+            [],
+            ['ACADÉMICO', ''],
+            ['Estudiantes activos', \App\Models\Estudiante::activos()->count()],
+            ['Docentes activos',    \App\Models\Docente::activos()->count()],
+            ['Grupos este año',     $sy ? \App\Models\Grupo::where('school_year_id', $sy->id)->count() : 0],
+        ];
+
+        if ($sy) {
+            $califs = \App\Models\CalificacionAcademica::where('school_year_id', $sy->id)->whereNotNull('nota_final')->get();
+            $rows[] = ['Promedio global',    $califs->isNotEmpty() ? round($califs->avg('nota_final'), 1) : '—'];
+            $rows[] = ['Aprobados',          $califs->where('situacion','A')->count()];
+            $rows[] = ['Reprobados',         $califs->where('situacion','R')->count()];
+            $rows[] = ['Asistencia promedio', round(\App\Models\CalificacionAcademica::where('school_year_id',$sy->id)->whereNotNull('pct_asistencia')->avg('pct_asistencia') ?? 0, 1) . '%'];
+            $rows[] = ['Planificaciones',    \App\Models\Planificacion::where('school_year_id',$sy->id)->count()];
+        }
+
+        $rows[] = [];
+        $rows[] = ['MATRÍCULA POR GRADO', 'Total'];
+        if ($sy) {
+            $porGrado = \App\Models\Matricula::join('grupos','matriculas.grupo_id','=','grupos.id')
+                ->join('grados','grupos.grado_id','=','grados.id')
+                ->where('matriculas.school_year_id', $sy->id)->where('matriculas.estado','activa')
+                ->selectRaw('grados.nombre as grado, COUNT(*) as total')
+                ->groupBy('grados.nombre','grados.id')->orderBy('grados.id')
+                ->pluck('total','grado');
+            foreach ($porGrado as $grado => $total) {
+                $rows[] = [$grado, $total];
+            }
+        }
+
+        $rows[] = [];
+        $rows[] = ['SISTEMA', ''];
+        $rows[] = ['Usuarios activos',     \App\Models\User::where('activo',true)->count()];
+        $rows[] = ['Logins hoy',           \App\Models\ActivityLog::where('accion','login')->whereDate('created_at',today())->count()];
+        $rows[] = ['Alertas sin leer',     \App\Models\AlertaSistema::where('leida',false)->count()];
+        $rows[] = ['Pre-matrículas pend.', \App\Models\PreMatricula::where('estado','pendiente')->count()];
+
+        if (\App\Models\ConfigInstitucional::moduloActivo('pagos') && $sy) {
+            $pagosQ = \App\Models\Pago::whereHas('matricula', fn($m) => $m->where('school_year_id',$sy->id))->get();
+            $rows[] = [];
+            $rows[] = ['PAGOS', ''];
+            $rows[] = ['Cobrado',   'RD$ ' . number_format($pagosQ->where('estado','pagado')->sum('monto'),2)];
+            $rows[] = ['Pendiente', 'RD$ ' . number_format($pagosQ->where('estado','pendiente')->sum('monto'),2)];
+            $rows[] = ['Vencido',   'RD$ ' . number_format($pagosQ->where('estado','vencido')->sum('monto'),2)];
+        }
+
+        $ss     = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws     = $ss->getActiveSheet()->setTitle('Estadísticas');
+        $boldFmt = ['font' => ['bold' => true]];
+        $hdrFmt  = ['font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
+                    'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                               'startColor' => ['argb' => 'FF1E3A6E']]];
+
+        foreach ($rows as $r => $cols) {
+            foreach ($cols as $c => $val) {
+                $ws->setCellValueByColumnAndRow($c + 1, $r + 1, $val);
+            }
+            if (count($cols) === 1 && ! empty($cols[0])) {
+                $ws->getStyleByColumnAndRow(1, $r + 1)->applyFromArray($hdrFmt);
+                $ws->mergeCellsByColumnAndRow(1, $r + 1, 3, $r + 1);
+            } elseif (count($cols) === 2 && str_contains(strtoupper($cols[0] ?? ''), 'MATRÍCULA POR')) {
+                $ws->getStyleByColumnAndRow(1, $r + 1)->applyFromArray($boldFmt);
+            }
+        }
+
+        foreach (range('A', 'C') as $col) {
+            $ws->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $filename = 'estadisticas_' . now()->format('Ymd_His') . '.xlsx';
+        $tmp = tempnam(sys_get_temp_dir(), 'xls');
+        $writer->save($tmp);
+
+        return response()->download($tmp, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend();
     }
 
     // ── Reporte Anual Global PDF ──────────────────────────────────────────

@@ -82,6 +82,7 @@ Route::get('sistema/actividad',          [SistemaController::class, 'activityLog
 Route::get('sistema/actividad/excel',    [SistemaController::class, 'activityLogExcel'])->name('sistema.actividad.excel');
 Route::get('sistema/actividad/pdf',     [SistemaController::class, 'activityLogPdf'])->name('sistema.actividad.pdf');
 Route::get('sistema/estadisticas',       [SistemaController::class, 'estadisticas'])->name('sistema.estadisticas');
+Route::get('sistema/estadisticas/excel', [SistemaController::class, 'estadisticasExcel'])->name('sistema.estadisticas.excel');
 Route::get('sistema/reporte-ejecutivo',  [SistemaController::class, 'reporteEjecutivoPdf'])->name('sistema.reporte-ejecutivo');
 Route::get('sistema/reporte-anual',      [SistemaController::class, 'reporteAnualPdf'])->name('sistema.reporte-anual');
 Route::get('sistema/ficha-institucional',[SistemaController::class, 'fichaInstitucionalPdf'])->name('sistema.ficha-institucional');

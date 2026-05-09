@@ -143,6 +143,8 @@ Route::prefix('portal/estudiante')->name('portal.estudiante.')->middleware(['aut
     Route::get('/mi-saldo-cafeteria',                   [PortalEstudianteController::class, 'miSaldoCafeteria'])->name('mi-saldo-cafeteria');
     Route::get('/mi-ruta-transporte',                   [PortalEstudianteController::class, 'miRutaTransporte'])->name('mi-ruta-transporte');
     Route::get('/historial-academico',                  [PortalEstudianteController::class, 'historialAcademico'])->name('historial-academico');
+    Route::get('/certificado-calificaciones',           [PortalEstudianteController::class, 'certificadoCalificaciones'])->name('certificado-calificaciones');
+    Route::get('/carta-conducta',                       [PortalEstudianteController::class, 'cartaBuenaConducta'])->name('carta-conducta');
     // Solicitudes propias del estudiante
     Route::prefix('solicitudes')->name('solicitudes.')->group(function () {
         Route::get('/',                                 [\App\Http\Controllers\Portal\SolicitudesEstudianteController::class, 'index'])->name('index');

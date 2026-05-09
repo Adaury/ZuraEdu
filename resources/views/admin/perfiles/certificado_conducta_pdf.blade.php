@@ -88,7 +88,7 @@ body { font-family: DejaVu Sans, sans-serif; font-size: 10.5px; color: #1e293b; 
     con número de matrícula <strong>{{ $estudiante->matricula ?? '—' }}</strong>,
     quien cursa el <strong>{{ ($matricula->grupo->grado->nombre ?? '') . ' ' . ($matricula->grupo->seccion->nombre ?? '') }}</strong>
     durante el Año Escolar <strong>{{ $schoolYear->nombre }}</strong>,
-    ha mostrado una conducta <strong>EXCELENTE</strong> dentro de las instalaciones de este
+    ha mostrado una conducta <strong>{{ $nivelConducta ?? 'EXCELENTE' }}</strong> dentro de las instalaciones de este
     centro educativo, demostrando respeto, responsabilidad y disciplina en todo momento.
     <br><br>
     &nbsp;&nbsp;&nbsp;&nbsp;La presente certificación se expide a solicitud del interesado/a para los fines que
@@ -98,7 +98,7 @@ body { font-family: DejaVu Sans, sans-serif; font-size: 10.5px; color: #1e293b; 
 <div class="datos-adicionales">
     <div class="dato-row">
         <span class="dato-lbl">Nivel de Conducta</span>
-        <span class="dato-val">Excelente ✓</span>
+        <span class="dato-val">{{ $nivelConducta ?? 'Excelente' }} ✓</span>
     </div>
     <div class="dato-row">
         <span class="dato-lbl">Período Evaluado</span>
@@ -106,7 +106,13 @@ body { font-family: DejaVu Sans, sans-serif; font-size: 10.5px; color: #1e293b; 
     </div>
     <div class="dato-row">
         <span class="dato-lbl">Observaciones</span>
-        <span class="dato-val">Sin anotaciones disciplinarias registradas</span>
+        <span class="dato-val">
+            @if(isset($faltas) && $faltas > 0)
+                {{ $faltas }} anotacion(es) registrada(s) en el período
+            @else
+                Sin anotaciones disciplinarias registradas
+            @endif
+        </span>
     </div>
 </div>
 

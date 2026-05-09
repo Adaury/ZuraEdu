@@ -1898,6 +1898,92 @@ class PortalEstudianteController extends Controller
         ));
     }
 
+    public function certificadoCalificaciones()
+    {
+        $estudiante = $this->getEstudiante();
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->with(['grupo.grado', 'grupo.seccion', 'schoolYear', 'estudiante.representantes'])
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()->first();
+
+        if (! $matricula) abort(404, 'Sin matrícula activa.');
+
+        $periodos = $schoolYear
+            ? Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
+            : collect();
+
+        $calificaciones = \App\Models\Calificacion::with(['asignacion.asignatura', 'periodo'])
+            ->where('matricula_id', $matricula->id)
+            ->where('publicado', true)
+            ->get()->groupBy('asignacion_id');
+
+        $calificacionesAcademicas = CalificacionAcademica::with('asignacion.asignatura')
+            ->where('matricula_id', $matricula->id)
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->whereNotNull('nota_final')
+            ->where('publicado', true)
+            ->orderBy('id')
+            ->get();
+
+        $config = $schoolYear ? \App\Models\BoletinConfig::getOrCreate($schoolYear->id) : null;
+        $si     = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+        $dir    = \App\Models\ConfigInstitucional::get('nombre_director', '');
+        $cod    = \App\Models\ConfigInstitucional::get('codigo_centro', '');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'portal.estudiante.certificado_calificaciones_pdf',
+            compact('matricula', 'periodos', 'calificaciones', 'calificacionesAcademicas',
+                    'config', 'si', 'dir', 'cod')
+        )->setPaper('letter', 'portrait');
+
+        $slug = \Illuminate\Support\Str::slug($estudiante->nombre_completo ?? 'certificado');
+        return $pdf->download("certificado_calificaciones_{$slug}.pdf");
+    }
+
+    public function cartaBuenaConducta()
+    {
+        $estudiante = $this->getEstudiante();
+        $schoolYear = SchoolYear::actual();
+        abort_if(! $schoolYear, 404);
+
+        $matricula = $estudiante->matriculas()
+            ->with(['grupo.grado', 'grupo.seccion', 'schoolYear'])
+            ->where('school_year_id', $schoolYear->id)
+            ->where('estado', 'activa')
+            ->latest()->first();
+
+        abort_if(! $matricula, 404, 'Sin matrícula activa.');
+
+        // Determinar nivel de conducta según faltas registradas
+        $faltas = \Illuminate\Support\Facades\DB::table('faltas_disciplinarias')
+            ->where('estudiante_id', $estudiante->id)
+            ->whereYear('fecha', now()->year)
+            ->count();
+
+        $nivelConducta = match(true) {
+            $faltas === 0         => 'EXCELENTE',
+            $faltas <= 2          => 'BUENA',
+            $faltas <= 5          => 'REGULAR',
+            default               => 'DEFICIENTE',
+        };
+
+        $si     = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+        $dir    = \App\Models\ConfigInstitucional::get('nombre_director', '');
+        $cod    = \App\Models\ConfigInstitucional::get('codigo_centro', '');
+        $config = \App\Models\BoletinConfig::getOrCreate($schoolYear->id);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'admin.perfiles.certificado_conducta_pdf',
+            compact('estudiante', 'matricula', 'si', 'dir', 'cod', 'config', 'schoolYear', 'nivelConducta', 'faltas')
+        )->setPaper('letter', 'portrait');
+
+        $slug = \Illuminate\Support\Str::slug($estudiante->nombre_completo ?? 'conducta');
+        return $pdf->download("carta_conducta_{$slug}.pdf");
+    }
+
     public function historialAcademico()
     {
         $estudiante = $this->getEstudiante();

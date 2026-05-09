@@ -119,6 +119,56 @@
                 </div>
             </div>
         </div>
+
+        {{-- Certificado oficial de calificaciones --}}
+        <div class="col-12 col-sm-6 col-lg-4">
+            <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #6366f1!important;">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex align-items-start gap-3 mb-3">
+                        <div style="width:48px;height:48px;background:linear-gradient(135deg,#6366f1,#4338ca);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="bi bi-award-fill" style="font-size:1.3rem;color:#fff;"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold" style="color:#1e3a6e;font-size:.95rem;">Certificado de Calificaciones</div>
+                            <div class="text-muted" style="font-size:.8rem;">Documento oficial con folio</div>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-3" style="font-size:.8rem;flex:1;">
+                        Certificado formal con tabla de asignaturas, notas finales, promedio y firma directoral.
+                    </p>
+                    <a href="{{ route('portal.estudiante.certificado-calificaciones') }}"
+                       target="_blank"
+                       class="btn btn-sm w-100 mt-auto text-white" style="background:linear-gradient(135deg,#6366f1,#4338ca);">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>Descargar PDF
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        {{-- Carta de buena conducta --}}
+        <div class="col-12 col-sm-6 col-lg-4">
+            <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #16a34a!important;">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex align-items-start gap-3 mb-3">
+                        <div style="width:48px;height:48px;background:linear-gradient(135deg,#16a34a,#15803d);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="bi bi-shield-check" style="font-size:1.3rem;color:#fff;"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold" style="color:#1e3a6e;font-size:.95rem;">Carta de Buena Conducta</div>
+                            <div class="text-muted" style="font-size:.8rem;">Con nivel de conducta real</div>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-3" style="font-size:.8rem;flex:1;">
+                        Certifica el comportamiento del estudiante. El nivel se calcula automáticamente según el registro disciplinario.
+                    </p>
+                    <a href="{{ route('portal.estudiante.carta-conducta') }}"
+                       target="_blank"
+                       class="btn btn-sm btn-success w-100 mt-auto">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>Descargar PDF
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

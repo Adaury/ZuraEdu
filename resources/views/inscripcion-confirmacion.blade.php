@@ -48,7 +48,7 @@
             @else
                 <div class="nav-logo-icon"><i class="bi bi-mortarboard-fill"></i></div>
             @endif
-            <span class="nav-logo-name">{{ $inst ?? config('app.name') }}</span>
+            <span class="nav-logo-name">{{ $system_name ?? $system_abbr ?? config('app.name') }}</span>
         </a>
     </div>
 </nav>

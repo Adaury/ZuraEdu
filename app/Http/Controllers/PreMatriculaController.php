@@ -15,16 +15,23 @@ class PreMatriculaController extends Controller
     private function instData(): array
     {
         $nombre = ConfigInstitucional::withoutGlobalScopes()
-            ->where('clave', 'nombre_institucion')
-            ->value('valor');
+            ->where('clave', 'nombre_institucion')->value('valor');
 
         $logo = ConfigInstitucional::withoutGlobalScopes()
-            ->where('clave', 'logo_url')
-            ->value('valor');
+            ->where('clave', 'logo_url')->value('valor');
+
+        $settings = \Illuminate\Support\Facades\DB::table('system_settings')
+            ->whereIn('key', ['system_name', 'system_abbr', 'system_logo'])
+            ->pluck('value', 'key');
+
+        // Logo: prioridad logo de system_settings, luego ConfigInstitucional
+        $logoFinal = $settings['system_logo'] ?? $logo ?? null;
 
         return [
-            'inst' => $nombre ?: config('app.name'),
-            'logo' => $logo,
+            'inst'        => $nombre ?: config('app.name'),
+            'logo'        => $logoFinal,
+            'system_name' => $settings['system_name'] ?? 'ZuraEdu',
+            'system_abbr' => $settings['system_abbr'] ?? 'SGE',
         ];
     }
 

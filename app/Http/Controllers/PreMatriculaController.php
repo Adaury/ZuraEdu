@@ -14,9 +14,17 @@ class PreMatriculaController extends Controller
 {
     private function instData(): array
     {
+        $nombre = ConfigInstitucional::withoutGlobalScopes()
+            ->where('clave', 'nombre_institucion')
+            ->value('valor');
+
+        $logo = ConfigInstitucional::withoutGlobalScopes()
+            ->where('clave', 'logo_url')
+            ->value('valor');
+
         return [
-            'inst' => ConfigInstitucional::get('nombre_institucion', config('app.name')),
-            'logo' => ConfigInstitucional::get('logo_url'),
+            'inst' => $nombre ?: config('app.name'),
+            'logo' => $logo,
         ];
     }
 

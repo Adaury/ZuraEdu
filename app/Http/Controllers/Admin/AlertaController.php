@@ -163,4 +163,32 @@ class AlertaController extends Controller
 
         return back()->with('success', $msg);
     }
+
+    public function generarAusencias()
+    {
+        \Illuminate\Support\Facades\Artisan::call('alertas:ausencias', ['--force' => true]);
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        return back()->with('success', 'Alertas de ausencias ejecutadas. ' . trim($output));
+    }
+
+    public function generarRendimiento()
+    {
+        \Illuminate\Support\Facades\Artisan::call('alertas:rendimiento', ['--force' => true]);
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        return back()->with('success', 'Alertas de rendimiento ejecutadas. ' . trim($output));
+    }
+
+    public function generarEntregaNotas()
+    {
+        \Illuminate\Support\Facades\Artisan::call('alertas:entrega-notas');
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        return back()->with('success', 'Alertas de entrega de notas ejecutadas. ' . trim($output));
+    }
+
+    public function generarRecordatorioPagos()
+    {
+        \Illuminate\Support\Facades\Artisan::call('pagos:recordatorio-vencidos');
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        return back()->with('success', 'Recordatorio de pagos ejecutado. ' . trim($output));
+    }
 }

@@ -49,7 +49,11 @@ Route::get('alertas/conteo',               [AlertaController::class, 'conteo'])-
 Route::patch('alertas/{alerta}/leer',      [AlertaController::class, 'marcarLeida'])->name('alertas.leer');
 Route::post('alertas/leer-todas',          [AlertaController::class, 'marcarTodasLeidas'])->name('alertas.leerTodas');
 Route::delete('alertas/{alerta}',          [AlertaController::class, 'destroy'])->name('alertas.destroy');
-Route::post('alertas/generar-academicas',  [AlertaController::class, 'generarAcademicas'])->name('alertas.generarAcademicas');
+Route::post('alertas/generar-academicas',      [AlertaController::class, 'generarAcademicas'])->name('alertas.generarAcademicas');
+Route::post('alertas/generar-ausencias',       [AlertaController::class, 'generarAusencias'])->name('alertas.generarAusencias');
+Route::post('alertas/generar-rendimiento',     [AlertaController::class, 'generarRendimiento'])->name('alertas.generarRendimiento');
+Route::post('alertas/generar-entrega-notas',   [AlertaController::class, 'generarEntregaNotas'])->name('alertas.generarEntregaNotas');
+Route::post('alertas/recordatorio-pagos',      [AlertaController::class, 'generarRecordatorioPagos'])->name('alertas.recordatorioPagos');
 
 // ── Calendario Académico ──────────────────────────────────────────────────
 Route::get('calendario',               [CalendarioController::class, 'index'])->name('calendario.index');

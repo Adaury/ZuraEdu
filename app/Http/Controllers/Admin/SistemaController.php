@@ -850,11 +850,24 @@ class SistemaController extends Controller
 
     public function emailNotifUpdate(\Illuminate\Http\Request $request)
     {
+        $request->validate([
+            'alerta_nota_minima'            => 'nullable|numeric|min:0|max:100',
+            'alerta_asistencia_minima'      => 'nullable|numeric|min:0|max:100',
+            'alerta_ausencias_consecutivas' => 'nullable|integer|min:1|max:30',
+            'alerta_ausencias_dias_ventana' => 'nullable|integer|min:1|max:60',
+        ]);
+
         \App\Helpers\Setting::setMany([
-            'email_notif_calificaciones' => $request->boolean('email_notif_calificaciones') ? '1' : '0',
-            'email_notif_comunicados'    => $request->boolean('email_notif_comunicados')    ? '1' : '0',
-            'email_notif_pagos'          => $request->boolean('email_notif_pagos')          ? '1' : '0',
-            'email_notif_aprobacion'     => $request->boolean('email_notif_aprobacion')     ? '1' : '0',
+            'email_notif_calificaciones'     => $request->boolean('email_notif_calificaciones')     ? '1' : '0',
+            'email_notif_comunicados'        => $request->boolean('email_notif_comunicados')        ? '1' : '0',
+            'email_notif_pagos'              => $request->boolean('email_notif_pagos')              ? '1' : '0',
+            'email_notif_aprobacion'         => $request->boolean('email_notif_aprobacion')         ? '1' : '0',
+            'email_notif_ausencias'          => $request->boolean('email_notif_ausencias')          ? '1' : '0',
+            'email_notif_alertas_academicas' => $request->boolean('email_notif_alertas_academicas') ? '1' : '0',
+            'alerta_nota_minima'             => $request->input('alerta_nota_minima', '60'),
+            'alerta_asistencia_minima'       => $request->input('alerta_asistencia_minima', '75'),
+            'alerta_ausencias_consecutivas'  => $request->input('alerta_ausencias_consecutivas', '3'),
+            'alerta_ausencias_dias_ventana'  => $request->input('alerta_ausencias_dias_ventana', '14'),
         ]);
         return back()->with('success', 'Configuración de notificaciones guardada.');
     }

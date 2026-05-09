@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Helpers\Setting;
+use App\Mail\AlertaRiesgoAcademico;
 use App\Models\AlertaSistema;
 use App\Models\Asignacion;
 use App\Models\ConfigInstitucional;
@@ -12,6 +14,7 @@ use App\Models\Matricula;
 use App\Models\SchoolYear;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AcademicAlertService
 {
@@ -131,10 +134,25 @@ class AcademicAlertService
 
         $ref = "matricula_{$matricula->id}_asignacion_{$asignacion->id}_baja_academica";
 
-        return $this->notificarDestinatarios(
+        $creada = $this->notificarDestinatarios(
             $titulo, $mensaje, 'riesgo_academico', 'danger',
             $matricula, $asignacion, $ref, $schoolYearId
         );
+
+        // Email al representante (si configurado)
+        if ($creada && Setting::get('email_notif_alertas_academicas', '1') === '1') {
+            $rep = $matricula->estudiante->representantes()->first();
+            if ($rep?->email) {
+                $inst = ConfigInstitucional::get('nombre_institucion', config('app.name'));
+                try {
+                    Mail::to($rep->email)->send(new AlertaRiesgoAcademico($estudiante, $asignacion, $nota, $inst));
+                } catch (\Throwable $e) {
+                    Log::warning("Email alerta académica no enviado a {$rep->email}: " . $e->getMessage());
+                }
+            }
+        }
+
+        return $creada;
     }
 
     private function crearAlertaBajaAsistencia(

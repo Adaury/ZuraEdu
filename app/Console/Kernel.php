@@ -12,6 +12,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
+        // ── Alertas de ausencias repetidas (diario 05:30) ────────────────────
+        $schedule->command('alertas:ausencias')->dailyAt('05:30');
+
         // ── Alertas de riesgo académico (notas < 60 publicadas) ───────────────
         $schedule->command('alertas:rendimiento')->dailyAt('06:00');
 

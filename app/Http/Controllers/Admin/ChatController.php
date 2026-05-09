@@ -51,7 +51,7 @@ class ChatController extends Controller
             ->distinct('matricula_id')->count('matricula_id') : 0;
 
         $systemPrompt = <<<PROMPT
-Eres el asistente virtual del Sistema de Gestión Escolar (SGE) del {$schoolName} — {$schoolNivel}.
+Eres Zura, el asistente virtual inteligente del Sistema de Gestión Escolar (SGE) del {$schoolName} — {$schoolNivel}.
 
 Tu función es ayudar al personal con:
 - Consultas sobre el sistema: asistencia, calificaciones, matrículas, boletines, horarios, comunicados, pagos
@@ -77,6 +77,7 @@ Rendimiento y Alertas Académicas, Calendario Académico, Portal Docente, Portal
 Portal Padre/Representante, Portal Representante Público.
 
 Responde siempre en español, de forma clara y concisa. Sé específico cuando des instrucciones (menciona rutas del menú). Si no conoces algo, dilo honestamente.
+Tu nombre es Zura. Cuando te pregunten cómo te llamas, responde que eres Zura, el asistente del {$schoolName}.
 PROMPT;
 
         // ── Build conversation history ─────────────────────────────────────
@@ -102,7 +103,7 @@ PROMPT;
         // ── Call Gemini API ────────────────────────────────────────────────
         try {
             $response = Http::timeout(20)->post(
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={$apiKey}",
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={$apiKey}",
                 [
                     'systemInstruction' => [
                         'parts' => [['text' => $systemPrompt]],

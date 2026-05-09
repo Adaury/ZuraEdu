@@ -2981,7 +2981,7 @@ if(auth()->check()) {
     <div id="chat-header">
         <div class="chat-avatar"><i class="bi bi-stars"></i></div>
         <div>
-            <div class="chat-title">Asistente PSAC</div>
+            <div class="chat-title">Zura — {{ $systemSettings['system_name'] ?? config('app.name') }}</div>
             <div class="chat-status">Powered by Google Gemini</div>
         </div>
         <div style="display:flex;align-items:center;gap:.35rem;margin-left:auto;">
@@ -2996,7 +2996,7 @@ if(auth()->check()) {
     </div>
 
     <div id="chat-messages">
-        <div class="chat-msg bot">¡Hola! Soy el asistente del PSAC. Puedo ayudarte con el sistema: asistencia, calificaciones, matrículas, boletines y más. ¿En qué te ayudo?</div>
+        <div class="chat-msg bot">¡Hola! Soy <strong>Zura</strong>, el asistente de <strong>{{ $systemSettings['system_name'] ?? config('app.name') }}</strong>. Puedo ayudarte con el sistema: asistencia, calificaciones, matrículas, boletines y más. ¿En qué te ayudo?</div>
     </div>
 
     {{-- Sugerencias rápidas --}}
@@ -3100,7 +3100,9 @@ if(auth()->check()) {
         if (!text) return;
 
         appendMsg(text, 'user');
-        chatHistory.push({ role: 'user', text });
+        // Snapshot del historial ANTES de agregar el mensaje actual
+        // para no enviarlo duplicado al backend (history + message)
+        const historySend = chatHistory.slice(-10);
 
         input.value = '';
         input.style.height = 'auto';
@@ -3110,29 +3112,35 @@ if(auth()->check()) {
         showTyping();
 
         try {
-            const res  = await fetch(ROUTE_CHAT, {
+            const res = await fetch(ROUTE_CHAT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': CSRF,
                     'Accept': 'application/json',
                 },
-                body: JSON.stringify({ message: text, history: chatHistory.slice(-10) }),
+                body: JSON.stringify({ message: text, history: historySend }),
             });
+
+            if (!res.ok) {
+                throw new Error('HTTP ' + res.status);
+            }
 
             const data = await res.json();
             removeTyping();
 
             const reply = data.reply ?? 'Sin respuesta.';
             appendMsg(reply, 'bot');
+
+            // Agregar al historial DESPUÉS de recibir respuesta
+            chatHistory.push({ role: 'user', text });
             chatHistory.push({ role: 'model', text: reply });
 
-            // Keep history manageable
             if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
 
         } catch (err) {
             removeTyping();
-            appendMsg('Error de conexión. Intenta de nuevo.', 'bot');
+            appendMsg('No se pudo obtener respuesta. Por favor intenta de nuevo.', 'bot');
         } finally {
             document.getElementById('chat-send').disabled = false;
             isTyping = false;

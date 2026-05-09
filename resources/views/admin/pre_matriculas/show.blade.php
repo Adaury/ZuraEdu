@@ -228,6 +228,38 @@
             </div>
         </div>
 
+        {{-- Convertir a matrícula (solo aprobada y no convertida aún) --}}
+        @if($preMatricula->estado === 'aprobada' && !$preMatricula->estaConvertida())
+        <div class="action-card mb-2" style="border-color:#bbf7d0;">
+            <div class="action-header" style="background:#f0fdf4;border-bottom-color:#bbf7d0;">
+                <h6 class="text-success"><i class="bi bi-person-check-fill me-1"></i> Procesar Matrícula</h6>
+            </div>
+            <div class="action-body">
+                <p class="text-muted small mb-3">
+                    La solicitud está aprobada. Procese la matrícula para crear el expediente
+                    del estudiante y asignarlo a un grupo.
+                </p>
+                <a href="{{ route('admin.pre-matriculas.form-convertir', $preMatricula) }}"
+                   class="btn btn-success w-100">
+                    <i class="bi bi-person-check-fill me-1"></i> Convertir en Matrícula
+                </a>
+            </div>
+        </div>
+        @elseif($preMatricula->estaConvertida())
+        <div class="action-card mb-2" style="border-color:#bbf7d0;">
+            <div class="action-header" style="background:#f0fdf4;">
+                <h6 class="text-success"><i class="bi bi-check-circle-fill me-1"></i> Matrícula Procesada</h6>
+            </div>
+            <div class="action-body">
+                <p class="text-muted small mb-2">Este estudiante ya fue matriculado en el sistema.</p>
+                <a href="{{ route('admin.estudiantes.show', $preMatricula->estudiante_id) }}"
+                   class="btn btn-outline-success btn-sm w-100">
+                    <i class="bi bi-person-fill me-1"></i> Ver Expediente del Estudiante
+                </a>
+            </div>
+        </div>
+        @endif
+
         {{-- Sección resolución (solo pendiente) --}}
         @if($preMatricula->estado === 'pendiente')
         <div class="action-card" id="resolver">

@@ -30,6 +30,7 @@ class PreMatricula extends Model
         'estado',
         'notas_admin',
         'documentos',
+        'estudiante_id',
     ];
 
     protected $casts = [
@@ -79,6 +80,16 @@ class PreMatricula extends Model
         } while (static::withoutGlobalScopes()->where('codigo', $codigo)->exists());
 
         return $codigo;
+    }
+
+    public function estudiante()
+    {
+        return $this->belongsTo(Estudiante::class);
+    }
+
+    public function estaConvertida(): bool
+    {
+        return ! is_null($this->estudiante_id);
     }
 
     public static function gradosDisponibles(): array

@@ -4,9 +4,18 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\PreMatriculaResolucion;
+use App\Models\Estudiante;
+use App\Models\Grupo;
+use App\Models\Matricula;
 use App\Models\PreMatricula;
+use App\Models\Representante;
+use App\Models\SchoolYear;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class PreMatriculaAdminController extends Controller
 {
@@ -109,6 +118,179 @@ class PreMatriculaAdminController extends Controller
 
         return redirect()->route('admin.pre-matriculas.show', $preMatricula)
             ->with('success', "Solicitud de {$preMatricula->nombre_completo} rechazada. Se notificó al representante.");
+    }
+
+    /**
+     * Formulario para convertir pre-matrícula aprobada en matrícula real.
+     */
+    public function formConvertir(PreMatricula $preMatricula)
+    {
+        abort_if($preMatricula->estado !== 'aprobada', 403, 'Solo se pueden convertir solicitudes aprobadas.');
+
+        $schoolYear = SchoolYear::actual();
+        $grupos = Grupo::with(['grado', 'seccion'])
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->orderBy('grado_id')->orderBy('seccion_id')
+            ->get();
+
+        return view('admin.pre_matriculas.convertir', compact('preMatricula', 'grupos', 'schoolYear'));
+    }
+
+    /**
+     * Ejecutar conversión: crear estudiante, representante, usuario y matrícula.
+     */
+    public function convertir(Request $request, PreMatricula $preMatricula)
+    {
+        abort_if($preMatricula->estado !== 'aprobada', 403);
+
+        $request->validate([
+            'grupo_id'        => 'required|exists:grupos,id',
+            'crear_usuario'   => 'nullable|boolean',
+            'observaciones'   => 'nullable|string|max:500',
+        ]);
+
+        $schoolYear = SchoolYear::actual();
+        abort_unless($schoolYear, 422, 'No hay un año escolar activo.');
+
+        DB::beginTransaction();
+        try {
+            // ── 1. Estudiante ─────────────────────────────────────────────
+            $nroMat = $this->generarNumeroMatricula($schoolYear->nombre ?? date('Y'));
+
+            $sexo = match($preMatricula->genero ?? '') {
+                'Masculino' => 'M',
+                'Femenino'  => 'F',
+                default     => 'M',
+            };
+
+            $estudiante = Estudiante::create([
+                'numero_matricula' => $nroMat,
+                'cedula'           => $preMatricula->cedula_estudiante,
+                'nombres'          => $preMatricula->nombres,
+                'apellidos'        => $preMatricula->apellidos,
+                'fecha_nacimiento' => $preMatricula->fecha_nacimiento,
+                'sexo'             => $sexo,
+                'lugar_nacimiento' => $preMatricula->lugar_nacimiento,
+                'email'            => $preMatricula->email,
+                'direccion'        => $preMatricula->direccion,
+                'estado'           => 'activo',
+            ]);
+
+            // ── 2. Representante (buscar por cédula o crear) ──────────────
+            $rep = Representante::where('cedula', $preMatricula->cedula_representante)->first();
+
+            $repNombres   = '';
+            $repApellidos = '';
+            $parts = explode(' ', trim($preMatricula->nombre_representante), 2);
+            if (count($parts) === 2) {
+                $repNombres   = $parts[0];
+                $repApellidos = $parts[1];
+            } else {
+                $repNombres = $preMatricula->nombre_representante;
+            }
+
+            if (! $rep) {
+                $repUser = null;
+                $tempPass = null;
+
+                if ($request->boolean('crear_usuario')) {
+                    $tempPass = Str::random(10);
+                    $username = $this->generarUsername($preMatricula->email, $preMatricula->cedula_representante);
+
+                    $repUser = User::create([
+                        'name'     => $preMatricula->nombre_representante,
+                        'email'    => $preMatricula->email,
+                        'username' => $username,
+                        'password' => Hash::make($tempPass),
+                        'activo'   => true,
+                    ]);
+                    $repUser->assignRole('Representante');
+                }
+
+                $rep = Representante::create([
+                    'user_id'   => $repUser?->id,
+                    'cedula'    => $preMatricula->cedula_representante,
+                    'nombres'   => $repNombres,
+                    'apellidos' => $repApellidos,
+                    'telefono'  => $preMatricula->telefono,
+                    'email'     => $preMatricula->email,
+                    'direccion' => $preMatricula->direccion,
+                ]);
+            }
+
+            // Vincular representante con el estudiante
+            $parentesco = $preMatricula->relacion_representante ?? 'Tutor/a';
+            $rep->estudiantes()->syncWithoutDetaching([
+                $estudiante->id => ['parentesco' => $parentesco, 'es_principal' => true],
+            ]);
+
+            // ── 3. Matrícula ──────────────────────────────────────────────
+            $grupo = Grupo::findOrFail($request->grupo_id);
+            $nroOrden = Matricula::where('grupo_id', $grupo->id)->count() + 1;
+
+            $matricula = Matricula::create([
+                'school_year_id'  => $schoolYear->id,
+                'estudiante_id'   => $estudiante->id,
+                'grupo_id'        => $grupo->id,
+                'fecha_matricula' => now(),
+                'numero_orden'    => $nroOrden,
+                'estado'          => 'activa',
+                'observaciones'   => $request->observaciones,
+            ]);
+
+            // ── 4. Marcar pre-matrícula como convertida ───────────────────
+            $preMatricula->update(['estudiante_id' => $estudiante->id]);
+
+            DB::commit();
+
+            // Email de bienvenida con credenciales (si se creó usuario)
+            if ($request->boolean('crear_usuario') && isset($repUser, $tempPass)) {
+                try {
+                    Mail::to($repUser->email)->queue(
+                        new \App\Mail\BienvenidaRepresentante($rep, $repUser, $tempPass, $matricula)
+                    );
+                } catch (\Throwable $e) {}
+            }
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return back()->with('error', 'Error al procesar la matrícula: ' . $e->getMessage());
+        }
+
+        return redirect()->route('admin.matriculas.show', $matricula)
+            ->with('success', "¡Matrícula creada! {$estudiante->nombre_completo} — {$nroMat}");
+    }
+
+    private function generarNumeroMatricula(string $anio): string
+    {
+        $prefix = 'MAT-' . substr($anio, -2);
+        $ultimo = Estudiante::withoutGlobalScopes()
+            ->where('numero_matricula', 'like', "{$prefix}%")
+            ->max('numero_matricula');
+
+        $siguiente = 1;
+        if ($ultimo) {
+            $num = (int) substr($ultimo, -4);
+            $siguiente = $num + 1;
+        }
+
+        return $prefix . '-' . str_pad($siguiente, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function generarUsername(string $email, string $cedula): string
+    {
+        // Preferir parte antes del @ del email
+        $base = Str::slug(explode('@', $email)[0]);
+        if (! User::where('username', $base)->exists()) {
+            return $base;
+        }
+        // Fallback: últimos 6 dígitos de la cédula
+        $cedNum = preg_replace('/\D/', '', $cedula);
+        $base2  = 'rep' . substr($cedNum, -6);
+        if (! User::where('username', $base2)->exists()) {
+            return $base2;
+        }
+        return $base . '_' . Str::random(4);
     }
 
     /**

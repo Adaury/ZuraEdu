@@ -10,5 +10,7 @@ Route::prefix('pre-matriculas')->name('pre-matriculas.')->group(function () {
     Route::get('/{preMatricula}',                [PreMatriculaAdminController::class, 'show'])->name('show');
     Route::post('/{preMatricula}/aprobar',       [PreMatriculaAdminController::class, 'aprobar'])->name('aprobar');
     Route::post('/{preMatricula}/rechazar',      [PreMatriculaAdminController::class, 'rechazar'])->name('rechazar');
+    Route::get('/{preMatricula}/convertir',      [PreMatriculaAdminController::class, 'formConvertir'])->name('form-convertir');
+    Route::post('/{preMatricula}/convertir',     [PreMatriculaAdminController::class, 'convertir'])->name('ejecutar-convertir');
     Route::delete('/{preMatricula}',             [PreMatriculaAdminController::class, 'destroy'])->name('destroy');
 });

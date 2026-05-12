@@ -31,6 +31,10 @@
         <h1 style="font-size:1rem;font-weight:800;margin:0;">Asistencia — {{ $asignacion->asignatura?->nombre }}</h1>
         <div class="dm-text-muted" style="font-size:.75rem;color:#64748b;">{{ $asignacion->grupo?->nombre_completo ?? '—' }}</div>
     </div>
+    <a href="{{ route('portal.docente.asistencia.qr.panel', $asignacion) }}"
+       style="background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.4rem;white-space:nowrap;flex-shrink:0;">
+        <i class="bi bi-qr-code"></i>QR
+    </a>
     <a href="{{ route('portal.docente.asistencia.pdf', $asignacion) }}" target="_blank"
        style="background:#dc2626;color:#fff;border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.4rem;white-space:nowrap;flex-shrink:0;">
         <i class="bi bi-file-earmark-pdf"></i>PDF

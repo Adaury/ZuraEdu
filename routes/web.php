@@ -98,6 +98,12 @@ Route::get('/inscripcion/consulta',                 [\App\Http\Controllers\PreMa
 //  PORTALES AUTENTICADOS (multi-rol)
 // ══════════════════════════════════════════════════════════════════════════
 
+// ── Asistencia QR (estudiante escanea) ───────────────────────────────────
+Route::middleware(['auth', 'activo'])->group(function () {
+    Route::get('/asistencia/qr/{token}',  [\App\Http\Controllers\AsistenciaQrController::class, 'scanView'])->name('asistencia.qr.scan');
+    Route::post('/asistencia/qr/{token}', [\App\Http\Controllers\AsistenciaQrController::class, 'registrar'])->name('asistencia.qr.registrar');
+});
+
 // ── Portal Estudiante ─────────────────────────────────────────────────────
 Route::prefix('portal/estudiante')->name('portal.estudiante.')->middleware(['auth', 'activo', 'role:Estudiante'])->group(function () {
     Route::get('/',          [PortalEstudianteController::class, 'dashboard'])->name('dashboard');
@@ -235,6 +241,11 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::get('/asignacion/{asignacion}/asistencia/pdf',         [PortalDocenteController::class, 'exportarAsistenciaPdf'])->name('asistencia.pdf');
     Route::get('/asignacion/{asignacion}/asistencia/excel',       [PortalDocenteController::class, 'exportarAsistenciaExcel'])->name('asistencia.excel');
     Route::post('/asignacion/{asignacion}/asistencia/importar',   [PortalDocenteController::class, 'importarAsistencia'])->name('asistencia.importar');
+    // ── Asistencia QR ──────────────────────────────────────────────────────
+    Route::get('/asignacion/{asignacion}/asistencia/qr',                   [\App\Http\Controllers\AsistenciaQrController::class, 'panel'])->name('asistencia.qr.panel');
+    Route::post('/asignacion/{asignacion}/asistencia/qr/crear',            [\App\Http\Controllers\AsistenciaQrController::class, 'crearToken'])->name('asistencia.qr.crear');
+    Route::get('/asistencia/qr/{qrToken}/estado',                          [\App\Http\Controllers\AsistenciaQrController::class, 'estado'])->name('asistencia.qr.estado');
+    Route::post('/asistencia/qr/{qrToken}/cerrar',                         [\App\Http\Controllers\AsistenciaQrController::class, 'cerrar'])->name('asistencia.qr.cerrar');
     Route::get('/asignacion/{asignacion}/estudiantes/excel',      [PortalDocenteController::class, 'estudiantesExcel'])->name('estudiantes.excel');
     Route::get('/asignacion/{asignacion}/estudiantes',            [PortalDocenteController::class, 'estudiantes'])->name('estudiantes');
     Route::get('/asignacion/{asignacion}/calificaciones',                 [PortalDocenteController::class, 'calificaciones'])->name('calificaciones');

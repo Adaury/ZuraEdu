@@ -136,6 +136,14 @@ try {
     <i class="bi bi-file-earmark-bar-graph-fill"></i>Ficha de Actividad
 </a>
 
+{{-- ── DIRECCIÓN ── --}}
+@if(auth()->user()->hasAnyRole(['Administrador','Director','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']))
+<div class="prt-sidebar-section mt-2">Dirección</div>
+<a href="{{ route('admin.ejecutivo.index') }}" class="prt-sidebar-link {{ request()->routeIs('admin.ejecutivo*') ? 'active' : '' }}">
+    <i class="bi bi-bar-chart-line-fill" style="color:#f59e0b;"></i>Dashboard Ejecutivo
+</a>
+@endif
+
 {{-- ── CUENTA ── --}}
 <div class="prt-sidebar-section mt-2">Cuenta</div>
 

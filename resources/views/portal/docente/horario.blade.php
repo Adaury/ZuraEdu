@@ -13,7 +13,13 @@
     <a href="{{ route('portal.docente.mensajes.index') }}" class="prt-sidebar-link">
         <i class="bi bi-envelope-fill"></i>Mensajes
     </a>
-    <div class="prt-sidebar-section mt-3">Cuenta</div>
+    @if(auth()->user()->hasAnyRole(['Administrador','Director','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']))
+    <div class="prt-sidebar-section mt-2">Dirección</div>
+    <a href="{{ route('admin.ejecutivo.index') }}" class="prt-sidebar-link {{ request()->routeIs('admin.ejecutivo*') ? 'active' : '' }}">
+        <i class="bi bi-bar-chart-line-fill" style="color:#f59e0b;"></i>Dashboard Ejecutivo
+    </a>
+    @endif
+    <div class="prt-sidebar-section mt-2">Cuenta</div>
     <form method="POST" action="{{ route('logout') }}">
         @csrf
         <button type="submit" class="prt-sidebar-link w-100 border-0" style="cursor:pointer;text-align:left;">

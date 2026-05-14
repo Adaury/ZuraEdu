@@ -11,6 +11,12 @@
     <a href="{{ route('portal.docente.mis-estadisticas') }}" class="prt-sidebar-link active">
         <i class="bi bi-bar-chart-fill"></i>Mis Estadísticas
     </a>
+    @if(auth()->user()->hasAnyRole(['Administrador','Director','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']))
+    <div class="prt-sidebar-section mt-2">Dirección</div>
+    <a href="{{ route('admin.ejecutivo.index') }}" class="prt-sidebar-link {{ request()->routeIs('admin.ejecutivo*') ? 'active' : '' }}">
+        <i class="bi bi-bar-chart-line-fill" style="color:#f59e0b;"></i>Dashboard Ejecutivo
+    </a>
+    @endif
     <div class="prt-sidebar-section mt-2">Cuenta</div>
     <form method="POST" action="{{ route('logout') }}">
         @csrf

@@ -2018,10 +2018,27 @@ if (auth()->check()) {
             <ul class="list-unstyled mb-0">
                 @if($isAdmin || $isDir || $isCoord)
                 <li class="nav-item">
-                    <a href="{{ route('admin.ejecutivo.index') }}" class="{{ request()->routeIs('admin.ejecutivo*') ? 'active' : '' }}"
-                       style="{{ request()->routeIs('admin.ejecutivo*') ? '' : '' }}">
+                    <a href="{{ route('admin.ejecutivo.index') }}" class="{{ request()->routeIs('admin.ejecutivo*') ? 'active' : '' }}">
                         <i class="bi bi-bar-chart-line-fill" style="color:#f59e0b;"></i>Dashboard Ejecutivo
                     </a>
+                    @if(request()->routeIs('admin.ejecutivo*'))
+                    <ul class="list-unstyled ms-3 mt-1 mb-1" style="font-size:.76rem;">
+                        <li>
+                            <a href="{{ route('admin.ejecutivo.pdf', request()->query()) }}" target="_blank"
+                               style="color:#94a3b8;display:flex;align-items:center;gap:.4rem;padding:.25rem .5rem;border-radius:6px;text-decoration:none;"
+                               onmouseover="this.style.color='#e2e8f0'" onmouseout="this.style.color='#94a3b8'">
+                                <i class="bi bi-file-earmark-pdf" style="color:#f87171;"></i>Exportar PDF
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('admin.ejecutivo.excel', request()->query()) }}"
+                               style="color:#94a3b8;display:flex;align-items:center;gap:.4rem;padding:.25rem .5rem;border-radius:6px;text-decoration:none;"
+                               onmouseover="this.style.color='#e2e8f0'" onmouseout="this.style.color='#94a3b8'">
+                                <i class="bi bi-file-earmark-excel" style="color:#4ade80;"></i>Exportar Excel
+                            </a>
+                        </li>
+                    </ul>
+                    @endif
                 </li>
                 @endif
                 <li class="nav-item">

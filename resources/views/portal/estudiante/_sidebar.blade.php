@@ -181,6 +181,14 @@ try { $moduleTransport = \App\Helpers\Setting::get('transporte','0');        } c
     <i class="bi bi-folder2-open"></i>Mis Documentos
 </a>
 
+{{-- ── DIRECCIÓN ── --}}
+@if(auth()->user()->hasAnyRole(['Administrador','Director','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']))
+<div class="prt-sidebar-section mt-2">Dirección</div>
+<a href="{{ route('admin.ejecutivo.index') }}" class="prt-sidebar-link {{ request()->routeIs('admin.ejecutivo*') ? 'active' : '' }}">
+    <i class="bi bi-bar-chart-line-fill" style="color:#f59e0b;"></i>Dashboard Ejecutivo
+</a>
+@endif
+
 {{-- ── CUENTA ── --}}
 <div class="prt-sidebar-section mt-3">Cuenta</div>
 <a href="{{ route('perfil.show') }}"

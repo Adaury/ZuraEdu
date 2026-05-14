@@ -119,6 +119,45 @@ tr:nth-child(even) td { background: #f8fafc; }
 </table>
 @endif
 
+{{-- Rendimiento por Asignatura --}}
+@if($promediosPorAsignatura->isNotEmpty())
+<div class="section-title">Rendimiento por Asignatura</div>
+<table>
+    <thead><tr><th>#</th><th>Asignatura</th><th>Promedio</th><th>Estudiantes</th></tr></thead>
+    <tbody>
+        @foreach($promediosPorAsignatura as $i => $asig)
+        @php $p = (float)$asig->promedio; @endphp
+        <tr>
+            <td>{{ $i + 1 }}</td>
+            <td>{{ $asig->nombre }}</td>
+            <td class="{{ $p >= 80 ? 'badge-ok' : ($p >= 70 ? 'badge-warn' : 'badge-bad') }}">{{ number_format($p, 1) }}</td>
+            <td>{{ $asig->total_estudiantes }}</td>
+        </tr>
+        @endforeach
+    </tbody>
+</table>
+@endif
+
+{{-- Riesgo Académico --}}
+@if($riesgoData['totalEnRiesgo'] > 0)
+<div class="section-title">Riesgo Académico (≥2 materias &lt; 70)</div>
+<table>
+    <thead><tr><th>Grado</th><th>En Riesgo</th></tr></thead>
+    <tbody>
+        @foreach($riesgoData['riesgoPorGrado'] as $grado => $count)
+        <tr>
+            <td>{{ $grado }}</td>
+            <td class="badge-bad">{{ $count }}</td>
+        </tr>
+        @endforeach
+        <tr style="font-weight:bold;">
+            <td>TOTAL</td>
+            <td class="badge-bad">{{ $riesgoData['totalEnRiesgo'] }}</td>
+        </tr>
+    </tbody>
+</table>
+@endif
+
 <div class="footer">
     Generado por ZuraEdu SGE · {{ now()->format('d/m/Y H:i') }} · Documento confidencial de uso interno
 </div>

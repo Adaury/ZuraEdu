@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\DashboardActualizado;
 use App\Http\Controllers\Controller;
 use App\Models\Grado;
 use App\Models\Grupo;
@@ -44,6 +45,7 @@ class SchoolYearController extends Controller
 
         $data['activo'] = $request->boolean('activo');
         $schoolYear = SchoolYear::create($data);
+        SchoolYear::flushActualCache();
 
         // Auto-crear los 4 períodos distribuidos en el año escolar
         $this->crearPeriodosAutomaticos($schoolYear);
@@ -73,6 +75,7 @@ class SchoolYearController extends Controller
 
         $data['activo'] = $request->boolean('activo');
         $schoolYear->update($data);
+        SchoolYear::flushActualCache();
 
         return redirect()->route('admin.school-years.index')
             ->with('success', 'Año escolar actualizado.');
@@ -184,11 +187,19 @@ class SchoolYearController extends Controller
         $yaMatriculados = Matricula::where('school_year_id', $schoolYear->id)
             ->pluck('estudiante_id')->toArray();
 
+        // Pre-cargar conteos actuales por grupo — evita 1 COUNT query por alumno en el loop
+        $grupoIds = collect($request->matriculas)->pluck('grupo_id')->unique()->map('intval');
+        $ordenPorGrupo = Matricula::whereIn('grupo_id', $grupoIds)
+            ->groupBy('grupo_id')
+            ->selectRaw('grupo_id, COUNT(*) as cnt')
+            ->pluck('cnt', 'grupo_id')
+            ->toArray();
+
         $creados   = 0;
         $omitidos  = 0;
         $hoy       = now()->toDateString();
 
-        DB::transaction(function () use ($request, $schoolYear, $yaMatriculados, &$creados, &$omitidos, $hoy) {
+        DB::transaction(function () use ($request, $schoolYear, $yaMatriculados, &$creados, &$omitidos, $hoy, &$ordenPorGrupo) {
             foreach ($request->matriculas as $item) {
                 $estudianteId = (int) $item['estudiante_id'];
                 $grupoId      = (int) $item['grupo_id'];
@@ -198,7 +209,7 @@ class SchoolYearController extends Controller
                     continue;
                 }
 
-                $orden = Matricula::where('grupo_id', $grupoId)->count() + 1;
+                $ordenPorGrupo[$grupoId] = ($ordenPorGrupo[$grupoId] ?? 0) + 1;
 
                 Matricula::create([
                     'school_year_id'  => $schoolYear->id,
@@ -206,7 +217,7 @@ class SchoolYearController extends Controller
                     'grupo_id'        => $grupoId,
                     'fecha_matricula' => $hoy,
                     'estado'          => 'activa',
-                    'numero_orden'    => $orden,
+                    'numero_orden'    => $ordenPorGrupo[$grupoId],
                 ]);
 
                 $yaMatriculados[] = $estudianteId;
@@ -216,6 +227,15 @@ class SchoolYearController extends Controller
 
         $msg = "Se matricularon {$creados} estudiante(s) correctamente.";
         if ($omitidos > 0) $msg .= " ({$omitidos} omitidos por ya estar matriculados.)";
+
+        if ($creados > 0) {
+            try {
+                DashboardActualizado::dispatch(tenant_id() ?? 0, 'nueva_matricula', [
+                    'cantidad' => $creados,
+                    'bulk'     => true,
+                ]);
+            } catch (\Throwable) {}
+        }
 
         return redirect()->route('admin.school-years.index')->with('success', $msg);
     }

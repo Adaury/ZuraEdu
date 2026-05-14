@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Events\NotificationCreated;
+use App\Jobs\EnviarNotificacionJob;
 use App\Traits\BelongsToTenant;
-
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class Notificacion extends Model
 {
@@ -96,27 +98,58 @@ class Notificacion extends Model
     }
 
     // ── Métodos estáticos ─────────────────────────────────────────────────
+
     /**
-     * Crea y envía una notificación a un usuario.
+     * Crea una notificación. Cuando la cola es asíncrona la despacha como job
+     * para no bloquear el request HTTP.
      */
-    public static function enviar(int $userId, string $tipo, string $titulo, string $mensaje, array $datos = []): self
+    public static function enviar(int $userId, string $tipo, string $titulo, string $mensaje, array $datos = []): void
     {
-        return static::create([
+        if (config('queue.default') !== 'sync') {
+            $tenantId = tenant_id();
+            if ($tenantId) {
+                EnviarNotificacionJob::dispatch(
+                    userId:   $userId,
+                    tipo:     $tipo,
+                    titulo:   $titulo,
+                    mensaje:  $mensaje,
+                    datos:    $datos,
+                    tenantId: $tenantId,
+                )->onQueue('notifications');
+                return;
+            }
+        }
+
+        $notif = static::create([
             'user_id' => $userId,
             'tipo'    => $tipo,
             'titulo'  => $titulo,
             'mensaje' => $mensaje,
             'datos'   => $datos ?: null,
         ]);
+        Cache::forget("user_{$userId}_notif_unread");
+        try {
+            NotificationCreated::dispatch(
+                $notif->user_id,
+                $notif->tipo,
+                $notif->titulo,
+                $notif->mensaje,
+                $notif->datos['url'] ?? null,
+                self::ICONOS[$notif->tipo] ?? 'bi-bell',
+            );
+        } catch (\Throwable) {}
     }
 
     /**
-     * Envía la misma notificación a múltiples usuarios.
+     * Envía la misma notificación a múltiples usuarios (bulk insert síncrono).
+     * Usar solo para operaciones masivas donde el tiempo de inserción es aceptable.
      */
     public static function enviarA(array $userIds, string $tipo, string $titulo, string $mensaje, array $datos = []): void
     {
         $now = now();
+        $tenantId = tenant_id();
         $rows = array_map(fn($id) => [
+            'tenant_id'  => $tenantId,
             'user_id'    => $id,
             'tipo'       => $tipo,
             'titulo'     => $titulo,
@@ -127,6 +160,9 @@ class Notificacion extends Model
             'updated_at' => $now,
         ], $userIds);
 
-        static::insert($rows);
+        static::withoutTenant()->insert($rows);
+        foreach ($userIds as $id) {
+            Cache::forget("user_{$id}_notif_unread");
+        }
     }
 }

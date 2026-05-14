@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Portal;
 
+use App\Events\StudentConnected;
+use App\Events\TaskDelivered;
 use App\Http\Controllers\Controller;
 use App\Models\ArchivoEntrega;
 use App\Models\ClaseVirtual;
@@ -94,6 +96,20 @@ class ClassroomEstudianteController extends Controller
         $recursos = ZcRecurso::where('clase_virtual_id', $claseVirtual->id)
             ->where('publico', true)->orderBy('orden')->get();
 
+        $docenteUserId = $claseVirtual->asignacion->docente->user_id ?? null;
+        if ($docenteUserId) {
+            $est = $matricula->estudiante;
+            try {
+                StudentConnected::dispatch(
+                    $docenteUserId,
+                    $est->id,
+                    $est->apellidos . ', ' . $est->nombres,
+                    $claseVirtual->id,
+                    now()->format('H:i'),
+                );
+            } catch (\Throwable) {}
+        }
+
         return view('portal.classroom.estudiante.show', compact(
             'claseVirtual', 'materiales', 'matricula', 'entregasMap', 'recursos'
         ));
@@ -104,22 +120,19 @@ class ClassroomEstudianteController extends Controller
     {
         $matricula = $this->getMatricula();
 
-        $clases = ClaseVirtual::whereHas('asignacion', fn($q) =>
+        $claseIds = ClaseVirtual::whereHas('asignacion', fn($q) =>
             $q->where('grupo_id', $matricula->grupo_id)
               ->where('school_year_id', $matricula->school_year_id)
               ->where('activo', true)
-        )->where('activo', true)->get();
+        )->where('activo', true)->pluck('id');
 
-        $pendientes = collect();
-        foreach ($clases as $clase) {
-            $mats = $clase->materialesPublicados()
-                ->whereIn('tipo', ['tarea', 'evaluacion'])
-                ->whereDoesntHave('entregas', fn($q) => $q->where('matricula_id', $matricula->id)
-                    ->whereIn('estado', ['entregado', 'calificado']))
-                ->with(['claseVirtual.asignacion.asignatura'])
-                ->get();
-            $pendientes = $pendientes->merge($mats);
-        }
+        $pendientes = MaterialClase::whereIn('clase_virtual_id', $claseIds)
+            ->whereIn('tipo', ['tarea', 'evaluacion'])
+            ->where('publicado', true)
+            ->whereDoesntHave('entregas', fn($q) => $q->where('matricula_id', $matricula->id)
+                ->whereIn('estado', ['entregado', 'calificado']))
+            ->with(['claseVirtual.asignacion.asignatura'])
+            ->get();
 
         return response()->json([
             'count'   => $pendientes->count(),
@@ -179,6 +192,20 @@ class ClassroomEstudianteController extends Controller
                     'tamanio'        => $file->getSize(),
                 ]);
             }
+        }
+
+        $docenteUserId = $claseVirtual->asignacion->docente->user_id ?? null;
+        if ($docenteUserId) {
+            $est = $matricula->estudiante;
+            try {
+                TaskDelivered::dispatch(
+                    $docenteUserId,
+                    $material->id,
+                    $material->titulo,
+                    $est->apellidos . ', ' . $est->nombres,
+                    now()->format('H:i'),
+                );
+            } catch (\Throwable) {}
         }
 
         return back()->with('success', $esAtrasada

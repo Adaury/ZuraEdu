@@ -30,6 +30,38 @@ use App\Http\Controllers\PortalRepresentanteController;
 
 Route::get('/', fn () => view('landing'))->name('landing');
 
+// ── Health check — para balanceadores, uptime monitors y CI/CD ────────────
+Route::get('/health', function () {
+    $checks = [];
+
+    try {
+        \DB::select('SELECT 1');
+        $checks['database'] = 'ok';
+    } catch (\Throwable) {
+        $checks['database'] = 'fail';
+    }
+
+    try {
+        \Cache::store('redis')->set('health_ping', 1, 10);
+        $checks['redis'] = 'ok';
+    } catch (\Throwable) {
+        $checks['redis'] = 'fail';
+    }
+
+    $checks['horizon'] = \Illuminate\Support\Facades\Redis::connection()
+        ->hget(config('horizon.prefix') . 'masters', 'master')
+        ? 'running' : 'stopped';
+
+    $status = in_array('fail', $checks) ? 503 : 200;
+
+    return response()->json([
+        'status'  => $status === 200 ? 'ok' : 'degraded',
+        'checks'  => $checks,
+        'version' => config('app.version', '1.0'),
+        'env'     => app()->environment(),
+    ], $status);
+})->name('health')->middleware('throttle:30,1');
+
 // ── Página de institución suspendida (accesible aunque el tenant no esté activo) ──
 Route::get('/suspended', fn () => view('tenant-suspended'))->name('tenant.suspended');
 
@@ -63,7 +95,10 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middl
 // ── Conteo de notificaciones (polling) ───────────────────────────────────
 Route::get('/notificaciones/conteo', function () {
     if (! auth()->check()) return response()->json(['count' => 0]);
-    $count = \App\Models\Notificacion::where('user_id', auth()->id())->noLeidas()->count();
+    $uid   = auth()->id();
+    $count = \Illuminate\Support\Facades\Cache::remember("user_{$uid}_notif_unread", 15, fn() =>
+        \App\Models\Notificacion::where('user_id', $uid)->noLeidas()->count()
+    );
     return response()->json(['count' => $count]);
 })->name('notificaciones.conteo')->middleware(['auth', 'activo']);
 
@@ -158,6 +193,8 @@ Route::prefix('portal/estudiante')->name('portal.estudiante.')->middleware(['aut
         Route::post('/',                                [\App\Http\Controllers\Portal\SolicitudesEstudianteController::class, 'store'])->name('store');
         Route::get('/{solicitud}',                      [\App\Http\Controllers\Portal\SolicitudesEstudianteController::class, 'show'])->name('show');
     });
+    Route::get('/calendario',     [PortalEstudianteController::class, 'calendario'])->name('calendario');
+    Route::get('/calendario/api', [PortalEstudianteController::class, 'calendarioApi'])->name('calendario.api');
     Route::prefix('classroom')->name('classroom.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Portal\ClassroomEstudianteController::class, 'index'])->name('index');
         Route::get('/tareas-pendientes', [\App\Http\Controllers\Portal\ClassroomEstudianteController::class, 'tareasPendientes'])->name('pendientes');
@@ -220,11 +257,19 @@ Route::prefix('portal/padre')->name('portal.padre.')->middleware(['auth', 'activ
     Route::get('/hijo/{estudiante}/proyectos',  [PortalPadreController::class, 'proyectosHijo'])->name('hijo.proyectos');
     Route::post('/hijo/{estudiante}/pagos/{pago}/pagar-online', [PortalPadreController::class, 'iniciarPagoHijo'])->name('hijo.pagos.pagar-online');
 
+    Route::get('/calendario',     [PortalPadreController::class, 'calendario'])->name('calendario');
+    Route::get('/calendario/api', [PortalPadreController::class, 'calendarioApi'])->name('calendario.api');
     // ── Solicitudes ──────────────────────────────────────────────────────────
     Route::get('/solicitudes',                    [\App\Http\Controllers\Portal\SolicitudesController::class, 'index'])->name('solicitudes.index');
     Route::get('/solicitudes/nueva',              [\App\Http\Controllers\Portal\SolicitudesController::class, 'create'])->name('solicitudes.create');
     Route::post('/solicitudes',                   [\App\Http\Controllers\Portal\SolicitudesController::class, 'store'])->name('solicitudes.store');
     Route::get('/solicitudes/{solicitud}',        [\App\Http\Controllers\Portal\SolicitudesController::class, 'show'])->name('solicitudes.show');
+
+    // ── Mensajería Interna ────────────────────────────────────────────────────
+    Route::get('/mensajes',           [\App\Http\Controllers\Portal\MensajesPortalController::class, 'index'])->name('mensajes.index');
+    Route::get('/mensajes/redactar',  [\App\Http\Controllers\Portal\MensajesPortalController::class, 'create'])->name('mensajes.create');
+    Route::post('/mensajes',          [\App\Http\Controllers\Portal\MensajesPortalController::class, 'store'])->name('mensajes.store');
+    Route::get('/mensajes/{mensaje}', [\App\Http\Controllers\Portal\MensajesPortalController::class, 'show'])->name('mensajes.show');
 });
 
 // ── Portal Docente ────────────────────────────────────────────────────────
@@ -273,6 +318,8 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::post('/asignacion/{asignacion}/recursos',              [PortalDocenteController::class, 'guardarRecurso'])->name('recursos.guardar');
     Route::delete('/asignacion/{asignacion}/recursos/{recurso}',  [PortalDocenteController::class, 'eliminarRecurso'])->name('recursos.eliminar');
     Route::patch('/asignacion/{asignacion}/recursos/{recurso}/toggle', [PortalDocenteController::class, 'toggleRecurso'])->name('recursos.toggle');
+    Route::get('/calendario',     [PortalDocenteController::class, 'calendario'])->name('calendario');
+    Route::get('/calendario/api', [PortalDocenteController::class, 'calendarioApi'])->name('calendario.api');
     Route::get('/mis-planificaciones/pdf',     [PortalDocenteController::class, 'misPlanificacionesPdf'])->name('mis-planificaciones.pdf');
     Route::get('/mis-planificaciones/excel',   [PortalDocenteController::class, 'misPlanificacionesExcel'])->name('mis-planificaciones.excel');
     Route::get('/mis-planificaciones',         [PortalDocenteController::class, 'misPlanificaciones'])->name('mis-planificaciones');
@@ -329,6 +376,22 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     });
     Route::post('/notificaciones/leer-todas',  [PortalDocenteController::class, 'marcarTodasLeidas'])->name('notif.leer-todas');
     Route::get('/notificaciones',              [PortalDocenteController::class, 'notificaciones'])->name('notificaciones');
+    // ── Mensajería Interna ────────────────────────────────────────────────────
+    Route::get('/mensajes',           [\App\Http\Controllers\Portal\MensajesPortalController::class, 'index'])->name('mensajes.index');
+    Route::get('/mensajes/redactar',  [\App\Http\Controllers\Portal\MensajesPortalController::class, 'create'])->name('mensajes.create');
+    Route::post('/mensajes',          [\App\Http\Controllers\Portal\MensajesPortalController::class, 'store'])->name('mensajes.store');
+    Route::get('/mensajes/{mensaje}', [\App\Http\Controllers\Portal\MensajesPortalController::class, 'show'])->name('mensajes.show');
+    // ── Solicitudes del Docente ───────────────────────────────────────────────
+    Route::prefix('solicitudes')->name('solicitudes.')->group(function () {
+        Route::get('/',            [\App\Http\Controllers\Portal\SolicitudesDocenteController::class, 'index'])->name('index');
+        Route::get('/nueva',       [\App\Http\Controllers\Portal\SolicitudesDocenteController::class, 'create'])->name('create');
+        Route::post('/',           [\App\Http\Controllers\Portal\SolicitudesDocenteController::class, 'store'])->name('store');
+        Route::get('/{solicitud}', [\App\Http\Controllers\Portal\SolicitudesDocenteController::class, 'show'])->name('show');
+    });
+    // ── Documentos Oficiales del Docente ─────────────────────────────────────
+    Route::get('/constancia-trabajo', [PortalDocenteController::class, 'constanciaTrabajoPdf'])->name('constancia-trabajo');
+    Route::get('/ficha-actividad',    [PortalDocenteController::class, 'fichaActividadPdf'])->name('ficha-actividad');
+
     // Planes de Clase
     Route::prefix('/asignacion/{asignacion}/planes-clase')->name('planes-clase.')->group(function () {
         Route::get('/lista/pdf',                 [PlanClaseDocenteController::class, 'planesListaPdf'])->name('lista-pdf');
@@ -458,6 +521,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.acc
     Route::middleware('tenant.feature:reuniones')->group(function () {
         require __DIR__ . '/admin/reuniones.php';
     });
+    require __DIR__ . '/admin/sigerd.php';
+    require __DIR__ . '/admin/comunicaciones.php';
 });
 
 // ── Galería pública ───────────────────────────────────────────────────────
@@ -467,6 +532,12 @@ Route::get('/galeria', [\App\Http\Controllers\Admin\GaleriaController::class, 'g
 Route::post('/webhook/stripe', [\App\Http\Controllers\WebhookStripeController::class, 'handle'])
     ->name('webhook.stripe')
     ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+
+// ── Chat interno del tenant (staff/admin) ────────────────────────────────
+Route::prefix('admin/tenant-chat')->name('admin.tenant-chat.')->middleware(['auth', 'activo'])->group(function () {
+    Route::get('/',       [\App\Http\Controllers\Admin\TenantChatController::class, 'index'])->name('index');
+    Route::post('/',      [\App\Http\Controllers\Admin\TenantChatController::class, 'store'])->name('store');
+});
 
 // ── CardNet RD — Pago en Línea ────────────────────────────────────────────
 Route::get('/cardnet/checkout/{token}', [\App\Http\Controllers\CardNetController::class, 'checkout'])->name('cardnet.checkout');

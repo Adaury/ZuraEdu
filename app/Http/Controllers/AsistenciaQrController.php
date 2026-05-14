@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\EstudianteEscaneadoQr;
 use App\Models\Asignacion;
 use App\Models\Asistencia;
 use App\Models\Matricula;
@@ -195,6 +196,25 @@ class AsistenciaQrController extends Controller
             ],
             ['estado' => 'presente', 'registrado_por' => Auth::id()]
         );
+
+        // Notificar al docente en tiempo real
+        try {
+            $qr->loadMissing('docente');
+            if ($qr->docente?->user_id) {
+                $totalPresentes = Asistencia::where('asignacion_id', $qr->asignacion_id)
+                    ->whereDate('fecha', $qr->fecha)
+                    ->where('estado', 'presente')
+                    ->count();
+
+                EstudianteEscaneadoQr::dispatch(
+                    $qr->docente->user_id,
+                    $qr->asignacion_id,
+                    $estudiante->nombre_completo ?? ($estudiante->nombres . ' ' . $estudiante->apellidos),
+                    now()->format('H:i:s'),
+                    $totalPresentes,
+                );
+            }
+        } catch (\Throwable) {}
 
         return redirect()->route('asistencia.qr.scan', $token)
             ->with('registrado', true);

@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Events\ClassroomMeetingUpdated;
+use App\Events\NuevoMaterialPublicado;
+use App\Events\TaskCreated;
 use App\Http\Controllers\Controller;
+use App\Traits\HasDocenteContext;
 use App\Models\ArchivoEntrega;
 use App\Models\ArchivoMaterial;
 use App\Models\ClassroomMessage;
@@ -25,13 +28,7 @@ use Illuminate\Support\Str;
 
 class ClassroomDocenteController extends Controller
 {
-    /** Obtiene el docente autenticado o aborta */
-    private function getDocente(): Docente
-    {
-        $docente = Docente::where('user_id', auth()->id())->first();
-        abort_unless($docente, 403, 'No tiene perfil de docente.');
-        return $docente;
-    }
+    use HasDocenteContext;
 
     /** Verifica que la clase pertenece al docente */
     private function autorizarClase(ClaseVirtual $clase, Docente $docente): void
@@ -72,7 +69,13 @@ class ClassroomDocenteController extends Controller
             ->with(['archivos', 'entregas'])
             ->get();
 
-        return view('portal.classroom.docente.show', compact('claseVirtual', 'materiales'));
+        // Vincula la relación en memoria para que tareasPendientes() use la colección cargada
+        $claseVirtual->setRelation('materiales', $materiales);
+
+        $matriculas = $claseVirtual->estudiantesMatriculados()->with('estudiante')->get();
+        $recursos   = $claseVirtual->recursos()->get();
+
+        return view('portal.classroom.docente.show', compact('claseVirtual', 'materiales', 'matriculas', 'recursos'));
     }
 
     // ── crearMaterial ─────────────────────────────────────────────────────
@@ -83,8 +86,8 @@ class ClassroomDocenteController extends Controller
         $this->autorizarClase($claseVirtual, $docente);
 
         $tipos      = MaterialClase::TIPOS;
-        $schoolYear = $claseVirtual->asignacion->school_year_id;
-        $periodos   = Periodo::where('school_year_id', $schoolYear)->orderBy('numero')->get();
+        $schoolYear = \App\Models\SchoolYear::find($claseVirtual->asignacion->school_year_id);
+        $periodos   = $this->getPeriodos($schoolYear);
         $competencias = CompetenciaEspecifica::where('asignatura_id', $claseVirtual->asignacion->asignatura_id)
             ->activas()->orderBy('nombre')->get();
 
@@ -157,6 +160,19 @@ class ClassroomDocenteController extends Controller
         // Notificar a estudiantes si el material está publicado
         if ($material->publicado && !$material->publicar_en) {
             $this->notificarEstudiantesNuevoMaterial($claseVirtual, $material);
+            try { NuevoMaterialPublicado::dispatch($material); } catch (\Throwable) {}
+            if (in_array($material->tipo, ['tarea', 'evaluacion'])) {
+                try {
+                    TaskCreated::dispatch(
+                        $claseVirtual->id,
+                        $material->id,
+                        $material->titulo,
+                        $material->tipo,
+                        $material->fecha_limite?->format('d/m/Y'),
+                        $docente->apellidos . ', ' . $docente->nombres,
+                    );
+                } catch (\Throwable) {}
+            }
         }
 
         return redirect()->route('portal.docente.classroom.show', $claseVirtual)

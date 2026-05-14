@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('page-title', 'Dashboard') — PSAC | Politécnico Salesiano Arquides Calderón</title>
+    @php $__sysName = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name')); @endphp
+    <title>@yield('page-title', 'Dashboard') — {{ $__sysName }}</title>
 
-    {{-- Dynamic favicon (cached 10 min) --}}
-    @php $faviconPath = \Illuminate\Support\Facades\Cache::remember('system_favicon', 600, fn () => \Illuminate\Support\Facades\DB::table('system_settings')->where('key','system_favicon')->value('value')); @endphp
+    {{-- Dynamic favicon — tenant-scoped cache --}}
+    @php $__tid = tenant_id(); $faviconPath = \Illuminate\Support\Facades\Cache::remember("t{$__tid}_system_favicon", 600, fn () => \Illuminate\Support\Facades\DB::table('system_settings')->where('key','system_favicon')->value('value')); @endphp
     @if($faviconPath)
     <link rel="icon" href="{{ asset('storage/' . $faviconPath) }}" type="image/x-icon">
     @else
@@ -33,6 +34,115 @@
     <!-- Bootstrap Icons — local -->
     <link href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
 
+    <!-- DataTables 2 + Scroller JS — CSS propio (sin CDN CSS para evitar conflictos Bootstrap) -->
+    <style>
+        /* ══ DataTables wrapper layout ══════════════════════════════════════ */
+        div.dataTables_wrapper                    { position: relative; clear: both; }
+        div.dataTables_wrapper:after              { visibility: hidden; display: block; content: ""; clear: both; height: 0; }
+
+        /* Cabecera y pie del wrapper */
+        div.dataTables_wrapper div.dt-top          { padding: .35rem 0 .5rem; }
+        div.dataTables_wrapper div.dt-bottom       { padding: .35rem 0 0; }
+
+        /* ── Búsqueda ── */
+        div.dataTables_wrapper div.dataTables_filter        { display: inline-block; }
+        div.dataTables_wrapper div.dataTables_filter label  { font-size: .82rem; font-weight: 600; color: #6b7280; display: flex; align-items: center; gap: .4rem; margin: 0; }
+        div.dataTables_wrapper div.dataTables_filter input[type="search"] {
+            padding: .35rem .7rem; border: 1.5px solid #d1d5db; border-radius: 8px;
+            font-size: .83rem; color: #1e293b; background: #fff;
+            outline: none; min-width: 180px;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        div.dataTables_wrapper div.dataTables_filter input[type="search"]:focus {
+            border-color: var(--primary, #2563eb);
+            box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+        }
+        div.dataTables_wrapper div.dataTables_filter input[type="search"]::placeholder { color: #9ca3af; }
+
+        /* ── Info ── */
+        div.dataTables_wrapper div.dataTables_info { font-size: .79rem; color: #9ca3af; padding: 0; }
+
+        /* ── Scroll ── */
+        div.dataTables_wrapper .dataTables_scroll         { clear: both; }
+        div.dataTables_wrapper .dataTables_scrollHead     { overflow: hidden !important; }
+        div.dataTables_wrapper .dataTables_scrollBody     { overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
+        div.dataTables_wrapper .dataTables_scrollHeadInner{ box-sizing: border-box !important; }
+        div.dataTables_wrapper .dataTables_scrollHeadInner table { margin-bottom: 0 !important; }
+        div.dataTables_wrapper .dataTables_scrollFoot     { overflow: hidden; }
+
+        /* ══ Tabla ══════════════════════════════════════════════════════════ */
+        table.dataTable { border-collapse: collapse !important; border-spacing: 0 !important; width: 100% !important; }
+        table.dataTable.no-footer { border-bottom: 1px solid #dee2e6; }
+
+        /* thead: fondo primario, texto blanco */
+        table.dataTable > thead > tr > th,
+        table.dataTable > thead > tr > td {
+            background: var(--primary, #6366f1) !important;
+            color: #fff !important;
+            font-size: .8rem !important;
+            font-weight: 700 !important;
+            border-bottom: 2px solid rgba(255,255,255,.2) !important;
+            padding: .55rem .75rem !important;
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* Íconos de ordenamiento */
+        table.dataTable > thead > tr > th.sorting          { background-image: none !important; }
+        table.dataTable > thead > tr > th.dt-orderable-asc,
+        table.dataTable > thead > tr > th.dt-orderable-desc{ position: relative; padding-right: 1.5rem !important; }
+        table.dataTable > thead > tr > th.dt-orderable-asc::after,
+        table.dataTable > thead > tr > th.dt-orderable-desc::after {
+            position: absolute; right: .5rem; top: 50%; transform: translateY(-50%);
+            font-size: .65rem; opacity: .6; color: #fff;
+        }
+        table.dataTable > thead > tr > th.dt-ordering-asc::after  { content: '▲'; opacity: 1; }
+        table.dataTable > thead > tr > th.dt-ordering-desc::after { content: '▼'; opacity: 1; }
+        /* DT2 usa clases distintas para sort */
+        table.dataTable thead th.sorting       { background-image: none !important; }
+        table.dataTable thead th.sorting::after,
+        table.dataTable thead th.sorting_asc::after,
+        table.dataTable thead th.sorting_desc::after { color: rgba(255,255,255,.75) !important; }
+
+        /* tbody: texto oscuro, fondo blanco explícito */
+        table.dataTable > tbody > tr > td,
+        table.dataTable > tbody > tr > th {
+            color: #1e293b !important;
+            background-color: #fff !important;
+            border-color: #f1f5f9 !important;
+            padding: .5rem .75rem;
+            vertical-align: middle;
+        }
+        table.dataTable > tbody > tr:nth-child(even) > td,
+        table.dataTable > tbody > tr:nth-child(even) > th { background-color: #f8faff !important; }
+        table.dataTable > tbody > tr:hover > td,
+        table.dataTable > tbody > tr:hover > th {
+            background-color: #eff6ff !important;
+            color: #1e293b !important;
+        }
+        table.dataTable > tbody > tr { transition: background .1s; }
+
+        /* Scroller placeholder rows */
+        div.dataTables_wrapper div.DTS div.dataTables_scrollBody table { background: transparent; }
+        div.dataTables_wrapper div.DTS tbody tr { background: transparent !important; }
+
+        /* ══ Dark mode ══════════════════════════════════════════════════════ */
+        [data-theme="dark"] div.dataTables_wrapper div.dataTables_filter input[type="search"] {
+            background: #1e293b !important; border-color: #334155 !important; color: #e2e8f0 !important;
+        }
+        [data-theme="dark"] div.dataTables_wrapper div.dataTables_filter input[type="search"]::placeholder { color: #64748b; }
+        [data-theme="dark"] div.dataTables_wrapper div.dataTables_filter label,
+        [data-theme="dark"] div.dataTables_wrapper div.dataTables_info    { color: #94a3b8 !important; }
+        [data-theme="dark"] div.dataTables_wrapper .dataTables_scrollBody { background: #0f172a; }
+        [data-theme="dark"] table.dataTable > tbody > tr > td,
+        [data-theme="dark"] table.dataTable > tbody > tr > th             { color: #e2e8f0 !important; background-color: #1e293b !important; border-color: #334155 !important; }
+        [data-theme="dark"] table.dataTable > tbody > tr:nth-child(even) > td,
+        [data-theme="dark"] table.dataTable > tbody > tr:nth-child(even) > th { background-color: #172032 !important; }
+        [data-theme="dark"] table.dataTable > tbody > tr:hover > td,
+        [data-theme="dark"] table.dataTable > tbody > tr:hover > th       { background-color: #334155 !important; color: #f1f5f9 !important; }
+    </style>
+
     <!-- Inter font — sistema (sin dependencia de Google) -->
     <style>
         @import url('data:text/css,');
@@ -53,11 +163,11 @@
     @stack('styles')
 
     <style>
-        /* ── CSS Variables ─────────────────────────────── */
+        /* ── CSS Variables — estilo ZuraEdu SuperAdmin (índigo) ── */
         :root {
-            --primary:         #3B82F6;
-            --primary-dark:    #2563EB;
-            --primary-light:   #60A5FA;
+            --primary:         #6366f1;
+            --primary-dark:    #4f46e5;
+            --primary-light:   #818cf8;
             --secondary:       #10b981;
             --accent:          #10b981;
             --accent-light:    #d1fae5;
@@ -66,31 +176,121 @@
             --topbar-height:   60px;
             --sidebar-text:    #94a3b8;
             --sidebar-hover:   rgba(255,255,255,.06);
-            --sidebar-active:  var(--primary);
-            --role-color:      #3B82F6;
-            --role-glow:       rgba(59,130,246,.35);
+            --sidebar-active:  #6366f1;
+            --role-color:      #6366f1;
+            --role-glow:       rgba(99,102,241,.35);
             --role-grad1:      #0f172a;
-            --role-grad2:      #1e3a8a;
+            --role-grad2:      #1e1b4b;
+            --role-active-bg:  rgba(99,102,241,.18);
+            --role-active-txt: #a5b4fc;
         }
-        /* ── Docente → violeta ── */
-        body.role-docente {
-            --primary:      #7c3aed;
-            --primary-dark: #6d28d9;
-            --primary-light:#a78bfa;
-            --role-color:   #7c3aed;
-            --role-glow:    rgba(124,58,237,.35);
-            --role-grad1:   #1e0a3c;
-            --role-grad2:   #6d28d9;
+        /* ── Director → rojo carmesí ── */
+        body.role-director {
+            --primary:      #dc2626;
+            --primary-dark: #b91c1c;
+            --primary-light:#fca5a5;
+            --role-color:   #dc2626;
+            --role-glow:    rgba(220,38,38,.35);
+            --role-grad1:   #0f172a;
+            --role-grad2:   #450a0a;
+            --role-active-bg: rgba(220,38,38,.15);
+            --role-active-txt:#fca5a5;
         }
-        /* ── Coordinador → índigo ── */
+        /* ── Coordinador → índigo profundo ── */
         body.role-coordinador {
             --primary:      #4f46e5;
             --primary-dark: #4338ca;
             --primary-light:#818cf8;
             --role-color:   #4f46e5;
             --role-glow:    rgba(79,70,229,.35);
-            --role-grad1:   #1e1b4b;
-            --role-grad2:   #4338ca;
+            --role-grad1:   #0f172a;
+            --role-grad2:   #1e1b4b;
+            --role-active-bg: rgba(79,70,229,.18);
+            --role-active-txt:#a5b4fc;
+        }
+        /* ── Docente → violeta ── */
+        body.role-docente {
+            --primary:      #7c3aed;
+            --primary-dark: #6d28d9;
+            --primary-light:#c4b5fd;
+            --role-color:   #7c3aed;
+            --role-glow:    rgba(124,58,237,.35);
+            --role-grad1:   #0f172a;
+            --role-grad2:   #2e1065;
+            --role-active-bg: rgba(124,58,237,.18);
+            --role-active-txt:#c4b5fd;
+        }
+        /* ── Docente Guía → púrpura ── */
+        body.role-docente-guia {
+            --primary:      #9333ea;
+            --primary-dark: #7e22ce;
+            --primary-light:#d8b4fe;
+            --role-color:   #9333ea;
+            --role-glow:    rgba(147,51,234,.35);
+            --role-grad1:   #0f172a;
+            --role-grad2:   #3b0764;
+            --role-active-bg: rgba(147,51,234,.18);
+            --role-active-txt:#d8b4fe;
+        }
+        /* ── Secretaría → rosa ── */
+        body.role-secretaria {
+            --primary:      #db2777;
+            --primary-dark: #be185d;
+            --primary-light:#fbcfe8;
+            --role-color:   #db2777;
+            --role-glow:    rgba(219,39,119,.35);
+            --role-grad1:   #0f172a;
+            --role-grad2:   #500724;
+            --role-active-bg: rgba(219,39,119,.15);
+            --role-active-txt:#fbcfe8;
+        }
+        /* ── Cajero / Personal Adm. → esmeralda ── */
+        body.role-cajero {
+            --primary:      #059669;
+            --primary-dark: #047857;
+            --primary-light:#6ee7b7;
+            --role-color:   #059669;
+            --role-glow:    rgba(5,150,105,.35);
+            --role-grad1:   #0f172a;
+            --role-grad2:   #052e16;
+            --role-active-bg: rgba(5,150,105,.15);
+            --role-active-txt:#6ee7b7;
+        }
+        /* ── Representante (Padre) → celeste ── */
+        body.role-representante {
+            --primary:      #0284c7;
+            --primary-dark: #0369a1;
+            --primary-light:#7dd3fc;
+            --role-color:   #0284c7;
+            --role-glow:    rgba(2,132,199,.35);
+            --role-grad1:   #0f172a;
+            --role-grad2:   #0c2340;
+            --role-active-bg: rgba(2,132,199,.15);
+            --role-active-txt:#7dd3fc;
+        }
+        /* ── Estudiante → cian ── */
+        body.role-estudiante {
+            --primary:      #0891b2;
+            --primary-dark: #0e7490;
+            --primary-light:#67e8f9;
+            --role-color:   #0891b2;
+            --role-glow:    rgba(8,145,178,.35);
+            --role-grad1:   #0f172a;
+            --role-grad2:   #0c2a3a;
+            --role-active-bg: rgba(8,145,178,.15);
+            --role-active-txt:#67e8f9;
+        }
+        /* ── Encargado de Área → verde ── */
+        body.role-encargado {
+            --primary:      #16a34a;
+            --primary-dark: #15803d;
+            --primary-light:#86efac;
+            --role-color:   #16a34a;
+            --role-glow:    rgba(22,163,74,.35);
+            --role-grad1:   #0f172a;
+            --role-grad2:   #052e16;
+            --role-active-bg: rgba(22,163,74,.15);
+            --role-active-txt:#86efac;
         }
 
         /* ── Dark mode overrides ───────────────────────── */
@@ -104,20 +304,32 @@
             color: #e2e8f0;
         }
         [data-theme="dark"] .topbar {
-            background: linear-gradient(135deg, #020617 0%, #0f172a 100%);
-            border-bottom: none;
+            background: #0f172a;
+            border-bottom: 1px solid #1e293b;
+            box-shadow: 0 1px 8px rgba(0,0,0,.4);
         }
-        [data-theme="dark"] .topbar-title { color: rgba(255,255,255,.85); }
-        [data-theme="dark"] .topbar-user .dropdown-toggle { color: #fff; }
-        [data-theme="dark"] .topbar-user .dropdown-toggle:hover { background: rgba(255,255,255,.14); }
+        [data-theme="dark"] .topbar-title { color: #e2e8f0; }
+        [data-theme="dark"] .topbar-hamburger { color: #94a3b8; }
+        [data-theme="dark"] .topbar-hamburger:hover { color: #e2e8f0; background: #1e293b; }
+        [data-theme="dark"] .topbar-search input { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+        [data-theme="dark"] .topbar-search input::placeholder { color: #475569; }
+        [data-theme="dark"] .topbar-search input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.2); background: #1e293b; }
+        [data-theme="dark"] .topbar-search .gs-icon { color: #475569; }
+        [data-theme="dark"] .schoolyear-badge { background: #1e1b4b; color: #a5b4fc; border-color: #4f46e5; }
+        [data-theme="dark"] .topbar-user .dropdown-toggle { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+        [data-theme="dark"] .topbar-user .dropdown-toggle:hover { background: #1e1b4b; border-color: #6366f1; }
+        [data-theme="dark"] #adminBell { color: #64748b !important; }
+        [data-theme="dark"] #adminBell:hover { color: #a5b4fc !important; background: rgba(99,102,241,.15) !important; }
+        [data-theme="dark"] .dark-toggle { color: #fcd34d; }
+        [data-theme="dark"] .dark-toggle:hover { background: #1e293b; }
         [data-theme="dark"] .main-content { background: #0f172a; }
-        [data-theme="dark"] .sidebar { background: linear-gradient(180deg,#020617 0%,#0a0f1e 100%); box-shadow: 4px 0 32px rgba(0,0,0,.6); }
+        [data-theme="dark"] .sidebar { background: linear-gradient(180deg, #060611 0%, #1a1740 100%); box-shadow: 4px 0 32px rgba(0,0,0,.6); border-right-color: rgba(99,102,241,.1); }
         [data-theme="dark"] .card,
         [data-theme="dark"] .card-panel,
         [data-theme="dark"] .import-card,
         [data-theme="dark"] .stat-card { background: #1e293b !important; border-color: #334155 !important; color: #e2e8f0; }
         [data-theme="dark"] .table { color: #e2e8f0; }
-        [data-theme="dark"] .table thead th { background: #1e3a8a !important; }
+        [data-theme="dark"] .table thead th { background: #1e1b4b !important; }
         [data-theme="dark"] .table tbody tr:hover td { background: #1e293b; }
         [data-theme="dark"] .table td, [data-theme="dark"] .table th { border-color: #334155; }
         [data-theme="dark"] .form-control,
@@ -136,7 +348,7 @@
         [data-theme="dark"] footer { border-color: #334155 !important; }
         [data-theme="dark"] .text-muted { color: #60a5fa !important; }
         [data-theme="dark"] .bg-white { background: #1e293b !important; }
-        [data-theme="dark"] .schoolyear-badge { background: #1e3a8a; color: #93c5fd; border-color: #3b82f6; }
+        [data-theme="dark"] .schoolyear-badge { background: #1e1b4b; color: #a5b4fc; border-color: #4f46e5; }
 
         /* ══════════════════════════════════════════════════
            DARK MODE — COBERTURA COMPLETA
@@ -428,19 +640,19 @@
         .topbar-search { position: relative; flex: 1; max-width: 380px; }
         .topbar-search input {
             width: 100%; padding: .38rem .9rem .38rem 2.2rem;
-            border: 1.5px solid rgba(255,255,255,.18); border-radius: 20px;
-            font-size: .82rem; background: rgba(255,255,255,.1); color: #fff;
+            border: 1.5px solid #e2e8f0; border-radius: 20px;
+            font-size: .82rem; background: #f8faff; color: #1e293b;
             outline: none; transition: border-color .2s, box-shadow .2s, background .2s;
         }
-        .topbar-search input::placeholder { color: rgba(255,255,255,.45); }
+        .topbar-search input::placeholder { color: #94a3b8; }
         .topbar-search input:focus {
-            border-color: rgba(255,255,255,.38);
-            box-shadow: 0 0 0 3px rgba(255,255,255,.08);
-            background: rgba(255,255,255,.16);
+            border-color: #a5b4fc;
+            box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+            background: #fff;
         }
         .topbar-search .gs-icon {
             position: absolute; left: .65rem; top: 50%;
-            transform: translateY(-50%); color: rgba(255,255,255,.55); font-size: .85rem; pointer-events: none;
+            transform: translateY(-50%); color: #94a3b8; font-size: .85rem; pointer-events: none;
         }
         #gsDropdown {
             position: absolute; top: calc(100% + 6px); left: 0; right: 0;
@@ -469,8 +681,7 @@
         .gs-item-label { font-size: .82rem; font-weight: 600; }
         .gs-item-sub   { font-size: .73rem; color: #6b7280; }
         .gs-empty { padding: .85rem; text-align: center; font-size: .82rem; color: #60a5fa; }
-        [data-theme="dark"] .topbar-search input { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.15); color: #fff; }
-        [data-theme="dark"] .topbar-search input::placeholder { color: rgba(255,255,255,.35); }
+        /* topbar-search dark: manejado en bloque dark-mode arriba */
         [data-theme="dark"] #gsDropdown { background: #1e293b; border-color: #334155; }
         [data-theme="dark"] .gs-group-header { background: #0f172a; color: #60a5fa; border-color: #334155; }
         [data-theme="dark"] .gs-item { color: #e2e8f0; }
@@ -828,7 +1039,7 @@
         [data-theme="dark"] tr[style*="background: #f8faff"],
         [data-theme="dark"] thead[style*="background:#f8faff"],
         [data-theme="dark"] thead[style*="background: #f8faff"] {
-            background: #1e3a8a !important;
+            background: #1e1b4b !important;
         }
         [data-theme="dark"] tr[style*="background:#fff"] td,
         [data-theme="dark"] tr[style*="background: #fff"] td,
@@ -865,18 +1076,18 @@
         /* ── Dark mode toggle button ─────────────────────── */
         .dark-toggle {
             background: transparent; border: none;
-            color: rgba(255,255,255,.7); font-size: 1.05rem;
+            color: #64748b; font-size: 1.05rem;
             padding: .3rem .4rem; border-radius: 8px;
             cursor: pointer; transition: color .18s, background .18s;
             line-height: 1;
         }
-        .dark-toggle:hover { color: #fff; background: rgba(255,255,255,.12); }
+        .dark-toggle:hover { color: #0f172a; background: #f1f5f9; }
         [data-theme="dark"] .dark-toggle { color: #fcd34d; }
         [data-theme="dark"] .dark-toggle:hover { background: rgba(255,255,255,.08); }
 
-        /* ── Bell / alertas en topbar oscuro ─────────────── */
-        #adminBell { color: rgba(255,255,255,.7) !important; border-radius: 8px; transition: color .15s, background .15s; }
-        #adminBell:hover { color: #fff !important; background: rgba(255,255,255,.12) !important; }
+        /* ── Bell / alertas en topbar blanco ─────────────── */
+        #adminBell { color: #64748b !important; border-radius: 8px; transition: color .15s, background .15s; }
+        #adminBell:hover { color: #4f46e5 !important; background: #ede9fe !important; }
 
         * { box-sizing: border-box; }
 
@@ -896,14 +1107,14 @@
             top: 0; left: 0;
             width: var(--sidebar-width);
             height: 100vh;
-            background: linear-gradient(180deg,#0f172a 0%,#111827 100%);
+            background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%);
             display: flex;
             flex-direction: column;
             z-index: 1040;
             transition: transform .3s cubic-bezier(.4,0,.2,1);
             overflow-x: hidden;
             overflow-y: hidden;
-            border-right: 1px solid rgba(255,255,255,.06);
+            border-right: 1px solid rgba(99,102,241,.12);
             box-shadow: 4px 0 32px rgba(0,0,0,.35);
         }
 
@@ -921,7 +1132,7 @@
 
         .logo-badge {
             width: 42px; height: 42px;
-            background: linear-gradient(135deg, var(--role-color) 0%, var(--primary-dark) 100%);
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
             border-radius: 12px;
             display: flex;
             align-items: center;
@@ -931,7 +1142,7 @@
             color: #fff;
             letter-spacing: .02em;
             flex-shrink: 0;
-            box-shadow: 0 4px 18px var(--role-glow), 0 0 0 1px rgba(255,255,255,.1);
+            box-shadow: 0 4px 18px rgba(99,102,241,.45), 0 0 0 1px rgba(255,255,255,.1);
         }
 
         .logo-text .system-name {
@@ -975,7 +1186,7 @@
             font-weight: 700;
             letter-spacing: .18em;
             text-transform: uppercase;
-            color: #475569;
+            color: #818cf8;
             padding: .9rem 1.1rem .2rem;
             margin-top: .1rem;
         }
@@ -1010,10 +1221,11 @@
 
         .nav-item a.active,
         .nav-item a[aria-current="page"] {
-            background: var(--role-color);
-            color: #fff;
+            background: var(--role-active-bg, rgba(99,102,241,.18));
+            color: var(--role-active-txt, #a5b4fc);
             font-weight: 600;
-            box-shadow: 0 4px 14px var(--role-glow), inset 0 1px 0 rgba(255,255,255,.15);
+            border-right: 3px solid var(--role-color, #6366f1);
+            box-shadow: none;
         }
 
         .nav-item a i,
@@ -1095,12 +1307,13 @@
             left: var(--sidebar-width);
             right: 0;
             height: var(--topbar-height);
-            background: linear-gradient(135deg, var(--role-grad1) 0%, var(--role-grad2) 100%);
+            background: #fff;
+            border-bottom: 1px solid #e2e8f0;
             display: flex;
             align-items: center;
             padding: 0 1.5rem;
             z-index: 1030;
-            box-shadow: 0 2px 16px rgba(0,0,0,.28);
+            box-shadow: 0 1px 8px rgba(0,0,0,.06);
             gap: 1rem;
             transition: left .3s cubic-bezier(.4,0,.2,1);
         }
@@ -1109,7 +1322,7 @@
             display: none;
             background: transparent;
             border: none;
-            color: rgba(255,255,255,.7);
+            color: #64748b;
             font-size: 1.3rem;
             padding: .25rem;
             line-height: 1;
@@ -1117,20 +1330,20 @@
             border-radius: 6px;
             transition: color .18s, background .18s;
         }
-        .topbar-hamburger:hover { color: #fff; background: rgba(255,255,255,.12); }
+        .topbar-hamburger:hover { color: #0f172a; background: #f1f5f9; }
 
         .topbar-title {
-            font-size: .95rem;
-            font-weight: 600;
-            color: rgba(255,255,255,.8);
+            font-size: .92rem;
+            font-weight: 700;
+            color: #0f172a;
             flex: 1;
             letter-spacing: .01em;
         }
 
         .schoolyear-badge {
-            background: rgba(255,255,255,.12);
-            color: #fff;
-            border: 1px solid rgba(255,255,255,.22);
+            background: #ede9fe;
+            color: #4f46e5;
+            border: 1px solid #c4b5fd;
             border-radius: 20px;
             padding: .28rem .85rem;
             font-size: .74rem;
@@ -1142,21 +1355,21 @@
             display: flex;
             align-items: center;
             gap: .55rem;
-            background: rgba(255,255,255,.12);
-            border: 1px solid rgba(255,255,255,.2);
-            color: #fff;
+            background: #f8faff;
+            border: 1.5px solid #e0e7ff;
+            color: #1e293b;
             font-size: .83rem;
             font-weight: 600;
             padding: .3rem .75rem .3rem .4rem;
             border-radius: 20px;
-            transition: background .18s;
+            transition: background .18s, border-color .18s;
         }
-        .topbar-user .dropdown-toggle:hover { background: rgba(255,255,255,.22); color: #fff; }
+        .topbar-user .dropdown-toggle:hover { background: #ede9fe; border-color: #a5b4fc; color: #1e293b; }
         .topbar-user .dropdown-toggle::after { display: none; }
 
         .topbar-avatar {
             width: 34px; height: 34px;
-            background: var(--primary);
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -1467,10 +1680,17 @@
 </head>
 @php
 $bodyRoleClass = '';
-if(auth()->check()) {
+if (auth()->check()) {
     $r = auth()->user();
-    if($r->hasRole('Docente'))      $bodyRoleClass = 'role-docente';
-    elseif($r->hasAnyRole(['Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo'])) $bodyRoleClass = 'role-coordinador';
+    if      ($r->hasRole('Director'))                                                                          $bodyRoleClass = 'role-director';
+    elseif  ($r->hasAnyRole(['Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo'])) $bodyRoleClass = 'role-coordinador';
+    elseif  ($r->hasRole('Secretaria Docente'))                                                                $bodyRoleClass = 'role-docente-guia';
+    elseif  ($r->hasRole('Docente'))                                                                           $bodyRoleClass = 'role-docente';
+    elseif  ($r->hasRole('Secretaría'))                                                                        $bodyRoleClass = 'role-secretaria';
+    elseif  ($r->hasAnyRole(['Personal Administrativo','Cajero']))                                             $bodyRoleClass = 'role-cajero';
+    elseif  ($r->hasRole('Representante'))                                                                     $bodyRoleClass = 'role-representante';
+    elseif  ($r->hasRole('Estudiante'))                                                                        $bodyRoleClass = 'role-estudiante';
+    elseif  ($r->hasRole('Encargado de Área'))                                                                 $bodyRoleClass = 'role-encargado';
 }
 @endphp
 <body class="{{ $bodyRoleClass }}">
@@ -1796,6 +2016,14 @@ if(auth()->check()) {
             @if($canSupervisar || $isDir || $isCoord)
             <div class="nav-section-title">Supervisión</div>
             <ul class="list-unstyled mb-0">
+                @if($isAdmin || $isDir || $isCoord)
+                <li class="nav-item">
+                    <a href="{{ route('admin.ejecutivo.index') }}" class="{{ request()->routeIs('admin.ejecutivo*') ? 'active' : '' }}"
+                       style="{{ request()->routeIs('admin.ejecutivo*') ? '' : '' }}">
+                        <i class="bi bi-bar-chart-line-fill" style="color:#f59e0b;"></i>Dashboard Ejecutivo
+                    </a>
+                </li>
+                @endif
                 <li class="nav-item">
                     <a href="{{ route('admin.reportes.index') }}" class="{{ request()->routeIs('admin.reportes*') ? 'active' : '' }}">
                         <i class="bi bi-clipboard2-data"></i>Reportes Institucionales
@@ -1857,9 +2085,9 @@ if(auth()->check()) {
             <div class="nav-section-title">Comunicados y Mensajes</div>
             <ul class="list-unstyled mb-0">
                 <li class="nav-item">
-                    <a href="{{ route('admin.mensajes.index') }}" class="{{ request()->routeIs('admin.mensajes*') ? 'active' : '' }}">
-                        <i class="bi bi-envelope-fill"></i>Mensajes
-                        @php $msgNoLeidos = \App\Models\Mensaje::recibidos(auth()->id())->noLeidos()->count(); @endphp
+                    <a href="{{ route('admin.comunicaciones.index') }}" class="{{ request()->routeIs('admin.comunicaciones*') ? 'active' : '' }}">
+                        <i class="bi bi-envelope-fill"></i>Mensajes Internos
+                        @php try { $__uid = auth()->id(); $msgNoLeidos = \Illuminate\Support\Facades\Cache::remember("user_{$__uid}_msg_unread", 60, fn() => \App\Models\MensajeDestinatario::where('destinatario_id',$__uid)->whereNull('leido_at')->where('eliminado',false)->count()); } catch(\Exception $e){ $msgNoLeidos=0; } @endphp
                         @if($msgNoLeidos > 0)
                         <span class="badge rounded-pill text-bg-primary ms-auto" style="font-size:.62rem;padding:.2rem .5rem;">{{ $msgNoLeidos }}</span>
                         @endif
@@ -1929,6 +2157,62 @@ if(auth()->check()) {
                         <span><i class="bi bi-person-lines-fill"></i>Pre-matrículas</span>
                         @if($pmPendientes > 0)
                         <span style="background:#f59e0b;color:#fff;font-size:.65rem;font-weight:800;padding:.1rem .45rem;border-radius:20px;line-height:1.5;flex-shrink:0;margin-left:.4rem;">{{ $pmPendientes }}</span>
+                        @endif
+                    </a>
+                </li>
+            </ul>
+            @endif
+
+            {{-- ══ SOLICITUDES DEL PERSONAL ══ --}}
+            @if($isAdmin || $isDir || $isCoord)
+            <div class="nav-section-title">Solicitudes</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.solicitudes.index') }}" class="{{ request()->routeIs('admin.solicitudes.index') ? 'active' : '' }}"
+                       style="display:flex;align-items:center;justify-content:space-between;">
+                        <span><i class="bi bi-people-fill"></i>Representantes</span>
+                        @php
+                        try {
+                            $__tid = tenant_id();
+                            $solRepPend = \Illuminate\Support\Facades\Cache::remember("t{$__tid}_sol_rep_pend", 60,
+                                fn() => \App\Models\SolicitudRepresentante::where('estado','pendiente')->count()
+                            );
+                        } catch(\Exception $e){ $solRepPend=0; }
+                        @endphp
+                        @if($solRepPend > 0)
+                        <span style="background:#d97706;color:#fff;font-size:.65rem;font-weight:800;padding:.1rem .45rem;border-radius:20px;line-height:1.5;">{{ $solRepPend }}</span>
+                        @endif
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.solicitudes-est.index') }}" class="{{ request()->routeIs('admin.solicitudes-est*') ? 'active' : '' }}"
+                       style="display:flex;align-items:center;justify-content:space-between;">
+                        <span><i class="bi bi-mortarboard-fill"></i>Estudiantes</span>
+                        @php
+                        try {
+                            $solEstPend = \Illuminate\Support\Facades\Cache::remember("t{$__tid}_sol_est_pend", 60,
+                                fn() => \App\Models\SolicitudEstudiante::where('estado','pendiente')->count()
+                            );
+                        } catch(\Exception $e){ $solEstPend=0; }
+                        @endphp
+                        @if($solEstPend > 0)
+                        <span style="background:#d97706;color:#fff;font-size:.65rem;font-weight:800;padding:.1rem .45rem;border-radius:20px;line-height:1.5;">{{ $solEstPend }}</span>
+                        @endif
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.solicitudes-docente.index') }}" class="{{ request()->routeIs('admin.solicitudes-docente*') ? 'active' : '' }}"
+                       style="display:flex;align-items:center;justify-content:space-between;">
+                        <span><i class="bi bi-person-badge-fill"></i>Docentes</span>
+                        @php
+                        try {
+                            $solDocPend = \Illuminate\Support\Facades\Cache::remember("t{$__tid}_sol_doc_pend", 60,
+                                fn() => \App\Models\SolicitudDocente::where('estado','pendiente')->count()
+                            );
+                        } catch(\Exception $e){ $solDocPend=0; }
+                        @endphp
+                        @if($solDocPend > 0)
+                        <span style="background:#d97706;color:#fff;font-size:.65rem;font-weight:800;padding:.1rem .45rem;border-radius:20px;line-height:1.5;">{{ $solDocPend }}</span>
                         @endif
                     </a>
                 </li>
@@ -2086,6 +2370,18 @@ if(auth()->check()) {
             </ul>
             @endif
 
+                        {{-- INTEGRACIONES --}}
+            @if($isAdmin)
+            <div class="nav-section-title">Integraciones</div>
+            <ul class="list-unstyled mb-0">
+                <li>
+                    <a href="{{ route("admin.integraciones.index") }}" class="{{ request()->routeIs("admin.integraciones*", "admin.sigerd*") ? "active" : "" }}">
+                        <i class="bi bi-plug-fill"></i>Integraciones
+                    </a>
+                </li>
+            </ul>
+            @endif
+
             {{-- ══ SISTEMA ══ --}}
             @if($isAdmin)
             <div class="nav-section-title">Sistema</div>
@@ -2099,7 +2395,9 @@ if(auth()->check()) {
                     <a href="{{ route('admin.usuarios.pendientes') }}" class="{{ request()->routeIs('admin.usuarios.pendientes') ? 'active' : '' }}" style="display:flex;align-items:center;justify-content:space-between;">
                         <span class="d-flex align-items-center gap-2"><i class="bi bi-person-check"></i>Accesos Pendientes</span>
                         @if(!empty($usuariosPendientes) && $usuariosPendientes > 0)
-                            <span class="badge rounded-pill text-bg-warning" style="font-size:.62rem;padding:.2rem .5rem;">{{ $usuariosPendientes }}</span>
+                            <span id="admin-pending-badge" class="badge rounded-pill text-bg-warning" style="font-size:.62rem;padding:.2rem .5rem;">{{ $usuariosPendientes }}</span>
+                        @else
+                            <span id="admin-pending-badge" class="badge rounded-pill text-bg-warning" style="font-size:.62rem;padding:.2rem .5rem;display:none;">0</span>
                         @endif
                     </a>
                 </li>
@@ -2718,6 +3016,152 @@ if(auth()->check()) {
 
     <div id="sge-toast-container" aria-live="polite" aria-atomic="false"></div>
 
+    {{-- ── Chat interno del tenant ────────────────────────────────────────── --}}
+    @auth
+    <div id="tenant-chat-widget" style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:9990;display:flex;flex-direction:column;align-items:flex-end;gap:.5rem;">
+        {{-- Panel de chat --}}
+        <div id="tenant-chat-panel"
+             style="width:340px;max-height:480px;background:#fff;border-radius:18px;box-shadow:0 8px 32px rgba(0,0,0,.16);display:none;flex-direction:column;overflow:hidden;border:1px solid #e2e8f0;">
+            {{-- Header --}}
+            <div style="background:linear-gradient(135deg,#1e3a6e,#3B82F6);padding:.85rem 1rem;display:flex;align-items:center;gap:.6rem;">
+                <div style="width:32px;height:32px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="bi bi-people-fill" style="color:#fff;font-size:.9rem;"></i>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;color:#fff;font-size:.88rem;line-height:1.2;">Chat del Personal</div>
+                    <div id="chat-online-count" style="font-size:.72rem;color:rgba(255,255,255,.7);">conectando...</div>
+                </div>
+                <button onclick="toggleTenantChat()" style="background:none;border:none;color:#fff;opacity:.7;cursor:pointer;font-size:1.1rem;padding:.2rem;" title="Cerrar">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            {{-- Mensajes --}}
+            <div id="tenant-chat-messages"
+                 style="flex:1;overflow-y:auto;padding:.75rem;display:flex;flex-direction:column;gap:.5rem;background:#f8fafc;min-height:200px;max-height:320px;">
+                <div class="text-center text-muted small py-3" id="chat-loading-msg">
+                    <div class="spinner-border spinner-border-sm me-1"></div> Cargando...
+                </div>
+            </div>
+            {{-- Input --}}
+            <div style="padding:.6rem .75rem;border-top:1px solid #e2e8f0;background:#fff;">
+                <form id="tenant-chat-form" style="display:flex;gap:.5rem;align-items:center;">
+                    @csrf
+                    <input id="tenant-chat-input" type="text" placeholder="Escribe un mensaje..."
+                           autocomplete="off" maxlength="2000"
+                           style="flex:1;border:1px solid #e2e8f0;border-radius:10px;padding:.45rem .75rem;font-size:.83rem;outline:none;">
+                    <button type="submit" style="background:#3B82F6;border:none;color:#fff;border-radius:10px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">
+                        <i class="bi bi-send-fill" style="font-size:.8rem;"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {{-- Botón flotante --}}
+        <button id="tenant-chat-btn" onclick="toggleTenantChat()"
+                style="width:52px;height:52px;background:linear-gradient(135deg,#1e3a6e,#3B82F6);border:none;border-radius:50%;color:#fff;box-shadow:0 4px 16px rgba(59,130,246,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;transition:transform .2s;"
+                onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"
+                title="Chat del Personal">
+            <i class="bi bi-chat-dots-fill" style="font-size:1.2rem;"></i>
+            <span id="tenant-chat-badge" data-count="0"
+                  style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:.6rem;font-weight:700;min-width:18px;height:18px;border-radius:99px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;"></span>
+        </button>
+    </div>
+
+    <script>
+    const _CHAT_ME_ID   = {{ auth()->id() }};
+    const _CHAT_ME_NAME = '{{ Str::limit(auth()->user()->name ?? '', 20) }}';
+    const _CHAT_URL     = '{{ route('admin.tenant-chat.index') }}';
+    const _CHAT_CSRF    = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+    let   _chatLoaded   = false;
+
+    function toggleTenantChat() {
+        const panel = document.getElementById('tenant-chat-panel');
+        const isOpen = panel.style.display !== 'none';
+        panel.style.display = isOpen ? 'none' : 'flex';
+        panel.style.flexDirection = 'column';
+        if (!isOpen) {
+            // Limpiar badge al abrir
+            const badge = document.getElementById('tenant-chat-badge');
+            if (badge) { badge.style.display = 'none'; badge.dataset.count = '0'; }
+            if (!_chatLoaded) loadChatHistory();
+            setTimeout(() => document.getElementById('tenant-chat-input')?.focus(), 100);
+        }
+    }
+
+    function loadChatHistory() {
+        fetch(_CHAT_URL, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(msgs => {
+                _chatLoaded = true;
+                const box = document.getElementById('tenant-chat-messages');
+                const loader = document.getElementById('chat-loading-msg');
+                if (loader) loader.remove();
+                msgs.forEach(m => appendChatBubble(m, false));
+                scrollChatBottom();
+            })
+            .catch(() => { _chatLoaded = true; });
+    }
+
+    function appendChatBubble(data, scroll = true) {
+        const box   = document.getElementById('tenant-chat-messages');
+        if (!box) return;
+        const isMio = data.user_id === _CHAT_ME_ID;
+        const div   = document.createElement('div');
+        div.style.cssText = `display:flex;flex-direction:column;align-items:${isMio ? 'flex-end' : 'flex-start'};gap:2px;`;
+        div.innerHTML = `
+            ${!isMio ? `<span style="font-size:.68rem;color:#64748b;font-weight:600;">${escHtml(data.user_name)}</span>` : ''}
+            <div style="max-width:78%;background:${isMio ? '#3B82F6' : '#fff'};color:${isMio ? '#fff' : '#1e293b'};
+                        border-radius:${isMio ? '14px 14px 4px 14px' : '14px 14px 14px 4px'};
+                        padding:.45rem .75rem;font-size:.83rem;line-height:1.4;
+                        box-shadow:0 1px 3px rgba(0,0,0,.08);">
+                ${escHtml(data.mensaje)}
+            </div>
+            <span style="font-size:.63rem;color:#94a3b8;">${data.hora || data.tiempo}</span>`;
+        box.appendChild(div);
+        if (scroll) scrollChatBottom();
+    }
+
+    function scrollChatBottom() {
+        const box = document.getElementById('tenant-chat-messages');
+        if (box) box.scrollTop = box.scrollHeight;
+    }
+
+    function escHtml(str) {
+        const d = document.createElement('div');
+        d.appendChild(document.createTextNode(str ?? ''));
+        return d.innerHTML;
+    }
+
+    // Enviar mensaje
+    document.getElementById('tenant-chat-form')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const input = document.getElementById('tenant-chat-input');
+        const msg   = input.value.trim();
+        if (!msg) return;
+        input.value = '';
+
+        fetch(_CHAT_URL, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': _CHAT_CSRF },
+            body:    JSON.stringify({ mensaje: msg }),
+        })
+        .then(r => r.json())
+        .then(data => appendChatBubble(data, true))
+        .catch(() => {});
+    });
+
+    // Escuchar mensajes entrantes vía Echo
+    window.addEventListener('tenant:chat-message', function(e) {
+        const panel = document.getElementById('tenant-chat-panel');
+        if (panel && panel.style.display !== 'none' && _chatLoaded) {
+            if (e.detail.user_id !== _CHAT_ME_ID) {
+                appendChatBubble(e.detail, true);
+            }
+        }
+    });
+    </script>
+    @endauth
+
     <script>
     // ── SGEToast — Sistema global de notificaciones ──────────────────────────
     window.SGEToast = {
@@ -3170,6 +3614,70 @@ if(auth()->check()) {
 })();
 </script>
 
+<!-- DataTables 2 + Scroller JS (sin jQuery) -->
+<script src="https://cdn.datatables.net/2.1.8/js/dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/2.1.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/scroller/2.4.3/js/dataTables.scroller.min.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    const LANG_ES = {
+        decimal: ',', thousands: '.',
+        emptyTable:       'No hay datos disponibles',
+        info:             'Mostrando _START_–_END_ de _TOTAL_ registros',
+        infoEmpty:        'Sin registros',
+        infoFiltered:     '(filtrado de _MAX_ total)',
+        loadingRecords:   'Cargando…',
+        processing:       'Procesando…',
+        search:           '',
+        searchPlaceholder:'Buscar en tabla…',
+        zeroRecords:      'Sin resultados',
+        paginate: { first: '«', previous: '‹', next: '›', last: '»' }
+    };
+
+    // dom: f = filter, t = table, i = info (sin paginación visual — el scroll es la navegación)
+    const DT_DOM = '<"dt-top d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2"f>t<"dt-bottom d-flex align-items-center gap-2 mt-1"i>';
+
+    function dtInit(el) {
+        if (typeof DataTable === 'undefined') return;
+        if (DataTable.isDataTable(el)) return;
+
+        const tbody = el.querySelector('tbody');
+        if (!tbody) return;
+        const rowCount = tbody.querySelectorAll('tr').length;
+        if (rowCount < 5) return;
+
+        // Altura dinámica según número de filas
+        const scrollH = rowCount > 40 ? '62vh' : rowCount > 20 ? '48vh' : '340px';
+
+        new DataTable(el, {
+            language:      LANG_ES,
+            dom:           DT_DOM,
+            deferRender:   true,   // renderiza filas solo al hacerse visibles (lazy DOM)
+            scrollY:       scrollH,
+            scrollX:       true,
+            scrollCollapse:true,
+            scroller:      true,   // virtual scroll — carga filas a demanda al desplazarse
+            pageLength:    50,
+            orderCellsTop: true,
+            initComplete: function () {
+                const wrap = el.closest('.table-responsive');
+                if (wrap) wrap.style.overflow = 'hidden';
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('table.table:not([data-no-dt])').forEach(dtInit);
+    });
+
+    // API pública para inicialización manual desde vistas
+    window.SGE = window.SGE || {};
+    window.SGE.dtInit = dtInit;
+})();
+</script>
+
 {{-- Polling alertas admin cada 60 segundos --}}
 <script>
 (function() {
@@ -3202,5 +3710,45 @@ if(auth()->check()) {
     setInterval(pollAlertas, 60000);
 })();
 </script>
+
+{{-- ── ZuraEdu Realtime — Echo + Reverb ──────────────────────────────────── --}}
+@auth
+<script>
+window._REVERB_KEY    = '{{ config("broadcasting.connections.reverb.key") }}';
+window._REVERB_HOST   = '{{ config("broadcasting.connections.reverb.options.host") }}';
+window._REVERB_PORT   = {{ config("broadcasting.connections.reverb.options.port", 8080) }};
+window._REVERB_SCHEME = '{{ config("broadcasting.connections.reverb.options.scheme", "http") }}';
+window._SGE_USER_ID   = {{ auth()->id() }};
+window._SGE_ROL       = '{{ auth()->user()->roles->first()?->name ?? "" }}';
+window._SGE_TENANT_ID = {{ tenant_id() ?? 'null' }};
+window._SGE_GRUPO_IDS = [];
+window._SGE_CLASE_IDS = [];
+window._SGE_DEBUG     = {{ config('app.debug') ? 'true' : 'false' }};
+</script>
+@stack('realtime-data')
+@vite('resources/js/echo.js')
+<script>
+// Actualizar UI global cuando llega DashboardActualizado
+window.addEventListener('sge:dashboard-updated', function(e) {
+    const data = e.detail;
+
+    if (data.tipo === 'usuario_aprobado') {
+        const badge = document.getElementById('admin-pending-badge');
+        if (badge) {
+            const n = data.datos?.usuarios_pendientes ?? 0;
+            badge.textContent   = n;
+            badge.style.display = n > 0 ? '' : 'none';
+        }
+    }
+
+    if (data.tipo === 'nueva_matricula') {
+        // Pulsa el botón Actualizar en el dashboard si estamos en esa página
+        const btn = document.getElementById('btnRefreshStats');
+        if (btn && !btn.disabled) btn.click();
+    }
+});
+</script>
+@endauth
+
 </body>
 </html>

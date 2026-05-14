@@ -27,6 +27,11 @@ $asig  = $claseVirtual->asignacion;
                 @endif
             </small>
         </div>
+        {{-- Indicador de presencia online --}}
+        <div id="presence-badge" style="display:none;align-items:center;gap:.4rem;background:rgba(255,255,255,.18);backdrop-filter:blur(4px);border-radius:99px;padding:.25rem .75rem;font-size:.78rem;color:#fff;font-weight:600;">
+            <span style="width:8px;height:8px;background:#4ade80;border-radius:50%;display:inline-block;animation:presencePulse 2s infinite;"></span>
+            <span id="presence-count">1</span> en línea
+        </div>
         <div class="d-flex gap-2">
             <a href="{{ route('portal.docente.classroom.crear_material', $claseVirtual) }}" class="btn btn-sm btn-light fw-semibold">
                 <i class="bi bi-plus-lg me-1"></i>Agregar
@@ -60,10 +65,12 @@ $asig  = $claseVirtual->asignacion;
 @endif
 
 {{-- ══ TABS ══ --}}
-<ul class="nav nav-pills mb-4 gap-1 flex-wrap" style="background:#F1F5F9;border-radius:12px;padding:6px;">
+<ul class="nav nav-pills mb-4 gap-1 flex-wrap" id="classroom-tabs" style="background:#F1F5F9;border-radius:12px;padding:6px;">
     @foreach([['muro','bi-layout-text-sidebar-reverse','Muro'],['actividades','bi-list-task','Actividades'],['personas','bi-people-fill','Personas'],['calificaciones','bi-bar-chart-fill','Calificaciones'],['recursos','bi-folder-fill','Recursos'],['chat','bi-chat-dots-fill','Chat'],['video','bi-camera-video-fill','En vivo']] as [$t,$i,$l])
     <li class="nav-item">
-        <a class="nav-link {{ $tab === $t ? 'active shadow-sm' : 'text-muted' }}" href="?tab={{ $t }}" style="border-radius:8px;font-size:.875rem;{{ $tab===$t ? 'background:'.$color.';color:#fff !important;' : '' }}">
+        <a class="nav-link classroom-tab-link {{ $tab === $t ? 'active shadow-sm' : 'text-muted' }}"
+           href="#" data-tab="{{ $t }}"
+           style="border-radius:8px;font-size:.875rem;{{ $tab===$t ? 'background:'.$color.';color:#fff !important;' : '' }}">
             <i class="bi {{ $i }} me-1"></i>{{ $l }}
             @if($t==='video' && $claseVirtual->meetingActiva())
             <span class="badge bg-danger ms-1" style="font-size:.6rem;animation:pulse 1.5s infinite;">LIVE</span>
@@ -76,7 +83,7 @@ $asig  = $claseVirtual->asignacion;
 {{-- ══════════════════════════════════════════════ --}}
 {{--   TAB MURO                                    --}}
 {{-- ══════════════════════════════════════════════ --}}
-@if($tab === 'muro')
+<div id="tab-muro" class="classroom-tab-pane{{ $tab !== 'muro' ? ' d-none' : '' }}">
 <div class="row g-4">
 <div class="col-lg-8">
     {{-- Publicar anuncio rápido --}}
@@ -237,12 +244,12 @@ $asig  = $claseVirtual->asignacion;
     </div>
 </div>
 </div>
-@endif
+</div>
 
 {{-- ══════════════════════════════════════════════ --}}
 {{--   TAB ACTIVIDADES                             --}}
 {{-- ══════════════════════════════════════════════ --}}
-@if($tab === 'actividades')
+<div id="tab-actividades" class="classroom-tab-pane{{ $tab !== 'actividades' ? ' d-none' : '' }}">
 <div class="card border-0 shadow-sm" style="border-radius:16px;">
 <div class="card-body p-0">
     <div class="d-flex align-items-center justify-content-between p-3 border-bottom">
@@ -278,15 +285,12 @@ $asig  = $claseVirtual->asignacion;
     @endforelse
 </div>
 </div>
-@endif
+</div>
 
 {{-- ══════════════════════════════════════════════ --}}
 {{--   TAB PERSONAS                                --}}
 {{-- ══════════════════════════════════════════════ --}}
-@if($tab === 'personas')
-@php
-$matriculas = $claseVirtual->estudiantesMatriculados()->with('estudiante')->get();
-@endphp
+<div id="tab-personas" class="classroom-tab-pane{{ $tab !== 'personas' ? ' d-none' : '' }}">
 <div class="card border-0 shadow-sm" style="border-radius:16px;">
 <div class="card-body p-0">
     <div class="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
@@ -324,16 +328,13 @@ $matriculas = $claseVirtual->estudiantesMatriculados()->with('estudiante')->get(
     @endforelse
 </div>
 </div>
-@endif
+</div>
 
 {{-- ══════════════════════════════════════════════ --}}
 {{--   TAB CALIFICACIONES                          --}}
 {{-- ══════════════════════════════════════════════ --}}
-@if($tab === 'calificaciones')
-@php
-$actividadesCalif = $materiales->whereIn('tipo',['tarea','evaluacion'])->values();
-$matriculas = $claseVirtual->estudiantesMatriculados()->with('estudiante')->get();
-@endphp
+@php $actividadesCalif = $materiales->whereIn('tipo',['tarea','evaluacion'])->values(); @endphp
+<div id="tab-calificaciones" class="classroom-tab-pane{{ $tab !== 'calificaciones' ? ' d-none' : '' }}">
 <div class="card border-0 shadow-sm" style="border-radius:16px;overflow:auto;">
 <div class="table-responsive">
 <table class="table table-hover mb-0 align-middle" style="min-width:600px;">
@@ -397,15 +398,14 @@ $promedio = count($notasValidas) ? round(array_sum($notasValidas)/count($notasVa
     <p class="mb-0">No hay actividades calificables aún</p>
 </div>
 @endif
-@endif
+</div>
 
 {{-- ══════════════════════════════════════════════ --}}
 {{--   TAB RECURSOS                                --}}
 {{-- ══════════════════════════════════════════════ --}}
-@if($tab === 'recursos')
+<div id="tab-recursos" class="classroom-tab-pane{{ $tab !== 'recursos' ? ' d-none' : '' }}">
 <div class="row g-4">
 <div class="col-lg-8">
-    @php $recursos = \App\Models\ZcRecurso::where('clase_virtual_id',$claseVirtual->id)->orderBy('orden')->get(); @endphp
     @forelse($recursos as $recurso)
     @php $ti = $recurso->tipo_info; @endphp
     <div class="card border-0 shadow-sm mb-3" style="border-radius:14px;">
@@ -468,12 +468,12 @@ $promedio = count($notasValidas) ? round(array_sum($notasValidas)/count($notasVa
     </div>
 </div>
 </div>
-@endif
+</div>
 
 {{-- ══════════════════════════════════════════════ --}}
 {{--   TAB CHAT                                    --}}
 {{-- ══════════════════════════════════════════════ --}}
-@if($tab === 'chat')
+<div id="tab-chat" class="classroom-tab-pane{{ $tab !== 'chat' ? ' d-none' : '' }}">
 <div class="row g-4">
 <div class="col-lg-8">
     <div class="card border-0 shadow-sm" style="border-radius:16px;overflow:hidden;">
@@ -523,12 +523,12 @@ $promedio = count($notasValidas) ? round(array_sum($notasValidas)/count($notasVa
     </div>
 </div>
 </div>
-@endif
+</div>
 
 {{-- ══════════════════════════════════════════════ --}}
 {{--   TAB VIDEO — EN VIVO                         --}}
 {{-- ══════════════════════════════════════════════ --}}
-@if($tab === 'video')
+<div id="tab-video" class="classroom-tab-pane{{ $tab !== 'video' ? ' d-none' : '' }}">
 <div class="row g-4 justify-content-center">
 <div class="col-lg-7">
     <div class="card border-0 shadow-sm text-center" style="border-radius:20px;overflow:hidden;">
@@ -617,7 +617,7 @@ $promedio = count($notasValidas) ? round(array_sum($notasValidas)/count($notasVa
     </div>
 </div>
 </div>
-@endif
+</div>
 
 <style>
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
@@ -676,24 +676,45 @@ if (btnTerminar) {
     });
 }
 
-// ── Chat ──────────────────────────────────────────────────────────────────
-@if($tab === 'chat')
-const CHAT_URL    = '{{ route('portal.docente.classroom.chat.index', $claseVirtual) }}';
-const CHAT_POST   = '{{ route('portal.docente.classroom.chat.store', $claseVirtual) }}';
-const CSRF        = '{{ csrf_token() }}';
-const ME_ID       = {{ auth()->id() }};
-const chatBox     = document.getElementById('chat-box');
-const chatForm    = document.getElementById('chat-form');
-const chatInput   = document.getElementById('chat-input');
-let   lastId      = 0;
+// ── Tab switcher ──────────────────────────────────────────────────────────
+const TAB_COLOR = '{{ $color }}';
+let   chatInitialized = false;
+
+function switchTab(name) {
+    document.querySelectorAll('.classroom-tab-pane').forEach(el => el.classList.add('d-none'));
+    document.getElementById('tab-' + name)?.classList.remove('d-none');
+    document.querySelectorAll('.classroom-tab-link').forEach(el => {
+        const active = el.dataset.tab === name;
+        el.classList.toggle('active', active);
+        el.classList.toggle('shadow-sm', active);
+        el.classList.toggle('text-muted', !active);
+        el.style.background = active ? TAB_COLOR : '';
+        el.style.color      = active ? '#fff'    : '';
+    });
+    history.replaceState(null, '', '?tab=' + name);
+    if (name === 'chat' && !chatInitialized) { initChat(); chatInitialized = true; }
+}
+
+document.querySelectorAll('.classroom-tab-link').forEach(el => {
+    el.addEventListener('click', function(e) { e.preventDefault(); switchTab(this.dataset.tab); });
+});
+
+// ── Chat (lazy) ────────────────────────────────────────────────────────────
+const CHAT_URL  = '{{ route('portal.docente.classroom.chat.index', $claseVirtual) }}';
+const CHAT_POST = '{{ route('portal.docente.classroom.chat.store', $claseVirtual) }}';
+const CSRF      = '{{ csrf_token() }}';
+const ME_ID     = {{ auth()->id() }};
+let   chatBox, chatForm, chatInput, lastId = 0;
+
+function escHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
 function renderBubble(m) {
     const propio = m.user_id === ME_ID || m.es_propio;
     const wrap   = document.createElement('div');
     wrap.className = 'chat-wrapper ' + (propio ? 'align-items-end' : 'align-items-start');
     wrap.dataset.id = m.id;
-    let pinBtn = propio ? '' : `<button onclick="togglePin(${m.id}, this)" class="btn btn-link btn-sm p-0 ms-1" style="font-size:.7rem;color:#94a3b8;" title="Fijar"><i class="bi bi-pin-angle"></i></button>`;
-    let delBtn = `<button onclick="eliminarMsg(${m.id}, this)" class="btn btn-link btn-sm p-0 ms-1" style="font-size:.7rem;color:#94a3b8;" title="Eliminar"><i class="bi bi-trash"></i></button>`;
+    const pinBtn = propio ? '' : `<button onclick="togglePin(${m.id}, this)" class="btn btn-link btn-sm p-0 ms-1" style="font-size:.7rem;color:#94a3b8;" title="Fijar"><i class="bi bi-pin-angle"></i></button>`;
+    const delBtn = `<button onclick="eliminarMsg(${m.id}, this)" class="btn btn-link btn-sm p-0 ms-1" style="font-size:.7rem;color:#94a3b8;" title="Eliminar"><i class="bi bi-trash"></i></button>`;
     wrap.innerHTML = `
         <div class="chat-meta">${propio ? '' : '<strong>' + escHtml(m.user_name) + '</strong> · '}${m.created_at}</div>
         <div class="d-flex align-items-center gap-1">
@@ -703,8 +724,6 @@ function renderBubble(m) {
     return wrap;
 }
 
-function escHtml(t) { const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
-
 function cargarMensajes() {
     fetch(CHAT_URL, { headers: {'Accept':'application/json','X-CSRF-TOKEN':CSRF} })
         .then(r => r.json())
@@ -712,7 +731,7 @@ function cargarMensajes() {
             document.getElementById('chat-loading')?.remove();
             chatBox.innerHTML = '';
             const msgs = data.mensajes?.data ?? [];
-            msgs.reverse().forEach(m => { chatBox.appendChild(renderBubble(m)); if(m.id > lastId) lastId = m.id; });
+            msgs.reverse().forEach(m => { chatBox.appendChild(renderBubble(m)); if (m.id > lastId) lastId = m.id; });
             chatBox.scrollTop = chatBox.scrollHeight;
             renderFijados(data.fijados ?? []);
         });
@@ -722,13 +741,13 @@ function renderFijados(fijados) {
     const el = document.getElementById('sidebar-fijados');
     if (!fijados.length) { el.innerHTML = '<span class="text-muted">Sin mensajes fijados</span>'; return; }
     el.innerHTML = fijados.map(f => `<div class="p-2 mb-1 rounded" style="background:#fef9c3;font-size:.8rem;border:1px solid #fde047;">
-        <strong>${escHtml(f.user?.name??'')}</strong>: ${escHtml(f.mensaje)}</div>`).join('');
+        <strong>${escHtml(f.user?.name ?? '')}</strong>: ${escHtml(f.mensaje)}</div>`).join('');
 }
 
 function togglePin(id, btn) {
     fetch(`{{ url('portal/docente/classroom/'.$claseVirtual->id.'/chat') }}/${id}/pin`, {
         method: 'PATCH', headers: {'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}
-    }).then(r=>r.json()).then(d => {
+    }).then(r => r.json()).then(d => {
         btn.innerHTML = d.fijado ? '<i class="bi bi-pin-fill text-warning"></i>' : '<i class="bi bi-pin-angle"></i>';
         cargarMensajes();
     });
@@ -741,45 +760,101 @@ function eliminarMsg(id, btn) {
     }).then(() => { btn.closest('[data-id]')?.remove(); });
 }
 
-chatForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    const msg = chatInput.value.trim();
-    if (!msg) return;
-    chatInput.value = '';
-    fetch(CHAT_POST, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'},
-        body: JSON.stringify({ mensaje: msg, tipo: 'general' })
-    }).then(r => r.json()).then(m => {
-        chatBox.appendChild(renderBubble(m));
-        chatBox.scrollTop = chatBox.scrollHeight;
-    });
-});
+function initChat() {
+    chatBox   = document.getElementById('chat-box');
+    chatForm  = document.getElementById('chat-form');
+    chatInput = document.getElementById('chat-input');
 
-// Pusher / polling fallback
-if (typeof Pusher !== 'undefined' && '{{ config('broadcasting.default') }}' !== 'null') {
-    const pusher  = new Pusher('{{ config('broadcasting.connections.pusher.key') }}', { cluster: '{{ config('broadcasting.connections.pusher.options.cluster','mt1') }}' });
-    const channel = pusher.subscribe('classroom.{{ $claseVirtual->id }}');
-    channel.bind('new-message', function(data) {
-        if (data.user_id !== ME_ID) {
-            chatBox.appendChild(renderBubble(data));
+    chatForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const msg = chatInput.value.trim();
+        if (!msg) return;
+        chatInput.value = '';
+        fetch(CHAT_POST, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'},
+            body: JSON.stringify({ mensaje: msg, tipo: 'general' })
+        }).then(r => r.json()).then(m => {
+            chatBox.appendChild(renderBubble(m));
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
+    });
+
+    // Mensajes y eventos vía Echo (DOM events despachados por echo.js)
+    // Usar addEventListener en lugar de Echo directamente evita problemas de orden de carga
+    window.addEventListener('classroom:new-message', function(e) {
+        if (e.detail.user_id !== ME_ID) {
+            chatBox.appendChild(renderBubble(e.detail));
             chatBox.scrollTop = chatBox.scrollHeight;
         }
     });
-    channel.bind('meeting-updated', function(data) {
+    window.addEventListener('classroom:meeting-updated', function(e) {
+        const data = e.detail;
         if (data.status === 'active') {
-            const alert = document.createElement('div');
-            alert.className = 'alert alert-danger alert-dismissible fade show';
-            alert.innerHTML = `<i class="bi bi-camera-video-fill me-2"></i><strong>¡Clase en vivo iniciada!</strong> <a href="${data.meeting_url}" target="_blank" class="btn btn-sm btn-danger ms-2">Entrar ahora</a><button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
-            document.querySelector('.container-fluid')?.prepend(alert);
+            const alertEl = document.createElement('div');
+            alertEl.className = 'alert alert-danger alert-dismissible fade show';
+            alertEl.innerHTML = `<i class="bi bi-camera-video-fill me-2"></i><strong>¡Clase en vivo iniciada!</strong> <a href="${data.meeting_url}" target="_blank" class="btn btn-sm btn-danger ms-2">Entrar ahora</a><button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+            document.querySelector('.container-fluid')?.prepend(alertEl);
         }
     });
-} else {
-    // Polling cada 8 segundos si no hay Pusher
-    setInterval(() => cargarMensajes(), 8000);
+
+    // Polling de respaldo (solo si Reverb no está conectado después de 4s)
+    setTimeout(function() {
+        if (window.Echo?.connector?.pusher?.connection?.state !== 'connected') {
+            setInterval(() => cargarMensajes(), 8000);
+        }
+    }, 4000);
+
+    cargarMensajes();
 }
 
-cargarMensajes();
+// Auto-iniciar chat si la pestaña activa es chat al cargar la página
+@if($tab === 'chat')
+initChat(); chatInitialized = true;
 @endif
 </script>
+
+@push('realtime-data')
+<script>
+window._SGE_CLASE_IDS = [{{ $claseVirtual->id }}];
+// Presencia: conectar canal cuando Echo esté listo
+document.addEventListener('DOMContentLoaded', function () {
+    const claseId = {{ $claseVirtual->id }};
+    function initPresence() {
+        if (!window.Echo) return;
+        window.Echo.join('presence-classroom.' + claseId)
+            .here(function (members) {
+                updatePresence(members.length);
+            })
+            .joining(function (member) {
+                const badge  = document.getElementById('presence-badge');
+                const count  = document.getElementById('presence-count');
+                if (!badge || !count) return;
+                const n = parseInt(count.textContent, 10) + 1;
+                count.textContent = n;
+                badge.style.display = 'flex';
+            })
+            .leaving(function (member) {
+                const badge  = document.getElementById('presence-badge');
+                const count  = document.getElementById('presence-count');
+                if (!badge || !count) return;
+                const n = Math.max(1, parseInt(count.textContent, 10) - 1);
+                count.textContent = n;
+                if (n <= 1) badge.style.display = 'none';
+            })
+            .error(function () {});
+    }
+    function updatePresence(n) {
+        const badge = document.getElementById('presence-badge');
+        const count = document.getElementById('presence-count');
+        if (!badge || !count) return;
+        count.textContent = n;
+        badge.style.display = n > 1 ? 'flex' : 'none';
+    }
+    // Intentar tras 1s (Echo.js puede no estar listo en DOMContentLoaded)
+    setTimeout(initPresence, 1000);
+});
+</script>
+<style>@keyframes presencePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(1.3)} }</style>
+@endpush
 @endsection

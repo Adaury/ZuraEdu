@@ -154,10 +154,28 @@
     </div>
 </div>
 
-{{-- Stats adicionales: planificaciones y observaciones --}}
-@if(!empty($statsExtra) && ($statsExtra['planificaciones'] > 0 || $statsExtra['observaciones'] > 0))
+{{-- Stats adicionales: matrículas + planificaciones y observaciones --}}
 <div class="row g-3 mb-4">
-    @if($statsExtra['planificaciones'] > 0 || $statsExtra['planes_clase'] > 0)
+    <div class="col-sm-6 col-xl-4">
+        <a href="{{ route('admin.matriculas.index') }}" class="text-decoration-none d-block">
+            <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #0d6efd !important;border-radius:14px;">
+                <div class="card-body d-flex align-items-center gap-3 py-3">
+                    <div style="width:40px;height:40px;background:#0d6efd18;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="bi bi-person-check-fill" style="color:#0d6efd;font-size:1.1rem;"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold" id="stat-matriculas" style="font-size:1.2rem;color:#0d6efd;">{{ $matriculasActivas ?? 0 }}</div>
+                        <div class="text-muted small">Matrículas Activas</div>
+                    </div>
+                    <div class="ms-auto">
+                        <span id="stat-matriculas-pulse" style="display:none;width:8px;height:8px;background:#22c55e;border-radius:50%;animation:pulse 1.5s infinite;" title="Actualizado en tiempo real"></span>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+@if(!empty($statsExtra))
+    @if(($statsExtra['planificaciones'] ?? 0) > 0 || ($statsExtra['planes_clase'] ?? 0) > 0)
     <div class="col-sm-6 col-xl-4">
         <a href="{{ route('admin.planificacion.index') }}" class="text-decoration-none d-block">
             <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #7c3aed !important;border-radius:14px;">
@@ -169,7 +187,7 @@
                         <div class="fw-bold" style="font-size:1.2rem;color:#7c3aed;">{{ $statsExtra['planificaciones'] }}</div>
                         <div class="text-muted small">Planificaciones Técnicas</div>
                     </div>
-                    @if($statsExtra['planes_clase'] > 0)
+                    @if(($statsExtra['planes_clase'] ?? 0) > 0)
                     <div class="ms-auto text-end">
                         <div class="fw-bold" style="font-size:1rem;color:#0891b2;">{{ $statsExtra['planes_clase'] }}</div>
                         <div class="text-muted" style="font-size:.72rem;">Planes de Clase</div>
@@ -180,7 +198,7 @@
         </a>
     </div>
     @endif
-    @if($statsExtra['observaciones'] > 0)
+    @if(($statsExtra['observaciones'] ?? 0) > 0)
     <div class="col-sm-6 col-xl-4">
         <a href="{{ route('admin.observaciones.index') }}" class="text-decoration-none d-block">
             <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #f59e0b !important;border-radius:14px;">
@@ -197,8 +215,8 @@
         </a>
     </div>
     @endif
-</div>
 @endif
+</div>
 
 @endunless {{-- /isDocente --}}
 
@@ -1460,10 +1478,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 'stat-docentes':    data.totalDocentes,
                 'stat-grupos':      data.totalGrupos,
                 'stat-asignaturas': data.totalAsignaturas,
+                'stat-matriculas':  data.matriculasActivas,
             };
             Object.entries(map).forEach(([id, val]) => {
                 const el = document.getElementById(id);
-                if (!el) return;
+                if (el === null || val === undefined) return;
                 el.style.transition = 'opacity .2s';
                 el.style.opacity = '0';
                 setTimeout(() => {
@@ -1513,7 +1532,63 @@ document.addEventListener('DOMContentLoaded', function () {
         el.textContent = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
     }, 1000);
 })();
+
+// ── Realtime: auto-refresh stats cuando llega nueva_matricula ──
+(function () {
+    let refreshTimeout = null;
+
+    function triggerStatsRefresh(tipo) {
+        // Debounce: si llegan varias matrículas seguidas solo hace 1 fetch
+        clearTimeout(refreshTimeout);
+        refreshTimeout = setTimeout(() => {
+            fetch('{{ route('admin.dashboard.stats') }}', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                const map = {
+                    'stat-estudiantes': data.totalEstudiantes,
+                    'stat-docentes':    data.totalDocentes,
+                    'stat-grupos':      data.totalGrupos,
+                    'stat-asignaturas': data.totalAsignaturas,
+                    'stat-matriculas':  data.matriculasActivas,
+                };
+                Object.entries(map).forEach(([id, val]) => {
+                    const el = document.getElementById(id);
+                    if (el === null || val === undefined) return;
+                    const prev = parseInt(el.textContent.replace(/\D/g,''), 10);
+                    const next = Number(val);
+                    if (prev === next) return;
+                    el.style.transition = 'opacity .2s';
+                    el.style.opacity = '0';
+                    setTimeout(() => { el.textContent = next.toLocaleString('es-DO'); el.style.opacity = '1'; }, 200);
+                });
+                const updEl = document.getElementById('stats-updated-at');
+                if (updEl) updEl.textContent = 'Actualizado: ' + (data.updatedAt ?? '');
+
+                // Pulso verde en la tarjeta de matrículas
+                if (tipo === 'nueva_matricula') {
+                    const pulse = document.getElementById('stat-matriculas-pulse');
+                    if (pulse) {
+                        pulse.style.display = 'inline-block';
+                        setTimeout(() => { pulse.style.display = 'none'; }, 5000);
+                    }
+                }
+            })
+            .catch(() => {});
+        }, 800);
+    }
+
+    window.addEventListener('sge:dashboard-updated', function (e) {
+        const tipo = e.detail?.tipo;
+        if (tipo === 'nueva_matricula') {
+            triggerStatsRefresh('nueva_matricula');
+        }
+    });
+})();
+
 </script>
+<style>@keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.5; transform:scale(1.5); } }</style>
 @endpush
 
 @unless($isDocente)

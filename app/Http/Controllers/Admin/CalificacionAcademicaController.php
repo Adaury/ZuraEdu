@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\GradePublished;
 use App\Http\Controllers\Controller;
 use App\Models\Asignacion;
 use App\Models\CalificacionAcademica;
@@ -325,6 +326,16 @@ class CalificacionAcademicaController extends Controller
                         }
                     }
                 }
+            } catch (\Throwable) {}
+        }
+
+        if ($nuevoEstado && isset($asignacion) && $asignacion) {
+            try {
+                GradePublished::dispatch(
+                    $asignacion->grupo_id,
+                    'Planilla Anual',
+                    $asignacion->asignatura?->nombre ?? 'Asignatura',
+                );
             } catch (\Throwable) {}
         }
 

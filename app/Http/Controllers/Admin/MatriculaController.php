@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\DashboardActualizado;
 use App\Http\Controllers\Controller;
 use App\Models\Estudiante;
 use App\Models\Grupo;
@@ -116,6 +117,12 @@ class MatriculaController extends Controller
         $matricula = Matricula::create($data);
 
         try {
+            DashboardActualizado::dispatch(tenant_id() ?? 0, 'nueva_matricula', [
+                'grupo_id' => $matricula->grupo_id,
+            ]);
+        } catch (\Throwable) {}
+
+        try {
             $matricula->load(['estudiante.representantes', 'grupo.grado', 'grupo.seccion']);
             $estudiante = $matricula->estudiante;
             $grupo      = $matricula->grupo;
@@ -150,7 +157,8 @@ class MatriculaController extends Controller
 
     public function destroy(Matricula $matricula)
     {
-        if ($matricula->calificaciones()->count() > 0 || $matricula->asistencias()->count() > 0) {
+        $matricula->loadCount(['calificaciones', 'asistencias']);
+        if ($matricula->calificaciones_count > 0 || $matricula->asistencias_count > 0) {
             return back()->with('error', 'No se puede eliminar la matrícula porque tiene calificaciones o asistencias registradas. Puede cambiarla a estado "retirada" en su lugar.');
         }
 

@@ -12,9 +12,16 @@ $tab   = request('tab', 'muro');
 <div class="mb-4 p-4" style="background:{{ $color }};border-radius:18px;position:relative;overflow:hidden;">
     <div style="position:absolute;top:-30px;right:-30px;width:150px;height:150px;background:rgba(255,255,255,.07);border-radius:50%;pointer-events:none;"></div>
     <div style="position:relative;z-index:1;">
-        <a href="{{ route('portal.estudiante.classroom.index') }}" class="btn btn-sm mb-2" style="background:rgba(255,255,255,.2);color:#fff;border:none;">
-            <i class="bi bi-arrow-left me-1"></i>Mis Aulas
-        </a>
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <a href="{{ route('portal.estudiante.classroom.index') }}" class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:none;">
+                <i class="bi bi-arrow-left me-1"></i>Mis Aulas
+            </a>
+            {{-- Indicador de presencia online --}}
+            <div id="presence-badge" style="display:none;align-items:center;gap:.4rem;background:rgba(255,255,255,.18);backdrop-filter:blur(4px);border-radius:99px;padding:.25rem .75rem;font-size:.78rem;color:#fff;font-weight:600;">
+                <span style="width:8px;height:8px;background:#4ade80;border-radius:50%;display:inline-block;animation:presencePulse 2s infinite;"></span>
+                <span id="presence-count">1</span> en línea
+            </div>
+        </div>
         <h4 class="text-white fw-bold mb-0">{{ $claseVirtual->nombre }}</h4>
         <small class="text-white opacity-75">
             {{ $asig->asignatura?->nombre }} &bull; Prof. {{ $asig->docente?->user?->name }}
@@ -52,7 +59,9 @@ $tab   = request('tab', 'muro');
 <ul class="nav nav-pills mb-4 gap-1 flex-wrap" style="background:#F1F5F9;border-radius:12px;padding:6px;">
     @foreach([['muro','bi-layout-text-sidebar-reverse','Muro'],['tareas','bi-list-task','Mis Tareas'],['recursos','bi-folder-fill','Recursos'],['chat','bi-chat-dots-fill','Chat']] as [$t,$i,$l])
     <li class="nav-item">
-        <a class="nav-link {{ $tab===$t?'active shadow-sm':'text-muted' }}" href="?tab={{ $t }}" style="border-radius:8px;font-size:.875rem;{{ $tab===$t?'background:'.$color.';color:#fff !important;':'' }}">
+        <a class="nav-link classroom-tab-link {{ $tab===$t?'active shadow-sm':'text-muted' }}"
+           href="#" data-tab="{{ $t }}"
+           style="border-radius:8px;font-size:.875rem;{{ $tab===$t?'background:'.$color.';color:#fff !important;':'' }}">
             <i class="bi {{ $i }} me-1"></i>{{ $l }}
         </a>
     </li>
@@ -61,7 +70,7 @@ $tab   = request('tab', 'muro');
 <style>@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }</style>
 
 {{-- TAB MURO --}}
-@if($tab === 'muro')
+<div id="tab-muro" class="classroom-tab-pane{{ $tab !== 'muro' ? ' d-none' : '' }}">
 @forelse($materiales as $material)
 @php
 $clr = ['anuncio'=>'#6366F1','material'=>'#10B981','tarea'=>'#F59E0B','evaluacion'=>'#EF4444'][$material->tipo] ?? '#6B7280';
@@ -242,10 +251,10 @@ $esTarea = $material->esTareaOEvaluacion();
     <p class="mb-0">No hay publicaciones aún</p>
 </div>
 @endforelse
-@endif
+</div>
 
 {{-- TAB MIS TAREAS --}}
-@if($tab === 'tareas')
+<div id="tab-tareas" class="classroom-tab-pane{{ $tab !== 'tareas' ? ' d-none' : '' }}">
 @php
 $tareas = $materiales->filter(fn($m) => $m->esTareaOEvaluacion());
 $pendientes = $tareas->filter(fn($m) => !isset($entregasMap[$m->id]) || in_array($entregasMap[$m->id]?->estado??'pendiente',['pendiente','devuelto']));
@@ -327,10 +336,10 @@ $entregadas = $tareas->filter(fn($m) => isset($entregasMap[$m->id]) && in_array(
     <p class="fw-semibold mb-0">No hay tareas asignadas</p>
 </div>
 @endif
-@endif
+</div>
 
 {{-- TAB RECURSOS --}}
-@if($tab === 'recursos')
+<div id="tab-recursos" class="classroom-tab-pane{{ $tab !== 'recursos' ? ' d-none' : '' }}">
 @if($recursos->isEmpty())
 <div class="text-center py-5 text-muted">
     <i class="bi bi-folder2-open" style="font-size:3rem;color:#CBD5E1;display:block;margin-bottom:.75rem;"></i>
@@ -361,10 +370,10 @@ $entregadas = $tareas->filter(fn($m) => isset($entregasMap[$m->id]) && in_array(
 @endforeach
 </div>
 @endif
-@endif
+</div>
 
 {{-- TAB CHAT --}}
-@if($tab === 'chat')
+<div id="tab-chat" class="classroom-tab-pane{{ $tab !== 'chat' ? ' d-none' : '' }}">
 <div class="card border-0 shadow-sm" style="border-radius:16px;overflow:hidden;">
     <div class="card-header border-0 d-flex align-items-center justify-content-between" style="background:#f8fafc;padding:1rem 1.25rem;">
         <h6 class="fw-bold mb-0"><i class="bi bi-chat-dots-fill me-2" style="color:{{ $color }};"></i>Chat del aula</h6>
@@ -392,6 +401,8 @@ $entregadas = $tareas->filter(fn($m) => isset($entregasMap[$m->id]) && in_array(
     @endif
 </div>
 
+</div>
+
 <style>
 .chat-bubble { max-width:75%;padding:.5rem .85rem;border-radius:18px;font-size:.875rem;line-height:1.4;word-break:break-word; }
 .chat-bubble.own { background:{{ $color }};color:#fff;border-bottom-right-radius:4px;align-self:flex-end; }
@@ -401,15 +412,37 @@ $entregadas = $tareas->filter(fn($m) => isset($entregasMap[$m->id]) && in_array(
 </style>
 
 <script>
-const CHAT_URL = '{{ route('portal.estudiante.classroom.chat.index', $claseVirtual) }}';
-const CHAT_POST= '{{ route('portal.estudiante.classroom.chat.store', $claseVirtual) }}';
-const CSRF     = '{{ csrf_token() }}';
-const ME_ID    = {{ auth()->id() }};
-const chatBox  = document.getElementById('chat-box');
-const chatForm = document.getElementById('chat-form');
-const chatInput= document.getElementById('chat-input');
+// ── Tab switcher ──────────────────────────────────────────────────────────
+const TAB_COLOR = '{{ $color }}';
+let   chatInitialized = false;
 
-function escHtml(t) { const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
+function switchTab(name) {
+    document.querySelectorAll('.classroom-tab-pane').forEach(el => el.classList.add('d-none'));
+    document.getElementById('tab-' + name)?.classList.remove('d-none');
+    document.querySelectorAll('.classroom-tab-link').forEach(el => {
+        const active = el.dataset.tab === name;
+        el.classList.toggle('active', active);
+        el.classList.toggle('shadow-sm', active);
+        el.classList.toggle('text-muted', !active);
+        el.style.background = active ? TAB_COLOR : '';
+        el.style.color      = active ? '#fff'    : '';
+    });
+    history.replaceState(null, '', '?tab=' + name);
+    if (name === 'chat' && !chatInitialized) { initChat(); chatInitialized = true; }
+}
+
+document.querySelectorAll('.classroom-tab-link').forEach(el => {
+    el.addEventListener('click', function(e) { e.preventDefault(); switchTab(this.dataset.tab); });
+});
+
+// ── Chat (lazy) ────────────────────────────────────────────────────────────
+const CHAT_URL  = '{{ route('portal.estudiante.classroom.chat.index', $claseVirtual) }}';
+const CHAT_POST = '{{ route('portal.estudiante.classroom.chat.store', $claseVirtual) }}';
+const CSRF      = '{{ csrf_token() }}';
+const ME_ID     = {{ auth()->id() }};
+let   chatBox, chatForm, chatInput;
+
+function escHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
 function renderBubble(m) {
     const propio = m.user_id === ME_ID || m.es_propio;
@@ -433,34 +466,37 @@ function cargarMensajes() {
         });
 }
 
-if (chatForm) {
-    chatForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const msg = chatInput.value.trim();
-        if (!msg) return;
-        chatInput.value = '';
-        fetch(CHAT_POST, {
-            method: 'POST',
-            headers: {'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'},
-            body: JSON.stringify({ mensaje: msg, tipo: 'general' })
-        }).then(r => r.json()).then(m => {
-            chatBox.appendChild(renderBubble(m));
-            chatBox.scrollTop = chatBox.scrollHeight;
-        });
-    });
-}
+function initChat() {
+    chatBox   = document.getElementById('chat-box');
+    chatForm  = document.getElementById('chat-form');
+    chatInput = document.getElementById('chat-input');
 
-// Pusher tiempo real o polling
-if (typeof Pusher !== 'undefined' && '{{ config('broadcasting.default') }}' !== 'null') {
-    const pusher  = new Pusher('{{ config('broadcasting.connections.pusher.key') }}', { cluster: '{{ config('broadcasting.connections.pusher.options.cluster','mt1') }}' });
-    const channel = pusher.subscribe('classroom.{{ $claseVirtual->id }}');
-    channel.bind('new-message', function(data) {
-        if (data.user_id !== ME_ID) {
-            chatBox.appendChild(renderBubble(data));
+    if (chatForm) {
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const msg = chatInput.value.trim();
+            if (!msg) return;
+            chatInput.value = '';
+            fetch(CHAT_POST, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'},
+                body: JSON.stringify({ mensaje: msg, tipo: 'general' })
+            }).then(r => r.json()).then(m => {
+                chatBox.appendChild(renderBubble(m));
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+        });
+    }
+
+    // Mensajes y eventos vía Echo (DOM events despachados por echo.js)
+    window.addEventListener('classroom:new-message', function(e) {
+        if (e.detail.user_id !== ME_ID) {
+            chatBox.appendChild(renderBubble(e.detail));
             chatBox.scrollTop = chatBox.scrollHeight;
         }
     });
-    channel.bind('meeting-updated', function(data) {
+    window.addEventListener('classroom:meeting-updated', function(e) {
+        const data = e.detail;
         if (data.status === 'active' && data.meeting_url) {
             const banner = document.querySelector('.alert-danger');
             if (!banner) {
@@ -472,12 +508,51 @@ if (typeof Pusher !== 'undefined' && '{{ config('broadcasting.default') }}' !== 
             }
         }
     });
-} else {
-    setInterval(() => cargarMensajes(), 8000);
+
+    // Polling de respaldo si Reverb no conecta
+    setTimeout(function() {
+        if (window.Echo?.connector?.pusher?.connection?.state !== 'connected') {
+            setInterval(() => cargarMensajes(), 8000);
+        }
+    }, 4000);
+
+    cargarMensajes();
 }
 
-cargarMensajes();
-</script>
+@if($tab === 'chat')
+initChat(); chatInitialized = true;
 @endif
+</script>
 
+@push('realtime-data')
+<script>
+window._SGE_CLASE_IDS = [{{ $claseVirtual->id }}];
+document.addEventListener('DOMContentLoaded', function () {
+    const claseId = {{ $claseVirtual->id }};
+    function initPresence() {
+        if (!window.Echo) return;
+        window.Echo.join('presence-classroom.' + claseId)
+            .here(function (members) { updatePresence(members.length); })
+            .joining(function () {
+                const c = document.getElementById('presence-count');
+                if (c) { const n = parseInt(c.textContent, 10) + 1; c.textContent = n; updatePresence(n); }
+            })
+            .leaving(function () {
+                const c = document.getElementById('presence-count');
+                if (c) { const n = Math.max(1, parseInt(c.textContent, 10) - 1); c.textContent = n; updatePresence(n); }
+            })
+            .error(function () {});
+    }
+    function updatePresence(n) {
+        const badge = document.getElementById('presence-badge');
+        if (!badge) return;
+        badge.style.display = n > 1 ? 'flex' : 'none';
+        const c = document.getElementById('presence-count');
+        if (c) c.textContent = n;
+    }
+    setTimeout(initPresence, 1000);
+});
+</script>
+<style>@keyframes presencePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(1.3)} }</style>
+@endpush
 @endsection

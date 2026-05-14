@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\CalificacionesPublicadas;
+use App\Events\GradePublished;
 use App\Http\Controllers\Controller;
 use App\Models\Asignacion;
 use App\Models\Calificacion;
@@ -51,7 +53,7 @@ class CalificacionController extends Controller
         }
 
         $docente  = $this->docenteActual();
-        $periodos = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+        $periodos = $this->getPeriodos($schoolYear);
 
         // Redirect docente to setup if no profile or no asignaciones for this year
         if ($docente) {
@@ -174,14 +176,22 @@ class CalificacionController extends Controller
         $matriculas = $asignacion->grupo
             ->matriculas()->activas()->with('estudiante')->orderBy('numero_orden')->get();
 
+        // Bulk-load: 1 query en lugar de N (una por alumno con firstOrNew)
+        $matIds = $matriculas->pluck('id');
+        $existentes = Calificacion::where('asignacion_id', $asignacion->id)
+            ->where('periodo_id', $periodo->id)
+            ->whereIn('matricula_id', $matIds)
+            ->get()
+            ->keyBy('matricula_id');
+
         $calificaciones = [];
         foreach ($matriculas as $m) {
-            $cal = Calificacion::firstOrNew([
-                'matricula_id'  => $m->id,
-                'asignacion_id' => $asignacion->id,
-                'periodo_id'    => $periodo->id,
-            ]);
-            $calificaciones[$m->id] = $cal;
+            $calificaciones[$m->id] = $existentes->get($m->id)
+                ?? new Calificacion([
+                    'matricula_id'  => $m->id,
+                    'asignacion_id' => $asignacion->id,
+                    'periodo_id'    => $periodo->id,
+                ]);
         }
 
         return view('admin.calificaciones.grilla', compact(
@@ -402,10 +412,9 @@ class CalificacionController extends Controller
         // Invalidar caché de ranking del grupo afectado
         if ($asignacion) {
             $schoolYear = SchoolYear::actual();
-            $pattern    = "ranking_{$asignacion->grupo_id}_p*_sy" . optional($schoolYear)->id;
-            // Flush keys that match — simple approach without tags
-            Cache::forget("ranking_{$asignacion->grupo_id}_p{$request->periodo_id}_sy" . optional($schoolYear)->id);
-            Cache::forget("ranking_{$asignacion->grupo_id}_p_sy" . optional($schoolYear)->id);
+            $tid = tenant_id() ?? 0;
+            Cache::forget("t{$tid}_ranking_{$asignacion->grupo_id}_p{$request->periodo_id}_sy" . optional($schoolYear)->id);
+            Cache::forget("t{$tid}_ranking_{$asignacion->grupo_id}_p_sy" . optional($schoolYear)->id);
         }
 
         // ── Notificar por WhatsApp a representantes ───────────────────────
@@ -476,6 +485,25 @@ class CalificacionController extends Controller
             }
         }
 
+        // Broadcast realtime al grupo cuando se publican calificaciones
+        if ($nuevoEstado && $asignacion) {
+            try {
+                $periodo = $periodo ?? Periodo::find($request->periodo_id);
+                $periodoNombre  = $periodo?->nombre ?? "Período {$request->periodo_id}";
+                $asignaturaNombre = $asignacion->asignatura?->nombre ?? 'Asignatura';
+                CalificacionesPublicadas::dispatch(
+                    $asignacion->grupo_id,
+                    $periodoNombre,
+                    $asignaturaNombre,
+                );
+                GradePublished::dispatch(
+                    $asignacion->grupo_id,
+                    $periodoNombre,
+                    $asignaturaNombre,
+                );
+            } catch (\Throwable) {}
+        }
+
         $msg = $nuevoEstado
             ? "Calificaciones publicadas ({$count} registros)."
             : "Calificaciones despublicadas ({$count} registros).";
@@ -490,7 +518,7 @@ class CalificacionController extends Controller
         if (! $schoolYear) return back()->with('error', 'No hay un año escolar activo.');
 
         $grupos   = Grupo::with(['grado','seccion'])->where('school_year_id', $schoolYear->id)->get();
-        $periodos = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+        $periodos = $this->getPeriodos($schoolYear);
         $grupoId  = $request->grupo_id ?? optional($grupos->first())->id;
         $grupo    = $grupoId ? Grupo::with(['grado','seccion'])->find($grupoId) : null;
 
@@ -536,7 +564,7 @@ class CalificacionController extends Controller
         if (! $grupoId) return back()->with('error', 'Selecciona un grupo primero.');
 
         $grupo        = Grupo::with(['grado','seccion'])->findOrFail($grupoId);
-        $periodos     = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+        $periodos     = $this->getPeriodos($schoolYear);
         $asignaciones = Asignacion::with('asignatura')
             ->where('grupo_id', $grupo->id)
             ->where('school_year_id', $schoolYear->id)
@@ -580,7 +608,7 @@ class CalificacionController extends Controller
         if (! $grupoId) return back()->with('error', 'Selecciona un grupo primero.');
 
         $grupo        = Grupo::with(['grado','seccion'])->findOrFail($grupoId);
-        $periodos     = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+        $periodos     = $this->getPeriodos($schoolYear);
         $asignaciones = Asignacion::with('asignatura')
             ->where('grupo_id', $grupo->id)
             ->where('school_year_id', $schoolYear->id)
@@ -667,7 +695,7 @@ class CalificacionController extends Controller
         if (! $schoolYear) return back()->with('error', 'No hay un año escolar activo.');
 
         $grupos   = Grupo::with(['grado','seccion'])->where('school_year_id', $schoolYear->id)->get();
-        $periodos = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+        $periodos = $this->getPeriodos($schoolYear);
 
         $grupoId   = $request->grupo_id  ?? optional($grupos->first())->id;
         $periodoId = $request->periodo_id;
@@ -675,7 +703,8 @@ class CalificacionController extends Controller
         $ranking   = collect();
 
         if ($grupo) {
-            $cacheKey = "ranking_{$grupoId}_p{$periodoId}_sy{$schoolYear->id}";
+            $tid = tenant_id() ?? 0;
+            $cacheKey = "t{$tid}_ranking_{$grupoId}_p{$periodoId}_sy{$schoolYear->id}";
             $ranking  = Cache::remember($cacheKey, 1800, function () use ($grupo, $periodoId) {
                 $matriculas = $grupo->matriculas()->activas()->with('estudiante')->orderBy('numero_orden')->get();
 
@@ -717,8 +746,7 @@ class CalificacionController extends Controller
             ->orderBy('numero_orden')->get();
 
         $esTecnica = $asignacion->area === 'tecnica';
-        $periodos  = Periodo::when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
-            ->orderBy('numero')->get();
+        $periodos  = $this->getPeriodos($schoolYear);
 
         if ($esTecnica) {
             $calificaciones = Calificacion::where('asignacion_id', $asignacion->id)
@@ -759,8 +787,7 @@ class CalificacionController extends Controller
             ->orderBy('numero_orden')->get();
 
         $esTecnica = $asignacion->area === 'tecnica';
-        $periodos  = Periodo::when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
-            ->orderBy('numero')->get();
+        $periodos  = $this->getPeriodos($schoolYear);
 
         if ($esTecnica) {
             $calificaciones = Calificacion::where('asignacion_id', $asignacion->id)
@@ -1059,7 +1086,7 @@ class CalificacionController extends Controller
         $asignaciones = $query->get()
             ->sortBy(fn ($a) => ($a->grupo->grado->nombre ?? '') . ' ' . ($a->grupo->seccion->nombre ?? '') . ' ' . ($a->asignatura->nombre ?? ''));
 
-        $periodos = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+        $periodos = $this->getPeriodos($schoolYear);
 
         return view('admin.calificaciones.import', compact('schoolYear', 'asignaciones', 'periodos'));
     }
@@ -1240,6 +1267,12 @@ class CalificacionController extends Controller
         $omitidos    = 0;
         $errores     = [];
 
+        // Pre-load periods and school year once outside the row loop
+        $schoolYear      = SchoolYear::actual();
+        $periodosIndexed = Periodo::where('school_year_id', $asignacion->school_year_id)
+            ->orderBy('numero')->get()->keyBy('numero');
+        $periodoFijo     = $periodoId ? Periodo::find($periodoId) : null;
+
         foreach ($rows as $i => $row) {
             $linea = $i + 2;
 
@@ -1262,7 +1295,6 @@ class CalificacionController extends Controller
 
             if ($esAcademica) {
                 // ── Área académica: 4 competencias × 4 períodos ─────────
-                $schoolYear = SchoolYear::actual();
                 $data = [];
                 foreach (range(1, 4) as $p) {
                     foreach (range(1, 4) as $c) {
@@ -1285,9 +1317,7 @@ class CalificacionController extends Controller
             } else {
                 // ── Área técnica / simple: nota_final por período ────────
                 $periodoNum = (int) trim($row['periodo'] ?? $request->periodo_numero ?? 1);
-                $periodo    = $periodoId
-                    ? Periodo::find($periodoId)
-                    : Periodo::where('school_year_id', $asignacion->school_year_id)->where('numero', $periodoNum)->first();
+                $periodo    = $periodoFijo ?? $periodosIndexed->get($periodoNum);
 
                 if (! $periodo) {
                     $errores[] = "Fila {$linea}: Período {$periodoNum} no encontrado.";
@@ -1358,7 +1388,7 @@ class CalificacionController extends Controller
         if (! $schoolYear) abort(404);
 
         $grupos   = Grupo::with(['grado','seccion'])->where('school_year_id', $schoolYear->id)->get();
-        $periodos = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+        $periodos = $this->getPeriodos($schoolYear);
         $grupoId  = $request->grupo_id ?? optional($grupos->first())->id;
         $grupo    = $grupoId ? Grupo::with(['grado','seccion'])->find($grupoId) : null;
 
@@ -1446,7 +1476,7 @@ class CalificacionController extends Controller
         if (! $schoolYear) abort(404);
 
         $grupos   = Grupo::with(['grado','seccion'])->where('school_year_id', $schoolYear->id)->get();
-        $periodos = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+        $periodos = $this->getPeriodos($schoolYear);
         $grupoId  = $request->grupo_id ?? optional($grupos->first())->id;
         $grupo    = $grupoId ? Grupo::with(['grado','seccion'])->find($grupoId) : null;
 

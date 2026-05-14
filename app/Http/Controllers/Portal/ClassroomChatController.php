@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Portal;
 
-use App\Events\NewClassroomMessage;
+use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Models\ClassroomMessage;
 use App\Models\ClaseVirtual;
@@ -63,7 +63,13 @@ class ClassroomChatController extends Controller
 
         $msg->load('user');
 
-        broadcast(new NewClassroomMessage($msg))->toOthers();
+        MessageSent::dispatch(
+            $claseVirtual->id,
+            auth()->id(),
+            $msg->user->name,
+            $msg->mensaje,
+            $msg->created_at->format('H:i'),
+        );
 
         return response()->json([
             'id'         => $msg->id,

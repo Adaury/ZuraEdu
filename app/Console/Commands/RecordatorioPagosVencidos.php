@@ -7,6 +7,7 @@ use App\Models\Notificacion;
 use App\Models\Pago;
 use App\Models\Representante;
 use App\Models\SchoolYear;
+use App\Services\WhatsAppService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
 
@@ -77,6 +78,16 @@ class RecordatorioPagosVencidos extends Command
                     'leida'   => false,
                     'datos'   => json_encode(['deuda' => $totalDeuda]),
                 ]);
+            }
+
+            // WhatsApp al representante
+            if ($rep->telefono) {
+                WhatsAppService::send(
+                    $rep->telefono,
+                    "⚠️ *{$si}*\n\nEstimado representante, tiene *RD$ " . number_format($totalDeuda, 2) . "* en pagos escolares vencidos" .
+                    ($estudiante ? " de *{$estudiante->nombre_completo}*" : '') .
+                    ".\n\nPor favor regularice su situación ingresando al portal: " . config('app.url')
+                );
             }
 
             // Email si el representante tiene correo

@@ -2290,6 +2290,20 @@ if (auth()->check()) {
             </ul>
             @endif
 
+            {{-- ══ SOPORTE ══ --}}
+            @if($isAdmin || $isDir)
+            <div class="nav-section-title">Soporte</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.soporte.chat') }}" class="{{ request()->routeIs('admin.soporte.chat*') ? 'active' : '' }}"
+                       id="sidebar-soporte-chat">
+                        <i class="bi bi-headset"></i>Chat de Soporte
+                        <span id="sidebar-support-badge" style="display:none;background:#ef4444;color:#fff;border-radius:99px;font-size:.6rem;font-weight:700;min-width:17px;height:17px;padding:0 4px;margin-left:auto;align-items:center;justify-content:center;"></span>
+                    </a>
+                </li>
+            </ul>
+            @endif
+
             {{-- ══ CONFIGURACIÓN ══ --}}
             @if($canConfig || $isDir)
             <div class="nav-section-title">Configuración</div>
@@ -3018,7 +3032,7 @@ if (auth()->check()) {
 
     {{-- ── Chat interno del tenant ────────────────────────────────────────── --}}
     @auth
-    <div id="tenant-chat-widget" style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:9990;display:flex;flex-direction:column;align-items:flex-end;gap:.5rem;">
+    <div id="tenant-chat-widget" style="position:fixed;bottom:1.5rem;right:5rem;z-index:9990;display:flex;flex-direction:column;align-items:flex-end;gap:.5rem;">
         {{-- Panel de chat --}}
         <div id="tenant-chat-panel"
              style="width:340px;max-height:480px;background:#fff;border-radius:18px;box-shadow:0 8px 32px rgba(0,0,0,.16);display:none;flex-direction:column;overflow:hidden;border:1px solid #e2e8f0;">
@@ -3063,7 +3077,7 @@ if (auth()->check()) {
                 title="Chat del Personal">
             <i class="bi bi-chat-dots-fill" style="font-size:1.2rem;"></i>
             <span id="tenant-chat-badge" data-count="0"
-                  style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:.6rem;font-weight:700;min-width:18px;height:18px;border-radius:99px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;"></span>
+                  style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:.6rem;font-weight:700;min-width:18px;height:18px;border-radius:99px;align-items:center;justify-content:center;border:2px solid #fff;"></span>
         </button>
     </div>
 

@@ -112,6 +112,12 @@ Broadcast::channel('private-tenant.{tenantId}.notifications', function ($user, $
     return (int) (tenant_id() ?? 0) === (int) $tenantId;
 });
 
+// Canal privado de soporte — solo admins/coordinadores del tenant pueden escuchar mensajes entrantes.
+Broadcast::channel('private-tenant.{tenantId}.support', function ($user, $tenantId) {
+    if ((int) (tenant_id() ?? 0) !== (int) $tenantId) return false;
+    return $user->hasAnyRole(['Admin', 'SuperAdmin', 'Coordinator', 'Director']);
+});
+
 // ── Legacy: modelo estándar de Laravel ───────────────────────────────────────
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;

@@ -539,6 +539,21 @@ Route::prefix('admin/tenant-chat')->name('admin.tenant-chat.')->middleware(['aut
     Route::post('/',      [\App\Http\Controllers\Admin\TenantChatController::class, 'store'])->name('store');
 });
 
+// ── Chat de Soporte Público ───────────────────────────────────────────────
+Route::prefix('soporte/chat')->name('support.chat.')->group(function () {
+    Route::post('/start',            [\App\Http\Controllers\SupportChatController::class, 'start'])->name('start');
+    Route::post('/{token}/mensaje',  [\App\Http\Controllers\SupportChatController::class, 'send'])->name('send');
+    Route::get('/{token}/mensajes',  [\App\Http\Controllers\SupportChatController::class, 'messages'])->name('messages');
+});
+
+Route::prefix('admin/soporte')->name('admin.soporte.')->middleware(['auth', 'activo'])->group(function () {
+    Route::get('/chat',                    [\App\Http\Controllers\SupportChatController::class, 'adminPanel'])->name('chat');
+    Route::get('/chat/sesiones',           [\App\Http\Controllers\SupportChatController::class, 'adminIndex'])->name('chat.sessions');
+    Route::get('/chat/{session}/mensajes', [\App\Http\Controllers\SupportChatController::class, 'adminMessages'])->name('chat.messages');
+    Route::post('/chat/{session}/reply',   [\App\Http\Controllers\SupportChatController::class, 'adminReply'])->name('chat.reply');
+    Route::patch('/chat/{session}/close',  [\App\Http\Controllers\SupportChatController::class, 'adminClose'])->name('chat.close');
+});
+
 // ── CardNet RD — Pago en Línea ────────────────────────────────────────────
 Route::get('/cardnet/checkout/{token}', [\App\Http\Controllers\CardNetController::class, 'checkout'])->name('cardnet.checkout');
 Route::get('/cardnet/retorno',          [\App\Http\Controllers\CardNetController::class, 'retorno'])->name('cardnet.retorno');

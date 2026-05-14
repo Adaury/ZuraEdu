@@ -430,5 +430,8 @@ function formPM() {
     }
 }
 </script>
+
+@include('partials.support_chat_widget', ['chatBienvenida' => '¡Hola! 👋 ¿Tienes dudas sobre el proceso de inscripción? Estamos aquí para ayudarte.'])
+
 </body>
 </html>

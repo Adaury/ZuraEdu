@@ -178,7 +178,28 @@ if (userId && rolLower === 'docente') {
         });
 }
 
-// 5. Canal del tenant para admins (eventos de gestión global)
+// 5. Canal de soporte público — admins reciben mensajes de visitantes
+if (tenantId && (rolLower === 'admin' || rolLower === 'superadmin' || rolLower === 'coordinator' || rolLower === 'director')) {
+    window.Echo
+        .private(`private-tenant.${tenantId}.support`)
+        .listen('.support.message', (data) => {
+            toast(
+                `<i class="bi bi-headset me-1"></i><strong>${data.visitor_nombre}</strong>: ${data.mensaje}`,
+                'info', 7000
+            );
+            // Badge en sidebar
+            const sb = document.getElementById('sidebar-support-badge');
+            if (sb && !window.location.pathname.includes('/admin/soporte/chat')) {
+                const n = (parseInt(sb.dataset.count ?? '0', 10) || 0) + 1;
+                sb.dataset.count = n;
+                sb.textContent   = n > 9 ? '9+' : String(n);
+                sb.style.display = 'flex';
+            }
+            window.dispatchEvent(new CustomEvent('support:message', { detail: data }));
+        });
+}
+
+// 7. Canal del tenant para admins (eventos de gestión global)
 if (tenantId && (rolLower === 'admin' || rolLower === 'superadmin' || rolLower === 'coordinator')) {
     window.Echo
         .private(`private-tenant.${tenantId}`)
@@ -187,7 +208,7 @@ if (tenantId && (rolLower === 'admin' || rolLower === 'superadmin' || rolLower =
         });
 }
 
-// 6. Chat interno del tenant (todos los usuarios autenticados)
+// 8. Chat interno del tenant (todos los usuarios autenticados)
 if (tenantId) {
     window.Echo
         .private(`private-tenant.${tenantId}.chat`)
@@ -208,13 +229,13 @@ if (tenantId) {
                     const n = (parseInt(badge.dataset.count ?? '0', 10) || 0) + 1;
                     badge.dataset.count = n;
                     badge.textContent   = n > 9 ? '9+' : String(n);
-                    badge.style.display = '';
+                    badge.style.display = 'flex';
                 }
             }
         });
 }
 
-// 7. Notificaciones masivas del tenant (anuncios admin → todos los usuarios)
+// 9. Notificaciones masivas del tenant (anuncios admin → todos los usuarios)
 if (tenantId) {
     window.Echo
         .private(`private-tenant.${tenantId}.notifications`)

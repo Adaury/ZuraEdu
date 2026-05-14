@@ -19,6 +19,16 @@
 .table-card tbody tr:hover { background:#fef2f2; }
 
 .badge-vencido { background:#fee2e2; color:#991b1b; border-radius:20px; padding:.22rem .6rem; font-size:.71rem; font-weight:700; }
+
+/* Semáforo de mora */
+.mora-bar { display:flex; align-items:center; gap:.4rem; }
+.mora-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.mora-verde   { background:#22c55e; }
+.mora-amarillo{ background:#eab308; }
+.mora-naranja { background:#f97316; }
+.mora-rojo    { background:#dc2626; }
+.mora-critico { background:#7f1d1d; }
+.mora-text { font-size:.78rem; font-weight:700; }
 </style>
 @endpush
 
@@ -66,6 +76,15 @@
     </div>
 </div>
 
+{{-- Leyenda semáforo --}}
+<div class="d-flex gap-3 flex-wrap mb-3" style="font-size:.77rem;color:#6b7280;">
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;margin-right:.3rem;"></span>≤7 días</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#eab308;margin-right:.3rem;"></span>8–30 días</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f97316;margin-right:.3rem;"></span>31–60 días</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#dc2626;margin-right:.3rem;"></span>61–90 días</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#7f1d1d;margin-right:.3rem;"></span>&gt;90 días</span>
+</div>
+
 {{-- Filtro por grupo --}}
 <form method="GET" action="{{ route('admin.pagos.deudores') }}" class="mb-3 d-flex gap-2 align-items-center">
     <select name="grupo_id" class="form-select form-select-sm" style="max-width:220px;">
@@ -90,11 +109,24 @@
                 <th>Cuotas vencidas</th>
                 <th>Total deuda</th>
                 <th>Primera mora</th>
+                <th>Días mora</th>
                 <th></th>
             </tr>
         </thead>
         <tbody>
             @foreach($matriculas as $i => $mat)
+            @php
+                $diasMora = $mat->primera_mora
+                    ? (int) \Carbon\Carbon::parse($mat->primera_mora)->diffInDays(now())
+                    : 0;
+                [$dotClass, $textColor] = match(true) {
+                    $diasMora <= 7  => ['mora-verde',    '#15803d'],
+                    $diasMora <= 30 => ['mora-amarillo', '#a16207'],
+                    $diasMora <= 60 => ['mora-naranja',  '#c2410c'],
+                    $diasMora <= 90 => ['mora-rojo',     '#b91c1c'],
+                    default         => ['mora-critico',  '#7f1d1d'],
+                };
+            @endphp
             <tr>
                 <td class="text-muted" style="font-size:.78rem;">{{ $i + 1 }}</td>
                 <td>
@@ -110,6 +142,12 @@
                     {{ $mat->primera_mora ? \Carbon\Carbon::parse($mat->primera_mora)->format('d/m/Y') : '—' }}
                 </td>
                 <td>
+                    <div class="mora-bar">
+                        <div class="mora-dot {{ $dotClass }}"></div>
+                        <span class="mora-text" style="color:{{ $textColor }};">{{ $diasMora }}d</span>
+                    </div>
+                </td>
+                <td>
                     <a href="{{ route('admin.pagos.por-estudiante', $mat) }}"
                        class="btn btn-sm btn-outline-danger py-1" style="font-size:.75rem;">
                         <i class="bi bi-cash-coin me-1"></i>Ver cuenta
@@ -122,7 +160,7 @@
             <tr style="background:#fef2f2;">
                 <td colspan="4" class="fw-bold text-end" style="font-size:.83rem;color:#991b1b;">Total deuda acumulada:</td>
                 <td class="fw-bold" style="color:#991b1b;font-size:.95rem;">RD$ {{ number_format($totalDeuda, 2) }}</td>
-                <td colspan="2"></td>
+                <td colspan="3"></td>
             </tr>
         </tfoot>
     </table>

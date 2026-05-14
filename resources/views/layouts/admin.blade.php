@@ -2118,7 +2118,10 @@ if (auth()->check()) {
             </ul>
 
             {{-- ══ PAGOS Y COLEGIATURAS ══ --}}
-            @php $moduloPagos = \App\Models\ConfigInstitucional::moduloActivo('pagos'); @endphp
+            @php
+                $moduloPagos    = \App\Models\ConfigInstitucional::moduloActivo('pagos');
+                $countVencidos  = $moduloPagos ? \App\Models\Pago::vencidos()->count() : 0;
+            @endphp
             @if($moduloPagos && ($isAdmin || $isDir))
             <div class="nav-section-title">Pagos y Colegiaturas</div>
             <ul class="list-unstyled mb-0">
@@ -2128,8 +2131,11 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.pagos.deudores') }}" class="{{ request()->routeIs('admin.pagos.deudores') ? 'active' : '' }}">
-                        <i class="bi bi-exclamation-circle"></i>Deudores
+                    <a href="{{ route('admin.pagos.deudores') }}" class="{{ request()->routeIs('admin.pagos.deudores') ? 'active' : '' }}" style="display:flex;align-items:center;justify-content:space-between;">
+                        <span><i class="bi bi-exclamation-circle"></i>Deudores</span>
+                        @if($countVencidos > 0)
+                        <span style="background:#dc2626;color:#fff;border-radius:99px;font-size:.62rem;font-weight:700;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;flex-shrink:0;">{{ $countVencidos > 99 ? '99+' : $countVencidos }}</span>
+                        @endif
                     </a>
                 </li>
                 <li class="nav-item">

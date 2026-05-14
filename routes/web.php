@@ -181,6 +181,7 @@ Route::prefix('portal/estudiante')->name('portal.estudiante.')->middleware(['aut
     Route::get('/mis-prestamos',                        [PortalEstudianteController::class, 'misPrestamos'])->name('mis-prestamos');
     Route::get('/mis-pagos',                            [PortalEstudianteController::class, 'misPagos'])->name('mis-pagos');
     Route::post('/mis-pagos/{pago}/pagar-online',       [PortalEstudianteController::class, 'iniciarPago'])->name('mis-pagos.pagar-online');
+    Route::get('/mis-pagos/{pago}/recibo',             [PortalEstudianteController::class, 'reciboPago'])->name('mis-pagos.recibo');
     Route::get('/mi-saldo-cafeteria',                   [PortalEstudianteController::class, 'miSaldoCafeteria'])->name('mi-saldo-cafeteria');
     Route::get('/mi-ruta-transporte',                   [PortalEstudianteController::class, 'miRutaTransporte'])->name('mi-ruta-transporte');
     Route::get('/historial-academico',                  [PortalEstudianteController::class, 'historialAcademico'])->name('historial-academico');

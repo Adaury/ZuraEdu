@@ -23,6 +23,13 @@
 </div>
 @else
 
+@php
+    $totalGeneral   = $totales['pagado'] + $totales['pendiente'];
+    $porcPagado     = $totalGeneral > 0 ? round(($totales['pagado'] / $totalGeneral) * 100) : 0;
+    $proximoPago    = $pagos->whereIn('estado', ['pendiente','vencido'])->sortBy('fecha_vencimiento')->first();
+    $diasAlProximo  = $proximoPago ? (int) now()->diffInDays($proximoPago->fecha_vencimiento, false) : null;
+@endphp
+
 {{-- Resumen chips --}}
 <div class="row g-3 mb-4">
     <div class="col-4">
@@ -66,6 +73,62 @@
     </div>
 </div>
 
+{{-- Barra de progreso --}}
+@if($totalGeneral > 0)
+<div class="card border-0 shadow-sm mb-4" style="border-radius:14px;">
+    <div class="card-body py-3 px-4">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span style="font-size:.83rem;font-weight:700;color:#374151;">Progreso de pagos del año</span>
+            <span style="font-size:.95rem;font-weight:800;color:#065f46;">{{ $porcPagado }}%</span>
+        </div>
+        <div style="height:10px;background:#e5e7eb;border-radius:99px;overflow:hidden;">
+            <div style="height:100%;width:{{ $porcPagado }}%;background:linear-gradient(90deg,#10b981,#059669);border-radius:99px;transition:width .6s ease;"></div>
+        </div>
+        <div class="d-flex justify-content-between mt-1" style="font-size:.72rem;color:#6b7280;">
+            <span>RD$ {{ number_format($totales['pagado'],2) }} pagado</span>
+            <span>Total: RD$ {{ number_format($totalGeneral,2) }}</span>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- Próximo vencimiento --}}
+@if($proximoPago)
+@php
+    $esVencidoProx  = $proximoPago->estado === 'vencido';
+    $bgProx         = $esVencidoProx ? '#fef2f2' : '#eff6ff';
+    $borderProx     = $esVencidoProx ? '#fca5a5' : '#bfdbfe';
+    $iconProx       = $esVencidoProx ? 'bi-exclamation-triangle-fill' : 'bi-calendar-event-fill';
+    $colorProx      = $esVencidoProx ? '#991b1b' : '#1d4ed8';
+    $textoProx      = $esVencidoProx
+        ? '¡Pago vencido hace ' . abs($diasAlProximo) . ' día(s)!'
+        : ($diasAlProximo <= 0 ? '¡Vence hoy!' : 'Vence en ' . $diasAlProximo . ' día(s)');
+@endphp
+<div style="background:{{ $bgProx }};border:1px solid {{ $borderProx }};border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+    <i class="bi {{ $iconProx }}" style="color:{{ $colorProx }};font-size:1.35rem;flex-shrink:0;"></i>
+    <div style="flex:1;">
+        <div style="font-weight:700;color:{{ $colorProx }};font-size:.88rem;">{{ $textoProx }}</div>
+        <div style="font-size:.8rem;color:#4b5563;margin-top:.15rem;">
+            <strong>{{ $proximoPago->concepto }}</strong>
+            &nbsp;—&nbsp;
+            RD$ {{ number_format($proximoPago->monto,2) }}
+            &nbsp;·&nbsp;
+            Vence: {{ $proximoPago->fecha_vencimiento->format('d/m/Y') }}
+        </div>
+    </div>
+    @php $cardnetActivo = \App\Services\CardNetService::isConfigured(); @endphp
+    @if($cardnetActivo)
+    <form method="POST" action="{{ route('portal.estudiante.mis-pagos.pagar-online', $proximoPago) }}">
+        @csrf
+        <button type="submit" class="btn btn-sm"
+                style="background:{{ $esVencidoProx ? '#dc2626' : '#1d4ed8' }};color:#fff;border:none;border-radius:8px;font-size:.78rem;padding:.4rem 1rem;font-weight:700;white-space:nowrap;">
+            <i class="bi bi-credit-card-2-front me-1"></i>Pagar ahora
+        </button>
+    </form>
+    @endif
+</div>
+@endif
+
 {{-- Alertas de pagos vencidos --}}
 @php $vencidos = $pagos->where('estado','vencido'); @endphp
 @if($vencidos->isNotEmpty())
@@ -106,7 +169,7 @@
                     <th class="py-3 text-muted fw-semibold text-center" style="font-size:.72rem;text-transform:uppercase;">F. Pago</th>
                     <th class="py-3 text-muted fw-semibold text-center" style="font-size:.72rem;text-transform:uppercase;">Estado</th>
                     <th class="py-3 text-muted fw-semibold text-center" style="font-size:.72rem;text-transform:uppercase;">Método</th>
-                <th class="py-3"></th>
+                    <th class="py-3"></th>
                 </tr>
             </thead>
             <tbody>
@@ -170,7 +233,13 @@
                     @endif
                 </td>
                 <td class="py-3 text-center">
-                    @if($puedeOnline)
+                    @if($esPagado)
+                    <a href="{{ route('portal.estudiante.mis-pagos.recibo', $pago) }}" target="_blank"
+                       class="btn btn-sm btn-outline-secondary py-1"
+                       style="font-size:.72rem;border-radius:7px;" title="Descargar recibo">
+                        <i class="bi bi-receipt me-1"></i>Recibo
+                    </a>
+                    @elseif($puedeOnline)
                     <form method="POST" action="{{ route('portal.estudiante.mis-pagos.pagar-online', $pago) }}">
                         @csrf
                         <button type="submit"

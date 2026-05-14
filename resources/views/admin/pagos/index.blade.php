@@ -6,10 +6,23 @@
 .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.75rem; }
 .page-header h1 { font-size:1.35rem; font-weight:800; color:var(--primary); margin:0; }
 
-.stat-card { background:#fff; border-radius:12px; border:1px solid #e5e7eb; padding:1.1rem 1.4rem; display:flex; align-items:center; gap:1rem; }
+.stat-card { background:#fff; border-radius:12px; border:1px solid #e5e7eb; padding:1.1rem 1.4rem; display:flex; align-items:center; gap:1rem; cursor:pointer; transition:box-shadow .15s, transform .12s; text-decoration:none; }
+.stat-card:hover { box-shadow:0 4px 18px rgba(0,0,0,.09); transform:translateY(-2px); }
+.stat-card.active { border-color:var(--primary); box-shadow:0 0 0 2px rgba(var(--primary-rgb),.18); }
 .stat-icon { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.25rem; flex-shrink:0; }
 .stat-label { font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:#6b7280; }
 .stat-value { font-size:1.4rem; font-weight:800; color:#111827; line-height:1.2; }
+
+/* Quick-filter pills */
+.qfilter-pills { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1rem; }
+.qfilter-pill { display:inline-flex; align-items:center; gap:.35rem; padding:.35rem .85rem; border-radius:20px; font-size:.78rem; font-weight:700; cursor:pointer; border:1.5px solid transparent; text-decoration:none; transition:background .12s, border-color .12s; }
+.qfilter-pill.all      { background:#f1f5f9; color:#475569; border-color:#e2e8f0; }
+.qfilter-pill.pending  { background:#fef3c7; color:#92400e; border-color:#fcd34d; }
+.qfilter-pill.overdue  { background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+.qfilter-pill.paid     { background:#d1fae5; color:#065f46; border-color:#6ee7b7; }
+.qfilter-pill.cancelled{ background:#f3f4f6; color:#6b7280; border-color:#d1d5db; }
+.qfilter-pill.active, .qfilter-pill:hover { filter:brightness(.94); }
+.qfilter-pill .pill-count { background:rgba(0,0,0,.12); border-radius:10px; padding:.05rem .45rem; font-size:.7rem; }
 
 .filter-bar { background:#fff; border-radius:12px; border:1px solid #e5e7eb; padding:1rem 1.25rem; margin-bottom:1.25rem; display:flex; flex-wrap:wrap; gap:.75rem; align-items:flex-end; }
 .filter-bar select, .filter-bar input { font-size:.83rem; padding:.4rem .75rem; border-radius:8px; border:1px solid #d1d5db; background:#f9fafb; height:36px; }
@@ -28,12 +41,17 @@
 .badge-vencido   { background:#fee2e2; color:#991b1b; }
 .badge-cancelado { background:#f3f4f6; color:#6b7280; }
 
+.mora-chip { display:inline-block; border-radius:6px; padding:.15rem .5rem; font-size:.68rem; font-weight:700; margin-top:.2rem; }
+.mora-baja   { background:#fef3c7; color:#92400e; }
+.mora-media  { background:#fed7aa; color:#9a3412; }
+.mora-alta   { background:#fee2e2; color:#991b1b; }
+.mora-critica{ background:#991b1b; color:#fff; }
+
 .btn-pagar { background:var(--primary); color:#fff; border:none; border-radius:7px; padding:.3rem .75rem; font-size:.78rem; font-weight:600; cursor:pointer; }
 .btn-pagar:hover { opacity:.88; }
 .btn-sm-outline { background:transparent; border:1px solid #d1d5db; border-radius:7px; padding:.3rem .6rem; font-size:.78rem; color:#374151; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:.3rem; }
 .btn-sm-outline:hover { background:#f3f4f6; color:#374151; }
 
-/* Modal pago rápido */
 .modal-pago .modal-content { border-radius:14px; border:none; }
 .modal-pago .modal-header { background:var(--primary); color:#fff; border-radius:14px 14px 0 0; }
 </style>
@@ -70,44 +88,77 @@
     </div>
 </div>
 
-{{-- Stats --}}
-<div class="row g-3 mb-4">
+{{-- Stats (clicables para filtrar) --}}
+<div class="row g-3 mb-3">
     <div class="col-6 col-md-3">
-        <div class="stat-card">
+        <a href="{{ route('admin.pagos.index', ['estado'=>'pendiente'] + request()->except('estado','page')) }}"
+           class="stat-card {{ request('estado')==='pendiente' ? 'active' : '' }}">
             <div class="stat-icon" style="background:#dbeafe;"><i class="bi bi-hourglass-split text-primary"></i></div>
             <div>
                 <div class="stat-label">Pendiente</div>
                 <div class="stat-value" style="color:#1d4ed8;">RD$ {{ number_format($resumen['pendiente'],2) }}</div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-3">
-        <div class="stat-card">
+        <a href="{{ route('admin.pagos.index', ['estado'=>'pagado'] + request()->except('estado','page')) }}"
+           class="stat-card {{ request('estado')==='pagado' ? 'active' : '' }}">
             <div class="stat-icon" style="background:#d1fae5;"><i class="bi bi-check-circle-fill text-success"></i></div>
             <div>
                 <div class="stat-label">Cobrado</div>
                 <div class="stat-value" style="color:#065f46;">RD$ {{ number_format($resumen['pagado'],2) }}</div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-3">
-        <div class="stat-card">
+        <a href="{{ route('admin.pagos.index', ['estado'=>'vencido'] + request()->except('estado','page')) }}"
+           class="stat-card {{ request('estado')==='vencido' ? 'active' : '' }}">
             <div class="stat-icon" style="background:#fee2e2;"><i class="bi bi-exclamation-circle-fill text-danger"></i></div>
             <div>
                 <div class="stat-label">Vencido</div>
                 <div class="stat-value" style="color:#991b1b;">RD$ {{ number_format($resumen['vencido'],2) }}</div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-3">
-        <div class="stat-card">
+        <a href="{{ route('admin.pagos.index', request()->except('estado','page')) }}"
+           class="stat-card {{ !request('estado') ? 'active' : '' }}">
             <div class="stat-icon" style="background:#f3f4f6;"><i class="bi bi-receipt text-secondary"></i></div>
             <div>
                 <div class="stat-label">Total registros</div>
                 <div class="stat-value">{{ $resumen['total'] }}</div>
             </div>
-        </div>
+        </a>
     </div>
+</div>
+
+{{-- Quick-filter pills --}}
+@php
+    $estadoActual = request('estado', '');
+    $qBase        = request()->except('estado', 'page');
+@endphp
+<div class="qfilter-pills mb-3">
+    <a href="{{ route('admin.pagos.index', $qBase) }}"
+       class="qfilter-pill all {{ $estadoActual === '' ? 'active' : '' }}">
+        <i class="bi bi-list-ul"></i> Todos
+        <span class="pill-count">{{ $resumen['total'] }}</span>
+    </a>
+    <a href="{{ route('admin.pagos.index', array_merge($qBase, ['estado'=>'pendiente'])) }}"
+       class="qfilter-pill pending {{ $estadoActual === 'pendiente' ? 'active' : '' }}">
+        <i class="bi bi-hourglass-split"></i> Pendiente
+    </a>
+    <a href="{{ route('admin.pagos.index', array_merge($qBase, ['estado'=>'vencido'])) }}"
+       class="qfilter-pill overdue {{ $estadoActual === 'vencido' ? 'active' : '' }}">
+        <i class="bi bi-exclamation-circle-fill"></i> Vencido
+    </a>
+    <a href="{{ route('admin.pagos.index', array_merge($qBase, ['estado'=>'pagado'])) }}"
+       class="qfilter-pill paid {{ $estadoActual === 'pagado' ? 'active' : '' }}">
+        <i class="bi bi-check-circle-fill"></i> Pagado
+    </a>
+    <a href="{{ route('admin.pagos.index', array_merge($qBase, ['estado'=>'cancelado'])) }}"
+       class="qfilter-pill cancelled {{ $estadoActual === 'cancelado' ? 'active' : '' }}">
+        <i class="bi bi-x-circle"></i> Cancelado
+    </a>
 </div>
 
 {{-- Gráfica cobros por mes --}}
@@ -150,17 +201,8 @@ new Chart(document.getElementById('chartCobros'), {
 
 {{-- Filtros --}}
 <form method="GET" action="{{ route('admin.pagos.index') }}">
+@if(request('estado'))<input type="hidden" name="estado" value="{{ request('estado') }}">@endif
 <div class="filter-bar">
-    <div>
-        <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Estado</label>
-        <select name="estado">
-            <option value="">Todos</option>
-            <option value="pendiente" {{ request('estado')=='pendiente' ? 'selected' : '' }}>Pendiente</option>
-            <option value="pagado"    {{ request('estado')=='pagado'    ? 'selected' : '' }}>Pagado</option>
-            <option value="vencido"   {{ request('estado')=='vencido'   ? 'selected' : '' }}>Vencido</option>
-            <option value="cancelado" {{ request('estado')=='cancelado' ? 'selected' : '' }}>Cancelado</option>
-        </select>
-    </div>
     <div>
         <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Grupo</label>
         <select name="grupo_id">
@@ -202,7 +244,7 @@ new Chart(document.getElementById('chartCobros'), {
                 <th>Concepto</th>
                 <th>Monto</th>
                 <th>Vencimiento</th>
-                <th>Fecha Pago</th>
+                <th>F. Pago</th>
                 <th>Estado</th>
                 <th>Método</th>
                 <th></th>
@@ -211,8 +253,18 @@ new Chart(document.getElementById('chartCobros'), {
         <tbody>
             @forelse($pagos as $pago)
             @php
-                $est  = $pago->matricula->estudiante;
-                $grp  = $pago->matricula->grupo;
+                $est      = $pago->matricula->estudiante;
+                $grp      = $pago->matricula->grupo;
+                $diasMora = ($pago->estado === 'vencido' && $pago->fecha_vencimiento)
+                    ? (int) $pago->fecha_vencimiento->diffInDays(now())
+                    : null;
+                $moraClass = match(true) {
+                    $diasMora === null        => '',
+                    $diasMora <= 7            => 'mora-baja',
+                    $diasMora <= 30           => 'mora-media',
+                    $diasMora <= 60           => 'mora-alta',
+                    default                   => 'mora-critica',
+                };
             @endphp
             <tr>
                 <td>
@@ -224,7 +276,12 @@ new Chart(document.getElementById('chartCobros'), {
                 <td style="font-size:.82rem;">{{ $grp->grado->nombre ?? '—' }} {{ $grp->seccion->nombre ?? '' }}</td>
                 <td>{{ $pago->concepto }}</td>
                 <td class="fw-bold">RD$ {{ number_format($pago->monto, 2) }}</td>
-                <td style="font-size:.82rem;">{{ $pago->fecha_vencimiento->format('d/m/Y') }}</td>
+                <td style="font-size:.82rem;">
+                    {{ $pago->fecha_vencimiento->format('d/m/Y') }}
+                    @if($diasMora !== null)
+                    <div><span class="mora-chip {{ $moraClass }}">{{ $diasMora }}d mora</span></div>
+                    @endif
+                </td>
                 <td style="font-size:.82rem;">{{ $pago->fecha_pago ? $pago->fecha_pago->format('d/m/Y') : '—' }}</td>
                 <td>
                     <span class="badge-estado badge-{{ $pago->estado }}">{{ $pago->estado_label }}</span>
@@ -232,6 +289,12 @@ new Chart(document.getElementById('chartCobros'), {
                 <td style="font-size:.80rem;color:#6b7280;">{{ $pago->metodo_pago ? ucfirst($pago->metodo_pago) : '—' }}</td>
                 <td>
                     <div class="d-flex gap-1">
+                        @if($pago->estado === 'pagado')
+                        <a href="{{ route('admin.pagos.recibo', $pago) }}" target="_blank"
+                           class="btn-sm-outline" title="Recibo PDF" style="border-color:#93c5fd;color:#1d4ed8;">
+                            <i class="bi bi-receipt"></i>
+                        </a>
+                        @endif
                         @if(in_array($pago->estado, ['pendiente','vencido']))
                         <button class="btn-pagar"
                                 onclick="abrirPagar({{ $pago->id }}, '{{ addslashes($pago->concepto) }}')"

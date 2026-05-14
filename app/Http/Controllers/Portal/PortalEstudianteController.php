@@ -29,6 +29,7 @@ use App\Models\RecursoMateria;
 use App\Models\RespuestaEncuesta;
 use App\Models\SchoolYear;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class PortalEstudianteController extends Controller
 {
@@ -58,7 +59,7 @@ class PortalEstudianteController extends Controller
             ->first();
 
         $periodos = $schoolYear
-            ? Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
+            ? $this->getPeriodos($schoolYear)
             : collect();
 
         // Calificaciones publicadas
@@ -94,11 +95,12 @@ class PortalEstudianteController extends Controller
         // Horario
         [$gridHorario, $franjasHorario, $horarioActivo, $diasConfig] = $this->cargarHorario($matricula, $schoolYear);
 
-        // Comunicados (noticias)
-        $comunicados = Comunicado::publicados()
-            ->orderByDesc('published_at')
-            ->limit(5)
-            ->get();
+        // Comunicados (noticias) — cacheados 10 min
+        $tid = tenant_id() ?? 0;
+        $comunicados = \Illuminate\Support\Facades\Cache::remember(
+            "t{$tid}_comunicados_recientes", 600,
+            fn() => Comunicado::publicados()->orderByDesc('published_at')->limit(5)->get()
+        );
 
         // Notificaciones no leídas
         $notificaciones = Notificacion::where('user_id', auth()->id())
@@ -150,32 +152,39 @@ class PortalEstudianteController extends Controller
                 ->where('activo', true)
                 ->get();
 
-            // Tareas pendientes
-            $tareasPendientes = [];
-            $tareasVencidas   = 0;
-            foreach ($misClases as $clase) {
-                $materiales = $clase->materialesPublicados()
+            // Bulk-load materiales pendientes de todas las clases — 1 sola query
+            $claseIds = $misClases->pluck('id');
+            $claseMap = $misClases->keyBy('id');
+
+            $materialesPendientes = $claseIds->isNotEmpty()
+                ? \App\Models\MaterialClase::whereIn('clase_virtual_id', $claseIds)
                     ->whereIn('tipo', ['tarea', 'evaluacion'])
+                    ->where('publicado', true)
                     ->whereDoesntHave('entregas', fn($q) =>
                         $q->where('matricula_id', $matricula->id)
                           ->whereIn('estado', ['entregado', 'calificado', 'atrasado'])
-                    )->get();
-                foreach ($materiales as $mat) {
-                    if ($mat->estaVencido()) {
-                        $tareasVencidas++;
-                    } else {
-                        $tareasPendientes[] = [
-                            'titulo'       => $mat->titulo,
-                            'clase'        => $clase->nombre,
-                            'asignatura'   => $clase->asignacion?->asignatura?->nombre,
-                            'fecha_limite' => $mat->fecha_limite,
-                            'clase_id'     => $clase->id,
-                            'material_id'  => $mat->id,
-                        ];
-                    }
+                    )
+                    ->get()
+                : collect();
+
+            $tareasPendientes = [];
+            $tareasVencidas   = 0;
+            foreach ($materialesPendientes as $mat) {
+                $clase = $claseMap->get($mat->clase_virtual_id);
+                if ($mat->estaVencido()) {
+                    $tareasVencidas++;
+                } else {
+                    $tareasPendientes[] = [
+                        'titulo'       => $mat->titulo,
+                        'clase'        => $clase?->nombre,
+                        'asignatura'   => $clase?->asignacion?->asignatura?->nombre,
+                        'fecha_limite' => $mat->fecha_limite,
+                        'clase_id'     => $mat->clase_virtual_id,
+                        'material_id'  => $mat->id,
+                    ];
                 }
             }
-            usort($tareasPendientes, fn($a,$b) => $a['fecha_limite'] <=> $b['fecha_limite']);
+            usort($tareasPendientes, fn($a, $b) => $a['fecha_limite'] <=> $b['fecha_limite']);
 
             $zuraClasesData = [
                 'totalClases'      => $misClases->count(),
@@ -204,6 +213,7 @@ class PortalEstudianteController extends Controller
         // Marcar todas como leídas al ver el historial
         \App\Models\Notificacion::where('user_id', auth()->id())
             ->noLeidas()->update(['leida' => true, 'leida_en' => now()]);
+        Cache::put('user_' . auth()->id() . '_notif_unread', 0, 15);
 
         return view('portal.notificaciones', compact('notificaciones'));
     }
@@ -226,7 +236,7 @@ class PortalEstudianteController extends Controller
         }
 
         $periodos = $schoolYear
-            ? Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
+            ? $this->getPeriodos($schoolYear)
             : collect();
 
         // Calificaciones técnicas publicadas (por asignatura y período)
@@ -268,7 +278,7 @@ class PortalEstudianteController extends Controller
         if (! $matricula) abort(404, 'Sin matrícula activa.');
 
         $periodos = $schoolYear
-            ? Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
+            ? $this->getPeriodos($schoolYear)
             : collect();
 
         $calificaciones = Calificacion::with(['asignacion.asignatura', 'periodo'])
@@ -352,6 +362,7 @@ class PortalEstudianteController extends Controller
         if ($notificacion->user_id !== auth()->id()) abort(403);
 
         $notificacion->update(['leida' => true, 'leida_en' => now()]);
+        Cache::forget('user_' . auth()->id() . '_notif_unread');
 
         return response()->json(['ok' => true]);
     }
@@ -361,6 +372,7 @@ class PortalEstudianteController extends Controller
         Notificacion::where('user_id', auth()->id())
             ->noLeidas()
             ->update(['leida' => true, 'leida_en' => now()]);
+        Cache::put('user_' . auth()->id() . '_notif_unread', 0, 15);
 
         return response()->json(['ok' => true]);
     }
@@ -640,6 +652,7 @@ class PortalEstudianteController extends Controller
     }
 
     // ── Helpers privados ─────────────────────────────────────────────────
+
     private function calcularResumenAsistencia($matricula): array
     {
         if (! $matricula) return ['total' => 0, 'presentes' => 0, 'ausentes' => 0, 'tardanzas' => 0, 'porcentaje' => null, 'por_materia' => []];
@@ -1115,7 +1128,7 @@ class PortalEstudianteController extends Controller
         if (! $matricula) abort(404);
 
         $periodos = $schoolYear
-            ? \App\Models\Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
+            ? $this->getPeriodos($schoolYear)
             : collect();
 
         $calificaciones = \App\Models\Calificacion::with(['asignacion.asignatura', 'periodo'])
@@ -1155,7 +1168,7 @@ class PortalEstudianteController extends Controller
         if (! $matricula) abort(404);
 
         $periodos = $schoolYear
-            ? Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
+            ? $this->getPeriodos($schoolYear)
             : collect();
 
         $calificaciones = Calificacion::with(['asignacion.asignatura', 'periodo'])
@@ -1402,7 +1415,7 @@ class PortalEstudianteController extends Controller
         $mejoraContinua = false;
         $detalleMejora  = null;
         if ($matricula && $schoolYear) {
-            $periodos = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+            $periodos = $this->getPeriodos($schoolYear);
             $promediosPorPeriodo = [];
 
             foreach ($periodos as $periodo) {
@@ -1574,7 +1587,7 @@ class PortalEstudianteController extends Controller
 
         // Períodos del año escolar actual (para boletines por período)
         $periodos = $schoolYear
-            ? Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
+            ? $this->getPeriodos($schoolYear)
             : collect();
 
         return view('portal.estudiante.mis_documentos', compact(
@@ -1882,6 +1895,29 @@ class PortalEstudianteController extends Controller
         return redirect()->route('cardnet.checkout', $token);
     }
 
+    public function reciboPago(Pago $pago)
+    {
+        $estudiante = $this->getEstudiante();
+        $matricula  = $estudiante->matriculas()->where('id', $pago->matricula_id)->first();
+        abort_if(! $matricula, 403);
+        abort_if($pago->estado !== 'pagado', 422, 'Solo se puede generar recibo de pagos confirmados.');
+
+        $pago->load(['matricula.estudiante.representantes', 'matricula.grupo.grado', 'matricula.grupo.seccion', 'registrador']);
+
+        $mon    = \App\Helpers\Setting::get('payments_currency', 'DOP');
+        $inst   = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+        $dir    = \App\Models\ConfigInstitucional::get('nombre_director', '');
+        $sy     = SchoolYear::actual();
+        $config = $sy ? \App\Models\BoletinConfig::getOrCreate($sy->id) : null;
+
+        $pdf  = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'admin.pagos.recibo_pdf',
+            compact('pago', 'inst', 'dir', 'mon', 'config')
+        )->setPaper([0, 0, 340, 500], 'portrait');
+
+        return $pdf->download('recibo_' . $pago->id . '_' . now()->format('Ymd') . '.pdf');
+    }
+
     public function miSaldoCafeteria()
     {
         $estudiante     = $this->getEstudiante();
@@ -1912,7 +1948,7 @@ class PortalEstudianteController extends Controller
         if (! $matricula) abort(404, 'Sin matrícula activa.');
 
         $periodos = $schoolYear
-            ? Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
+            ? $this->getPeriodos($schoolYear)
             : collect();
 
         $calificaciones = \App\Models\Calificacion::with(['asignacion.asignatura', 'periodo'])
@@ -2035,5 +2071,72 @@ class PortalEstudianteController extends Controller
         return view('portal.estudiante.mi_ruta_transporte', compact(
             'estudiante', 'asignacion', 'ruta'
         ));
+    }
+
+    // ── Calendario escolar ───────────────────────────────────────────────
+    public function calendario()
+    {
+        $schoolYear = SchoolYear::actual();
+        $eventos    = $this->calendarEventos(['todos', 'estudiantes']);
+        return view('portal.estudiante.calendario', compact('schoolYear', 'eventos'));
+    }
+
+    public function calendarioApi()
+    {
+        $eventos = $this->calendarEventos(['todos', 'estudiantes']);
+        return response()->json($eventos);
+    }
+
+    private function calendarEventos(array $apliCa): array
+    {
+        $schoolYear = SchoolYear::actual();
+
+        $cal = \App\Models\CalendarioAcademico::when($schoolYear, fn($q) => $q->delAnio($schoolYear->id))
+            ->where('activo', true)
+            ->where(fn($q) => $q->whereIn('aplica_a', $apliCa))
+            ->get()
+            ->map(fn($e) => [
+                'id'     => 'cal_' . $e->id,
+                'titulo' => $e->titulo,
+                'inicio' => $e->fecha_inicio->format('Y-m-d'),
+                'fin'    => $e->fecha_fin?->format('Y-m-d'),
+                'tipo'   => $e->tipo,
+                'color'  => $e->color ?? '#6b7280',
+                'desc'   => $e->descripcion,
+                'fuente' => 'calendario',
+            ]);
+
+        $evs = Evento::activos()->get()->map(fn($e) => [
+            'id'     => 'ev_' . $e->id,
+            'titulo' => $e->nombre,
+            'inicio' => $e->fecha_inicio->format('Y-m-d'),
+            'fin'    => $e->fecha_fin?->format('Y-m-d'),
+            'tipo'   => 'evento_' . $e->tipo,
+            'color'  => match($e->tipo) {
+                'academico' => '#0891b2', 'deportivo' => '#16a34a',
+                'cultural'  => '#7c3aed', 'social'    => '#d97706',
+                default     => '#6b7280',
+            },
+            'desc'   => $e->descripcion,
+            'fuente' => 'evento',
+        ]);
+
+        $pers = collect();
+        if ($schoolYear) {
+            foreach ($this->getPeriodos($schoolYear) as $p) {
+                if ($p->fecha_inicio) $pers->push([
+                    'id' => 'pi_' . $p->id, 'titulo' => 'Inicio ' . $p->nombre,
+                    'inicio' => $p->fecha_inicio->format('Y-m-d'), 'fin' => null,
+                    'tipo' => 'inicio_periodo', 'color' => '#2563eb', 'desc' => null, 'fuente' => 'periodo',
+                ]);
+                if ($p->fecha_fin) $pers->push([
+                    'id' => 'pf_' . $p->id, 'titulo' => 'Fin ' . $p->nombre,
+                    'inicio' => $p->fecha_fin->format('Y-m-d'), 'fin' => null,
+                    'tipo' => 'fin_periodo', 'color' => '#dc2626', 'desc' => null, 'fuente' => 'periodo',
+                ]);
+            }
+        }
+
+        return $cal->concat($evs)->concat($pers)->values()->all();
     }
 }

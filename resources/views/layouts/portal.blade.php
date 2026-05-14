@@ -912,8 +912,13 @@ document.getElementById('btnBell')?.addEventListener('click', function(e) {
         } catch (_) {}
     }
 
-    // Iniciar polling cada 45 segundos
-    setInterval(pollNotificaciones, 45000);
+    // Polling como fallback — Echo lo pausa cuando conecta a Reverb
+    window._notifPollingInterval = setInterval(pollNotificaciones, 45000);
+
+    // Cuando Echo actualiza el badge, sincronizar el contador interno del polling
+    window.addEventListener('sge:notification-new', (e) => {
+        lastCount = (lastCount || 0) + (e.detail?.delta ?? 1);
+    });
 })();
 </script>
 
@@ -923,5 +928,27 @@ document.getElementById('btnBell')?.addEventListener('click', function(e) {
     50%      { transform: scale(1.18); }
 }
 </style>
+
+{{-- ── ZuraEdu Realtime — Echo + Reverb ──────────────────────────────────── --}}
+@auth
+<script>
+window._REVERB_KEY    = '{{ config("broadcasting.connections.reverb.key") }}';
+window._REVERB_HOST   = '{{ config("broadcasting.connections.reverb.options.host") }}';
+window._REVERB_PORT   = {{ config("broadcasting.connections.reverb.options.port", 8080) }};
+window._REVERB_SCHEME = '{{ config("broadcasting.connections.reverb.options.scheme", "http") }}';
+window._SGE_USER_ID   = {{ auth()->id() }};
+window._SGE_ROL       = '{{ auth()->user()->roles->first()?->name ?? "" }}';
+window._SGE_TENANT_ID = {{ tenant_id() ?? 'null' }};
+window._SGE_GRUPO_IDS = [];
+window._SGE_CLASE_IDS = [];
+window._SGE_DEBUG     = {{ config('app.debug') ? 'true' : 'false' }};
+</script>
+@stack('realtime-data')
+@vite('resources/js/echo.js')
+@endauth
+
+<div id="sge-toast-container" aria-live="polite" aria-atomic="false"
+     style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;max-width:340px;"></div>
+
 </body>
 </html>

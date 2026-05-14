@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Traits\BelongsToTenant;
-
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -13,8 +12,18 @@ class Mensaje extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'remitente_id', 'destinatario_id', 'asunto', 'cuerpo',
-        'leido', 'leido_en', 'archivado_remitente', 'archivado_destinatario',
+        'tenant_id',
+        'remitente_id',
+        'destinatario_id',
+        'asunto',
+        'cuerpo',
+        'tipo',
+        'adjunto_path',
+        'adjunto_nombre',
+        'leido',
+        'leido_en',
+        'archivado_remitente',
+        'archivado_destinatario',
         'mensaje_padre_id',
     ];
 
@@ -25,14 +34,23 @@ class Mensaje extends Model
         'archivado_destinatario' => 'boolean',
     ];
 
+    // ── Relaciones ─────────────────────────────────────────────────────────
+
     public function remitente(): BelongsTo
     {
         return $this->belongsTo(User::class, 'remitente_id');
     }
 
+    /** @deprecated Usar destinatarios() para el módulo nuevo */
     public function destinatario(): BelongsTo
     {
         return $this->belongsTo(User::class, 'destinatario_id');
+    }
+
+    /** Relación nueva: múltiples destinatarios */
+    public function destinatarios(): HasMany
+    {
+        return $this->hasMany(MensajeDestinatario::class);
     }
 
     public function padre(): BelongsTo
@@ -44,6 +62,8 @@ class Mensaje extends Model
     {
         return $this->hasMany(Mensaje::class, 'mensaje_padre_id')->latest();
     }
+
+    // ── Scopes (compatibilidad con MensajeController viejo) ─────────────────
 
     public function scopeRecibidos($q, int $userId)
     {
@@ -58,5 +78,15 @@ class Mensaje extends Model
     public function scopeNoLeidos($q)
     {
         return $q->where('leido', false);
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+
+    public function leidoPorUsuario(int $userId): bool
+    {
+        return $this->destinatarios()
+            ->where('destinatario_id', $userId)
+            ->whereNotNull('leido_at')
+            ->exists();
     }
 }

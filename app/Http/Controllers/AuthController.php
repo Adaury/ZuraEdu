@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Auth\Events\PasswordReset;
+use App\Helpers\Setting;
 use App\Models\ActivityLog;
 use App\Models\User;
 
@@ -104,8 +105,7 @@ class AuthController extends Controller
 
     public function showRegister()
     {
-        $demoActivo = \Illuminate\Support\Facades\DB::table('system_settings')
-            ->where('key', 'demo_activo')->value('value') === '1';
+        $demoActivo = Setting::get('demo_activo') === '1';
 
         $usuariosDemo = [];
         if ($demoActivo) {
@@ -172,7 +172,7 @@ class AuthController extends Controller
                 ]);
             }
             // Invalidar caché de pendientes
-            \Illuminate\Support\Facades\Cache::forget('usuarios_pendientes_count');
+            \Illuminate\Support\Facades\Cache::forget('t' . (tenant_id() ?? 0) . '_usuarios_pendientes_count');
         } catch (\Throwable $e) {
             // No interrumpir el flujo
         }
@@ -291,10 +291,7 @@ class AuthController extends Controller
     public function demoLogin(string $rol)
     {
         // Verificar si el demo está activo
-        $demoActivo = \Illuminate\Support\Facades\DB::table('system_settings')
-            ->where('key', 'demo_activo')->value('value');
-
-        if ($demoActivo !== '1') {
+        if (Setting::get('demo_activo') !== '1') {
             return redirect('/')->with('error', '⚠ El modo demo está desactivado en este momento.');
         }
 

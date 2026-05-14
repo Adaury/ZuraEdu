@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
+use App\Traits\HasDocenteContext;
 use App\Models\Asignacion;
 use App\Models\Docente;
 use App\Models\EntregaTarea;
@@ -14,18 +15,7 @@ use Illuminate\Http\Request;
 
 class AgendaDocenteController extends Controller
 {
-    // ── Helpers ───────────────────────────────────────────────────────────
-
-    private function getDocente(): Docente
-    {
-        $docente = Docente::where('user_id', auth()->id())->first();
-
-        if (! $docente) {
-            abort(403, 'No tienes un perfil de docente asociado a esta cuenta.');
-        }
-
-        return $docente;
-    }
+    use HasDocenteContext;
 
     private function resolverAsignacion(int $asignacionId): Asignacion
     {

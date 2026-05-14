@@ -7,6 +7,7 @@ use App\Models\Notificacion;
 use App\Models\SolicitudRepresentante;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class SolicitudesAdminController extends Controller
 {
@@ -35,14 +36,15 @@ class SolicitudesAdminController extends Controller
 
         $solicitudes = $query->paginate(20)->withQueryString();
 
-        $stats = [
+        $tid   = tenant_id();
+        $stats = Cache::remember("t{$tid}_solicitudes_rep_stats", 60, fn () => [
             'pendientes'  => SolicitudRepresentante::where('estado', 'pendiente')->count(),
             'en_proceso'  => SolicitudRepresentante::where('estado', 'en_proceso')->count(),
             'total_hoy'   => SolicitudRepresentante::whereDate('created_at', today())->count(),
-        ];
+        ]);
 
         $tipos   = SolicitudRepresentante::TIPOS;
-        $estados = SolicitudRepresentante::ESTADOS;
+        $estados = SolicitudRepresentante::estados();
 
         return view('admin.solicitudes.index', compact('solicitudes', 'stats', 'tipos', 'estados'));
     }
@@ -51,7 +53,7 @@ class SolicitudesAdminController extends Controller
     {
         $solicitud->load(['representante', 'estudiante', 'respondidoPor']);
         $tipos   = SolicitudRepresentante::TIPOS;
-        $estados = SolicitudRepresentante::ESTADOS;
+        $estados = SolicitudRepresentante::estados();
         return view('admin.solicitudes.show', compact('solicitud', 'tipos', 'estados'));
     }
 
@@ -72,7 +74,7 @@ class SolicitudesAdminController extends Controller
         // Notificar al representante si tiene cuenta de usuario
         $userId = $solicitud->representante?->user_id;
         if ($userId) {
-            $estadoLabel = SolicitudRepresentante::ESTADOS[$data['estado']]['label'] ?? $data['estado'];
+            $estadoLabel = SolicitudRepresentante::estados()[$data['estado']]['label'] ?? $data['estado'];
             Notificacion::create([
                 'user_id' => $userId,
                 'tipo'    => 'solicitud',
@@ -81,6 +83,10 @@ class SolicitudesAdminController extends Controller
                 'leida'   => false,
             ]);
         }
+
+        $tid = tenant_id();
+        Cache::forget("t{$tid}_solicitudes_rep_stats");
+        Cache::forget("t{$tid}_sol_rep_pend");
 
         return back()->with('success', 'Respuesta enviada correctamente.');
     }

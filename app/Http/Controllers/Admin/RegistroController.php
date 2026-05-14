@@ -19,7 +19,7 @@ class RegistroController extends Controller
 
     public function index(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->firstOrFail();
+        $schoolYear = SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
 
         $cicloFiltro = $request->get('ciclo'); // 'primer_ciclo' | 'segundo_ciclo'
 
@@ -37,7 +37,7 @@ class RegistroController extends Controller
 
     public function show(Grupo $grupo, Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->firstOrFail();
+        $schoolYear = SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
         $periodoId  = $request->get('periodo');
 
         $datos = $this->svc->buildRegistro($grupo, $schoolYear);
@@ -128,16 +128,19 @@ class RegistroController extends Controller
 
     public function calcularPromociones(Grupo $grupo): JsonResponse
     {
-        $schoolYear = SchoolYear::where('activo', true)->firstOrFail();
+        $schoolYear = SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
         $matriculas = Matricula::where('grupo_id', $grupo->id)
             ->where('school_year_id', $schoolYear->id)
             ->where('estado', 'activa')
             ->with(['estudiante', 'grupo.grado'])
             ->get();
 
+        // buildRegistro una sola vez para todo el grupo (4 queries en lugar de 4N)
+        $registroGrupo = $this->svc->buildRegistro($grupo, $schoolYear);
+
         $resultados = [];
         foreach ($matriculas as $m) {
-            $promo = $this->svc->calcularPromocion($m, $schoolYear);
+            $promo = $this->svc->calcularPromocion($m, $schoolYear, $registroGrupo);
             $resultados[] = [
                 'estudiante' => $m->estudiante?->nombre_completo ?? '(sin nombre)',
                 'estado'     => $promo->estado_label,
@@ -152,7 +155,7 @@ class RegistroController extends Controller
 
     public function calificaciones(Grupo $grupo, Request $request)
     {
-        $schoolYear   = SchoolYear::where('activo', true)->firstOrFail();
+        $schoolYear   = SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
         $asignacionId = $request->get('asignacion_id');
         $periodoId    = $request->get('periodo_id');
 
@@ -177,7 +180,7 @@ class RegistroController extends Controller
             ->orderBy('id')
             ->get();
 
-        $periodos = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+        $periodos = $this->getPeriodos($schoolYear);
 
         // Si no hay selección, mostrar solo el panel de selección
         if (! $asignacionId || ! $periodoId) {
@@ -229,7 +232,7 @@ class RegistroController extends Controller
 
     public function calificacionesPdf(Grupo $grupo, Request $request)
     {
-        $schoolYear   = SchoolYear::where('activo', true)->firstOrFail();
+        $schoolYear   = SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
         $asignacionId = $request->get('asignacion_id');
         $periodoId    = $request->get('periodo_id');
         $ciclo        = $grupo->grado->ciclo ?? 'primer_ciclo';
@@ -262,7 +265,7 @@ class RegistroController extends Controller
             $evalMap[$e->matricula_id][$key][$e->periodo_id] = $e->valor_cualitativo ?? $e->nota_numerica;
         }
 
-        $periodos = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+        $periodos = $this->getPeriodos($schoolYear);
         $grupo->load(['grado', 'seccion']);
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.registro.calificaciones_pdf', compact(
@@ -316,7 +319,7 @@ class RegistroController extends Controller
 
     public function exportarPdf(Grupo $grupo)
     {
-        $schoolYear = SchoolYear::where('activo', true)->firstOrFail();
+        $schoolYear = SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
         $datos = $this->svc->buildRegistro($grupo, $schoolYear);
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.registro.pdf', $datos)
@@ -332,7 +335,7 @@ class RegistroController extends Controller
 
     public function exportarExcel(Grupo $grupo)
     {
-        $schoolYear   = SchoolYear::where('activo', true)->firstOrFail();
+        $schoolYear   = SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
         $datos        = $this->svc->buildRegistro($grupo, $schoolYear);
         $ciclo        = $datos['ciclo'];
         $asignaciones = $datos['asignaciones'];

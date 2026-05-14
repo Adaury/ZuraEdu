@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use App\Traits\BelongsToTenant;
+use App\Traits\HasSolicitudEstados;
 use Illuminate\Database\Eloquent\Model;
 
 class SolicitudEstudiante extends Model
 {
-    use BelongsToTenant;
+    use BelongsToTenant, HasSolicitudEstados;
 
     protected $table = 'solicitudes_estudiante';
 
@@ -31,13 +32,6 @@ class SolicitudEstudiante extends Model
         'otro'                   => 'Otro',
     ];
 
-    public const ESTADOS = [
-        'pendiente'   => ['label' => 'Pendiente',   'color' => '#d97706', 'bg' => '#fffbeb'],
-        'en_proceso'  => ['label' => 'En Proceso',  'color' => '#2563eb', 'bg' => '#eff6ff'],
-        'aprobada'    => ['label' => 'Aprobada',    'color' => '#16a34a', 'bg' => '#f0fdf4'],
-        'rechazada'   => ['label' => 'Rechazada',   'color' => '#dc2626', 'bg' => '#fef2f2'],
-    ];
-
     public function estudiante()
     {
         return $this->belongsTo(Estudiante::class);
@@ -46,20 +40,5 @@ class SolicitudEstudiante extends Model
     public function respondidoPor()
     {
         return $this->belongsTo(User::class, 'respondido_por');
-    }
-
-    public function getEstadoConfigAttribute(): array
-    {
-        return self::ESTADOS[$this->estado] ?? self::ESTADOS['pendiente'];
-    }
-
-    public function getTipoLabelAttribute(): string
-    {
-        return self::TIPOS[$this->tipo] ?? ucfirst($this->tipo);
-    }
-
-    public function scopePendientes($query)
-    {
-        return $query->where('estado', 'pendiente');
     }
 }

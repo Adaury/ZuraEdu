@@ -23,9 +23,9 @@
     <a href="#rendimiento" class="prt-sidebar-link"><i class="bi bi-bar-chart-line"></i>Rendimiento</a>
     <a href="#mi-horario" class="prt-sidebar-link"><i class="bi bi-calendar-week"></i>Mi Horario</a>
     <a href="#notificaciones" class="prt-sidebar-link"><i class="bi bi-bell"></i>Notificaciones</a>
-    <a href="{{ route('admin.mensajes.index') }}" class="prt-sidebar-link">
+    <a href="{{ route('portal.docente.mensajes.index') }}" class="prt-sidebar-link">
         <i class="bi bi-envelope-fill"></i>Mensajes
-        @php $msgDoc = \App\Models\Mensaje::recibidos(auth()->id())->noLeidos()->count(); @endphp
+        @php try { $__uid = auth()->id(); $msgDoc = \Illuminate\Support\Facades\Cache::remember("user_{$__uid}_msg_unread", 60, fn() => \App\Models\MensajeDestinatario::where('destinatario_id',$__uid)->whereNull('leido_at')->where('eliminado',false)->count()); } catch(\Exception $e){ $msgDoc=0; } @endphp
         @if($msgDoc > 0)<span style="background:#dc2626;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $msgDoc }}</span>@endif
     </a>
     @if($suplencias->isNotEmpty())
@@ -763,5 +763,12 @@ async function marcarTodasLeidas() {
     document.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread'));
     document.querySelector('.prt-badge')?.remove();
 }
+</script>
+@endpush
+
+@push('realtime-data')
+<script>
+{{-- Exponer IDs de grupos del docente para subscripciones Echo --}}
+window._SGE_GRUPO_IDS = {!! $asignaciones->pluck('grupo_id')->unique()->values()->toJson() !!};
 </script>
 @endpush

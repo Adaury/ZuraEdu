@@ -3,6 +3,7 @@
 @section('page-title', 'Calendario Académico')
 
 @push('styles')
+<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css'>
 <style>
     .evento-card {
         border: 1px solid #e5e7eb;
@@ -18,9 +19,18 @@
         font-size: .68rem; font-weight: 700; text-transform: uppercase;
         letter-spacing: .04em; padding: .2rem .55rem; border-radius: 20px;
     }
+    .view-btn { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: .3rem .8rem; font-size: .8rem; font-weight: 600; cursor: pointer; background: #fff; color: #374151; transition: all .15s; }
+    .view-btn.active { background: #1e3a6e; color: #fff; border-color: #1e3a6e; }
+
+    #fcCalendar { font-size: .8rem; }
+    .fc-toolbar-title { font-size: 1rem !important; font-weight: 700 !important; }
+    .fc-button { font-size: .78rem !important; }
+    .fc-event { cursor: pointer; border-radius: 4px !important; font-size: .72rem !important; }
 
     [data-theme="dark"] .evento-card { background: #1e293b; border-color: #334155; }
     [data-theme="dark"] .evento-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.3); }
+    [data-theme="dark"] .view-btn { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+    [data-theme="dark"] .view-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
 </style>
 @endpush
 
@@ -32,7 +42,12 @@
         </h4>
         <p class="text-muted mb-0" style="font-size:.875rem;">{{ $schoolYear->nombre ?? 'Sin año activo' }}</p>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
+        {{-- Toggle vista --}}
+        <div style="display:flex;gap:.35rem;background:#f8fafc;border-radius:9px;padding:.25rem;">
+            <button class="view-btn active" id="btnMes" onclick="setVista('mes')"><i class="bi bi-calendar3 me-1"></i>Mes</button>
+            <button class="view-btn" id="btnLista" onclick="setVista('lista')"><i class="bi bi-list-ul me-1"></i>Lista</button>
+        </div>
         <a href="{{ route('admin.calendario.excel') }}" class="btn btn-success btn-sm">
             <i class="bi bi-file-earmark-excel-fill me-1"></i>Excel
         </a>
@@ -47,6 +62,17 @@
     </div>
 </div>
 
+{{-- ── VISTA MES (FullCalendar) ─────────────────────────────────────── --}}
+<div id="viewMes">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-3">
+            <div id="fcCalendar"></div>
+        </div>
+    </div>
+</div>
+
+{{-- ── VISTA LISTA ──────────────────────────────────────────────────── --}}
+<div id="viewLista" style="display:none;">
 <div class="row g-4">
     {{-- Próximos eventos --}}
     <div class="col-lg-4">
@@ -135,4 +161,86 @@
         </div>
     </div>
 </div>
+</div>
+
+{{-- Modal detalle evento --}}
+<div class="modal fade" id="eventoModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 pb-0" id="eventoModalHeader">
+                <h6 class="modal-title fw-bold" id="eventoModalTitle"></h6>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <div id="eventoModalBody" style="font-size:.82rem;"></div>
+            </div>
+            @if(Auth::user()->hasAnyRole(['Administrador','Director','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']))
+            <div class="modal-footer border-0 pt-0">
+                <a id="eventoModalEdit" href="#" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-pencil me-1"></i>Editar
+                </a>
+            </div>
+            @endif
+        </div>
+    </div>
+</div>
 @endsection
+
+@push('scripts')
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/locales/es.global.min.js'></script>
+<script>
+const API_URL   = @json(route('admin.calendario.api'));
+const EDIT_BASE = @json(url('admin/calendario'));
+const CAN_EDIT  = @json(Auth::user()->hasAnyRole(['Administrador','Director','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']));
+
+let fc;
+
+document.addEventListener('DOMContentLoaded', function () {
+    const el = document.getElementById('fcCalendar');
+    fc = new FullCalendar.Calendar(el, {
+        locale: 'es',
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left:   'prev,next today',
+            center: 'title',
+            right:  'dayGridMonth,listMonth'
+        },
+        events: API_URL,
+        eventClick: function(info) {
+            const e = info.event;
+            document.getElementById('eventoModalTitle').textContent = e.title;
+            document.getElementById('eventoModalHeader').style.borderBottom = `3px solid ${e.backgroundColor}`;
+
+            const props = e.extendedProps;
+            let body = '';
+            if (props.tipo) body += `<div class="mb-1"><span class="badge" style="background:${e.backgroundColor}22;color:${e.backgroundColor};font-size:.68rem;">${props.tipo}</span></div>`;
+            if (e.start) body += `<div class="text-muted mb-1"><i class="bi bi-calendar3 me-1"></i>${e.start.toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'})}</div>`;
+            if (props.descripcion) body += `<div class="mt-2 text-muted">${props.descripcion}</div>`;
+            document.getElementById('eventoModalBody').innerHTML = body;
+
+            if (CAN_EDIT && props.id) {
+                document.getElementById('eventoModalEdit').href = `${EDIT_BASE}/${props.id}/edit`;
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('eventoModal'));
+            modal.show();
+        },
+        eventDidMount: function(info) {
+            info.el.style.borderRadius = '5px';
+        },
+        height: 'auto',
+        dayMaxEvents: 3,
+    });
+    fc.render();
+});
+
+function setVista(v) {
+    document.getElementById('viewMes').style.display   = v === 'mes' ? 'block' : 'none';
+    document.getElementById('viewLista').style.display = v === 'lista' ? 'block' : 'none';
+    document.getElementById('btnMes').classList.toggle('active', v === 'mes');
+    document.getElementById('btnLista').classList.toggle('active', v === 'lista');
+    if (v === 'mes' && fc) fc.render();
+}
+</script>
+@endpush

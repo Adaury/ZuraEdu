@@ -39,4 +39,11 @@
 @endforeach
 </div>
 @endif
+
+@push('realtime-data')
+<script>
+window._SGE_CLASE_IDS = {!! $clases->pluck('id')->values()->toJson() !!};
+</script>
+@endpush
+
 @endsection

@@ -62,7 +62,7 @@
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-bordered matriz-table mb-0">
+            <table class="table table-bordered matriz-table mb-0" data-no-dt>
                 <thead>
                     <tr>
                         <th class="sticky-col header" style="min-width:200px;">Asignatura</th>

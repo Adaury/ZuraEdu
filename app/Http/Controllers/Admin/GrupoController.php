@@ -141,7 +141,8 @@ class GrupoController extends Controller
 
     public function destroy(Grupo $grupo)
     {
-        if ($grupo->matriculas()->count() > 0) {
+        $grupo->loadCount('matriculas');
+        if ($grupo->matriculas_count > 0) {
             return back()->with('error', 'No se puede eliminar el grupo porque tiene matrículas asociadas.');
         }
 

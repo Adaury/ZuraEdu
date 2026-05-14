@@ -7,8 +7,15 @@ use Illuminate\Support\Facades\DB;
 
 class Setting
 {
-    private const CACHE_KEY = 'system_settings_all';
     private const CACHE_TTL = 300;
+
+    /** Per-request in-memory store — eliminates repeated cache-driver reads within one request. */
+    private static ?array $loaded = null;
+
+    private static function cacheKey(): string
+    {
+        return 'system_settings_all_t' . (tenant_id() ?? 0);
+    }
 
     public static function get(string $key, mixed $default = null): mixed
     {
@@ -21,7 +28,8 @@ class Setting
             ['key' => $key],
             ['value' => $value, 'updated_at' => now()]
         );
-        Cache::forget(static::CACHE_KEY);
+        Cache::forget(static::cacheKey());
+        static::$loaded = null;
     }
 
     public static function setMany(array $data): void
@@ -32,12 +40,15 @@ class Setting
                 ['value' => $value, 'updated_at' => now()]
             );
         }
-        Cache::forget(static::CACHE_KEY);
+        Cache::forget(static::cacheKey());
+        static::$loaded = null;
     }
 
     public static function all(): array
     {
-        return Cache::remember(static::CACHE_KEY, static::CACHE_TTL, function () {
+        if (static::$loaded !== null) return static::$loaded;
+
+        return static::$loaded = Cache::remember(static::cacheKey(), static::CACHE_TTL, function () {
             return DB::table('system_settings')->pluck('value', 'key')->toArray();
         });
     }
@@ -54,6 +65,7 @@ class Setting
 
     public static function flush(): void
     {
-        Cache::forget(static::CACHE_KEY);
+        Cache::forget(static::cacheKey());
+        static::$loaded = null;
     }
 }

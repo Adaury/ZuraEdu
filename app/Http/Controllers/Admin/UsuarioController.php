@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\DashboardActualizado;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUsuarioRequest;
 use App\Http\Requests\Admin\UpdateUsuarioRequest;
@@ -227,6 +228,17 @@ class UsuarioController extends Controller
         ]);
 
         Cache::forget('usuarios_pendientes_count');
+        Cache::forget('t' . (tenant_id() ?? 0) . '_usuarios_pendientes_count');
+
+        // Actualizar contador en el dashboard del admin en tiempo real
+        try {
+            $pendientes = User::where('pendiente_aprobacion', true)->count();
+            DashboardActualizado::dispatch(
+                tenant_id() ?? 0,
+                'usuario_aprobado',
+                ['usuarios_pendientes' => $pendientes, 'nombre' => $usuario->name],
+            );
+        } catch (\Throwable) {}
 
         // Notificación interna al usuario aprobado
         try {

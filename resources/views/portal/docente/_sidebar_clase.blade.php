@@ -20,6 +20,10 @@ $ak  = $activeKey ?? '';
    class="prt-sidebar-link {{ $ak === 'horario' ? 'active' : '' }}">
     <i class="bi bi-calendar3"></i>Mi Horario
 </a>
+<a href="{{ route('portal.docente.calendario') }}"
+   class="prt-sidebar-link {{ $ak === 'calendario' ? 'active' : '' }}">
+    <i class="bi bi-calendar-event-fill"></i>Calendario Escolar
+</a>
 <a href="{{ route('portal.docente.classroom.index') }}"
    class="prt-sidebar-link {{ $ak === 'classroom' ? 'active' : '' }}">
     <i class="bi bi-easel2-fill"></i>Mi Classroom
@@ -106,13 +110,39 @@ try {
 @endif
 @endif
 
+{{-- ── GESTIONES ── --}}
+<div class="prt-sidebar-section mt-2">Gestiones</div>
+
+<a href="{{ route('portal.docente.solicitudes.index') }}"
+   class="prt-sidebar-link {{ $ak === 'solicitudes' ? 'active' : '' }}">
+    <i class="bi bi-send-fill"></i>Mis Solicitudes
+    @php try { $solDocPend = \App\Models\SolicitudDocente::whereHas('docente', fn($d) => $d->where('user_id', auth()->id()))->where('estado','pendiente')->count(); } catch(\Exception $e){ $solDocPend=0; } @endphp
+    @if($solDocPend > 0)
+    <span style="background:#d97706;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $solDocPend }}</span>
+    @endif
+</a>
+
+{{-- ── MIS DOCUMENTOS ── --}}
+<div class="prt-sidebar-section mt-2">Mis Documentos</div>
+
+<a href="{{ route('portal.docente.constancia-trabajo') }}"
+   class="prt-sidebar-link {{ $ak === 'constancia-trabajo' ? 'active' : '' }}"
+   target="_blank">
+    <i class="bi bi-file-earmark-person-fill"></i>Constancia de Trabajo
+</a>
+<a href="{{ route('portal.docente.ficha-actividad') }}"
+   class="prt-sidebar-link {{ $ak === 'ficha-actividad' ? 'active' : '' }}"
+   target="_blank">
+    <i class="bi bi-file-earmark-bar-graph-fill"></i>Ficha de Actividad
+</a>
+
 {{-- ── CUENTA ── --}}
 <div class="prt-sidebar-section mt-2">Cuenta</div>
 
-<a href="{{ route('admin.mensajes.index') }}"
+<a href="{{ route('portal.docente.mensajes.index') }}"
    class="prt-sidebar-link {{ $ak === 'mensajes' ? 'active' : '' }}">
     <i class="bi bi-envelope-fill"></i>Mensajes
-    @php try { $msgDoc = \App\Models\Mensaje::recibidos(auth()->id())->noLeidos()->count(); } catch(\Exception $e){ $msgDoc=0; } @endphp
+    @php try { $__duid = auth()->id(); $msgDoc = \Illuminate\Support\Facades\Cache::remember("user_{$__duid}_msg_unread", 60, fn() => \App\Models\MensajeDestinatario::where('destinatario_id',$__duid)->whereNull('leido_at')->where('eliminado',false)->count()); } catch(\Exception $e){ $msgDoc=0; } @endphp
     @if($msgDoc > 0)
     <span style="background:#dc2626;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $msgDoc }}</span>
     @endif

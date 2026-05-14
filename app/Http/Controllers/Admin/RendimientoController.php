@@ -11,6 +11,7 @@ use App\Models\RendimientoCache;
 use App\Models\SchoolYear;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -21,12 +22,12 @@ class RendimientoController extends Controller
 {
     public function dashboard(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (!$schoolYear) {
             return view('admin.rendimiento.dashboard', ['sinAnio' => true]);
         }
 
-        $periodos  = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+        $periodos  = $this->getPeriodos($schoolYear);
         $periodoId = $request->periodo_id;
 
         $cacheData = RendimientoCache::where('school_year_id', $schoolYear->id)
@@ -78,7 +79,7 @@ class RendimientoController extends Controller
 
     public function semaforo()
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (!$schoolYear) {
             return view('admin.rendimiento.semaforo', ['sinAnio' => true]);
         }
@@ -95,7 +96,7 @@ class RendimientoController extends Controller
     // ── Semáforo PDF ──────────────────────────────────────────────────────
     public function semaforoPdf()
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) abort(404);
 
         $grupos = RendimientoCache::where('school_year_id', $schoolYear->id)
@@ -117,7 +118,7 @@ class RendimientoController extends Controller
     // ── Excel semáforo ────────────────────────────────────────────────────
     public function semaforoExcel()
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) abort(404);
 
         $grupos = RendimientoCache::where('school_year_id', $schoolYear->id)
@@ -192,7 +193,7 @@ class RendimientoController extends Controller
 
     public function porArea(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (!$schoolYear) {
             return view('admin.rendimiento.por_area', ['sinAnio' => true]);
         }
@@ -222,7 +223,7 @@ class RendimientoController extends Controller
     // ── Rendimiento por Área PDF ──────────────────────────────────────────
     public function porAreaPdf()
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) abort(404, 'No hay año escolar activo.');
 
         $academica = DB::table('calificaciones_academicas as ca')
@@ -256,7 +257,7 @@ class RendimientoController extends Controller
     // ── Rendimiento por Área Excel ────────────────────────────────────────
     public function porAreaExcel()
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) abort(404);
 
         $academica = DB::table('calificaciones_academicas as ca')
@@ -324,7 +325,7 @@ class RendimientoController extends Controller
 
     public function porGrupo(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         $grupos     = Grupo::where('school_year_id', $schoolYear?->id ?? 0)
             ->where('activo', true)
             ->with(['grado', 'seccion'])
@@ -357,7 +358,7 @@ class RendimientoController extends Controller
     // ── PDF por grupo ─────────────────────────────────────────────────────
     public function porGrupoPdf(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) abort(404);
 
         $grupoId = $request->grupo_id;
@@ -395,7 +396,7 @@ class RendimientoController extends Controller
     // ── Excel por grupo ───────────────────────────────────────────────────
     public function porGrupoExcel(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) abort(404);
 
         $grupoId = $request->grupo_id;
@@ -481,7 +482,7 @@ class RendimientoController extends Controller
     // ── Dashboard de recuperaciones ───────────────────────────────────────
     public function recuperaciones(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) {
             return view('admin.rendimiento.recuperaciones', ['sinAnio' => true]);
         }
@@ -534,7 +535,7 @@ class RendimientoController extends Controller
     // ── Recuperaciones PDF ────────────────────────────────────────────────
     public function recuperacionesPdf(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) abort(404);
 
         $grupos  = Grupo::with(['grado', 'seccion'])->where('school_year_id', $schoolYear->id)->where('activo', true)->get();
@@ -578,7 +579,7 @@ class RendimientoController extends Controller
     // ── Recuperaciones Excel ─────────────────────────────────────────────
     public function recuperacionesExcel(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) abort(404);
 
         $grupoId = $request->grupo_id;
@@ -635,12 +636,12 @@ class RendimientoController extends Controller
     // ── Docentes rezagados en notas ───────────────────────────────────────
     public function rezagados(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) {
             return view('admin.rendimiento.rezagados', ['sinAnio' => true]);
         }
 
-        $periodos = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+        $periodos = $this->getPeriodos($schoolYear);
         $periodoId = $request->periodo_id ?? $periodos->where('activo', true)->first()?->id;
 
         // Todas las asignaciones activas del año
@@ -701,10 +702,10 @@ class RendimientoController extends Controller
     // ── Informe de rezagados PDF ──────────────────────────────────────────
     public function rezagadosPdf(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) abort(404);
 
-        $periodos  = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+        $periodos  = $this->getPeriodos($schoolYear);
         $periodoId = $request->periodo_id ?? $periodos->where('activo', true)->first()?->id;
         $periodo   = $periodoId ? $periodos->find($periodoId) : null;
 
@@ -753,10 +754,10 @@ class RendimientoController extends Controller
     // ── Excel rezagados ───────────────────────────────────────────────────
     public function rezagadosExcel(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) abort(404);
 
-        $periodos  = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+        $periodos  = $this->getPeriodos($schoolYear);
         $periodoId = $request->periodo_id ?? $periodos->where('activo', true)->first()?->id;
         $periodo   = $periodoId ? $periodos->find($periodoId) : null;
 
@@ -846,7 +847,7 @@ class RendimientoController extends Controller
     // ── Comparativo por Período ───────────────────────────────────────────
     public function comparativo(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) {
             return view('admin.rendimiento.comparativo', ['sinAnio' => true]);
         }
@@ -931,7 +932,7 @@ class RendimientoController extends Controller
     // ── Ranking de Asignaturas ────────────────────────────────────────────
     public function rankingAsignaturas(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) {
             return view('admin.rendimiento.ranking_asignaturas', ['sinAnio' => true]);
         }
@@ -1007,7 +1008,7 @@ class RendimientoController extends Controller
     // ── Tendencia por Grupo ───────────────────────────────────────────────
     public function tendenciaGrupo(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) {
             return view('admin.rendimiento.tendencia', ['sinAnio' => true]);
         }
@@ -1079,7 +1080,7 @@ class RendimientoController extends Controller
 
     public function recalcular(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->firstOrFail();
+        $schoolYear = SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
 
         $grupos = Grupo::where('school_year_id', $schoolYear->id)
             ->where('activo', true)
@@ -1095,7 +1096,7 @@ class RendimientoController extends Controller
     // ── Informe de rendimiento PDF ────────────────────────────────────────
     public function dashboardPdf(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (!$schoolYear) abort(404, 'Sin año escolar activo.');
 
         $periodoId = $request->periodo_id;
@@ -1141,7 +1142,7 @@ class RendimientoController extends Controller
     // ── Excel del dashboard de rendimiento (todos los grupos) ────────────
     public function dashboardExcel(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (!$schoolYear) abort(404);
 
         $periodoId = $request->periodo_id;

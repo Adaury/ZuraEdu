@@ -7,6 +7,7 @@ use App\Models\Notificacion;
 use App\Models\SolicitudEstudiante;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class SolicitudesEstudianteAdminController extends Controller
 {
@@ -35,14 +36,15 @@ class SolicitudesEstudianteAdminController extends Controller
 
         $solicitudes = $query->paginate(20)->withQueryString();
 
-        $stats = [
+        $tid   = tenant_id();
+        $stats = Cache::remember("t{$tid}_solicitudes_est_stats", 60, fn () => [
             'pendientes' => SolicitudEstudiante::where('estado', 'pendiente')->count(),
             'en_proceso' => SolicitudEstudiante::where('estado', 'en_proceso')->count(),
             'total_hoy'  => SolicitudEstudiante::whereDate('created_at', today())->count(),
-        ];
+        ]);
 
         $tipos   = SolicitudEstudiante::TIPOS;
-        $estados = SolicitudEstudiante::ESTADOS;
+        $estados = SolicitudEstudiante::estados();
 
         return view('admin.solicitudes_est.index', compact('solicitudes', 'stats', 'tipos', 'estados'));
     }
@@ -51,7 +53,7 @@ class SolicitudesEstudianteAdminController extends Controller
     {
         $solicitud->load(['estudiante', 'respondidoPor']);
         $tipos   = SolicitudEstudiante::TIPOS;
-        $estados = SolicitudEstudiante::ESTADOS;
+        $estados = SolicitudEstudiante::estados();
         return view('admin.solicitudes_est.show', compact('solicitud', 'tipos', 'estados'));
     }
 
@@ -76,13 +78,16 @@ class SolicitudesEstudianteAdminController extends Controller
                     'user_id' => $user->id,
                     'titulo'  => 'Respuesta a tu solicitud',
                     'cuerpo'  => "Tu solicitud \"{$solicitud->asunto}\" cambió a: "
-                                 . (SolicitudEstudiante::ESTADOS[$request->estado]['label'] ?? $request->estado),
+                                 . (SolicitudEstudiante::estados()[$request->estado]['label'] ?? $request->estado),
                     'tipo'    => 'info',
                     'url'     => route('portal.estudiante.solicitudes.show', $solicitud),
                 ]);
             }
         } catch (\Throwable) {}
 
+        $tid = tenant_id();
+        Cache::forget("t{$tid}_solicitudes_est_stats");
+        Cache::forget("t{$tid}_sol_est_pend");
         return back()->with('success', 'Solicitud actualizada correctamente.');
     }
 }

@@ -46,7 +46,7 @@ class AlertaController extends Controller
     public function marcarLeida(AlertaSistema $alerta)
     {
         $alerta->marcarLeida();
-        Cache::forget('alertas_no_leidas_' . Auth::id());
+        Cache::forget('t' . (tenant_id() ?? 0) . '_alertas_no_leidas_' . Auth::id());
         return response()->json(['ok' => true]);
     }
 
@@ -63,14 +63,14 @@ class AlertaController extends Controller
             ->vigentes()
             ->update(['leida' => true, 'fecha_leida' => now()]);
 
-        Cache::forget('alertas_no_leidas_' . $user->id);
+        Cache::forget('t' . (tenant_id() ?? 0) . '_alertas_no_leidas_' . $user->id);
         return response()->json(['ok' => true]);
     }
 
     public function destroy(AlertaSistema $alerta)
     {
         $alerta->delete();
-        Cache::forget('alertas_no_leidas_' . Auth::id());
+        Cache::forget('t' . (tenant_id() ?? 0) . '_alertas_no_leidas_' . Auth::id());
         return response()->json(['ok' => true]);
     }
 

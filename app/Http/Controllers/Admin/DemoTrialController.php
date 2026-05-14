@@ -61,7 +61,7 @@ class DemoTrialController extends Controller
     {
         $activo = $request->boolean('demo_activo') ? '1' : '0';
         $this->setSetting('demo_activo', $activo);
-        Cache::forget('system_settings_all');
+        \App\Helpers\Setting::flush();
 
         return back()->with('success', $activo === '1'
             ? 'Modo demo activado. Los usuarios pueden acceder con sus perfiles demo.'
@@ -93,7 +93,7 @@ class DemoTrialController extends Controller
         $this->setSetting('trial_inicio',  $request->trial_inicio);
         $this->setSetting('trial_dias',    $request->trial_dias);
         $this->setSetting('trial_mensaje', $request->trial_mensaje ?? '');
-        Cache::forget('system_settings_all');
+        \App\Helpers\Setting::flush();
 
         return back()->with('success', 'Período de prueba actualizado correctamente.');
     }
@@ -102,7 +102,7 @@ class DemoTrialController extends Controller
     public function desactivarTrial()
     {
         $this->setSetting('trial_activo', '0');
-        Cache::forget('system_settings_all');
+        \App\Helpers\Setting::flush();
         return back()->with('success', 'Período de prueba desactivado.');
     }
 }

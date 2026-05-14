@@ -2,13 +2,13 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class ClassroomMeetingUpdated implements ShouldBroadcast
+class ClassroomMeetingUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -21,7 +21,7 @@ class ClassroomMeetingUpdated implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new Channel("classroom.{$this->claseVirtualId}"),
+            new PrivateChannel("private-classroom.{$this->claseVirtualId}"),
         ];
     }
 

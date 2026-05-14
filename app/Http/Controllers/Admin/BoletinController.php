@@ -84,9 +84,7 @@ class BoletinController extends Controller
             ->get()
             ->sortBy(fn ($g) => [$g->grado->orden ?? 99, $g->seccion->nombre ?? '']);
 
-        $periodos = Periodo::where('school_year_id', $schoolYear->id)
-            ->orderBy('numero')
-            ->get();
+        $periodos = $this->getPeriodos($schoolYear);
 
         $esDocente     = ! $this->puedeVerTodo();
         $docenteActual = $this->docenteActual();
@@ -183,10 +181,8 @@ class BoletinController extends Controller
         $schoolYear    = $matricula->grupo->schoolYear ?? SchoolYear::actual();
         $boletinConfig = $schoolYear ? BoletinConfig::getOrCreate($schoolYear->id) : null;
 
-        // All periods of the school year ordered
-        $periodos = Periodo::where('school_year_id', $schoolYear?->id ?? 0)
-            ->orderBy('numero')
-            ->get();
+        // All periods of the school year ordered (cached)
+        $periodos = $this->getPeriodos($schoolYear);
 
         // Determine role-based filtering
         $puedeVerTodo  = $this->puedeVerTodo();
@@ -579,6 +575,13 @@ class BoletinController extends Controller
             );
         }
 
+        // Precargar relaciones del grupo UNA sola vez; buildBoletinData las verá ya cargadas
+        // en cada $matricula, evitando N cargas idénticas del mismo grupo dentro del loop.
+        $grupo->loadMissing(['grado', 'seccion', 'schoolYear', 'tutor']);
+        foreach ($matriculas as $matricula) {
+            $matricula->setRelation('grupo', $grupo);
+        }
+
         $zipPath = tempnam(sys_get_temp_dir(), 'boletines_') . '.zip';
         $zip     = new \ZipArchive();
 
@@ -629,8 +632,7 @@ class BoletinController extends Controller
         $schoolYear    = $matricula->grupo->schoolYear ?? SchoolYear::actual();
         $boletinConfig = $schoolYear ? BoletinConfig::getOrCreate($schoolYear->id) : null;
 
-        $periodos = Periodo::where('school_year_id', $schoolYear?->id ?? 0)
-            ->orderBy('numero')->get();
+        $periodos = $this->getPeriodos($schoolYear);
 
         // Construir tabla anual con todas las notas de todos los períodos
         $asignaciones = \App\Models\Asignacion::with(['asignatura', 'docente'])

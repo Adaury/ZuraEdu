@@ -5,24 +5,19 @@ namespace App\Jobs;
 use App\Models\Grupo;
 use App\Models\RendimientoCache;
 use App\Models\SchoolYear;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class RecalcularRendimientoJob implements ShouldQueue
+class RecalcularRendimientoJob extends TenantJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
     public int $tries = 3;
 
     public function __construct(
         public readonly int  $schoolYearId,
         public readonly ?int $grupoId   = null,
         public readonly ?int $periodoId = null,
-    ) {}
+    ) {
+        parent::__construct();
+    }
 
     public function handle(): void
     {

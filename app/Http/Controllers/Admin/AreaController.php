@@ -21,7 +21,7 @@ class AreaController extends Controller
 
     public function academica()
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
 
         // Primer ciclo: grados nivel 1-3
         $docentesPrimerCiclo = Docente::whereIn('area', ['academica', 'ambas'])
@@ -73,7 +73,7 @@ class AreaController extends Controller
 
     public function tecnica()
     {
-        $schoolYear     = SchoolYear::where('activo', true)->first();
+        $schoolYear     = SchoolYear::actual();
 
         // Área técnica: SOLO Segundo Ciclo (grados 4to–6to de secundaria)
         $especialidades = EspecialidadTecnica::activas()

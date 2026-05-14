@@ -78,6 +78,13 @@ class AsignacionController extends Controller
             }
         }
 
+        // Bulk-load existentes: 1 query en lugar de 2×(N grupos × M asignaturas)
+        $existentes = Asignacion::where('school_year_id', $schoolYearId)
+            ->whereIn('grupo_id', $grupoIds)
+            ->whereIn('asignatura_id', $asignaturas)
+            ->get()
+            ->groupBy(fn ($a) => $a->grupo_id . '_' . $a->asignatura_id);
+
         $creadas   = 0;
         $omitidas  = 0;
         $gruposAfectados = 0;
@@ -85,14 +92,11 @@ class AsignacionController extends Controller
         foreach ($grupoIds as $gid) {
             $creadasEnGrupo = 0;
             foreach ($asignaturas as $asigId) {
-                // Si ya existe una asignación sin docente (auto-creada como básica),
-                // actualizarla con el docente en vez de omitirla o duplicarla.
-                $sinDocente = Asignacion::where('school_year_id', $schoolYearId)
-                    ->where('grupo_id', $gid)
-                    ->where('asignatura_id', $asigId)
-                    ->whereNull('docente_id')
-                    ->first();
+                $key      = $gid . '_' . $asigId;
+                $existing = $existentes->get($key, collect());
 
+                // Si ya existe sin docente, actualizarla
+                $sinDocente = $existing->whereNull('docente_id')->first();
                 if ($sinDocente) {
                     $sinDocente->update([
                         'docente_id'      => $docenteId,
@@ -105,13 +109,8 @@ class AsignacionController extends Controller
                     continue;
                 }
 
-                // Si ya existe con cualquier docente, omitir
-                $existe = Asignacion::where('school_year_id', $schoolYearId)
-                    ->where('grupo_id', $gid)
-                    ->where('asignatura_id', $asigId)
-                    ->exists();
-
-                if ($existe) { $omitidas++; continue; }
+                // Si ya existe con docente, omitir
+                if ($existing->isNotEmpty()) { $omitidas++; continue; }
 
                 Asignacion::create([
                     'school_year_id'  => $schoolYearId,
@@ -150,13 +149,15 @@ class AsignacionController extends Controller
         ]);
 
         $asignacion->update(['docente_id' => $request->docente_id, 'activo' => true]);
+        $asignacion->loadMissing('asignatura');
 
         return back()->with('success', 'Docente asignado correctamente a ' . $asignacion->asignatura->nombre . '.');
     }
 
     public function destroy(Asignacion $asignacione)
     {
-        if ($asignacione->calificaciones()->count() > 0) {
+        $asignacione->loadCount('calificaciones');
+        if ($asignacione->calificaciones_count > 0) {
             return back()->with('error', 'No se puede eliminar la asignación porque tiene calificaciones registradas.');
         }
 

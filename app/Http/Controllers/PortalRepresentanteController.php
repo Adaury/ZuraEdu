@@ -38,9 +38,7 @@ class PortalRepresentanteController extends Controller
             ->first();
 
         // Periodos del año escolar
-        $periodos = $schoolYear
-            ? Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
-            : collect();
+        $periodos = $this->getPeriodos($schoolYear);
 
         // Calificaciones técnicas publicadas (área técnica — por período)
         $calificaciones = collect();

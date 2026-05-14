@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\BelongsToTenant;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class SchoolYear extends Model
 {
@@ -45,7 +46,15 @@ class SchoolYear extends Model
 
     public static function actual(): ?self
     {
-        return static::where('activo', true)->first();
+        $tid = tenant_id();
+        return Cache::remember("t{$tid}_school_year_actual", 300, fn () =>
+            static::where('activo', true)->first()
+        );
+    }
+
+    public static function flushActualCache(): void
+    {
+        Cache::forget('t' . tenant_id() . '_school_year_actual');
     }
 
     public function getNombrePeriodoAttribute(): string

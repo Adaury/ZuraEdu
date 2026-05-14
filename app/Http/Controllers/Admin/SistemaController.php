@@ -666,7 +666,7 @@ class SistemaController extends Controller
         $tasaApro   = ($aprobados + $reprobados) > 0 ? round($aprobados / ($aprobados + $reprobados) * 100, 1) : null;
         $asistGlobal = \App\Models\CalificacionAcademica::where('school_year_id', $sy->id)->whereNotNull('pct_asistencia')->avg('pct_asistencia');
 
-        $periodos = \App\Models\Periodo::where('school_year_id', $sy->id)->orderBy('numero')->get();
+        $periodos = $this->getPeriodos($sy);
 
         $topGrupos    = \App\Models\RendimientoCache::where('school_year_id', $sy->id)->whereNull('periodo_id')->with(['grupo.grado','grupo.seccion'])->orderByDesc('promedio_grupo')->limit(5)->get();
         $bottomGrupos = \App\Models\RendimientoCache::where('school_year_id', $sy->id)->whereNull('periodo_id')->with(['grupo.grado','grupo.seccion'])->orderBy('promedio_grupo')->limit(5)->get();

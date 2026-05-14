@@ -8,6 +8,7 @@ use App\Models\SolicitudEstudiante;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class SolicitudesEstudianteController extends Controller
 {
@@ -27,14 +28,19 @@ class SolicitudesEstudianteController extends Controller
             ->orderByDesc('created_at')
             ->paginate(15);
 
+        $counts = SolicitudEstudiante::where('estudiante_id', $estudiante->id)
+            ->selectRaw('estado, COUNT(*) as total')
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
+
         $stats = [
-            'pendientes' => SolicitudEstudiante::where('estudiante_id', $estudiante->id)->where('estado', 'pendiente')->count(),
-            'en_proceso' => SolicitudEstudiante::where('estudiante_id', $estudiante->id)->where('estado', 'en_proceso')->count(),
-            'total'      => SolicitudEstudiante::where('estudiante_id', $estudiante->id)->count(),
+            'pendientes' => $counts->get('pendiente', 0),
+            'en_proceso' => $counts->get('en_proceso', 0),
+            'total'      => $counts->sum(),
         ];
 
         $tipos   = SolicitudEstudiante::TIPOS;
-        $estados = SolicitudEstudiante::ESTADOS;
+        $estados = SolicitudEstudiante::estados();
 
         return view('portal.estudiante.solicitudes.index',
             compact('solicitudes', 'stats', 'tipos', 'estados', 'estudiante'));
@@ -86,6 +92,11 @@ class SolicitudesEstudianteController extends Controller
             }
         } catch (\Throwable) {}
 
+        $tid = tenant_id();
+        Cache::forget("t{$tid}_solicitudes_est_stats");
+        Cache::forget("t{$tid}_sol_est_pend");
+        Cache::forget("t{$tid}_user_" . auth()->id() . '_sol_est_pend');
+
         return redirect()->route('portal.estudiante.solicitudes.show', $sol)
             ->with('success', 'Solicitud enviada correctamente.');
     }
@@ -96,7 +107,7 @@ class SolicitudesEstudianteController extends Controller
         abort_if($solicitud->estudiante_id !== $estudiante->id, 403);
 
         $tipos   = SolicitudEstudiante::TIPOS;
-        $estados = SolicitudEstudiante::ESTADOS;
+        $estados = SolicitudEstudiante::estados();
 
         return view('portal.estudiante.solicitudes.show',
             compact('solicitud', 'tipos', 'estados', 'estudiante'));

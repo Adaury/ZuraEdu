@@ -101,11 +101,18 @@ class MaterialClase extends Model
 
     public function getEntregasCount(): int
     {
+        // Usa la colección ya cargada si está disponible (evita N+1)
+        if ($this->relationLoaded('entregas')) {
+            return $this->entregas->whereIn('estado', ['entregado', 'calificado'])->count();
+        }
         return $this->entregas()->whereIn('estado', ['entregado', 'calificado'])->count();
     }
 
     public function getCalificadosCount(): int
     {
+        if ($this->relationLoaded('entregas')) {
+            return $this->entregas->where('estado', 'calificado')->count();
+        }
         return $this->entregas()->where('estado', 'calificado')->count();
     }
 }

@@ -157,7 +157,8 @@ class CalificacionAcademica extends Model
 
         if ($p === null) return null;
 
-        if ($r !== null) {
+        // Recuperación solo aplica cuando P < 70 (estudiante no alcanzó el umbral)
+        if ($r !== null && (float) $p < 70.0) {
             $maxR = max(0.0, 100.0 - (float) $p);
             return round((float) $p + min((float) $r, $maxR), 2);
         }

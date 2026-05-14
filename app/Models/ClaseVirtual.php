@@ -85,6 +85,18 @@ class ClaseVirtual extends Model
     /** Cantidad de tareas/evaluaciones pendientes de entrega para una matrícula */
     public function tareasPendientes(int $matriculaId): int
     {
+        // Usa la colección ya cargada si está disponible (evita N+1 por estudiante)
+        if ($this->relationLoaded('materiales')) {
+            return $this->materiales
+                ->whereIn('tipo', ['tarea', 'evaluacion'])
+                ->filter(function ($m) use ($matriculaId) {
+                    if ($m->relationLoaded('entregas')) {
+                        return $m->entregas->where('matricula_id', $matriculaId)->isEmpty();
+                    }
+                    return ! $m->entregas()->where('matricula_id', $matriculaId)->exists();
+                })
+                ->count();
+        }
         return $this->materiales()
             ->whereIn('tipo', ['tarea', 'evaluacion'])
             ->whereDoesntHave('entregas', fn($q) => $q->where('matricula_id', $matriculaId))

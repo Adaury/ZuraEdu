@@ -547,3 +547,11 @@ async function marcarTodasLeidas() {
 }
 </script>
 @endpush
+
+@push('realtime-data')
+@if($matricula?->grupo_id)
+<script>
+window._SGE_GRUPO_IDS = [{{ $matricula->grupo_id }}];
+</script>
+@endif
+@endpush

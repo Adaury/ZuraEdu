@@ -38,11 +38,14 @@ class ReportesController extends Controller
                                 ->count();
         $totalAsignaciones = Asignacion::when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear?->id))->count();
 
-        // Aprobados/Reprobados from calificaciones académicas
-        $aprobados  = CalificacionAcademica::when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear?->id))
-                            ->where('situacion', 'A')->count();
-        $reprobados = CalificacionAcademica::when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear?->id))
-                            ->where('situacion', 'R')->count();
+        // Aprobados/Reprobados — 1 query con groupBy en lugar de 2
+        $situaciones = CalificacionAcademica::when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear?->id))
+                            ->whereIn('situacion', ['A', 'R'])
+                            ->selectRaw('situacion, COUNT(*) as total')
+                            ->groupBy('situacion')
+                            ->pluck('total', 'situacion');
+        $aprobados  = $situaciones['A'] ?? 0;
+        $reprobados = $situaciones['R'] ?? 0;
 
         return view('admin.reportes.index', compact(
             'schoolYear', 'grupos', 'totalMatriculas', 'totalAsignaciones', 'aprobados', 'reprobados'

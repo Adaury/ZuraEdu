@@ -287,13 +287,14 @@ class RegistroAcademicoService
      * Regla MINERD: promedio ≥ 65 Y asistencia ≥ 75%.
      * Segundo ciclo: máximo 2 materias reprobadas → condicionado.
      */
-    public function calcularPromocion(Matricula $matricula, SchoolYear $schoolYear): Promocion
+    public function calcularPromocion(Matricula $matricula, SchoolYear $schoolYear, ?array $registroPrecargado = null): Promocion
     {
         // Cargar grupo+grado si no están cargados
         $matricula->loadMissing(['grupo.grado']);
         $ciclo = $matricula->grupo?->grado?->ciclo ?? 'primer_ciclo';
 
-        $registro = $this->buildRegistro($matricula->grupo, $schoolYear);
+        // Acepta registro precargado para evitar N×buildRegistro cuando se llama en bucle
+        $registro = $registroPrecargado ?? $this->buildRegistro($matricula->grupo, $schoolYear);
         $estudianteRow = collect($registro['registro'])
             ->first(fn($r) => $r['matricula']->id === $matricula->id);
 

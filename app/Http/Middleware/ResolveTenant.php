@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\View;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -88,16 +89,18 @@ class ResolveTenant
 
     private function resolve(string $host): ?Tenant
     {
-        $tenant = Tenant::where('dominio_personalizado', $host)->first();
-        if ($tenant) return $tenant;
-
-        $parts = explode('.', $host);
-        if (count($parts) >= 3) {
-            $tenant = Tenant::where('dominio', $parts[0])->first();
+        return Cache::remember("tenant_host_{$host}", 300, function () use ($host) {
+            $tenant = Tenant::where('dominio_personalizado', $host)->first();
             if ($tenant) return $tenant;
-        }
 
-        return Tenant::where('dominio', $host)->first();
+            $parts = explode('.', $host);
+            if (count($parts) >= 3) {
+                $tenant = Tenant::where('dominio', $parts[0])->first();
+                if ($tenant) return $tenant;
+            }
+
+            return Tenant::where('dominio', $host)->first();
+        });
     }
 
     private function isLocal(string $host): bool

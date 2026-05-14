@@ -24,7 +24,7 @@ class SearchController extends Controller
             return response()->json(['results' => []]);
         }
 
-        $cacheKey = 'search_' . md5(strtolower($q));
+        $cacheKey = 't' . (tenant_id() ?? 0) . '_search_' . md5(strtolower($q));
         $results  = Cache::remember($cacheKey, 60, function () use ($q) {
         $results  = [];
         $like     = "%{$q}%";

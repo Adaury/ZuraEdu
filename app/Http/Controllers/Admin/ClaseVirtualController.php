@@ -42,16 +42,19 @@ class ClaseVirtualController extends Controller
 
         $clases = $query->latest()->paginate(20)->withQueryString();
 
-        // Stats globales del año
+        // Stats globales del año — 2 queries en lugar de 3
+        $syId = $schoolYear?->id;
+        $entregaAgg = EntregaClassroom::whereHas('material.claseVirtual.asignacion',
+                fn($q) => $q->where('school_year_id', $syId))
+            ->whereIn('estado', ['entregado', 'calificado'])
+            ->selectRaw("COUNT(*) as total, SUM(estado = 'entregado') as por_calificar")
+            ->first();
+
         $statsGlobal = [
-            'total_activas'     => ClaseVirtual::whereHas('asignacion',
-                fn($q) => $q->where('school_year_id', $schoolYear?->id))->where('activo', true)->count(),
-            'total_entregas'    => EntregaClassroom::whereHas('material.claseVirtual.asignacion',
-                fn($q) => $q->where('school_year_id', $schoolYear?->id))
-                ->whereIn('estado', ['entregado','calificado'])->count(),
-            'por_calificar'     => EntregaClassroom::whereHas('material.claseVirtual.asignacion',
-                fn($q) => $q->where('school_year_id', $schoolYear?->id))
-                ->where('estado', 'entregado')->count(),
+            'total_activas'  => ClaseVirtual::whereHas('asignacion',
+                fn($q) => $q->where('school_year_id', $syId))->where('activo', true)->count(),
+            'total_entregas' => $entregaAgg->total       ?? 0,
+            'por_calificar'  => $entregaAgg->por_calificar ?? 0,
         ];
 
         return view('admin.classroom.index', compact('clases', 'schoolYear', 'statsGlobal'));
@@ -117,31 +120,39 @@ class ClaseVirtualController extends Controller
         $tareasEvals = $materiales->whereIn('tipo', ['tarea', 'evaluacion']);
         $totalTareas = $tareasEvals->count();
 
+        $tareaIds = $tareasEvals->pluck('id');
+        $entregaAgg = EntregaClassroom::whereIn('material_id', $tareaIds)
+            ->selectRaw("
+                COUNT(CASE WHEN estado IN ('entregado','calificado','atrasado') THEN 1 END) as total_entregas,
+                COUNT(CASE WHEN estado = 'calificado' THEN 1 END)                           as total_calificados,
+                AVG(CASE WHEN estado = 'calificado' AND calificacion IS NOT NULL THEN calificacion END) as promedio_notas
+            ")->first();
+
         $stats = [
-            'total_materiales' => $materiales->count(),
-            'total_tareas'     => $totalTareas,
-            'total_entregas'   => EntregaClassroom::whereIn('material_id', $tareasEvals->pluck('id'))
-                                    ->whereIn('estado', ['entregado','calificado','atrasado'])->count(),
-            'total_calificados'=> EntregaClassroom::whereIn('material_id', $tareasEvals->pluck('id'))
-                                    ->where('estado','calificado')->count(),
-            'promedio_notas'   => EntregaClassroom::whereIn('material_id', $tareasEvals->pluck('id'))
-                                    ->where('estado','calificado')->whereNotNull('calificacion')->avg('calificacion'),
+            'total_materiales'  => $materiales->count(),
+            'total_tareas'      => $totalTareas,
+            'total_entregas'    => $entregaAgg->total_entregas    ?? 0,
+            'total_calificados' => $entregaAgg->total_calificados ?? 0,
+            'promedio_notas'    => $entregaAgg->promedio_notas !== null ? round($entregaAgg->promedio_notas, 1) : null,
         ];
 
-        // Progreso por estudiante
-        $progresoEstudiantes = $matriculas->map(function($mat) use ($tareasEvals) {
-            $entregasAlumno = EntregaClassroom::where('matricula_id', $mat->id)
-                ->whereIn('material_id', $tareasEvals->pluck('id'))
-                ->get();
+        // Progreso por estudiante — 1 query para todos en lugar de N queries
+        $todasEntregas = EntregaClassroom::whereIn('matricula_id', $matriculas->pluck('id'))
+            ->whereIn('material_id', $tareaIds)
+            ->get()
+            ->groupBy('matricula_id');
 
-            $calificadas = $entregasAlumno->where('estado', 'calificado');
-            $promedio    = $calificadas->whereNotNull('calificacion')->avg('calificacion');
+        $totalTareasCount = $tareasEvals->count();
+        $progresoEstudiantes = $matriculas->map(function($mat) use ($todasEntregas, $totalTareasCount) {
+            $entregasAlumno = $todasEntregas->get($mat->id, collect());
+            $calificadas    = $entregasAlumno->where('estado', 'calificado');
+            $promedio       = $calificadas->whereNotNull('calificacion')->avg('calificacion');
 
             return [
                 'matricula'   => $mat,
                 'entregadas'  => $entregasAlumno->count(),
                 'calificadas' => $calificadas->count(),
-                'pendientes'  => $tareasEvals->count() - $entregasAlumno->count(),
+                'pendientes'  => $totalTareasCount - $entregasAlumno->count(),
                 'promedio'    => $promedio ? round($promedio, 1) : null,
             ];
         })->sortByDesc('entregadas');

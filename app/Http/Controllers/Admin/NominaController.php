@@ -47,8 +47,9 @@ class NominaController extends Controller
             'pendientes'   => NominaEmpleado::activos()->count() - $allPagos->where('pagado', true)->count(),
         ];
 
-        $totalNomina    = NominaEmpleado::activos()->sum('salario_base');
-        $totalEmpleados = NominaEmpleado::activos()->count();
+        $nominaAgg   = NominaEmpleado::activos()->selectRaw('COUNT(*) as total, SUM(salario_base) as suma')->first();
+        $totalNomina    = $nominaAgg->suma  ?? 0;
+        $totalEmpleados = $nominaAgg->total ?? 0;
 
         return view('admin.nomina.index', compact(
             'empleados', 'buscar', 'filtroMes', 'estado',
@@ -225,14 +226,16 @@ class NominaController extends Controller
             'referencia_pago' => 'nullable|string|max:100',
         ]);
 
+        $tss  = $nomina->calcularTSS();
+        $isr  = $nomina->calcularISR();
         $pago = PagoNomina::firstOrCreate(
             ['nomina_empleado_id' => $nomina->id, 'mes' => $mes],
             [
                 'salario_bruto' => $nomina->salario_base,
-                'desc_tss'      => $nomina->calcularTSS(),
-                'desc_isr'      => $nomina->calcularISR(),
-                'deducciones'   => $nomina->calcularTSS() + $nomina->calcularISR(),
-                'salario_neto'  => $nomina->salario_base - $nomina->calcularTSS() - $nomina->calcularISR(),
+                'desc_tss'      => $tss,
+                'desc_isr'      => $isr,
+                'deducciones'   => $tss + $isr,
+                'salario_neto'  => $nomina->salario_base - $tss - $isr,
             ]
         );
 
@@ -281,14 +284,16 @@ class NominaController extends Controller
 
         $nomina->load('user');
 
+        $tss  = $nomina->calcularTSS();
+        $isr  = $nomina->calcularISR();
         $pago = PagoNomina::firstOrCreate(
             ['nomina_empleado_id' => $nomina->id, 'mes' => $mes],
             [
                 'salario_bruto' => $nomina->salario_base,
-                'desc_tss'      => $nomina->calcularTSS(),
-                'desc_isr'      => $nomina->calcularISR(),
-                'deducciones'   => $nomina->calcularTSS() + $nomina->calcularISR(),
-                'salario_neto'  => $nomina->salario_base - $nomina->calcularTSS() - $nomina->calcularISR(),
+                'desc_tss'      => $tss,
+                'desc_isr'      => $isr,
+                'deducciones'   => $tss + $isr,
+                'salario_neto'  => $nomina->salario_base - $tss - $isr,
                 'pagado'        => false,
             ]
         );
@@ -423,9 +428,11 @@ class NominaController extends Controller
     {
         $anio = (int) $request->input('anio', now()->year);
 
-        $meses = collect(range(1, 12))->map(function ($m) use ($anio) {
+        $pagosAnio = PagoNomina::where('mes', 'like', $anio . '-%')->get()->groupBy('mes');
+
+        $meses = collect(range(1, 12))->map(function ($m) use ($anio, $pagosAnio) {
             $mesStr = $anio . '-' . str_pad($m, 2, '0', STR_PAD_LEFT);
-            $pagos  = PagoNomina::where('mes', $mesStr)->get();
+            $pagos  = $pagosAnio->get($mesStr, collect());
 
             return [
                 'mes'       => $mesStr,
@@ -449,9 +456,11 @@ class NominaController extends Controller
     {
         $anio = (int) $request->input('anio', now()->year);
 
-        $meses = collect(range(1, 12))->map(function ($m) use ($anio) {
+        $pagosAnio = PagoNomina::where('mes', 'like', $anio . '-%')->get()->groupBy('mes');
+
+        $meses = collect(range(1, 12))->map(function ($m) use ($anio, $pagosAnio) {
             $mesStr = $anio . '-' . str_pad($m, 2, '0', STR_PAD_LEFT);
-            $pagos  = PagoNomina::where('mes', $mesStr)->get();
+            $pagos  = $pagosAnio->get($mesStr, collect());
 
             return [
                 'mes'     => $mesStr,

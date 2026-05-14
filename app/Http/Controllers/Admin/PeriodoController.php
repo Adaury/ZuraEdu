@@ -253,7 +253,8 @@ class PeriodoController extends Controller
 
     public function destroy(Periodo $periodo)
     {
-        if ($periodo->calificaciones()->count() > 0) {
+        $periodo->loadCount('calificaciones');
+        if ($periodo->calificaciones_count > 0) {
             return back()->with('error', 'No se puede eliminar: tiene calificaciones registradas.');
         }
 

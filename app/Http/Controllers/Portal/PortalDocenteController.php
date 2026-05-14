@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Portal;
 
+use App\Events\AsistenciaRegistrada;
 use App\Http\Controllers\Controller;
+use App\Traits\HasDocenteContext;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use App\Models\Asignacion;
@@ -26,16 +28,7 @@ use Illuminate\Support\Facades\Storage;
 
 class PortalDocenteController extends Controller
 {
-    private function getDocente(): Docente
-    {
-        $docente = Docente::where('user_id', auth()->id())->first();
-
-        if (! $docente) {
-            abort(403, 'No tienes un perfil de docente asociado a esta cuenta.');
-        }
-
-        return $docente;
-    }
+    use HasDocenteContext;
 
     // ── Dashboard del docente ────────────────────────────────────────────
     public function dashboard()
@@ -52,8 +45,9 @@ class PortalDocenteController extends Controller
         $syId       = $schoolYear?->id ?? 0;
 
         // Asignaciones activas — cacheadas 5 min por docente
+        $tid = tenant_id() ?? 0;
         $asignaciones = Cache::remember(
-            "portal_docente_{$docente->id}_asignaciones_{$syId}", 300,
+            "t{$tid}_portal_docente_{$docente->id}_asignaciones_{$syId}", 300,
             fn() => Asignacion::with(['grupo.grado', 'grupo.seccion', 'asignatura'])
                 ->where('docente_id', $docente->id)
                 ->where('activo', true)
@@ -66,7 +60,7 @@ class PortalDocenteController extends Controller
 
         // Período activo
         $periodoActivo = $schoolYear
-            ? Cache::remember("periodo_activo_{$syId}", 600,
+            ? Cache::remember("t{$tid}_periodo_activo_{$syId}", 600,
                 fn() => Periodo::where('school_year_id', $syId)->where('activo', true)->first())
             : null;
 
@@ -86,7 +80,7 @@ class PortalDocenteController extends Controller
         ];
 
         // Comunicados recientes — cacheados 10 min (no cambian frecuentemente)
-        $comunicados = Cache::remember('comunicados_recientes', 600,
+        $comunicados = Cache::remember("t{$tid}_comunicados_recientes", 600,
             fn() => Comunicado::publicados()->orderByDesc('published_at')->limit(4)->get()
         );
 
@@ -99,8 +93,11 @@ class PortalDocenteController extends Controller
 
         $totalNoLeidas = $notificaciones->count();
 
-        // ── Estadísticas de rendimiento por asignación ───────────────────
-        $rendimiento = $this->calcularRendimiento($asignaciones, $schoolYear, $syId);
+        // ── Estadísticas de rendimiento por asignación — cacheadas 10 min ──
+        $rendimiento = Cache::remember(
+            "t{$tid}_portal_docente_{$docente->id}_rendimiento_{$syId}", 600,
+            fn() => $this->calcularRendimiento($asignaciones, $schoolYear, $syId)
+        );
 
         // Suplencias próximas (donde soy suplente o docente original) — próximos 30 días
         $suplencias = Suplencia::with(['detalle.asignacion.asignatura', 'detalle.asignacion.grupo.grado',
@@ -184,6 +181,20 @@ class PortalDocenteController extends Controller
         // Alerta de asistencia crítica para estudiantes que bajen del 75%
         $this->verificarAlertasAsistencia(array_keys($request->estados), $asignacion);
 
+        // Broadcast de confirmación al docente (sin bloquear el redirect)
+        try {
+            $estados   = $request->estados;
+            $presentes = count(array_filter($estados, fn($e) => $e === 'presente'));
+            $asignatura = $asignacion->asignatura?->nombre ?? 'Asignatura';
+            AsistenciaRegistrada::dispatch(
+                $docente->user_id,
+                $request->fecha,
+                count($estados),
+                $presentes,
+                $asignatura,
+            );
+        } catch (\Throwable) {}
+
         return redirect()
             ->route('portal.docente.asistencia', $asignacion)
             ->with('success', 'Asistencia registrada correctamente para el ' . $request->fecha);
@@ -203,20 +214,25 @@ class PortalDocenteController extends Controller
             ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
             ->get();
 
-        // Añadir promedio y asistencia a cada estudiante
-        $matriculas = $matriculas->map(function ($m) use ($asignacion, $schoolYear) {
-            $calif = Calificacion::where('matricula_id', $m->id)
-                ->where('asignacion_id', $asignacion->id)
-                ->first();
+        $mids = $matriculas->pluck('id');
 
-            $asistTotal  = Asistencia::where('matricula_id', $m->id)->where('asignacion_id', $asignacion->id)->count();
-            $asistPres   = Asistencia::where('matricula_id', $m->id)->where('asignacion_id', $asignacion->id)
-                ->whereIn('estado', ['presente', 'tardanza'])->count();
+        // Cargar calificaciones y asistencias en 2 queries en lugar de 3N
+        $califs = Calificacion::where('asignacion_id', $asignacion->id)
+            ->whereIn('matricula_id', $mids)
+            ->get()->keyBy('matricula_id');
 
-            $m->_nota    = $calif?->nota_final;
-            $m->_letra   = $calif?->letra;
-            $m->_asist   = $asistTotal > 0 ? round($asistPres / $asistTotal * 100, 1) : null;
+        $asists = Asistencia::where('asignacion_id', $asignacion->id)
+            ->whereIn('matricula_id', $mids)
+            ->selectRaw('matricula_id, COUNT(*) as total, SUM(estado IN ("presente","tardanza")) as presentes')
+            ->groupBy('matricula_id')
+            ->get()->keyBy('matricula_id');
 
+        $matriculas = $matriculas->map(function ($m) use ($califs, $asists) {
+            $c = $califs->get($m->id);
+            $a = $asists->get($m->id);
+            $m->_nota  = $c?->nota_final;
+            $m->_letra = $c?->letra;
+            $m->_asist = ($a && $a->total > 0) ? round($a->presentes / $a->total * 100, 1) : null;
             return $m;
         });
 
@@ -235,17 +251,27 @@ class PortalDocenteController extends Controller
             ->where('estado', 'activa')
             ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
             ->orderBy('numero_orden')
-            ->get()
-            ->map(function ($m) use ($asignacion) {
-                $calif = Calificacion::where('matricula_id', $m->id)
-                    ->where('asignacion_id', $asignacion->id)->first();
-                $asistTotal = Asistencia::where('matricula_id', $m->id)->where('asignacion_id', $asignacion->id)->count();
-                $asistPres  = Asistencia::where('matricula_id', $m->id)->where('asignacion_id', $asignacion->id)
-                    ->whereIn('estado', ['presente', 'tardanza'])->count();
-                $m->_nota  = $calif?->nota_final;
-                $m->_asist = $asistTotal > 0 ? round($asistPres / $asistTotal * 100, 1) : null;
-                return $m;
-            });
+            ->get();
+
+        $mids = $matriculas->pluck('id');
+
+        $califs = Calificacion::where('asignacion_id', $asignacion->id)
+            ->whereIn('matricula_id', $mids)
+            ->get()->keyBy('matricula_id');
+
+        $asists = Asistencia::where('asignacion_id', $asignacion->id)
+            ->whereIn('matricula_id', $mids)
+            ->selectRaw('matricula_id, COUNT(*) as total, SUM(estado IN ("presente","tardanza")) as presentes')
+            ->groupBy('matricula_id')
+            ->get()->keyBy('matricula_id');
+
+        $matriculas = $matriculas->map(function ($m) use ($califs, $asists) {
+            $c = $califs->get($m->id);
+            $a = $asists->get($m->id);
+            $m->_nota  = $c?->nota_final;
+            $m->_asist = ($a && $a->total > 0) ? round($a->presentes / $a->total * 100, 1) : null;
+            return $m;
+        });
 
         $asignacion->load(['asignatura', 'grupo.grado', 'grupo.seccion']);
         $inst = \App\Models\ConfigInstitucional::first()?->nombre ?? 'Institución';
@@ -270,18 +296,28 @@ class PortalDocenteController extends Controller
             ->where('estado', 'activa')
             ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
             ->orderBy('numero_orden')
-            ->get()
-            ->map(function ($m) use ($asignacion) {
-                $calif = Calificacion::where('matricula_id', $m->id)
-                    ->where('asignacion_id', $asignacion->id)->first();
-                $asistTotal = Asistencia::where('matricula_id', $m->id)->where('asignacion_id', $asignacion->id)->count();
-                $asistPres  = Asistencia::where('matricula_id', $m->id)->where('asignacion_id', $asignacion->id)
-                    ->whereIn('estado', ['presente', 'tardanza'])->count();
-                $m->_nota  = $calif?->nota_final;
-                $m->_letra = $calif?->letra;
-                $m->_asist = $asistTotal > 0 ? round($asistPres / $asistTotal * 100, 1) : null;
-                return $m;
-            });
+            ->get();
+
+        $mids = $matriculas->pluck('id');
+
+        $califs = Calificacion::where('asignacion_id', $asignacion->id)
+            ->whereIn('matricula_id', $mids)
+            ->get()->keyBy('matricula_id');
+
+        $asists = Asistencia::where('asignacion_id', $asignacion->id)
+            ->whereIn('matricula_id', $mids)
+            ->selectRaw('matricula_id, COUNT(*) as total, SUM(estado IN ("presente","tardanza")) as presentes')
+            ->groupBy('matricula_id')
+            ->get()->keyBy('matricula_id');
+
+        $matriculas = $matriculas->map(function ($m) use ($califs, $asists) {
+            $c = $califs->get($m->id);
+            $a = $asists->get($m->id);
+            $m->_nota  = $c?->nota_final;
+            $m->_letra = $c?->letra;
+            $m->_asist = ($a && $a->total > 0) ? round($a->presentes / $a->total * 100, 1) : null;
+            return $m;
+        });
 
         $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $ws = $ss->getActiveSheet();
@@ -453,19 +489,29 @@ class PortalDocenteController extends Controller
             return back()->with('error', 'No se pudo crear el archivo ZIP.');
         }
 
+        // Bulk-load calificaciones para todos los estudiantes — 2 queries en lugar de 2N
+        $allMatIds  = $matriculas->pluck('id');
+        $allAsigIds = $misAsignaciones->pluck('id');
+        $periodoIds = $periodos->pluck('id');
+
+        $allCalifAcad = CalificacionAcademica::whereIn('matricula_id', $allMatIds)
+            ->whereIn('asignacion_id', $allAsigIds)
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->get()
+            ->groupBy('matricula_id')
+            ->map(fn($rows) => $rows->keyBy('asignacion_id'));
+
+        $allCalifTec = Calificacion::whereIn('matricula_id', $allMatIds)
+            ->whereIn('asignacion_id', $allAsigIds)
+            ->when($periodoIds->isNotEmpty(), fn($q) => $q->whereIn('periodo_id', $periodoIds))
+            ->get()
+            ->groupBy('matricula_id')
+            ->map(fn($rows) => $rows->groupBy('asignacion_id'));
+
         foreach ($matriculas as $matricula) {
             try {
-                // Build tablaNotas for this student
-                $califAcadMap = CalificacionAcademica::where('matricula_id', $matricula->id)
-                    ->whereIn('asignacion_id', $misAsignaciones->pluck('id'))
-                    ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
-                    ->get()->keyBy('asignacion_id');
-
-                $periodoIds  = $periodos->pluck('id');
-                $califTecMap = Calificacion::where('matricula_id', $matricula->id)
-                    ->whereIn('asignacion_id', $misAsignaciones->pluck('id'))
-                    ->when($periodoIds->isNotEmpty(), fn($q) => $q->whereIn('periodo_id', $periodoIds))
-                    ->get()->groupBy('asignacion_id');
+                $califAcadMap = $allCalifAcad->get($matricula->id, collect());
+                $califTecMap  = $allCalifTec->get($matricula->id, collect());
 
                 $tablaNotas = [];
                 foreach ($misAsignaciones as $asi) {
@@ -735,7 +781,7 @@ class PortalDocenteController extends Controller
                 );
             }
 
-            Cache::forget("portal_docente_{$docente->id}_asignaciones_{$schoolYear?->id}");
+            Cache::forget('t' . (tenant_id() ?? 0) . "_portal_docente_{$docente->id}_asignaciones_{$schoolYear?->id}");
 
             return redirect()
                 ->to(route('portal.docente.calificaciones', $asignacion) . '?periodo_id=' . $periodoId)
@@ -825,7 +871,7 @@ class PortalDocenteController extends Controller
             );
         }
 
-        Cache::forget("portal_docente_{$docente->id}_asignaciones_{$schoolYear?->id}");
+        Cache::forget('t' . (tenant_id() ?? 0) . "_portal_docente_{$docente->id}_asignaciones_{$schoolYear?->id}");
 
         return redirect()
             ->route('portal.docente.calificaciones', $asignacion)
@@ -1121,7 +1167,7 @@ class PortalDocenteController extends Controller
             ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
             ->get();
 
-        $periodo = Periodo::where('school_year_id', $schoolYear?->id)->where('activo', true)->first();
+        $periodo = $this->getPeriodos($schoolYear)->where('activo', true)->first();
 
         $observaciones = Observacion::with('estudiante')
             ->where('docente_id', $docente->id)
@@ -1256,6 +1302,7 @@ class PortalDocenteController extends Controller
     {
         Notificacion::where('user_id', auth()->id())->noLeidas()
             ->update(['leida' => true, 'leida_en' => now()]);
+        Cache::put('user_' . auth()->id() . '_notif_unread', 0, 15);
 
         return response()->json(['ok' => true]);
     }
@@ -1266,6 +1313,7 @@ class PortalDocenteController extends Controller
             ->latest()->paginate(30);
         Notificacion::where('user_id', auth()->id())
             ->noLeidas()->update(['leida' => true, 'leida_en' => now()]);
+        Cache::put('user_' . auth()->id() . '_notif_unread', 0, 15);
         return view('portal.notificaciones', compact('notificaciones'));
     }
 
@@ -1469,20 +1517,45 @@ class PortalDocenteController extends Controller
     {
         $resultado = [];
 
-        if (! $schoolYear) return $resultado;
+        if (! $schoolYear || $asignaciones->isEmpty()) return $resultado;
 
         // Periodos del año escolar
-        $periodos   = Periodo::where('school_year_id', $syId)->orderBy('numero')->get();
+        $periodos   = $this->getPeriodos($schoolYear);
         $periodoIds = $periodos->pluck('id');
 
-        foreach ($asignaciones as $asig) {
-            $esTecnica = ($asig->area ?? '') === 'tecnica';
+        // Bulk-load: conteo y IDs de matriculados por grupo (evita N+1 de Matricula por asignación)
+        $grupoIds      = $asignaciones->pluck('grupo_id')->unique()->values();
+        $asignacionIds = $asignaciones->pluck('id');
 
-            // Total de matriculados en este grupo/year
-            $totalMat = Matricula::where('grupo_id', $asig->grupo_id)
-                ->where('school_year_id', $syId)
-                ->where('estado', 'activa')
-                ->count();
+        $matriculasPorGrupo = Matricula::whereIn('grupo_id', $grupoIds)
+            ->where('school_year_id', $syId)
+            ->where('estado', 'activa')
+            ->selectRaw('grupo_id, id')
+            ->get()
+            ->groupBy('grupo_id');
+
+        // Bulk-load calificaciones (técnica y académica) y asistencias — 3 queries en total
+        $califTecBulk = Calificacion::whereIn('asignacion_id', $asignacionIds)
+            ->when($periodoIds->isNotEmpty(), fn($q) => $q->whereIn('periodo_id', $periodoIds))
+            ->get()
+            ->groupBy('asignacion_id');
+
+        $califAcadBulk = CalificacionAcademica::whereIn('asignacion_id', $asignacionIds)
+            ->where('school_year_id', $syId)
+            ->get()
+            ->groupBy('asignacion_id');
+
+        $asistenciaBulk = Asistencia::whereIn('asignacion_id', $asignacionIds)
+            ->selectRaw('asignacion_id, COUNT(*) as total, SUM(CASE WHEN estado = "presente" THEN 1 ELSE 0 END) as presentes')
+            ->groupBy('asignacion_id')
+            ->get()
+            ->keyBy('asignacion_id');
+
+        foreach ($asignaciones as $asig) {
+            $esTecnica  = ($asig->area ?? '') === 'tecnica';
+            $matRows    = $matriculasPorGrupo->get($asig->grupo_id, collect());
+            $totalMat   = $matRows->count();
+            $matIds     = $matRows->pluck('id');
 
             if ($totalMat === 0) {
                 $resultado[$asig->id] = [
@@ -1507,20 +1580,10 @@ class PortalDocenteController extends Controller
             $umbral     = 65;
 
             if ($esTecnica) {
-                // Técnica: agrupar Calificacion por matricula y sacar promedio de nota_final por período
-                $cals = Calificacion::where('asignacion_id', $asig->id)
-                    ->when($periodoIds->isNotEmpty(), fn($q) => $q->whereIn('periodo_id', $periodoIds))
-                    ->get()
-                    ->groupBy('matricula_id');
-
-                // Matriculas del grupo
-                $matIds = Matricula::where('grupo_id', $asig->grupo_id)
-                    ->where('school_year_id', $syId)->where('estado', 'activa')
-                    ->pluck('id');
+                $cals = $califTecBulk->get($asig->id, collect())->groupBy('matricula_id');
 
                 foreach ($matIds as $mid) {
-                    $rows = $cals->get($mid, collect());
-                    $notas = $rows->pluck('nota_final')->filter(fn($v) => $v !== null);
+                    $notas = $cals->get($mid, collect())->pluck('nota_final')->filter(fn($v) => $v !== null);
                     if ($notas->isEmpty()) {
                         $sinNota++;
                     } else {
@@ -1531,15 +1594,7 @@ class PortalDocenteController extends Controller
                     }
                 }
             } else {
-                // Académica: CalificacionAcademica, una fila por alumno
-                $cals = CalificacionAcademica::where('asignacion_id', $asig->id)
-                    ->where('school_year_id', $syId)
-                    ->get()
-                    ->keyBy('matricula_id');
-
-                $matIds = Matricula::where('grupo_id', $asig->grupo_id)
-                    ->where('school_year_id', $syId)->where('estado', 'activa')
-                    ->pluck('id');
+                $cals = $califAcadBulk->get($asig->id, collect())->keyBy('matricula_id');
 
                 foreach ($matIds as $mid) {
                     $cal = $cals->get($mid);
@@ -1554,16 +1609,10 @@ class PortalDocenteController extends Controller
                 }
             }
 
-            // % asistencia promedio del grupo en esta asignación
-            // (asistencias no tiene school_year_id — se filtra solo por asignacion_id)
-            $asistencias = Asistencia::where('asignacion_id', $asig->id)
-                ->selectRaw('COUNT(*) as total, SUM(CASE WHEN estado = "presente" THEN 1 ELSE 0 END) as presentes')
-                ->first();
-
-            $pctAsist = null;
-            if ($asistencias && $asistencias->total > 0) {
-                $pctAsist = round(($asistencias->presentes / $asistencias->total) * 100);
-            }
+            $asistencias = $asistenciaBulk->get($asig->id);
+            $pctAsist    = ($asistencias && $asistencias->total > 0)
+                ? round(($asistencias->presentes / $asistencias->total) * 100)
+                : null;
 
             $resultado[$asig->id] = [
                 'aprobados'  => $aprobados,
@@ -2402,8 +2451,7 @@ class PortalDocenteController extends Controller
 
             if ($esTecnica) {
                 $pNum = (int) trim($row['periodo'] ?? 1);
-                $pId  = $periodoId ?: Periodo::where('school_year_id', $schoolYear?->id)
-                    ->where('numero', $pNum)->value('id');
+                $pId  = $periodoId ?: $this->getPeriodos($schoolYear)->where('numero', $pNum)->first()?->id;
                 if (! $pId) { $errores[] = "Fila {$linea}: período {$pNum} no encontrado."; $omitidos++; continue; }
 
                 $data = ['modificado_por' => auth()->id()];
@@ -2447,7 +2495,7 @@ class PortalDocenteController extends Controller
             $importados++;
         }
 
-        Cache::forget("portal_docente_{$docente->id}_asignaciones_{$schoolYear?->id}");
+        Cache::forget('t' . (tenant_id() ?? 0) . "_portal_docente_{$docente->id}_asignaciones_{$schoolYear?->id}");
         $msg = "Se importaron {$importados} nota(s).";
         if ($omitidos) $msg .= " {$omitidos} fila(s) omitida(s).";
         $url = route('portal.docente.calificaciones', $asignacion) . ($periodoId ? "?periodo_id={$periodoId}" : '');
@@ -2781,7 +2829,7 @@ class PortalDocenteController extends Controller
         // Invalidar caché del portal
         $schoolYear = SchoolYear::actual();
         if ($schoolYear) {
-            Cache::forget("portal_docente_{$docente->id}_asignaciones_{$schoolYear->id}");
+            Cache::forget('t' . (tenant_id() ?? 0) . "_portal_docente_{$docente->id}_asignaciones_{$schoolYear->id}");
         }
 
         return response()->json(['success' => true, 'pesos' => $pesosIndexados]);
@@ -2819,5 +2867,153 @@ class PortalDocenteController extends Controller
         $tutoria->sesiones()->create($data);
 
         return back()->with('success', 'Sesión registrada correctamente.');
+    }
+
+    // ── Calendario escolar ───────────────────────────────────────────────
+    public function calendario()
+    {
+        $schoolYear = SchoolYear::actual();
+        $eventos    = $this->calendarEventos(['todos', 'docentes']);
+        return view('portal.docente.calendario', compact('schoolYear', 'eventos'));
+    }
+
+    public function calendarioApi()
+    {
+        $eventos = $this->calendarEventos(['todos', 'docentes']);
+        return response()->json($eventos);
+    }
+
+    private function calendarEventos(array $apliCa): array
+    {
+        $schoolYear = SchoolYear::actual();
+
+        $cal = \App\Models\CalendarioAcademico::when($schoolYear, fn($q) => $q->delAnio($schoolYear->id))
+            ->where('activo', true)
+            ->where(fn($q) => $q->whereIn('aplica_a', $apliCa))
+            ->get()
+            ->map(fn($e) => [
+                'id'     => 'cal_' . $e->id,
+                'titulo' => $e->titulo,
+                'inicio' => $e->fecha_inicio->format('Y-m-d'),
+                'fin'    => $e->fecha_fin?->format('Y-m-d'),
+                'tipo'   => $e->tipo,
+                'color'  => $e->color ?? '#6b7280',
+                'desc'   => $e->descripcion,
+                'fuente' => 'calendario',
+            ]);
+
+        $evs = \App\Models\Evento::activos()->get()->map(fn($e) => [
+            'id'     => 'ev_' . $e->id,
+            'titulo' => $e->nombre,
+            'inicio' => $e->fecha_inicio->format('Y-m-d'),
+            'fin'    => $e->fecha_fin?->format('Y-m-d'),
+            'tipo'   => 'evento_' . $e->tipo,
+            'color'  => match($e->tipo) {
+                'academico' => '#0891b2', 'deportivo' => '#16a34a',
+                'cultural'  => '#7c3aed', 'social'    => '#d97706',
+                default     => '#6b7280',
+            },
+            'desc'   => $e->descripcion,
+            'fuente' => 'evento',
+        ]);
+
+        $reu = \App\Models\Reunion::where('estado', '!=', 'cancelada')
+            ->get()
+            ->map(fn($r) => [
+                'id'     => 'reu_' . $r->id,
+                'titulo' => $r->titulo,
+                'inicio' => $r->fecha->format('Y-m-d'),
+                'fin'    => null,
+                'tipo'   => 'reunion',
+                'color'  => '#0d9488',
+                'desc'   => ($r->lugar ? 'Lugar: ' . $r->lugar : null),
+                'fuente' => 'reunion',
+            ]);
+
+        $pers = collect();
+        if ($schoolYear) {
+            foreach ($this->getPeriodos($schoolYear) as $p) {
+                if ($p->fecha_inicio) $pers->push([
+                    'id' => 'pi_' . $p->id, 'titulo' => 'Inicio ' . $p->nombre,
+                    'inicio' => $p->fecha_inicio->format('Y-m-d'), 'fin' => null,
+                    'tipo' => 'inicio_periodo', 'color' => '#2563eb', 'desc' => null, 'fuente' => 'periodo',
+                ]);
+                if ($p->fecha_fin) $pers->push([
+                    'id' => 'pf_' . $p->id, 'titulo' => 'Fin ' . $p->nombre,
+                    'inicio' => $p->fecha_fin->format('Y-m-d'), 'fin' => null,
+                    'tipo' => 'fin_periodo', 'color' => '#dc2626', 'desc' => null, 'fuente' => 'periodo',
+                ]);
+            }
+        }
+
+        return $cal->concat($evs)->concat($reu)->concat($pers)->values()->all();
+    }
+
+    // ── Constancia de trabajo PDF ────────────────────────────────────────
+    public function constanciaTrabajoPdf()
+    {
+        $docente    = auth()->user()->docente;
+        abort_if(! $docente, 403);
+
+        $schoolYear = SchoolYear::actual();
+        $asignaciones = Asignacion::with(['asignatura', 'grupo.grado', 'grupo.seccion'])
+            ->where('docente_id', $docente->id)
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->get();
+
+        $inst    = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+        $director= \App\Models\ConfigInstitucional::get('nombre_director', '');
+        $fecha   = now();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'portal.docente.constancia_trabajo_pdf',
+            compact('docente', 'asignaciones', 'schoolYear', 'inst', 'director', 'fecha')
+        )->setPaper('letter', 'portrait');
+
+        return $pdf->download('constancia_trabajo_' . $docente->apellidos . '_' . now()->format('Ymd') . '.pdf');
+    }
+
+    // ── Ficha de actividad docente PDF ───────────────────────────────────
+    public function fichaActividadPdf()
+    {
+        $docente    = auth()->user()->docente;
+        abort_if(! $docente, 403);
+
+        $schoolYear = SchoolYear::actual();
+
+        $asignaciones = Asignacion::with(['asignatura', 'grupo.grado', 'grupo.seccion'])
+            ->where('docente_id', $docente->id)
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->get();
+
+        $stats = [];
+        foreach ($asignaciones as $asig) {
+            $totalEst   = Matricula::where('grupo_id', $asig->grupo_id)
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->where('estado', 'activa')->count();
+            $promedio   = CalificacionAcademica::where('asignacion_id', $asig->id)->avg('nota_final');
+            $aprobados  = CalificacionAcademica::where('asignacion_id', $asig->id)
+                ->where('nota_final', '>=', 70)->count();
+            $asistClases= Asistencia::where('asignacion_id', $asig->id)->distinct('fecha')->count('fecha');
+
+            $stats[$asig->id] = [
+                'total_estudiantes' => $totalEst,
+                'promedio'          => $promedio ? round($promedio, 1) : null,
+                'aprobados'         => $aprobados,
+                'pct_aprobacion'    => $totalEst > 0 ? round($aprobados / $totalEst * 100, 1) : null,
+                'clases_registradas'=> $asistClases,
+            ];
+        }
+
+        $inst    = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+        $director= \App\Models\ConfigInstitucional::get('nombre_director', '');
+        $fecha   = now();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'portal.docente.ficha_actividad_pdf',
+            compact('docente', 'asignaciones', 'stats', 'schoolYear', 'inst', 'director', 'fecha')
+        )->setPaper('letter', 'portrait');
+
+        return $pdf->download('ficha_actividad_' . $docente->apellidos . '_' . now()->format('Ymd') . '.pdf');
     }
 }

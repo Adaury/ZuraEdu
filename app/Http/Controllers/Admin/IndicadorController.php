@@ -99,7 +99,7 @@ class IndicadorController extends Controller
         }
 
         $periodo  = \App\Models\Periodo::findOrFail($periodoId);
-        $periodos = \App\Models\Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+        $periodos = $this->getPeriodos($schoolYear);
 
         // Indicadores para esta asignatura+grado+periodo
         $indicadores = IndicadorAprendizaje::where('asignatura_id', $asignacion->asignatura_id)

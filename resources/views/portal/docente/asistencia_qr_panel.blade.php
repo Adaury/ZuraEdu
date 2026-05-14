@@ -142,7 +142,31 @@ function updateCountdown() {
 setInterval(updateCountdown, 1000);
 updateCountdown();
 
-// Polling lista
+// ── Realtime: Echo DOM event (instantáneo cuando el estudiante escanea) ──────
+const ASIGNACION_ID = {{ $qrToken->asignacion_id }};
+window.addEventListener('qr:escaneado', function(e) {
+    const data = e.detail;
+    if (data.asignacion_id !== ASIGNACION_ID) return; // ignorar otros QRs
+
+    // Actualizar contador
+    document.getElementById('liveCount').textContent = data.total_presentes;
+    prevCount = data.total_presentes;
+
+    // Añadir al tope de la lista con animación
+    const list = document.getElementById('liveList');
+    const empty = list.querySelector('[data-empty]');
+    if (empty) empty.remove();
+
+    const item = document.createElement('div');
+    item.className = 'live-item';
+    item.style.cssText = 'animation:qrItemEnter .35s cubic-bezier(.34,1.56,.64,1) both;';
+    item.innerHTML = `<div class="live-icon"><i class="bi bi-check2" style="color:#16a34a;font-size:.9rem;"></i></div>
+        <span style="font-weight:700;color:#0f172a;">${data.nombre}</span>
+        <span class="live-hora">${data.hora}</span>`;
+    list.insertBefore(item, list.firstChild);
+});
+
+// ── Polling de respaldo (cada 8s, solo si Echo no está conectado) ────────────
 let prevCount = -1;
 async function pollEstado() {
     try {
@@ -154,7 +178,7 @@ async function pollEstado() {
             prevCount = data.registrados;
             const list = document.getElementById('liveList');
             if (data.lista.length === 0) {
-                list.innerHTML = '<div style="text-align:center;padding:2rem;color:#94a3b8;font-size:.85rem;"><i class="bi bi-hourglass-split" style="font-size:1.5rem;display:block;margin-bottom:.5rem;"></i>Esperando registros...</div>';
+                list.innerHTML = '<div style="text-align:center;padding:2rem;color:#94a3b8;font-size:.85rem;" data-empty><i class="bi bi-hourglass-split" style="font-size:1.5rem;display:block;margin-bottom:.5rem;"></i>Esperando registros...</div>';
             } else {
                 list.innerHTML = data.lista.map(e =>
                     `<div class="live-item">
@@ -172,8 +196,18 @@ async function pollEstado() {
         }
     } catch(e) {}
 }
+
+// Carga inicial siempre — luego el polling solo si Echo no conecta
 pollEstado();
-const pollInterval = setInterval(pollEstado, 5000);
+let pollInterval;
+setTimeout(function() {
+    if (window.Echo?.connector?.pusher?.connection?.state !== 'connected') {
+        pollInterval = setInterval(pollEstado, 5000);
+    } else {
+        // Con Echo, solo recontar cada 30s como verificación
+        pollInterval = setInterval(pollEstado, 30000);
+    }
+}, 3000);
 </script>
 
 @else
@@ -234,5 +268,18 @@ document.querySelectorAll('.dur-radio').forEach(r => {
 });
 </script>
 @endif
+
+@push('realtime-data')
+<script>window._SGE_ROL = 'docente';</script>
+@endpush
+
+@push('styles')
+<style>
+@keyframes qrItemEnter {
+    from { opacity:0; transform:translateY(-10px) scale(.95); }
+    to   { opacity:1; transform:translateY(0) scale(1); }
+}
+</style>
+@endpush
 
 @endsection

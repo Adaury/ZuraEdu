@@ -54,18 +54,21 @@ class CierreAnoController extends Controller
             ->orderBy('seccion_id')
             ->get();
 
-        // Construir resumen por grupo
+        // Bulk-load matriculas + promociones: 1 query en lugar de N (una por grupo)
+        $matriculasPorGrupo = Matricula::whereIn('grupo_id', $grupos->pluck('id'))
+            ->where('school_year_id', $schoolYear->id)
+            ->where('estado', 'activa')
+            ->with('promocion')
+            ->get()
+            ->groupBy('grupo_id');
+
         $resumen = [];
         $totalAprobados  = 0;
         $totalReprobados = 0;
         $totalPendientes = 0;
 
         foreach ($grupos as $grupo) {
-            $matriculas = Matricula::where('grupo_id', $grupo->id)
-                ->where('school_year_id', $schoolYear->id)
-                ->where('estado', 'activa')
-                ->with('promocion')
-                ->get();
+            $matriculas = $matriculasPorGrupo->get($grupo->id, collect());
 
             $aprobados  = $matriculas->filter(fn ($m) => $m->promocion?->estado === 'promovido')->count();
             $reprobados = $matriculas->filter(fn ($m) => $m->promocion?->estado === 'no_promovido')->count();
@@ -114,11 +117,24 @@ class CierreAnoController extends Controller
                 ->with(['estudiante', 'grupo.grado', 'promocion'])
                 ->get();
 
+            $matIds = $matriculas->pluck('id');
+
+            // Bulk-load para calcularPromedioFinal: 2 queries fijas en lugar de 2×N
+            $calAcBulk = CalificacionAcademica::whereIn('matricula_id', $matIds)
+                ->where('school_year_id', $schoolYear->id)
+                ->whereNotNull('nota_final')
+                ->get()->groupBy('matricula_id');
+
+            $periodoIds = Periodo::where('school_year_id', $schoolYear->id)->pluck('id');
+            $calBulk    = Calificacion::whereIn('matricula_id', $matIds)
+                ->whereIn('periodo_id', $periodoIds)
+                ->whereNotNull('nota_final')
+                ->get()->groupBy('matricula_id');
+
             $procesados = 0;
 
             foreach ($matriculas as $matricula) {
-                // Calcular promedio final desde CalificacionAcademica o Calificacion
-                $promedio = $this->calcularPromedioFinal($matricula, $schoolYear->id);
+                $promedio = $this->calcularPromedioFinalDesdeMap($matricula->id, $calAcBulk, $calBulk);
 
                 // Determinar estado de promoción
                 $estadoPromocion = $this->determinarEstadoPromocion($matricula, $promedio);
@@ -213,9 +229,7 @@ class CierreAnoController extends Controller
             ->groupBy('matricula_id');
 
         // Fallback: calificaciones promediadas por asignacion
-        $periodos = Periodo::where('school_year_id', $schoolYear?->id ?? $grupo->school_year_id)
-            ->orderBy('numero')
-            ->get();
+        $periodos = $this->getPeriodos($schoolYear);
 
         $calLegMap = Calificacion::whereIn('asignacion_id', $asignacionIds)
             ->whereIn('matricula_id', $matriculas->pluck('id'))
@@ -278,14 +292,15 @@ class CierreAnoController extends Controller
         }
 
         // Datos institucionales
+        $tid = tenant_id() ?? 0;
         $logoPath = Cache::remember(
-            'system_logo',
+            "t{$tid}_system_logo",
             600,
             fn () => DB::table('system_settings')
                 ->where('key', 'system_logo')->value('value')
         );
         $instNombre = Cache::remember(
-            'system_name',
+            "t{$tid}_system_name",
             600,
             fn () => DB::table('system_settings')
                 ->where('key', 'system_name')->value('value') ?? 'PSAC'
@@ -323,33 +338,19 @@ class CierreAnoController extends Controller
 
     // ── Helpers privados ─────────────────────────────────────────────────
 
-    private function calcularPromedioFinal(Matricula $matricula, int $schoolYearId): ?float
+    private function calcularPromedioFinalDesdeMap(int $matriculaId, $calAcBulk, $calBulk): ?float
     {
-        // Intentar desde calificaciones_academicas
-        $calAcs = CalificacionAcademica::where('matricula_id', $matricula->id)
-            ->where('school_year_id', $schoolYearId)
-            ->whereNotNull('nota_final')
-            ->pluck('nota_final')
-            ->map(fn ($n) => (float) $n);
+        $calAcs = $calAcBulk->get($matriculaId, collect())
+            ->map(fn ($c) => (float) $c->nota_final);
 
         if ($calAcs->isNotEmpty()) {
             return round($calAcs->avg(), 2);
         }
 
-        // Fallback: promedio de todas las calificaciones del año
-        $periodos = Periodo::where('school_year_id', $schoolYearId)->pluck('id');
+        $notas = $calBulk->get($matriculaId, collect())
+            ->map(fn ($c) => (float) $c->nota_final);
 
-        $notas = Calificacion::where('matricula_id', $matricula->id)
-            ->whereIn('periodo_id', $periodos)
-            ->whereNotNull('nota_final')
-            ->pluck('nota_final')
-            ->map(fn ($n) => (float) $n);
-
-        if ($notas->isNotEmpty()) {
-            return round($notas->avg(), 2);
-        }
-
-        return null;
+        return $notas->isNotEmpty() ? round($notas->avg(), 2) : null;
     }
 
     private function determinarEstadoPromocion(Matricula $matricula, ?float $promedio): string

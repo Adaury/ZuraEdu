@@ -66,9 +66,9 @@ class Estudiante extends Model
         return asset('img/default-avatar.png');
     }
 
-    public function getEdadAttribute(): int
+    public function getEdadAttribute(): ?int
     {
-        return $this->fecha_nacimiento->age;
+        return $this->fecha_nacimiento?->age;
     }
 
     public function representantes()

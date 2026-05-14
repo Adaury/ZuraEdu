@@ -7,14 +7,17 @@ use App\Models\AlertaSistema;
 use App\Models\Calificacion;
 use App\Models\Estudiante;
 use App\Models\CalificacionAcademica;
+use App\Observers\CalificacionAcademicaObserver;
 use App\Observers\CalificacionObserver;
 use App\Observers\EstudianteObserver;
-use App\Observers\CalificacionAcademicaObserver;
+use App\Observers\MatriculaObserver;
+use App\Helpers\Setting;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
 
 class AppServiceProvider extends ServiceProvider
@@ -32,8 +35,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Detecta N+1 queries en desarrollo — lanza excepción si se lazy-load una relación
+        Model::preventLazyLoading(! app()->isProduction());
+
         // Forzar HTTPS solo si se activa explícitamente (FORCE_HTTPS=true en .env)
-        // Útil en producción detrás de proxies/balanceadores sin modificar APP_ENV
         if (config('app.force_https')) {
             URL::forceScheme('https');
         }
@@ -48,7 +53,7 @@ class AppServiceProvider extends ServiceProvider
         // Share data with the admin layout — cached to avoid repeated queries on every request
         View::composer('layouts.admin', function ($view) {
             try {
-                $usuariosPendientes = Cache::remember('usuarios_pendientes_count', 300, fn () =>
+                $usuariosPendientes = Cache::remember('t' . (tenant_id() ?? 0) . '_usuarios_pendientes_count', 300, fn () =>
                     User::where('pendiente_aprobacion', true)->count()
                 );
             } catch (\Exception $e) {
@@ -60,7 +65,7 @@ class AppServiceProvider extends ServiceProvider
                 if (Auth::check()) {
                     $user = Auth::user();
                     $rol  = $user->roles->first()?->name;
-                    $alertasNoLeidas = Cache::remember("alertas_no_leidas_{$user->id}", 120, fn () =>
+                    $alertasNoLeidas = Cache::remember('t' . (tenant_id() ?? 0) . "_alertas_no_leidas_{$user->id}", 120, fn () =>
                         AlertaSistema::noLeidas()
                             ->vigentes()
                             ->paraUsuario($user->id, $rol)
@@ -71,19 +76,14 @@ class AppServiceProvider extends ServiceProvider
                 $alertasNoLeidas = 0;
             }
 
-            // System branding settings (cached 10 min)
+            // System branding — usa Setting (Redis-cached + PHP memoized, 0 queries extra por request)
             try {
-                $systemSettings = Cache::remember('system_settings_branding', 600, function () {
-                    $rows = \Illuminate\Support\Facades\DB::table('system_settings')
-                        ->whereIn('key', ['system_name', 'system_abbr', 'system_logo', 'system_sub'])
-                        ->pluck('value', 'key');
-                    return [
-                        'system_name' => $rows['system_name'] ?? 'Zura',
-                        'system_abbr' => $rows['system_abbr'] ?? 'SGE',
-                        'system_sub'  => $rows['system_sub']  ?? 'Gestión Escolar',
-                        'system_logo' => $rows['system_logo'] ?? null,
-                    ];
-                });
+                $systemSettings = [
+                    'system_name' => Setting::get('system_name', 'Zura'),
+                    'system_abbr' => Setting::get('system_abbr', 'SGE'),
+                    'system_sub'  => Setting::get('system_sub',  'Gestión Escolar'),
+                    'system_logo' => Setting::get('system_logo'),
+                ];
             } catch (\Exception $e) {
                 $systemSettings = [
                     'system_name' => 'Zura',

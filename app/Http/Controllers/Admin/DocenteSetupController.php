@@ -131,41 +131,47 @@ class DocenteSetupController extends Controller
 
         // Sincronizar materias: construir el set deseado y comparar con lo existente
         $deseados = collect();
-        foreach ($request->input('materias', []) as $materia) {
-            $parts = explode(':', $materia);
-            if (count($parts) < 3) {
-                continue;
-            }
-            [$grupoId, $asigId, $tipo] = $parts;
-            $asignatura = Asignatura::find((int) $asigId);
-            if (! $asignatura) {
-                continue;
-            }
 
-            // Primero buscar una asignación existente para este grupo+asignatura
-            // (puede tener docente_id=null si fue auto-creada como materia básica,
-            //  o ya tener este docente asignado). Actualizamos en vez de duplicar.
-            $asignacion = Asignacion::where('school_year_id', $schoolYear->id)
-                ->where('grupo_id', (int) $grupoId)
-                ->where('asignatura_id', (int) $asigId)
-                ->where(fn($q) => $q->whereNull('docente_id')
-                                    ->orWhere('docente_id', $docente->id))
-                ->first();
+        // Pre-parse para bulk-load (evita 2 queries por materia en el loop)
+        $materiasData = collect($request->input('materias', []))->map(function ($m) {
+            $parts = explode(':', $m);
+            return count($parts) >= 3 ? $parts : null;
+        })->filter()->values();
+
+        $asigIds  = $materiasData->pluck(1)->map('intval')->unique();
+        $grupoIds = $materiasData->pluck(0)->map('intval')->unique();
+
+        $asignaturasMap = Asignatura::whereIn('id', $asigIds)->get()->keyBy('id');
+
+        $asignacionesExistMap = Asignacion::where('school_year_id', $schoolYear->id)
+            ->whereIn('grupo_id', $grupoIds)
+            ->whereIn('asignatura_id', $asigIds)
+            ->where(fn($q) => $q->whereNull('docente_id')->orWhere('docente_id', $docente->id))
+            ->get()
+            ->groupBy(fn($a) => $a->grupo_id . ':' . $a->asignatura_id);
+
+        foreach ($materiasData as $parts) {
+            [$grupoId, $asigId, $tipo] = $parts;
+            $grupoId = (int) $grupoId;
+            $asigId  = (int) $asigId;
+
+            $asignatura = $asignaturasMap->get($asigId);
+            if (! $asignatura) continue;
+
+            $asignacion = $asignacionesExistMap->get("{$grupoId}:{$asigId}")?->first();
 
             if ($asignacion) {
-                // Actualizar el docente y reactivar si estaba inactiva
                 $asignacion->update([
-                    'docente_id'     => $docente->id,
-                    'activo'         => true,
-                    'tipo_evaluacion'=> $tipo,
-                    'area'           => $asignatura->area,
+                    'docente_id'      => $docente->id,
+                    'activo'          => true,
+                    'tipo_evaluacion' => $tipo,
+                    'area'            => $asignatura->area,
                 ]);
             } else {
-                // Crear nueva asignación solo si no existe ninguna para este grupo+materia
                 $asignacion = Asignacion::create([
                     'school_year_id'  => $schoolYear->id,
-                    'grupo_id'        => (int) $grupoId,
-                    'asignatura_id'   => (int) $asigId,
+                    'grupo_id'        => $grupoId,
+                    'asignatura_id'   => $asigId,
                     'docente_id'      => $docente->id,
                     'activo'          => true,
                     'area'            => $asignatura->area,
@@ -189,7 +195,7 @@ class DocenteSetupController extends Controller
         }
 
         // Limpiar caché del portal para que los cambios se reflejen de inmediato
-        Cache::forget("portal_docente_{$docente->id}_asignaciones_{$schoolYear->id}");
+        Cache::forget('t' . (tenant_id() ?? 0) . "_portal_docente_{$docente->id}_asignaciones_{$schoolYear->id}");
 
         if (auth()->user()->hasRole('Docente')) {
             return redirect()->route('portal.docente.dashboard')

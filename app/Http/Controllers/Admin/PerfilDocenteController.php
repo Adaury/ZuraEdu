@@ -16,7 +16,7 @@ class PerfilDocenteController extends Controller
 {
     public function show(Docente $docente)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
 
         $docente->load([
             'user',
@@ -58,33 +58,9 @@ class PerfilDocenteController extends Controller
             ))
             ->latest()->limit(20)->get();
 
-        // Rendimiento por asignación: promedio de calificaciones de los estudiantes
-        $rendimiento = [];
-        foreach ($docente->asignaciones as $asig) {
-            $matriculaIds = Matricula::where('grupo_id', $asig->grupo_id)
-                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
-                ->where('estado', 'activa')
-                ->pluck('id');
-
-            $califs = CalificacionAcademica::whereIn('matricula_id', $matriculaIds)
-                ->where('asignacion_id', $asig->id)
-                ->whereNotNull('nota_final')
-                ->get();
-
-            $total     = $matriculaIds->count();
-            $conNota   = $califs->count();
-            $promedio  = $califs->avg('nota_final');
-            $aprobados = $califs->where('situacion', 'A')->count();
-            $reprobados= $califs->where('situacion', 'R')->count();
-
-            $rendimiento[$asig->id] = [
-                'total'      => $total,
-                'con_nota'   => $conNota,
-                'promedio'   => $promedio ? round($promedio, 1) : null,
-                'aprobados'  => $aprobados,
-                'reprobados' => $reprobados,
-            ];
-        }
+        $rendimiento = $schoolYear
+            ? $this->buildRendimiento($docente->asignaciones, $schoolYear)
+            : [];
 
         return view('admin.perfiles.docente', compact(
             'docente', 'schoolYear',
@@ -96,7 +72,7 @@ class PerfilDocenteController extends Controller
     // ── Informe de actividad docente PDF ─────────────────────────────────
     public function informePdf(Docente $docente)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) abort(404);
 
         $docente->load([
@@ -115,20 +91,7 @@ class PerfilDocenteController extends Controller
             ? PlanClase::whereIn('asignacion_id', $asignacionIds)->where('school_year_id', $schoolYear->id)->get()
             : collect();
 
-        $rendimiento = [];
-        foreach ($docente->asignaciones as $asig) {
-            $matriculaIds = Matricula::where('grupo_id', $asig->grupo_id)
-                ->where('school_year_id', $schoolYear->id)->where('estado', 'activa')->pluck('id');
-            $califs   = CalificacionAcademica::whereIn('matricula_id', $matriculaIds)
-                ->where('asignacion_id', $asig->id)->whereNotNull('nota_final')->get();
-            $rendimiento[$asig->id] = [
-                'total'      => $matriculaIds->count(),
-                'con_nota'   => $califs->count(),
-                'promedio'   => $califs->avg('nota_final') ? round($califs->avg('nota_final'), 1) : null,
-                'aprobados'  => $califs->where('situacion', 'A')->count(),
-                'reprobados' => $califs->where('situacion', 'R')->count(),
-            ];
-        }
+        $rendimiento = $this->buildRendimiento($docente->asignaciones, $schoolYear);
 
         $inst   = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
         $config = \App\Models\BoletinConfig::getOrCreate($schoolYear->id);
@@ -145,7 +108,7 @@ class PerfilDocenteController extends Controller
     // ── Excel informe de actividad docente ───────────────────────────────
     public function informeExcel(Docente $docente)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         if (! $schoolYear) abort(404);
 
         $docente->load([
@@ -164,20 +127,7 @@ class PerfilDocenteController extends Controller
             ? PlanClase::whereIn('asignacion_id', $asignacionIds)->where('school_year_id', $schoolYear->id)->get()
             : collect();
 
-        $rendimiento = [];
-        foreach ($docente->asignaciones as $asig) {
-            $matriculaIds = Matricula::where('grupo_id', $asig->grupo_id)
-                ->where('school_year_id', $schoolYear->id)->where('estado', 'activa')->pluck('id');
-            $califs = \App\Models\CalificacionAcademica::whereIn('matricula_id', $matriculaIds)
-                ->where('asignacion_id', $asig->id)->whereNotNull('nota_final')->get();
-            $rendimiento[$asig->id] = [
-                'total'      => $matriculaIds->count(),
-                'con_nota'   => $califs->count(),
-                'promedio'   => $califs->avg('nota_final') ? round($califs->avg('nota_final'), 1) : null,
-                'aprobados'  => $califs->where('situacion', 'A')->count(),
-                'reprobados' => $califs->where('situacion', 'R')->count(),
-            ];
-        }
+        $rendimiento = $this->buildRendimiento($docente->asignaciones, $schoolYear);
 
         $inst = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
 
@@ -267,5 +217,43 @@ class PerfilDocenteController extends Controller
         }
 
         return $this->show($docente);
+    }
+
+    private function buildRendimiento(\Illuminate\Database\Eloquent\Collection $asignaciones, SchoolYear $schoolYear): array
+    {
+        if ($asignaciones->isEmpty()) return [];
+
+        $grupoIds      = $asignaciones->pluck('grupo_id')->unique();
+        $asignacionIds = $asignaciones->pluck('id');
+
+        $matriculasPorGrupo = Matricula::whereIn('grupo_id', $grupoIds)
+            ->where('school_year_id', $schoolYear->id)
+            ->where('estado', 'activa')
+            ->get()
+            ->groupBy('grupo_id');
+
+        $allMatIds = $matriculasPorGrupo->flatten(1)->pluck('id');
+
+        $califsPorAsig = CalificacionAcademica::whereIn('asignacion_id', $asignacionIds)
+            ->whereNotNull('nota_final')
+            ->when($allMatIds->isNotEmpty(), fn($q) => $q->whereIn('matricula_id', $allMatIds))
+            ->get()
+            ->groupBy('asignacion_id');
+
+        $result = [];
+        foreach ($asignaciones as $asig) {
+            $total  = $matriculasPorGrupo->get($asig->grupo_id, collect())->count();
+            $califs = $califsPorAsig->get($asig->id, collect());
+
+            $result[$asig->id] = [
+                'total'      => $total,
+                'con_nota'   => $califs->count(),
+                'promedio'   => $califs->avg('nota_final') ? round($califs->avg('nota_final'), 1) : null,
+                'aprobados'  => $califs->where('situacion', 'A')->count(),
+                'reprobados' => $califs->where('situacion', 'R')->count(),
+            ];
+        }
+
+        return $result;
     }
 }

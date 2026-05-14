@@ -33,7 +33,7 @@ class PlanificacionController extends Controller
 
     private function schoolYear(): SchoolYear
     {
-        return SchoolYear::where('activo', true)->latest()->firstOrFail();
+        return SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
     }
 
     // ── Listado ───────────────────────────────────────────────────────────

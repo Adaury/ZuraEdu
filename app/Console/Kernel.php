@@ -29,6 +29,9 @@ class Kernel extends ConsoleKernel
                  ->everyFiveMinutes()
                  ->withoutOverlapping();
 
+        // ── Métricas de Horizon (gráficas del dashboard) ─────────────────────
+        $schedule->command('horizon:snapshot')->everyFiveMinutes();
+
         // ── Limpiar trabajos fallidos con más de 7 días ───────────────────────
         $schedule->command('queue:prune-failed --hours=168')->weekly();
 

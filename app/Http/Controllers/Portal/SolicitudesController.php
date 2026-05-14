@@ -8,6 +8,7 @@ use App\Models\Representante;
 use App\Models\SolicitudRepresentante;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class SolicitudesController extends Controller
@@ -90,6 +91,10 @@ class SolicitudesController extends Controller
                 'leida'   => false,
             ]);
         });
+
+        $tid = tenant_id();
+        Cache::forget("t{$tid}_solicitudes_rep_stats");
+        Cache::forget("t{$tid}_sol_rep_pend");
 
         return redirect()->route('portal.padre.solicitudes.index')
             ->with('success', 'Solicitud enviada correctamente. El equipo del centro la revisará pronto.');

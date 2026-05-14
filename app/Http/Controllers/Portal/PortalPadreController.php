@@ -28,6 +28,7 @@ use App\Models\Pago;
 use App\Models\SchoolYear;
 use App\Services\CardNetService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class PortalPadreController extends Controller
 {
@@ -47,63 +48,84 @@ class PortalPadreController extends Controller
     {
         $representante = $this->getRepresentante();
         $schoolYear    = SchoolYear::actual();
+        $syId          = $schoolYear?->id;
+        $tid           = tenant_id() ?? 0;
+        $userId        = auth()->id();
 
         // Hijos con matrícula activa
-        $hijos = $representante->estudiantes()
+        $hijosBase = $representante->estudiantes()
             ->with([
-                'matriculas' => function ($q) use ($schoolYear) {
+                'matriculas' => function ($q) use ($syId) {
                     $q->with(['grupo.grado', 'grupo.seccion'])
                       ->where('estado', 'activa')
-                      ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id));
+                      ->when($syId, fn($q) => $q->where('school_year_id', $syId));
                 },
             ])
-            ->get()
-            ->map(function ($estudiante) use ($schoolYear) {
-                $matricula = $estudiante->matriculas->first();
+            ->get();
 
-                // Promedio general
-                $promedioGeneral = null;
-                $alertas = [];
+        // Recopilar todos los matricula_ids de hijos activos — 1 sola vez
+        $matriculaIds = $hijosBase->flatMap(fn($e) => $e->matriculas->pluck('id'))->filter()->unique()->values();
 
-                if ($matricula) {
-                    $califs = Calificacion::where('matricula_id', $matricula->id)
-                        ->where('publicado', true)
-                        ->pluck('nota_final')
-                        ->filter();
+        // Bulk-load calificaciones, calificacionesAcademicas y asistencias para TODOS los hijos
+        $califsPorMatricula = $matriculaIds->isNotEmpty()
+            ? Calificacion::whereIn('matricula_id', $matriculaIds)
+                ->where('publicado', true)
+                ->whereNotNull('nota_final')
+                ->get()
+                ->groupBy('matricula_id')
+            : collect();
 
-                    $califsAcad = CalificacionAcademica::where('matricula_id', $matricula->id)
-                        ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
-                        ->whereNotNull('nota_final')
-                        ->pluck('nota_final')
-                        ->filter();
+        $califsAcadPorMatricula = ($matriculaIds->isNotEmpty() && $syId)
+            ? CalificacionAcademica::whereIn('matricula_id', $matriculaIds)
+                ->where('school_year_id', $syId)
+                ->whereNotNull('nota_final')
+                ->get()
+                ->groupBy('matricula_id')
+            : collect();
 
-                    $todas = $califs->merge($califsAcad);
-                    $promedioGeneral = $todas->count() ? round($todas->avg(), 1) : null;
+        $asistenciaStats = $matriculaIds->isNotEmpty()
+            ? Asistencia::whereIn('matricula_id', $matriculaIds)
+                ->selectRaw('matricula_id, COUNT(*) as total, SUM(estado = "ausente") as ausentes')
+                ->groupBy('matricula_id')
+                ->get()
+                ->keyBy('matricula_id')
+            : collect();
 
-                    // Alertas: materias con nota < 60
-                    $bajas = $califs->filter(fn($n) => $n < 60)->count()
-                           + $califsAcad->filter(fn($n) => $n < 60)->count();
-                    if ($bajas > 0) {
-                        $alertas[] = ['tipo' => 'rendimiento', 'texto' => "{$bajas} materia(s) con nota menor a 60"];
-                    }
+        $hijos = $hijosBase->map(function ($estudiante) use ($califsPorMatricula, $califsAcadPorMatricula, $asistenciaStats) {
+            $matricula       = $estudiante->matriculas->first();
+            $promedioGeneral = null;
+            $alertas         = [];
 
-                    // Alertas: ausencias > 20%
-                    $totalAsist   = Asistencia::where('matricula_id', $matricula->id)->count();
-                    $ausentes     = Asistencia::where('matricula_id', $matricula->id)->where('estado', 'ausente')->count();
-                    $pctAusencias = $totalAsist > 0 ? ($ausentes / $totalAsist * 100) : 0;
-                    if ($pctAusencias > 20) {
-                        $alertas[] = ['tipo' => 'asistencia', 'texto' => number_format($pctAusencias, 1) . '% de ausencias registradas'];
-                    }
+            if ($matricula) {
+                $califs     = $califsPorMatricula->get($matricula->id, collect())->pluck('nota_final')->filter();
+                $califsAcad = $califsAcadPorMatricula->get($matricula->id, collect())->pluck('nota_final')->filter();
+                $todas      = $califs->merge($califsAcad);
+
+                $promedioGeneral = $todas->count() ? round($todas->avg(), 1) : null;
+
+                $bajas = $califs->filter(fn($n) => $n < 60)->count()
+                       + $califsAcad->filter(fn($n) => $n < 60)->count();
+                if ($bajas > 0) {
+                    $alertas[] = ['tipo' => 'rendimiento', 'texto' => "{$bajas} materia(s) con nota menor a 60"];
                 }
 
-                $estudiante->_matricula       = $matricula;
-                $estudiante->_promedio        = $promedioGeneral;
-                $estudiante->_alertas         = $alertas;
+                $stat = $asistenciaStats->get($matricula->id);
+                if ($stat && $stat->total > 0) {
+                    $pct = ($stat->ausentes / $stat->total) * 100;
+                    if ($pct > 20) {
+                        $alertas[] = ['tipo' => 'asistencia', 'texto' => number_format($pct, 1) . '% de ausencias registradas'];
+                    }
+                }
+            }
 
-                return $estudiante;
-            });
+            $estudiante->_matricula = $matricula;
+            $estudiante->_promedio  = $promedioGeneral;
+            $estudiante->_alertas   = $alertas;
 
-        $notificaciones = Notificacion::where('user_id', auth()->id())
+            return $estudiante;
+        });
+
+        $notificaciones = Notificacion::where('user_id', $userId)
             ->noLeidas()
             ->orderByDesc('created_at')
             ->limit(10)
@@ -111,13 +133,13 @@ class PortalPadreController extends Controller
 
         $totalNoLeidas = $notificaciones->count();
 
-        $comunicados = Comunicado::publicados()
-            ->orderByDesc('published_at')
-            ->limit(4)
-            ->get();
+        $comunicados = \Illuminate\Support\Facades\Cache::remember(
+            "t{$tid}_comunicados_recientes", 600,
+            fn() => Comunicado::publicados()->orderByDesc('published_at')->limit(4)->get()
+        );
 
-        $eventosCalendario = $schoolYear
-            ? \App\Models\CalendarioAcademico::where('school_year_id', $schoolYear->id)
+        $eventosCalendario = ($syId)
+            ? \App\Models\CalendarioAcademico::where('school_year_id', $syId)
                 ->where('activo', true)
                 ->where('fecha_inicio', '>=', today())
                 ->orderBy('fecha_inicio')
@@ -150,7 +172,7 @@ class PortalPadreController extends Controller
             ->first();
 
         $periodos = $schoolYear
-            ? Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
+            ? $this->getPeriodos($schoolYear)
             : collect();
 
         // Calificaciones
@@ -236,11 +258,19 @@ class PortalPadreController extends Controller
             $totalPuntosHijo = PuntoEstudiante::where('matricula_id', $matricula->id)->sum('puntos');
             $insigniasHijo   = InsigniaEstudiante::where('matricula_id', $matricula->id)->get()->keyBy('tipo');
 
-            $todosDelGrupo = Matricula::where('grupo_id', $matricula->grupo_id)
+            // Bulk-load puntos del grupo con 1 sola query GROUP BY
+            $grupoMatIds = Matricula::where('grupo_id', $matricula->grupo_id)
                 ->where('estado', 'activa')
                 ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
-                ->get()
-                ->map(fn($m) => ['id' => $m->id, 'total' => PuntoEstudiante::where('matricula_id', $m->id)->sum('puntos')])
+                ->pluck('id');
+
+            $puntosPorMatricula = PuntoEstudiante::whereIn('matricula_id', $grupoMatIds)
+                ->selectRaw('matricula_id, SUM(puntos) as total')
+                ->groupBy('matricula_id')
+                ->pluck('total', 'matricula_id');
+
+            $todosDelGrupo = $grupoMatIds
+                ->map(fn($id) => ['id' => $id, 'total' => $puntosPorMatricula->get($id, 0)])
                 ->sortByDesc('total')->values();
             $idx = $todosDelGrupo->search(fn($r) => $r['id'] === $matricula->id);
             $posicionHijo = $idx !== false ? $idx + 1 : null;
@@ -268,6 +298,7 @@ class PortalPadreController extends Controller
 
         \App\Models\Notificacion::where('user_id', auth()->id())
             ->noLeidas()->update(['leida' => true, 'leida_en' => now()]);
+        Cache::put('user_' . auth()->id() . '_notif_unread', 0, 15);
 
         return view('portal.notificaciones', compact('notificaciones'));
     }
@@ -293,7 +324,7 @@ class PortalPadreController extends Controller
         }
 
         $periodos = $schoolYear
-            ? Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
+            ? $this->getPeriodos($schoolYear)
             : collect();
 
         $calificaciones = Calificacion::with(['asignacion.asignatura', 'periodo'])
@@ -449,7 +480,7 @@ class PortalPadreController extends Controller
         if (! $matricula) abort(404);
 
         $periodos = $schoolYear
-            ? \App\Models\Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
+            ? $this->getPeriodos($schoolYear)
             : collect();
 
         $calificaciones = \App\Models\Calificacion::with(['asignacion.asignatura'])
@@ -635,6 +666,7 @@ class PortalPadreController extends Controller
     {
         Notificacion::where('user_id', auth()->id())->noLeidas()
             ->update(['leida' => true, 'leida_en' => now()]);
+        Cache::put('user_' . auth()->id() . '_notif_unread', 0, 15);
 
         return response()->json(['ok' => true]);
     }
@@ -655,7 +687,7 @@ class PortalPadreController extends Controller
         if (! $matricula) abort(404);
 
         $periodos = $schoolYear
-            ? \App\Models\Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
+            ? $this->getPeriodos($schoolYear)
             : collect();
 
         $calificaciones = \App\Models\Calificacion::with(['asignacion.asignatura', 'periodo'])
@@ -696,7 +728,7 @@ class PortalPadreController extends Controller
         if (! $matricula) abort(404);
 
         $periodos = $schoolYear
-            ? \App\Models\Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
+            ? $this->getPeriodos($schoolYear)
             : collect();
 
         $calificaciones = \App\Models\Calificacion::with(['asignacion.asignatura', 'periodo'])
@@ -1704,5 +1736,87 @@ class PortalPadreController extends Controller
             ->get();
 
         return view('portal.padre.proyectos_hijo', compact('estudiante', 'proyectos'));
+    }
+
+    // ── Calendario escolar ───────────────────────────────────────────────
+    public function calendario()
+    {
+        $schoolYear = SchoolYear::actual();
+        $eventos    = $this->calendarEventos(['todos', 'estudiantes']);
+        return view('portal.padre.calendario', compact('schoolYear', 'eventos'));
+    }
+
+    public function calendarioApi()
+    {
+        $eventos = $this->calendarEventos(['todos', 'estudiantes']);
+        return response()->json($eventos);
+    }
+
+    private function calendarEventos(array $apliCa): array
+    {
+        $schoolYear = SchoolYear::actual();
+
+        $cal = \App\Models\CalendarioAcademico::when($schoolYear, fn($q) => $q->delAnio($schoolYear->id))
+            ->where('activo', true)
+            ->where(fn($q) => $q->whereIn('aplica_a', $apliCa))
+            ->get()
+            ->map(fn($e) => [
+                'id'     => 'cal_' . $e->id,
+                'titulo' => $e->titulo,
+                'inicio' => $e->fecha_inicio->format('Y-m-d'),
+                'fin'    => $e->fecha_fin?->format('Y-m-d'),
+                'tipo'   => $e->tipo,
+                'color'  => $e->color ?? '#6b7280',
+                'desc'   => $e->descripcion,
+                'fuente' => 'calendario',
+            ]);
+
+        $evs = \App\Models\Evento::activos()->get()->map(fn($e) => [
+            'id'     => 'ev_' . $e->id,
+            'titulo' => $e->nombre,
+            'inicio' => $e->fecha_inicio->format('Y-m-d'),
+            'fin'    => $e->fecha_fin?->format('Y-m-d'),
+            'tipo'   => 'evento_' . $e->tipo,
+            'color'  => match($e->tipo) {
+                'academico' => '#0891b2', 'deportivo' => '#16a34a',
+                'cultural'  => '#7c3aed', 'social'    => '#d97706',
+                default     => '#6b7280',
+            },
+            'desc'   => $e->descripcion,
+            'fuente' => 'evento',
+        ]);
+
+        // Reuniones de padres
+        $reu = \App\Models\Reunion::where('tipo', 'reunion_padres')
+            ->where('estado', '!=', 'cancelada')
+            ->get()
+            ->map(fn($r) => [
+                'id'     => 'reu_' . $r->id,
+                'titulo' => $r->titulo,
+                'inicio' => $r->fecha->format('Y-m-d'),
+                'fin'    => null,
+                'tipo'   => 'reunion',
+                'color'  => '#0d9488',
+                'desc'   => $r->lugar,
+                'fuente' => 'reunion',
+            ]);
+
+        $pers = collect();
+        if ($schoolYear) {
+            foreach ($this->getPeriodos($schoolYear) as $p) {
+                if ($p->fecha_inicio) $pers->push([
+                    'id' => 'pi_' . $p->id, 'titulo' => 'Inicio ' . $p->nombre,
+                    'inicio' => $p->fecha_inicio->format('Y-m-d'), 'fin' => null,
+                    'tipo' => 'inicio_periodo', 'color' => '#2563eb', 'desc' => null, 'fuente' => 'periodo',
+                ]);
+                if ($p->fecha_fin) $pers->push([
+                    'id' => 'pf_' . $p->id, 'titulo' => 'Fin ' . $p->nombre,
+                    'inicio' => $p->fecha_fin->format('Y-m-d'), 'fin' => null,
+                    'tipo' => 'fin_periodo', 'color' => '#dc2626', 'desc' => null, 'fuente' => 'periodo',
+                ]);
+            }
+        }
+
+        return $cal->concat($evs)->concat($reu)->concat($pers)->values()->all();
     }
 }

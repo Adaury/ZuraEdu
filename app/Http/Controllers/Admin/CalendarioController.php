@@ -13,7 +13,7 @@ class CalendarioController extends Controller
 {
     public function index()
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
         $user       = Auth::user();
         $roles      = $user->getRoleNames()->toArray();
         $rolMap     = [
@@ -39,18 +39,22 @@ class CalendarioController extends Controller
 
     public function api(Request $request)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
 
         $eventos = CalendarioAcademico::when($schoolYear, fn($q) => $q->delAnio($schoolYear->id))
             ->where('activo', true)
             ->get()
             ->map(fn($e) => [
-                'id'    => $e->id,
-                'title' => $e->titulo,
-                'start' => $e->fecha_inicio->toDateString(),
-                'end'   => $e->fecha_fin?->addDay()->toDateString(),
-                'color' => $e->color,
-                'tipo'  => $e->tipo,
+                'id'          => $e->id,
+                'title'       => $e->titulo,
+                'start'       => $e->fecha_inicio->toDateString(),
+                'end'         => $e->fecha_fin?->addDay()->toDateString(),
+                'color'       => $e->color,
+                'extendedProps' => [
+                    'id'          => $e->id,
+                    'tipo'        => \App\Models\CalendarioAcademico::tiposLabels()[$e->tipo] ?? $e->tipo,
+                    'descripcion' => $e->descripcion,
+                ],
             ]);
 
         return response()->json($eventos);
@@ -58,10 +62,8 @@ class CalendarioController extends Controller
 
     public function create()
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
-        $periodos   = $schoolYear
-            ? Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
-            : collect();
+        $schoolYear = SchoolYear::actual();
+        $periodos   = $this->getPeriodos($schoolYear);
         $tipos      = CalendarioAcademico::tiposLabels();
 
         return view('admin.calendario.create', compact('schoolYear', 'periodos', 'tipos'));
@@ -81,7 +83,7 @@ class CalendarioController extends Controller
             'periodo_id'   => 'nullable|exists:periodos,id',
         ]);
 
-        $schoolYear = SchoolYear::where('activo', true)->firstOrFail();
+        $schoolYear = SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
         $data['school_year_id'] = $schoolYear->id;
         $data['creado_por']     = Auth::id();
         $data['activo']         = true;
@@ -94,10 +96,8 @@ class CalendarioController extends Controller
 
     public function edit(CalendarioAcademico $evento)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
-        $periodos   = $schoolYear
-            ? Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
-            : collect();
+        $schoolYear = SchoolYear::actual();
+        $periodos   = $this->getPeriodos($schoolYear);
         $tipos = CalendarioAcademico::tiposLabels();
 
         return view('admin.calendario.edit', compact('evento', 'schoolYear', 'periodos', 'tipos'));
@@ -135,7 +135,7 @@ class CalendarioController extends Controller
     // ── Exportar calendario Excel ────────────────────────────────────────
     public function excel()
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
 
         $eventos = CalendarioAcademico::when($schoolYear, fn($q) => $q->delAnio($schoolYear->id))
             ->where('activo', true)
@@ -196,7 +196,7 @@ class CalendarioController extends Controller
 
     public function pdf()
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
 
         $eventos = CalendarioAcademico::when($schoolYear, fn($q) => $q->delAnio($schoolYear->id))
             ->where('activo', true)

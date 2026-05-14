@@ -397,7 +397,7 @@ class GamificacionController extends Controller
 
         // Insignia: mejora_continua
         if ($schoolYear) {
-            $periodos = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+            $periodos = $this->getPeriodos($schoolYear);
             $promediosPorPeriodo = [];
 
             foreach ($periodos as $periodo) {

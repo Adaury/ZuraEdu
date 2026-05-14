@@ -99,7 +99,7 @@
                 <input type="hidden" name="docente_id" value="{{ $docenteId }}">
 
                 <div class="table-responsive">
-                    <table class="table table-bordered align-middle mb-0" id="tablaDisponibilidad">
+                    <table class="table table-bordered align-middle mb-0" id="tablaDisponibilidad" data-no-dt>
                         <thead class="table-light">
                             <tr>
                                 <th class="ps-3" style="min-width: 130px;">Franja</th>

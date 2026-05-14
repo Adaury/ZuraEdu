@@ -50,6 +50,10 @@
 {{-- ── VIDA ESCOLAR ── --}}
 <div class="prt-sidebar-section mt-2">Vida Escolar</div>
 
+<a href="{{ route('portal.estudiante.calendario') }}"
+   class="prt-sidebar-link {{ $ak === 'calendario' ? 'active' : '' }}">
+    <i class="bi bi-calendar3"></i>Calendario Escolar
+</a>
 <a href="{{ route('portal.estudiante.comunicados') }}"
    class="prt-sidebar-link {{ $ak === 'comunicados' ? 'active' : '' }}">
     <i class="bi bi-megaphone-fill"></i>Noticias
@@ -75,8 +79,11 @@
     <i class="bi bi-book-half"></i>Mis Préstamos
     @php
     try {
-        $est = auth()->user()->estudiante ?? null;
-        $prestActivos = $est ? \App\Models\PrestamoBiblioteca::where('estudiante_id', $est->id)->whereIn('estado',['activo','vencido'])->count() : 0;
+        $__eu = auth()->id();
+        $prestActivos = \Illuminate\Support\Facades\Cache::remember("user_{$__eu}_prest_activos", 120, function () {
+            $est = auth()->user()->estudiante ?? null;
+            return $est ? \App\Models\PrestamoBiblioteca::where('estudiante_id', $est->id)->whereIn('estado',['activo','vencido'])->count() : 0;
+        });
     } catch(\Exception $e){ $prestActivos = 0; }
     @endphp
     @if($prestActivos > 0)
@@ -110,11 +117,13 @@ try { $moduleTransport = \App\Helpers\Setting::get('transporte','0');        } c
     <i class="bi bi-cash-coin"></i>Mis Pagos
     @php
     try {
-        $est2 = auth()->user()->estudiante ?? null;
-        if ($est2) {
-            $mat2 = $est2->matriculas()->where('estado','activa')->latest()->first();
-            $pagosPendientes = $mat2 ? \App\Models\Pago::where('matricula_id',$mat2->id)->whereIn('estado',['pendiente','vencido'])->count() : 0;
-        } else { $pagosPendientes = 0; }
+        $__eu2 = auth()->id();
+        $pagosPendientes = \Illuminate\Support\Facades\Cache::remember("user_{$__eu2}_pagos_pend", 300, function () {
+            $est2 = auth()->user()->estudiante ?? null;
+            if (! $est2) return 0;
+            $mat2 = $est2->matriculas()->where('estado','activa')->latest()->value('id');
+            return $mat2 ? \App\Models\Pago::where('matricula_id', $mat2)->whereIn('estado',['pendiente','vencido'])->count() : 0;
+        });
     } catch(\Exception $e){ $pagosPendientes = 0; }
     @endphp
     @if($pagosPendientes > 0)
@@ -142,7 +151,7 @@ try { $moduleTransport = \App\Helpers\Setting::get('transporte','0');        } c
 <a href="{{ route('portal.estudiante.solicitudes.index') }}"
    class="prt-sidebar-link {{ $ak === 'solicitudes' ? 'active' : '' }}">
     <i class="bi bi-send-fill"></i>Mis Solicitudes
-    @php try { $solEstPend = \App\Models\SolicitudEstudiante::where('estudiante_id', auth()->user()->estudiante?->id ?? 0)->where('estado','pendiente')->count(); } catch(\Exception $e){ $solEstPend=0; } @endphp
+    @php try { $__eu3 = auth()->id(); $solEstPend = \Illuminate\Support\Facades\Cache::remember("user_{$__eu3}_sol_est_pend", 60, fn() => \App\Models\SolicitudEstudiante::where('estudiante_id', auth()->user()->estudiante?->id ?? 0)->where('estado','pendiente')->count()); } catch(\Exception $e){ $solEstPend=0; } @endphp
     @if($solEstPend > 0)
     <span style="background:#d97706;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $solEstPend }}</span>
     @endif
@@ -170,14 +179,6 @@ try { $moduleTransport = \App\Helpers\Setting::get('transporte','0');        } c
 <a href="{{ route('portal.estudiante.mis-documentos') }}"
    class="prt-sidebar-link {{ $ak === 'mis-documentos' ? 'active' : '' }}">
     <i class="bi bi-folder2-open"></i>Mis Documentos
-</a>
-<a href="{{ route('admin.mensajes.index') }}"
-   class="prt-sidebar-link {{ $ak === 'mensajes' ? 'active' : '' }}">
-    <i class="bi bi-envelope-fill"></i>Mensajes
-    @php try { $msgEst = \App\Models\Mensaje::recibidos(auth()->id())->noLeidos()->count(); } catch(\Exception $e){ $msgEst=0; } @endphp
-    @if($msgEst > 0)
-    <span style="background:#dc2626;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $msgEst }}</span>
-    @endif
 </a>
 
 {{-- ── CUENTA ── --}}

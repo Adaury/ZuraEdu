@@ -67,12 +67,16 @@ class AsignaturaController extends Controller
             $schoolYear = SchoolYear::actual();
             if ($schoolYear) {
                 $grupos = Grupo::where('school_year_id', $schoolYear->id)->where('activo', true)->get();
+
+                // 1 query para saber qué grupos ya tienen la asignatura → evita N exists()
+                $gruposConAsignacion = Asignacion::where('school_year_id', $schoolYear->id)
+                    ->where('asignatura_id', $asignatura->id)
+                    ->whereIn('grupo_id', $grupos->pluck('id'))
+                    ->pluck('grupo_id')
+                    ->flip();
+
                 foreach ($grupos as $grupo) {
-                    $existe = Asignacion::where('school_year_id', $schoolYear->id)
-                        ->where('grupo_id', $grupo->id)
-                        ->where('asignatura_id', $asignatura->id)
-                        ->exists();
-                    if ($existe) continue;
+                    if ($gruposConAsignacion->has($grupo->id)) continue;
                     Asignacion::create([
                         'school_year_id'  => $schoolYear->id,
                         'grupo_id'        => $grupo->id,
@@ -185,7 +189,8 @@ class AsignaturaController extends Controller
 
     public function destroy(Asignatura $asignatura)
     {
-        if ($asignatura->asignaciones()->count() > 0) {
+        $asignatura->loadCount('asignaciones');
+        if ($asignatura->asignaciones_count > 0) {
             return back()->with('error', 'No se puede eliminar la asignatura porque tiene asignaciones activas.');
         }
 

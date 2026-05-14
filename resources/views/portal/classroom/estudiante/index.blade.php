@@ -47,4 +47,14 @@
 @endforeach
 </div>
 @endif
+
+@push('realtime-data')
+<script>
+window._SGE_CLASE_IDS = {!! $clases->pluck('id')->values()->toJson() !!};
+@if($matricula?->grupo_id)
+window._SGE_GRUPO_IDS = [{{ $matricula->grupo_id }}];
+@endif
+</script>
+@endpush
+
 @endsection

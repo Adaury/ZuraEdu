@@ -13,7 +13,7 @@ class PerfilEstudianteController extends Controller
 {
     public function show(Estudiante $estudiante)
     {
-        $schoolYear = SchoolYear::where('activo', true)->first();
+        $schoolYear = SchoolYear::actual();
 
         $estudiante->load([
             'user',
@@ -93,10 +93,12 @@ class PerfilEstudianteController extends Controller
             ->get();
 
         // Historial académico completo (todos los años)
-        $historialAnios = $estudiante->matriculas->map(function ($m) {
-            $califs = CalificacionAcademica::where('matricula_id', $m->id)
-                ->with('asignacion.asignatura')
-                ->get();
+        $matIds       = $estudiante->matriculas->pluck('id');
+        $califsPorMat = CalificacionAcademica::with('asignacion.asignatura')
+            ->whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
+
+        $historialAnios = $estudiante->matriculas->map(function ($m) use ($califsPorMat) {
+            $califs = $califsPorMat->get($m->id, collect());
             return [
                 'matricula'  => $m,
                 'schoolYear' => $m->schoolYear,
@@ -126,22 +128,25 @@ class PerfilEstudianteController extends Controller
         $schoolYear = SchoolYear::actual();
 
         // Historial completo por año
-        $historial = $estudiante->matriculas->map(function ($m) {
-            $calAcad = CalificacionAcademica::with('asignacion.asignatura')
-                ->where('matricula_id', $m->id)->get();
+        $matIds       = $estudiante->matriculas->pluck('id');
+        $califsPorMat = CalificacionAcademica::with('asignacion.asignatura')
+            ->whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
+        $asisPorMat   = Asistencia::whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
 
-            $asistencias = Asistencia::where('matricula_id', $m->id)->get();
-            $totalAs = $asistencias->count();
+        $historial = $estudiante->matriculas->map(function ($m) use ($califsPorMat, $asisPorMat) {
+            $calAcad     = $califsPorMat->get($m->id, collect());
+            $asistencias = $asisPorMat->get($m->id, collect());
+            $totalAs     = $asistencias->count();
             $presentesAs = $asistencias->whereIn('estado', ['presente', 'tardanza'])->count();
 
             return [
-                'matricula'   => $m,
-                'schoolYear'  => $m->schoolYear,
-                'califs'      => $calAcad,
-                'promedio'    => $calAcad->whereNotNull('nota_final')->avg('nota_final'),
-                'aprobadas'   => $calAcad->where('situacion', 'A')->count(),
-                'reprobadas'  => $calAcad->where('situacion', 'R')->count(),
-                'asistencia'  => $totalAs > 0 ? round($presentesAs / $totalAs * 100, 1) : null,
+                'matricula'  => $m,
+                'schoolYear' => $m->schoolYear,
+                'califs'     => $calAcad,
+                'promedio'   => $calAcad->whereNotNull('nota_final')->avg('nota_final'),
+                'aprobadas'  => $calAcad->where('situacion', 'A')->count(),
+                'reprobadas' => $calAcad->where('situacion', 'R')->count(),
+                'asistencia' => $totalAs > 0 ? round($presentesAs / $totalAs * 100, 1) : null,
             ];
         })->sortByDesc(fn($h) => $h['schoolYear']?->id ?? 0)
           ->filter(fn($h) => $h['schoolYear'] !== null)
@@ -169,20 +174,24 @@ class PerfilEstudianteController extends Controller
             'matriculas.grupo.seccion',
         ]);
 
-        $historial = $estudiante->matriculas->map(function ($m) {
-            $calAcad = CalificacionAcademica::with('asignacion.asignatura')
-                ->where('matricula_id', $m->id)->get();
-            $asistencias   = Asistencia::where('matricula_id', $m->id)->get();
-            $totalAs       = $asistencias->count();
-            $presentesAs   = $asistencias->whereIn('estado', ['presente', 'tardanza'])->count();
+        $matIds       = $estudiante->matriculas->pluck('id');
+        $califsPorMat = CalificacionAcademica::with('asignacion.asignatura')
+            ->whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
+        $asisPorMat   = Asistencia::whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
+
+        $historial = $estudiante->matriculas->map(function ($m) use ($califsPorMat, $asisPorMat) {
+            $calAcad     = $califsPorMat->get($m->id, collect());
+            $asistencias = $asisPorMat->get($m->id, collect());
+            $totalAs     = $asistencias->count();
+            $presentesAs = $asistencias->whereIn('estado', ['presente', 'tardanza'])->count();
             return [
-                'matricula'   => $m,
-                'schoolYear'  => $m->schoolYear,
-                'califs'      => $calAcad,
-                'promedio'    => $calAcad->whereNotNull('nota_final')->avg('nota_final'),
-                'aprobadas'   => $calAcad->where('situacion', 'A')->count(),
-                'reprobadas'  => $calAcad->where('situacion', 'R')->count(),
-                'asistencia'  => $totalAs > 0 ? round($presentesAs / $totalAs * 100, 1) : null,
+                'matricula'  => $m,
+                'schoolYear' => $m->schoolYear,
+                'califs'     => $calAcad,
+                'promedio'   => $calAcad->whereNotNull('nota_final')->avg('nota_final'),
+                'aprobadas'  => $calAcad->where('situacion', 'A')->count(),
+                'reprobadas' => $calAcad->where('situacion', 'R')->count(),
+                'asistencia' => $totalAs > 0 ? round($presentesAs / $totalAs * 100, 1) : null,
             ];
         })->sortByDesc(fn($h) => $h['schoolYear']?->id ?? 0)
           ->filter(fn($h) => $h['schoolYear'] !== null)
@@ -371,15 +380,17 @@ class PerfilEstudianteController extends Controller
         ]);
 
         // Construir historial año por año con detalle de asignaturas
-        $historial = $estudiante->matriculas->map(function ($m) {
-            $calAcad = CalificacionAcademica::with('asignacion.asignatura')
-                ->where('matricula_id', $m->id)
-                ->get()
-                ->sortBy(fn($c) => $c->asignacion?->asignatura?->nombre);
+        $matIds       = $estudiante->matriculas->pluck('id');
+        $califsPorMat = CalificacionAcademica::with('asignacion.asignatura')
+            ->whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
+        $asisPorMat   = Asistencia::whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
 
-            $asistencias  = Asistencia::where('matricula_id', $m->id)->get();
-            $totalAs      = $asistencias->count();
-            $presentesAs  = $asistencias->whereIn('estado', ['presente', 'tardanza', 'justificado'])->count();
+        $historial = $estudiante->matriculas->map(function ($m) use ($califsPorMat, $asisPorMat) {
+            $calAcad     = $califsPorMat->get($m->id, collect())
+                ->sortBy(fn($c) => $c->asignacion?->asignatura?->nombre);
+            $asistencias = $asisPorMat->get($m->id, collect());
+            $totalAs     = $asistencias->count();
+            $presentesAs = $asistencias->whereIn('estado', ['presente', 'tardanza', 'justificado'])->count();
 
             return [
                 'matricula'  => $m,
@@ -422,15 +433,17 @@ class PerfilEstudianteController extends Controller
             },
         ]);
 
-        $historial = $estudiante->matriculas->map(function ($m) {
-            $calAcad = CalificacionAcademica::with('asignacion.asignatura')
-                ->where('matricula_id', $m->id)
-                ->get()
-                ->sortBy(fn($c) => $c->asignacion?->asignatura?->nombre);
+        $matIds       = $estudiante->matriculas->pluck('id');
+        $califsPorMat = CalificacionAcademica::with('asignacion.asignatura')
+            ->whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
+        $asisPorMat   = Asistencia::whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
 
-            $asistencias  = Asistencia::where('matricula_id', $m->id)->get();
-            $totalAs      = $asistencias->count();
-            $presentesAs  = $asistencias->whereIn('estado', ['presente', 'tardanza', 'justificado'])->count();
+        $historial = $estudiante->matriculas->map(function ($m) use ($califsPorMat, $asisPorMat) {
+            $calAcad     = $califsPorMat->get($m->id, collect())
+                ->sortBy(fn($c) => $c->asignacion?->asignatura?->nombre);
+            $asistencias = $asisPorMat->get($m->id, collect());
+            $totalAs     = $asistencias->count();
+            $presentesAs = $asistencias->whereIn('estado', ['presente', 'tardanza', 'justificado'])->count();
 
             return [
                 'matricula'  => $m,

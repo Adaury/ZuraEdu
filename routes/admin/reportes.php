@@ -4,6 +4,11 @@ use App\Http\Controllers\Admin\ReportesController;
 use App\Http\Controllers\Admin\RendimientoController;
 use App\Http\Controllers\Admin\AlertaController;
 use App\Http\Controllers\Admin\CalendarioController;
+use App\Http\Controllers\Admin\ReportesEjecutivosController;
+
+// ── Dashboard Ejecutivo (Dirección) ───────────────────────────────────────
+Route::get('ejecutivo',     [ReportesEjecutivosController::class, 'index'])->name('ejecutivo.index');
+Route::get('ejecutivo/pdf', [ReportesEjecutivosController::class, 'pdf'])->name('ejecutivo.pdf');
 
 // ── Reportes Institucionales ──────────────────────────────────────────────
 Route::get('reportes',                    [ReportesController::class, 'index'])->name('reportes.index');

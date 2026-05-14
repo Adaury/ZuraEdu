@@ -107,6 +107,10 @@ try { $moduleTransport = \App\Helpers\Setting::get('transporte','0'); } catch(\E
 {{-- ── COMUNICACIÓN ── --}}
 <div class="prt-sidebar-section mt-2">Comunicación</div>
 
+<a href="{{ route('portal.padre.calendario') }}"
+   class="prt-sidebar-link {{ $ak === 'calendario' ? 'active' : '' }}">
+    <i class="bi bi-calendar3"></i>Calendario Escolar
+</a>
 <a href="{{ route('portal.padre.notificaciones') }}"
    class="prt-sidebar-link {{ $ak === 'notificaciones' ? 'active' : '' }}">
     <i class="bi bi-bell-fill"></i>Notificaciones
@@ -123,10 +127,10 @@ try { $moduleTransport = \App\Helpers\Setting::get('transporte','0'); } catch(\E
    class="prt-sidebar-link {{ $ak === 'encuestas' ? 'active' : '' }}">
     <i class="bi bi-clipboard-check-fill"></i>Encuestas
 </a>
-<a href="{{ route('admin.mensajes.index') }}"
+<a href="{{ route('portal.padre.mensajes.index') }}"
    class="prt-sidebar-link {{ $ak === 'mensajes' ? 'active' : '' }}">
     <i class="bi bi-envelope-fill"></i>Mensajes
-    @php try { $msgPad = \App\Models\Mensaje::recibidos(auth()->id())->noLeidos()->count(); } catch(\Exception $e){ $msgPad=0; } @endphp
+    @php try { $__uid = auth()->id(); $msgPad = \Illuminate\Support\Facades\Cache::remember("user_{$__uid}_msg_unread", 60, fn() => \App\Models\MensajeDestinatario::where('destinatario_id',$__uid)->whereNull('leido_at')->where('eliminado',false)->count()); } catch(\Exception $e){ $msgPad=0; } @endphp
     @if($msgPad > 0)
     <span style="background:#dc2626;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $msgPad }}</span>
     @endif

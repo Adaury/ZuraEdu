@@ -10,7 +10,7 @@
     <a href="{{ route('portal.docente.horario') }}" class="prt-sidebar-link active">
         <i class="bi bi-calendar-week"></i>Mi Horario
     </a>
-    <a href="{{ route('admin.mensajes.index') }}" class="prt-sidebar-link">
+    <a href="{{ route('portal.docente.mensajes.index') }}" class="prt-sidebar-link">
         <i class="bi bi-envelope-fill"></i>Mensajes
     </a>
     <div class="prt-sidebar-section mt-3">Cuenta</div>

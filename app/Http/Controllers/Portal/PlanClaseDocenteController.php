@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
+use App\Traits\HasDocenteContext;
 use App\Models\Asignacion;
 use App\Models\InstrumentoCriterio;
 use App\Models\InstrumentoEvaluacion;
@@ -18,12 +19,7 @@ use Illuminate\Support\Facades\Storage;
 
 class PlanClaseDocenteController extends Controller
 {
-    private function getDocente()
-    {
-        $user = Auth::user();
-        if (!$user->docente) abort(403, 'No tienes un perfil de docente asociado.');
-        return $user->docente;
-    }
+    use HasDocenteContext;
 
     // ══ PLANES DE CLASE ══════════════════════════════════════════════════
 

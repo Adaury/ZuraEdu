@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
+use App\Traits\HasDocenteContext;
 use App\Models\ClaseVirtual;
 use App\Models\Docente;
 use App\Models\MaterialClase;
@@ -14,12 +15,7 @@ use Illuminate\Http\Request;
 
 class QuizDocenteController extends Controller
 {
-    private function getDocente(): Docente
-    {
-        $docente = Docente::where('user_id', auth()->id())->first();
-        abort_unless($docente, 403);
-        return $docente;
-    }
+    use HasDocenteContext;
 
     private function autorizarClase(ClaseVirtual $clase, Docente $docente): void
     {

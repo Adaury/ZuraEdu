@@ -7,6 +7,12 @@
     @php $dash = auth()->user()->hasRole('Docente') ? 'portal.docente.dashboard' : (auth()->user()->hasRole('Representante') ? 'portal.padre.dashboard' : 'portal.estudiante.dashboard'); @endphp
     <a href="{{ route($dash) }}" class="prt-sidebar-link"><i class="bi bi-house-fill"></i>Inicio</a>
     <a href="#" class="prt-sidebar-link active"><i class="bi bi-bell-fill"></i>Notificaciones</a>
+    @if(auth()->user()->hasAnyRole(['Administrador','Director','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']))
+    <div class="prt-sidebar-section mt-2">Dirección</div>
+    <a href="{{ route('admin.ejecutivo.index') }}" class="prt-sidebar-link">
+        <i class="bi bi-bar-chart-line-fill" style="color:#f59e0b;"></i>Dashboard Ejecutivo
+    </a>
+    @endif
 @endsection
 
 @section('bottom-nav')

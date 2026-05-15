@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Asignacion;
 use App\Models\CalificacionAcademica;
 use App\Models\Grupo;
 use App\Models\Grado;

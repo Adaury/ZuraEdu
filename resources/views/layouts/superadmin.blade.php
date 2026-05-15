@@ -258,6 +258,13 @@
         <a href="{{ route('superadmin.tenants.index', ['plan' => 'pro']) }}">
             <i class="bi bi-star-half" style="color:#818cf8;opacity:1;"></i>Plan Pro
         </a>
+        @if(session('sa_tenant_id'))
+        <div class="sa-section-title" style="margin-top:.25rem;">Institución activa</div>
+        <a href="{{ route('admin.ejecutivo.index') }}"
+           class="{{ request()->routeIs('admin.ejecutivo*') ? 'active' : '' }}">
+            <i class="bi bi-bar-chart-line-fill" style="color:#f59e0b;opacity:1;"></i>Dashboard Ejecutivo
+        </a>
+        @endif
     </nav>
 
     <div class="sa-sidebar-footer">

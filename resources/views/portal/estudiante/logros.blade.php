@@ -1,26 +1,8 @@
-@extends('layouts.portal')
+@extends('layouts.portal-estudiante')
 
-@section('page-title', 'Mis Logros — Portal Estudiante')
-@section('portal-name', 'Portal Estudiante')
+@section('title', 'Mis Logros — Portal Estudiante')
 
-@section('sidebar')
-    @include('portal.estudiante._sidebar', ['activeKey' => 'logros'])
-@endsection
-
-@section('bottom-nav')
-    <a href="{{ route('portal.estudiante.dashboard') }}" class="prt-nav-item">
-        <i class="bi bi-house-fill"></i>Inicio
-    </a>
-    <a href="{{ route('portal.estudiante.boletin') }}" class="prt-nav-item">
-        <i class="bi bi-file-earmark-text"></i>Boletín
-    </a>
-    <a href="{{ route('portal.estudiante.logros') }}" class="prt-nav-item active">
-        <i class="bi bi-trophy-fill"></i>Logros
-    </a>
-    <a href="{{ route('portal.estudiante.asistencia') }}" class="prt-nav-item">
-        <i class="bi bi-calendar-check"></i>Asist.
-    </a>
-@endsection
+@section('activeKey', 'logros')
 
 @section('content')
 

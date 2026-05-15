@@ -1,22 +1,7 @@
-@extends('layouts.portal')
-@section('page-title', 'Mis Tareas')
-@section('portal-name', 'Portal Estudiante')
+@extends('layouts.portal-estudiante')
+@section('title', 'Mis Tareas')
 
-@section('sidebar')
-    @include('portal.estudiante._sidebar', ['activeKey' => 'tareas'])
-@endsection
-
-@section('bottom-nav')
-    <a href="{{ route('portal.estudiante.dashboard') }}" class="prt-nav-item">
-        <i class="bi bi-house-fill"></i>Inicio
-    </a>
-    <a href="{{ route('portal.estudiante.tareas') }}" class="prt-nav-item active">
-        <i class="bi bi-check2-square"></i>Tareas
-    </a>
-    <a href="{{ route('portal.estudiante.notificaciones') }}" class="prt-nav-item">
-        <i class="bi bi-bell-fill"></i>Notif.
-    </a>
-@endsection
+@section('activeKey', 'tareas')
 
 @push('styles')
 <style>

@@ -395,8 +395,43 @@ class PortalPadreController extends Controller
         return $pdf->download("constancia_{$slug}.pdf");
     }
 
-    // ── Estado de cuenta PDF del hijo ───────────────────────────────────
+    // ── Estado de cuenta (HTML) del hijo ────────────────────────────────
     public function estadoCuenta(Estudiante $estudiante)
+    {
+        $representante = $this->getRepresentante();
+        if (! $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists()) abort(403);
+
+        if (! \App\Models\ConfigInstitucional::moduloActivo('pagos')) abort(404);
+
+        $schoolYear = SchoolYear::actual();
+        $matricula  = $estudiante->matriculas()
+            ->with(['grupo.grado', 'grupo.seccion', 'estudiante.representantes',
+                    'pagos' => fn($q) => $q->orderBy('fecha_vencimiento')])
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()->first();
+
+        if (! $matricula) abort(404);
+
+        \App\Models\Pago::sincronizarVencidos();
+
+        $sy  = $schoolYear;
+        $mon = \App\Helpers\Setting::get('payments_currency', 'DOP');
+
+        $totales = [
+            'pagado'    => $matricula->pagos->where('estado', 'pagado')->sum('monto'),
+            'pendiente' => $matricula->pagos->where('estado', 'pendiente')->sum('monto'),
+            'vencido'   => $matricula->pagos->where('estado', 'vencido')->sum('monto'),
+            'total'     => $matricula->pagos->sum('monto'),
+        ];
+
+        return view('portal.padre.estado_cuenta', compact(
+            'estudiante', 'matricula', 'sy', 'mon', 'totales'
+        ));
+    }
+
+    // ── Estado de cuenta PDF del hijo ────────────────────────────────────
+    public function estadoCuentaPdf(Estudiante $estudiante)
     {
         $representante = $this->getRepresentante();
         if (! $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists()) abort(403);

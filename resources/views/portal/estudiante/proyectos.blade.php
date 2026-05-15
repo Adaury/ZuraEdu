@@ -1,22 +1,7 @@
-@extends('layouts.portal')
-@section('page-title', 'Proyectos Escolares')
-@section('portal-name', 'Portal Estudiante')
+@extends('layouts.portal-estudiante')
+@section('title', 'Proyectos Escolares')
 
-@section('sidebar')
-    @include('portal.estudiante._sidebar', ['activeKey' => 'proyectos'])
-@endsection
-
-@section('bottom-nav')
-    <a href="{{ route('portal.estudiante.dashboard') }}" class="prt-nav-item">
-        <i class="bi bi-house-fill"></i>Inicio
-    </a>
-    <a href="{{ route('portal.estudiante.proyectos') }}" class="prt-nav-item active">
-        <i class="bi bi-kanban-fill"></i>Proyectos
-    </a>
-    <a href="{{ route('portal.estudiante.notificaciones') }}" class="prt-nav-item">
-        <i class="bi bi-bell-fill"></i>Notif.
-    </a>
-@endsection
+@section('activeKey', 'proyectos')
 
 @section('content')
 

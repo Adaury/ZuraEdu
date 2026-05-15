@@ -604,12 +604,16 @@
             </div>
         </div>
 
-        {{-- Botón estado de cuenta PDF --}}
+        {{-- Botones estado de cuenta --}}
         @if($pagosHijo->isNotEmpty())
-        <div style="text-align:right;margin-bottom:.6rem;">
-            <a href="{{ route('portal.padre.hijo.estado-cuenta', $estudiante) }}" target="_blank"
+        <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-bottom:.6rem;flex-wrap:wrap;">
+            <a href="{{ route('portal.padre.hijo.estado-cuenta', $estudiante) }}"
+               style="display:inline-flex;align-items:center;gap:.35rem;background:#1d4ed8;color:#fff;border-radius:8px;padding:.35rem .85rem;font-size:.75rem;font-weight:600;text-decoration:none;">
+                <i class="bi bi-receipt"></i> Ver completo
+            </a>
+            <a href="{{ route('portal.padre.hijo.estado-cuenta.pdf', $estudiante) }}" target="_blank"
                style="display:inline-flex;align-items:center;gap:.35rem;background:#dc2626;color:#fff;border-radius:8px;padding:.35rem .85rem;font-size:.75rem;font-weight:600;text-decoration:none;">
-                <i class="bi bi-file-earmark-pdf-fill"></i> Estado de Cuenta PDF
+                <i class="bi bi-file-earmark-pdf-fill"></i> PDF
             </a>
         </div>
         @endif

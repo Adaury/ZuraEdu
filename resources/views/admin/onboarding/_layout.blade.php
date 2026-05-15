@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Configuración inicial — ZuraEdu</title>
 <link href="/vendor/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet">
+@stack('styles')
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {

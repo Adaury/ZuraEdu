@@ -1,20 +1,8 @@
-@extends('layouts.portal')
+@extends('layouts.portal-estudiante')
 
-@section('page-title', 'Mi Boletín — ' . ($estudiante->nombre_completo ?? ''))
-@section('portal-name', 'Portal del Estudiante')
+@section('title', 'Mi Boletín — ' . ($estudiante->nombre_completo ?? ''))
 
-@section('sidebar')
-    @include('portal.estudiante._sidebar', ['activeKey' => 'boletin'])
-@endsection
-
-@section('bottom-nav')
-    <a href="{{ route('portal.estudiante.dashboard') }}" class="prt-nav-item">
-        <i class="bi bi-house-fill"></i>Inicio
-    </a>
-    <a href="{{ route('portal.estudiante.boletin') }}" class="prt-nav-item active">
-        <i class="bi bi-file-earmark-text"></i>Boletín
-    </a>
-@endsection
+@section('activeKey', 'boletin')
 
 @push('styles')
 <style>

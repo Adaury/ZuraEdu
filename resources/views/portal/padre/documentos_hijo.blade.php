@@ -157,10 +157,14 @@
                 </div>
                 <h6 class="fw-bold mb-1">Estado de Cuenta</h6>
                 <p class="text-muted mb-3" style="font-size:.82rem;">Detalle de pagos realizados y saldos pendientes del año escolar.</p>
-                <div class="mt-auto">
-                    <a href="{{ route('portal.padre.hijo.estado-cuenta', $estudiante) }}" target="_blank"
+                <div class="mt-auto d-flex gap-2 flex-wrap">
+                    <a href="{{ route('portal.padre.hijo.estado-cuenta', $estudiante) }}"
+                       class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-eye me-1"></i>Ver
+                    </a>
+                    <a href="{{ route('portal.padre.hijo.estado-cuenta.pdf', $estudiante) }}" target="_blank"
                        class="btn btn-sm btn-danger">
-                        <i class="bi bi-file-earmark-pdf me-1"></i>Descargar PDF
+                        <i class="bi bi-file-earmark-pdf me-1"></i>PDF
                     </a>
                 </div>
             </div>

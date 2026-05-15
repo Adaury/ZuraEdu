@@ -1,22 +1,7 @@
-@extends('layouts.portal')
-@section('page-title', 'Encuestas')
-@section('portal-name', 'Portal Estudiante')
+@extends('layouts.portal-estudiante')
+@section('title', 'Encuestas')
 
-@section('sidebar')
-    @include('portal.estudiante._sidebar', ['activeKey' => 'encuestas'])
-@endsection
-
-@section('bottom-nav')
-    <a href="{{ route('portal.estudiante.dashboard') }}" class="prt-nav-item">
-        <i class="bi bi-house-fill"></i>Inicio
-    </a>
-    <a href="{{ route('portal.estudiante.comunicados') }}" class="prt-nav-item">
-        <i class="bi bi-megaphone-fill"></i>Noticias
-    </a>
-    <a href="{{ route('portal.estudiante.notificaciones') }}" class="prt-nav-item">
-        <i class="bi bi-bell-fill"></i>Notif.
-    </a>
-@endsection
+@section('activeKey', 'encuestas')
 
 @section('content')
 

@@ -235,8 +235,9 @@ Route::prefix('portal/padre')->name('portal.padre.')->middleware(['auth', 'activ
     Route::get('/hijo/{estudiante}',             [PortalPadreController::class, 'hijo'])->name('hijo');
     Route::get('/hijo/{estudiante}/boletin',       [PortalPadreController::class, 'boletin'])->name('hijo.boletin');
     Route::get('/hijo/{estudiante}/boletin/pdf',   [PortalPadreController::class, 'boletinPdf'])->name('hijo.boletin.pdf');
-    Route::get('/hijo/{estudiante}/constancia',      [PortalPadreController::class, 'constancia'])->name('hijo.constancia');
-    Route::get('/hijo/{estudiante}/estado-cuenta',   [PortalPadreController::class, 'estadoCuenta'])->name('hijo.estado-cuenta');
+    Route::get('/hijo/{estudiante}/constancia',          [PortalPadreController::class, 'constancia'])->name('hijo.constancia');
+    Route::get('/hijo/{estudiante}/estado-cuenta',       [PortalPadreController::class, 'estadoCuenta'])->name('hijo.estado-cuenta');
+    Route::get('/hijo/{estudiante}/estado-cuenta/pdf',   [PortalPadreController::class, 'estadoCuentaPdf'])->name('hijo.estado-cuenta.pdf');
     Route::get('/hijo/{estudiante}/notas/excel',     [PortalPadreController::class, 'notasExcel'])->name('hijo.notas.excel');
     Route::get('/hijo/{estudiante}/notas-pdf',       [PortalPadreController::class, 'notasPdf'])->name('hijo.notas-pdf');
     Route::get('/hijo/{estudiante}/asignacion/{asignacion}/recursos/pdf',   [PortalPadreController::class, 'hijosRecursosPdf'])->name('hijo.recursos.pdf');
@@ -602,5 +603,6 @@ Route::prefix('superadmin')->name('superadmin.')->middleware(['auth', 'super_adm
         // Gestión de suscripciones y módulos
         Route::post('/{tenant}/subscriptions',       [\App\Http\Controllers\SuperAdmin\SubscriptionController::class, 'store'])->name('subscriptions.store');
         Route::post('/{tenant}/toggle-feature',      [\App\Http\Controllers\SuperAdmin\SubscriptionController::class, 'toggleFeature'])->name('toggle-feature');
+        Route::post('/{tenant}/nivel-inicial/{tipo}',[\App\Http\Controllers\SuperAdmin\TenantController::class, 'toggleNivelInicial'])->name('nivel-inicial.toggle');
     });
 });

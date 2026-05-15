@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Grado;
 use App\Models\Tenant;
 use App\Models\TenantFeature;
 use Illuminate\Http\Request;
@@ -209,6 +210,41 @@ class TenantController extends Controller
         $destino = $request->input('destino', '/admin/dashboard');
         return redirect($destino)
             ->with('info', "Estás administrando «{$tenant->nombre_institucion}» como SuperAdmin.");
+    }
+
+    /** Activa / desactiva un grado de Nivel Inicial para el tenant */
+    public function toggleNivelInicial(Tenant $tenant, string $tipo)
+    {
+        $config = [
+            'prekinder' => ['nombre' => 'Pre-Kinder', 'nivel' => 90, 'orden' => 90],
+            'kinder'    => ['nombre' => 'Kinder',     'nivel' => 91, 'orden' => 91],
+        ];
+
+        abort_unless(isset($config[$tipo]), 404);
+
+        $data  = $config[$tipo];
+        $grado = Grado::withoutTenant()
+            ->where('tenant_id', $tenant->id)
+            ->where('nombre', $data['nombre'])
+            ->first();
+
+        if ($grado) {
+            $grado->update(['activo' => ! $grado->activo]);
+            $estado = $grado->activo ? 'activado' : 'desactivado';
+        } else {
+            $g = new Grado([
+                'nombre' => $data['nombre'],
+                'nivel'  => $data['nivel'],
+                'ciclo'  => 'inicial',
+                'orden'  => $data['orden'],
+                'activo' => true,
+            ]);
+            $g->tenant_id = $tenant->id;
+            $g->save();
+            $estado = 'activado';
+        }
+
+        return back()->with('success', "{$data['nombre']} {$estado} correctamente.");
     }
 
     /** Sale del panel de la institución y regresa al panel de la plataforma */

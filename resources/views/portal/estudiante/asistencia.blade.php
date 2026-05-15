@@ -1,10 +1,8 @@
-@extends('layouts.portal')
+@extends('layouts.portal-estudiante')
 
 @section('title', 'Mi Asistencia')
 
-@section('sidebar')
-    @include('portal.estudiante._sidebar', ['activeKey' => 'asistencia'])
-@endsection
+@section('activeKey', 'asistencia')
 
 @section('content')
 <div class="prt-page-header">

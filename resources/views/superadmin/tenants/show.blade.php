@@ -288,6 +288,79 @@
 
 </div>
 
+{{-- Nivel Inicial (solo SuperAdmin) --}}
+@php
+    $nivelInicialGrados = \App\Models\Grado::withoutTenant()
+        ->where('tenant_id', $tenant->id)
+        ->where('ciclo', 'inicial')
+        ->get()
+        ->keyBy('nombre');
+
+    $gradosIniciales = [
+        'prekinder' => ['nombre' => 'Pre-Kinder', 'icon' => 'bi-stars',          'desc' => '3 – 4 años'],
+        'kinder'    => ['nombre' => 'Kinder',     'icon' => 'bi-balloon-heart-fill', 'desc' => '4 – 6 años'],
+    ];
+@endphp
+<div class="card border-0 shadow-sm mb-4" style="border-radius:16px;border:2px solid #fef3c7!important;">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center justify-content-between mb-1">
+            <h6 class="fw-bold mb-0">
+                <i class="bi bi-stars me-2" style="color:#f59e0b;"></i>Nivel Inicial
+            </h6>
+            <span class="badge text-dark" style="background:#fef3c7;font-size:.68rem;border:1px solid #fde68a;">
+                Solo SuperAdmin
+            </span>
+        </div>
+        <p class="text-muted mb-3" style="font-size:.82rem;">
+            Habilita Pre-Kinder y Kinder para esta institución. Estos grados no aparecen en el wizard de configuración del administrador.
+        </p>
+
+        @if(session('success'))
+        <div class="alert alert-success py-2 mb-3" style="font-size:.82rem;">
+            <i class="bi bi-check-circle me-1"></i>{{ session('success') }}
+        </div>
+        @endif
+
+        <div class="d-flex gap-3 flex-wrap">
+            @foreach($gradosIniciales as $tipo => $info)
+            @php
+                $g      = $nivelInicialGrados[$info['nombre']] ?? null;
+                $activo = $g && $g->activo;
+            @endphp
+            <form method="POST"
+                  action="{{ route('superadmin.tenants.nivel-inicial.toggle', [$tenant, $tipo]) }}">
+                @csrf
+                <button type="submit"
+                    class="btn {{ $activo ? 'btn-success' : 'btn-outline-secondary' }}"
+                    style="border-radius:12px;padding:.65rem 1.4rem;font-size:.88rem;">
+                    <i class="bi {{ $info['icon'] }} me-2"></i>
+                    <strong>{{ $info['nombre'] }}</strong>
+                    <span class="ms-2 text-{{ $activo ? 'white' : 'muted' }}" style="font-size:.75rem;">
+                        {{ $info['desc'] }}
+                    </span>
+                    @if($activo)
+                    <span class="badge bg-white text-success ms-2" style="font-size:.65rem;">
+                        <i class="bi bi-check2"></i> Activo
+                    </span>
+                    @else
+                    <span class="badge bg-secondary ms-2" style="font-size:.65rem;opacity:.6;">
+                        Inactivo
+                    </span>
+                    @endif
+                </button>
+            </form>
+            @endforeach
+        </div>
+
+        @if($nivelInicialGrados->count())
+        <p class="text-muted mt-2 mb-0" style="font-size:.75rem;">
+            <i class="bi bi-info-circle me-1"></i>
+            Clic en un grado activo para desactivarlo (no lo elimina, solo lo oculta).
+        </p>
+        @endif
+    </div>
+</div>
+
 {{-- Modal Registrar Pago --}}
 <div class="modal fade" id="modalPago" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">

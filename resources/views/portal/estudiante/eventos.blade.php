@@ -1,22 +1,7 @@
-@extends('layouts.portal')
-@section('page-title', 'Eventos')
-@section('portal-name', 'Portal Estudiante')
+@extends('layouts.portal-estudiante')
+@section('title', 'Eventos')
 
-@section('sidebar')
-    @include('portal.estudiante._sidebar', ['activeKey' => 'eventos'])
-@endsection
-
-@section('bottom-nav')
-    <a href="{{ route('portal.estudiante.dashboard') }}" class="prt-nav-item">
-        <i class="bi bi-house-fill"></i>Inicio
-    </a>
-    <a href="{{ route('portal.estudiante.eventos') }}" class="prt-nav-item active">
-        <i class="bi bi-calendar-event-fill"></i>Eventos
-    </a>
-    <a href="{{ route('portal.estudiante.notificaciones') }}" class="prt-nav-item">
-        <i class="bi bi-bell-fill"></i>Notif.
-    </a>
-@endsection
+@section('activeKey', 'eventos')
 
 @section('content')
 

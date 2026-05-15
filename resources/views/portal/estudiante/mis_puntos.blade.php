@@ -1,9 +1,7 @@
-@extends('layouts.portal')
+@extends('layouts.portal-estudiante')
 @section('title', 'Mis Puntos')
 
-@section('sidebar')
-    @include('portal.estudiante._sidebar', ['activeKey' => 'mis-puntos'])
-@endsection
+@section('activeKey', 'mis-puntos')
 
 @section('content')
 

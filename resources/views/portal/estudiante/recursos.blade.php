@@ -1,22 +1,7 @@
-@extends('layouts.portal')
-@section('page-title', 'Recursos — ' . ($asignacion->asignatura?->nombre ?? ''))
-@section('portal-name', 'Portal Estudiante')
+@extends('layouts.portal-estudiante')
+@section('title', 'Recursos — ' . ($asignacion->asignatura?->nombre ?? ''))
 
-@section('sidebar')
-    @include('portal.estudiante._sidebar', ['activeKey' => 'recursos'])
-@endsection
-
-@section('bottom-nav')
-    <a href="{{ route('portal.estudiante.dashboard') }}" class="prt-nav-item">
-        <i class="bi bi-house-fill"></i>Inicio
-    </a>
-    <a href="{{ route('portal.estudiante.boletin') }}" class="prt-nav-item">
-        <i class="bi bi-file-earmark-text-fill"></i>Boletín
-    </a>
-    <a href="{{ route('portal.estudiante.recursos', $asignacion) }}" class="prt-nav-item active">
-        <i class="bi bi-folder-fill"></i>Recursos
-    </a>
-@endsection
+@section('activeKey', 'recursos')
 
 @push('styles')
 <style>

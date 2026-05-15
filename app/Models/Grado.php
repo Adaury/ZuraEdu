@@ -32,9 +32,16 @@ class Grado extends Model
 
     public function getCicloLabelAttribute(): string
     {
-        return $this->ciclo === 'primer_ciclo' ? 'Primer Ciclo' : 'Segundo Ciclo';
+        return match($this->ciclo) {
+            'primer_ciclo'  => 'Primer Ciclo',
+            'segundo_ciclo' => 'Segundo Ciclo',
+            'bachillerato'  => 'Bachillerato',
+            'inicial'       => 'Nivel Inicial',
+            default         => ucfirst(str_replace('_', ' ', $this->ciclo ?? '')),
+        };
     }
 
     public function esPrimerCiclo(): bool  { return $this->ciclo === 'primer_ciclo'; }
     public function esSegundoCiclo(): bool { return $this->ciclo === 'segundo_ciclo'; }
+    public function esInicial(): bool      { return $this->ciclo === 'inicial'; }
 }

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Grado;
+use App\Models\Grupo;
 use App\Models\SchoolYear;
+use App\Models\Seccion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -122,8 +124,9 @@ class OnboardingWizardController extends Controller
 
     private function paso3View($tenant)
     {
-        $grados = Grado::where('tenant_id', $tenant->id)->orderBy('orden')->get();
-        return view('admin.onboarding.paso3', compact('tenant', 'grados'));
+        $grados    = Grado::where('tenant_id', $tenant->id)->orderBy('orden')->get();
+        $secciones = Seccion::orderBy('orden')->get();
+        return view('admin.onboarding.paso3', compact('tenant', 'grados', 'secciones'));
     }
 
     private function guardarPaso3(Request $request, $tenant)
@@ -131,20 +134,24 @@ class OnboardingWizardController extends Controller
         $request->validate([
             'grados_activos'   => ['nullable', 'array'],
             'grados_activos.*' => ['integer', 'exists:grados,id'],
+            'secciones'        => ['nullable', 'array'],
+            'secciones.*'      => ['array'],
+            'secciones.*.*'    => ['string', 'max:10'],
             'nuevo_grado'      => ['nullable', 'string', 'max:80'],
             'nuevo_nivel'      => ['nullable', 'integer', 'min:1', 'max:20'],
             'nuevo_ciclo'      => ['nullable', 'in:primer_ciclo,segundo_ciclo,bachillerato'],
         ]);
 
-        $activos = $request->input('grados_activos', []);
+        $activos     = $request->input('grados_activos', []);
+        $secByGrado  = $request->input('secciones', []);
 
-        // Marcar activos/inactivos según selección
+        // 1. Marcar grados activos/inactivos
         $grados = Grado::where('tenant_id', $tenant->id)->get();
         foreach ($grados as $grado) {
             $grado->update(['activo' => in_array($grado->id, $activos)]);
         }
 
-        // Agregar grado personalizado si se indicó
+        // 2. Agregar grado personalizado si se indicó
         if ($request->filled('nuevo_grado')) {
             $nuevoGrado = new Grado([
                 'nombre' => $request->nuevo_grado,
@@ -155,6 +162,35 @@ class OnboardingWizardController extends Controller
             ]);
             $nuevoGrado->tenant_id = $tenant->id;
             $nuevoGrado->save();
+        }
+
+        // 3. Crear grupos (grado + sección) para el año escolar activo
+        $schoolYear = SchoolYear::where('tenant_id', $tenant->id)
+            ->where('activo', true)
+            ->latest()->first();
+
+        if ($schoolYear && count($activos) > 0) {
+            foreach ($activos as $gradoId) {
+                $nombres = $secByGrado[$gradoId] ?? [];
+                foreach ($nombres as $nombre) {
+                    $nombre = strtoupper(trim((string) $nombre));
+                    if (! $nombre) continue;
+
+                    $seccion = Seccion::firstOrCreate(
+                        ['nombre' => $nombre],
+                        ['orden'  => (Seccion::max('orden') ?? 0) + 1]
+                    );
+
+                    Grupo::firstOrCreate(
+                        [
+                            'school_year_id' => $schoolYear->id,
+                            'grado_id'       => (int) $gradoId,
+                            'seccion_id'     => $seccion->id,
+                        ],
+                        ['activo' => true]
+                    );
+                }
+            }
         }
 
         $tenant->update(['onboarding_paso' => max($tenant->onboarding_paso, 3)]);

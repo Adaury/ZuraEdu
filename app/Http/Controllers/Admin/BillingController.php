@@ -178,15 +178,16 @@ class BillingController extends Controller
     // ── Activar suscripción (reutilizado por Stripe y webhook) ───────────
 
     public function activarSuscripcion(
-        int    $tenantId,
-        string $planSlug,
-        string $ciclo,
-        int    $meses,
-        float  $monto,
-        string $stripeSessionId = '',
-        string $metodoPago      = 'stripe',
+        int     $tenantId,
+        string  $planSlug,
+        string  $ciclo,
+        int     $meses,
+        float   $monto,
+        string  $stripeSessionId     = '',
+        ?string $stripePaymentIntent = null,
+        string  $metodoPago          = 'stripe',
     ): void {
-        DB::transaction(function () use ($tenantId, $planSlug, $ciclo, $meses, $monto, $stripeSessionId, $metodoPago) {
+        DB::transaction(function () use ($tenantId, $planSlug, $ciclo, $meses, $monto, $stripeSessionId, $stripePaymentIntent, $metodoPago) {
             $tenant = Tenant::find($tenantId);
             $plan   = Plan::bySlug($planSlug);
 
@@ -209,17 +210,18 @@ class BillingController extends Controller
             $fin = Carbon::parse($inicio)->addMonths($meses)->toDateString();
 
             Subscription::create([
-                'tenant_id'           => $tenantId,
-                'plan_id'             => $plan->id,
-                'estado'              => 'activa',
-                'fecha_inicio'        => $inicio,
-                'fecha_fin'           => $fin,
-                'monto_pagado'        => $monto,
-                'moneda'              => 'USD',
-                'ciclo'               => $ciclo,
-                'metodo_pago'         => $metodoPago,
-                'referencia_pago'     => $stripeSessionId,
-                'stripe_session_id'   => $stripeSessionId ?: null,
+                'tenant_id'              => $tenantId,
+                'plan_id'                => $plan->id,
+                'estado'                 => 'activa',
+                'fecha_inicio'           => $inicio,
+                'fecha_fin'              => $fin,
+                'monto_pagado'           => $monto,
+                'moneda'                 => 'USD',
+                'ciclo'                  => $ciclo,
+                'metodo_pago'            => $metodoPago,
+                'referencia_pago'        => $stripeSessionId,
+                'stripe_session_id'      => $stripeSessionId ?: null,
+                'stripe_payment_intent'  => $stripePaymentIntent,
             ]);
 
             $limites = $this->limitesPlan($planSlug);
@@ -243,6 +245,40 @@ class BillingController extends Controller
         });
     }
 
+    // ── Downgrade a Free (reembolso / disputa) ────────────────────────────
+
+    public function downgradarAFree(int $tenantId, string $motivo = 'manual'): void
+    {
+        DB::transaction(function () use ($tenantId, $motivo) {
+            $tenant = Tenant::find($tenantId);
+            if (! $tenant) return;
+
+            Subscription::where('tenant_id', $tenantId)
+                ->whereIn('estado', ['activa', 'pendiente'])
+                ->update(['estado' => 'cancelada']);
+
+            $plan    = Plan::bySlug('free');
+            $limites = $this->limitesPlan('free');
+
+            $tenant->update([
+                'plan'              => 'free',
+                'plan_id'           => $plan?->id,
+                'estado'            => 'activo',
+                'fecha_vencimiento' => null,
+                'max_estudiantes'   => $limites['estudiantes'],
+                'max_docentes'      => $limites['docentes'],
+                'max_usuarios'      => $limites['usuarios'],
+            ]);
+
+            $this->activarFeaturesPlan($tenant, 'free');
+            Cache::forget("tenant_host_{$tenant->dominio}");
+
+            foreach (self::FEATURES_POR_PLAN['pro'] as $f) {
+                Cache::forget("tenant_{$tenant->id}_feature_{$f}");
+            }
+        });
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────
 
     private function limitesPlan(string $plan): array
@@ -254,7 +290,7 @@ class BillingController extends Controller
         };
     }
 
-    private function activarFeaturesPlan(Tenant $tenant, string $plan): void
+    protected function activarFeaturesPlan(Tenant $tenant, string $plan): void
     {
         $features = self::FEATURES_POR_PLAN[$plan] ?? self::FEATURES_POR_PLAN['free'];
 

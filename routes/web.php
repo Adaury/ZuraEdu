@@ -529,10 +529,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.acc
 // ── Galería pública ───────────────────────────────────────────────────────
 Route::get('/galeria', [\App\Http\Controllers\Admin\GaleriaController::class, 'galeriaPublica'])->name('galeria.publica');
 
-// ── Webhook Stripe (público, sin CSRF) ────────────────────────────────────
+// ── Webhook Stripe (público, sin CSRF ni resolución de tenant) ───────────
+// Stripe llama desde sus propios servidores — ningún host de tenant coincide.
 Route::post('/webhook/stripe', [\App\Http\Controllers\WebhookStripeController::class, 'handle'])
     ->name('webhook.stripe')
-    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+    ->withoutMiddleware([
+        \App\Http\Middleware\VerifyCsrfToken::class,
+        \App\Http\Middleware\ResolveTenant::class,
+        \App\Http\Middleware\DemoMode::class,
+    ]);
 
 // ── Chat interno del tenant (staff/admin) ────────────────────────────────
 Route::prefix('admin/tenant-chat')->name('admin.tenant-chat.')->middleware(['auth', 'activo'])->group(function () {

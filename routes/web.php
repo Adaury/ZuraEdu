@@ -535,6 +535,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.acc
 // ── Galería pública ───────────────────────────────────────────────────────
 Route::get('/galeria', [\App\Http\Controllers\Admin\GaleriaController::class, 'galeriaPublica'])->name('galeria.publica');
 
+// ── PWA — manifest, iconos e offline ─────────────────────────────────────
+Route::get('/pwa/manifest.json', [\App\Http\Controllers\PwaController::class, 'manifest'])->name('pwa.manifest');
+Route::get('/pwa/icon/{size}',   [\App\Http\Controllers\PwaController::class, 'icon'])->name('pwa.icon')->where('size', '[0-9]+');
+Route::get('/offline',           [\App\Http\Controllers\PwaController::class, 'offline'])->name('pwa.offline');
+
 // ── Webhook Stripe (público, sin CSRF ni resolución de tenant) ───────────
 // Stripe llama desde sus propios servidores — ningún host de tenant coincide.
 Route::post('/webhook/stripe', [\App\Http\Controllers\WebhookStripeController::class, 'handle'])

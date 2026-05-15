@@ -685,6 +685,26 @@
     }
     </style>
     @stack('styles')
+
+    {{-- PWA --}}
+    <link rel="manifest" href="/pwa/manifest.json">
+    @php($__pwaColor = app()->bound('tenant') ? (app('tenant')->color_primario ?? '#1d4ed8') : '#1d4ed8')
+    @php($__pwaTid   = tenant_id() ?? 0)
+    @php($__pwaName  = app()->bound('tenant') ? (app('tenant')->nombre_institucion ?? config('app.name')) : config('app.name'))
+    <meta name="theme-color" content="{{ $__pwaColor }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="{{ $__pwaName }}">
+    <link rel="apple-touch-icon" href="/pwa/icon/192?tid={{ $__pwaTid }}">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .catch(() => {});
+            });
+        }
+    </script>
 </head>
 @php
 $portalRoleClass = '';

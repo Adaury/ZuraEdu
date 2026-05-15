@@ -1677,6 +1677,23 @@
             display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap;
         }
     </style>
+
+    {{-- PWA --}}
+    <link rel="manifest" href="/pwa/manifest.json">
+    <meta name="theme-color" content="{{ $currentTenant->color_primario ?? '#1d4ed8' }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="{{ $currentTenant->nombre_institucion ?? config('app.name') }}">
+    <link rel="apple-touch-icon" href="/pwa/icon/192?tid={{ $currentTenant->id ?? 0 }}">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .catch(() => {});
+            });
+        }
+    </script>
 </head>
 @php
 $bodyRoleClass = '';

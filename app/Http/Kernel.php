@@ -75,5 +75,6 @@ class Kernel extends HttpKernel
         'admin.access'   => \App\Http\Middleware\EnsureAdminAccess::class,
         'super_admin'    => \App\Http\Middleware\EnsureSuperAdmin::class,
         'tenant.feature' => \App\Http\Middleware\CheckTenantFeature::class,
+        'api.tenant'     => \App\Http\Middleware\ResolveApiTenant::class,
     ];
 }

@@ -18,7 +18,8 @@ class AuthApiController extends Controller
             'device'   => 'nullable|string|max:100',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        // Sin scope de tenant — el login opera antes de que el tenant sea conocido
+        $user = User::withoutGlobalScope('tenant')->where('email', $request->email)->first();
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'Credenciales incorrectas.'], 401);
@@ -60,7 +61,22 @@ class AuthApiController extends Controller
             'email'     => $user->email,
             'role'      => $user->roles->first()?->name ?? 'Usuario',
             'avatar'    => $this->avatar($user),
+            'tenant_id' => $user->tenant_id,
         ]);
+    }
+
+    /** POST /api/v1/auth/refresh-token
+     * Revoca el token actual y emite uno nuevo (útil tras expiración próxima).
+     */
+    public function refreshToken(Request $request)
+    {
+        $user    = $request->user();
+        $device  = $request->user()->currentAccessToken()->name;
+
+        $request->user()->currentAccessToken()->delete();
+        $newToken = $user->createToken($device)->plainTextToken;
+
+        return response()->json(['token' => $newToken]);
     }
 
     private function avatar(User $user): ?string

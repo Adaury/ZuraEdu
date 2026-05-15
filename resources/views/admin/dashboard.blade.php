@@ -18,18 +18,20 @@
 </div>
 @endif
 
-{{-- ── BIENVENIDA ONBOARDING ───────────────────────────────────────────── --}}
-@if(session('onboarding_new_tenant'))
-<div class="alert mb-4" style="background:linear-gradient(135deg,#059669,#10b981);border:none;border-radius:16px;padding:1.5rem 1.75rem;color:#fff;display:flex;align-items:center;gap:1.25rem;box-shadow:0 8px 24px rgba(16,185,129,.3);">
-    <div style="font-size:2.5rem;flex-shrink:0;">🎉</div>
-    <div>
-        <div style="font-size:1.1rem;font-weight:800;margin-bottom:.25rem;">¡Bienvenido a ZuraEdu!</div>
-        <div style="font-size:.88rem;opacity:.9;line-height:1.5;">
-            Tu institución <strong>{{ session('onboarding_tenant_name') }}</strong> ya está lista.
-            Comienza configurando tus grupos, docentes y estudiantes desde el panel de administración.
+{{-- ── BANNER CONFIGURACIÓN PENDIENTE ──────────────────────────────────── --}}
+@if(! ($currentTenant->onboarding_completado ?? true))
+<div class="mb-4" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-radius:16px;padding:1.25rem 1.5rem;color:#fff;display:flex;align-items:center;gap:1.25rem;box-shadow:0 8px 24px rgba(29,78,216,.3);">
+    <div style="font-size:2rem;flex-shrink:0;">⚙️</div>
+    <div style="flex:1;">
+        <div style="font-size:1rem;font-weight:800;margin-bottom:.2rem;">Completa la configuración inicial</div>
+        <div style="font-size:.83rem;opacity:.9;line-height:1.5;">
+            Solo faltan 3 pasos para dejar tu institución lista: institución, año escolar y grados.
         </div>
     </div>
-    <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;opacity:.7;flex-shrink:0;" aria-label="Cerrar">×</button>
+    <a href="{{ route('admin.onboarding.show', max(1, $currentTenant->onboarding_paso ?? 1)) }}"
+       style="background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.4);border-radius:10px;padding:.55rem 1.1rem;text-decoration:none;font-size:.85rem;font-weight:700;flex-shrink:0;white-space:nowrap;">
+        Continuar configuración →
+    </a>
 </div>
 @endif
 

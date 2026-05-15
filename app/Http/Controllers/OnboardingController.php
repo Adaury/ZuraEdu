@@ -55,9 +55,6 @@ class OnboardingController extends Controller
         Auth::login($result['user']);
         $request->session()->regenerate();
 
-        // Marcar como nuevo tenant en sesión para mostrar bienvenida
-        session(['onboarding_new_tenant' => true, 'onboarding_tenant_name' => $result['tenant']->nombre_institucion]);
-
-        return redirect('/admin/dashboard');
+        return redirect()->route('admin.onboarding.show', 1);
     }
 }

@@ -447,6 +447,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.acc
     Route::get('/dashboard',       [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/stats', [DashboardController::class, 'statsJson'])->name('dashboard.stats');
 
+    // ── Onboarding Wizard (nuevo tenant) ─────────────────────────────────────
+    Route::prefix('onboarding')->name('onboarding.')->group(function () {
+        Route::get('/paso/{paso}',  [\App\Http\Controllers\Admin\OnboardingWizardController::class, 'show'])->name('show');
+        Route::post('/paso/{paso}', [\App\Http\Controllers\Admin\OnboardingWizardController::class, 'store'])->name('store');
+    });
+
     // ── Módulos base (disponibles en todos los planes) ───────────────────────
     require __DIR__ . '/admin/billing.php';
     require __DIR__ . '/admin/personas.php';

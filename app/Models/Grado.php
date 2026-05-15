@@ -10,7 +10,7 @@ class Grado extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = ['nombre', 'nivel', 'ciclo', 'orden'];
+    protected $fillable = ['nombre', 'nivel', 'ciclo', 'orden', 'activo'];
 
     public function grupos()
     {

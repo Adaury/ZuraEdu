@@ -19,13 +19,16 @@ class Tenant extends Model
         'fecha_registro', 'fecha_vencimiento',
         'max_estudiantes', 'max_docentes', 'max_usuarios',
         'metadatos', 'is_demo_temporal',
+        'onboarding_completado', 'onboarding_paso',
+        'stripe_customer_id',
     ];
 
     protected $casts = [
-        'fecha_registro'    => 'date',
-        'fecha_vencimiento' => 'date',
-        'metadatos'         => 'array',
-        'is_demo_temporal'  => 'boolean',
+        'fecha_registro'        => 'date',
+        'fecha_vencimiento'     => 'date',
+        'metadatos'             => 'array',
+        'is_demo_temporal'      => 'boolean',
+        'onboarding_completado' => 'boolean',
     ];
 
     // ── Relaciones ────────────────────────────────────────────────────────

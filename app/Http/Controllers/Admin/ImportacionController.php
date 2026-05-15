@@ -378,7 +378,7 @@ class ImportacionController extends Controller
 
             // Auto-width
             foreach (range(1, count($headers)) as $ci) {
-                $sheet->getColumnDimensionByColumn($ci)->setAutoSize(true);
+                $sheet->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci))->setAutoSize(true);
             }
 
             // Leyenda
@@ -850,7 +850,7 @@ class ImportacionController extends Controller
         $sheet->getColumnDimension('C')->setWidth(14);
         $sheet->getColumnDimension('D')->setWidth(16);
         for ($ci = 5; $ci <= $lastColIdx; $ci++) {
-            $sheet->getColumnDimensionByColumn($ci)->setWidth(10);
+            $sheet->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci))->setWidth(10);
         }
 
         $sheet->freezePane('E3');

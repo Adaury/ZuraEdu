@@ -317,9 +317,9 @@ class GrupoController extends Controller
         $ws->setCellValue('D3','Nombre');
         $col = 5;
         foreach ($asignaciones as $asig) {
-            $ws->setCellValueByColumnAndRow($col++, 3, $asig->asignatura?->nombre ?? '—');
+            $ws->setCellValue([$col++, 3], $asig->asignatura?->nombre ?? '—');
         }
-        $ws->setCellValueByColumnAndRow($col, 3, 'Promedio');
+        $ws->setCellValue([$col, 3], 'Promedio');
 
         // Estilo header
         $hdrRange = "A3:{$lastC}3";
@@ -342,7 +342,7 @@ class GrupoController extends Controller
             foreach ($asignaciones as $asig) {
                 $cal  = $misCalifs->firstWhere('asignacion_id', $asig->id);
                 $nota = $cal?->nota_final;
-                $ws->setCellValueByColumnAndRow($col, $row, $nota ?? '');
+                $ws->setCellValue([$col, $row], $nota ?? '');
                 if ($nota !== null) $notas[] = $nota;
                 $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
                 if ($nota !== null) {
@@ -352,7 +352,7 @@ class GrupoController extends Controller
                 $col++;
             }
             $prom = $notas ? round(array_sum($notas)/count($notas), 1) : null;
-            $ws->setCellValueByColumnAndRow($col, $row, $prom ?? '');
+            $ws->setCellValue([$col, $row], $prom ?? '');
             if ($prom !== null) {
                 $promLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
                 $ws->getStyle("{$promLetter}{$row}")->getFont()->setBold(true)
@@ -366,7 +366,7 @@ class GrupoController extends Controller
         }
 
         foreach (range(1, $asignaciones->count() + 5) as $ci) {
-            $ws->getColumnDimensionByColumn($ci)->setAutoSize(true);
+            $ws->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci))->setAutoSize(true);
         }
 
         $writer   = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);

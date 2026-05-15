@@ -658,18 +658,18 @@ class CalificacionController extends Controller
             $col = 1;
             foreach ($periodos as $p) {
                 $prom = $promedios[$asig->id][$p->id] ?? null;
-                $ws->setCellValueByColumnAndRow($col + 1, $row, $prom ?? '');
+                $ws->setCellValue([$col + 1, $row], $prom ?? '');
                 if ($prom !== null && $prom < 60) {
-                    $ws->getStyleByColumnAndRow($col + 1, $row)->getFill()
+                    $ws->getStyle([$col + 1, $row])->getFill()
                         ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('fee2e2');
                 } elseif ($prom !== null && $prom >= 90) {
-                    $ws->getStyleByColumnAndRow($col + 1, $row)->getFill()
+                    $ws->getStyle([$col + 1, $row])->getFill()
                         ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('d1fae5');
                 }
                 $col++;
             }
             $gen = $promedios[$asig->id]['general'] ?? null;
-            $ws->setCellValueByColumnAndRow($col + 1, $row, $gen ?? '');
+            $ws->setCellValue([$col + 1, $row], $gen ?? '');
             if ($i % 2 === 0) {
                 $ws->getStyle("A{$row}")->getFill()
                     ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('f9fafb');
@@ -1187,7 +1187,7 @@ class CalificacionController extends Controller
                 ]);
             $sheet->freezePane('A2');
             foreach (range(1, count($headers)) as $colIdx) {
-                $sheet->getColumnDimensionByColumn($colIdx)->setAutoSize(true);
+                $sheet->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx))->setAutoSize(true);
             }
             $sheet->fromArray($rows, null, 'A2');
 

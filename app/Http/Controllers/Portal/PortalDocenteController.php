@@ -2265,17 +2265,17 @@ class PortalDocenteController extends Controller
             $row = $i + 5;
             $est = $mat->estudiante;
             $col = 1;
-            $ws->setCellValueByColumnAndRow($col++, $row, $i + 1);
-            $ws->setCellValueByColumnAndRow($col++, $row, $est?->matricula ?? '');
-            $ws->setCellValueByColumnAndRow($col++, $row, $est?->apellidos ?? $est?->apellido ?? '');
-            $ws->setCellValueByColumnAndRow($col++, $row, $est?->nombres   ?? $est?->nombre   ?? '');
+            $ws->setCellValue([$col++, $row], $i + 1);
+            $ws->setCellValue([$col++, $row], $est?->matricula ?? '');
+            $ws->setCellValue([$col++, $row], $est?->apellidos ?? $est?->apellido ?? '');
+            $ws->setCellValue([$col++, $row], $est?->nombres   ?? $est?->nombre   ?? '');
 
             $notasParaPromedio = [];
             if ($esTecnica) {
                 foreach ($periodos as $p) {
                     $key  = $mat->id . '_' . $p->id;
                     $nota = $calMap[$key]?->first()?->nota_final ?? null;
-                    $ws->setCellValueByColumnAndRow($col++, $row, $nota ?? '');
+                    $ws->setCellValue([$col++, $row], $nota ?? '');
                     if ($nota !== null) $notasParaPromedio[] = $nota;
                 }
             } else {
@@ -2284,19 +2284,19 @@ class PortalDocenteController extends Controller
                     $n = $p->numero; $pVals = [];
                     for ($ci = 1; $ci <= 4; $ci++) {
                         $v = $cal?->{"comp{$ci}_p{$n}"};
-                        $ws->setCellValueByColumnAndRow($col++, $row, $v ?? '');
+                        $ws->setCellValue([$col++, $row], $v ?? '');
                         if ($v !== null) $pVals[] = (float)$v;
                     }
                     $prom = $pVals ? round(array_sum($pVals) / count($pVals), 2) : null;
-                    $ws->setCellValueByColumnAndRow($col++, $row, $prom ?? '');
+                    $ws->setCellValue([$col++, $row], $prom ?? '');
                     if ($prom !== null) $notasParaPromedio[] = $prom;
                 }
             }
 
             $promFinal = count($notasParaPromedio) ? round(array_sum($notasParaPromedio) / count($notasParaPromedio), 2) : null;
             $sit = $promFinal !== null ? ($promFinal >= 70 ? 'Aprobado' : 'Reprobado') : '';
-            $ws->setCellValueByColumnAndRow($col++, $row, $promFinal ?? '');
-            $ws->setCellValueByColumnAndRow($col, $row, $sit);
+            $ws->setCellValue([$col++, $row], $promFinal ?? '');
+            $ws->setCellValue([$col, $row], $sit);
 
             if ($sit === 'Aprobado') {
                 $sitCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
@@ -2308,7 +2308,7 @@ class PortalDocenteController extends Controller
         }
 
         foreach (range(1, count($headers)) as $ci) {
-            $ws->getColumnDimensionByColumn($ci)->setAutoSize(true);
+            $ws->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci))->setAutoSize(true);
         }
 
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);

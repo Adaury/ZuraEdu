@@ -618,13 +618,13 @@ class SistemaController extends Controller
 
         foreach ($rows as $r => $cols) {
             foreach ($cols as $c => $val) {
-                $ws->setCellValueByColumnAndRow($c + 1, $r + 1, $val);
+                $ws->setCellValue([$c + 1, $r + 1], $val);
             }
             if (count($cols) === 1 && ! empty($cols[0])) {
-                $ws->getStyleByColumnAndRow(1, $r + 1)->applyFromArray($hdrFmt);
-                $ws->mergeCellsByColumnAndRow(1, $r + 1, 3, $r + 1);
+                $ws->getStyle([1, $r + 1])->applyFromArray($hdrFmt);
+                $ws->mergeCells([1, $r + 1, 3, $r + 1]);
             } elseif (count($cols) === 2 && str_contains(strtoupper($cols[0] ?? ''), 'MATRÍCULA POR')) {
-                $ws->getStyleByColumnAndRow(1, $r + 1)->applyFromArray($boldFmt);
+                $ws->getStyle([1, $r + 1])->applyFromArray($boldFmt);
             }
         }
 

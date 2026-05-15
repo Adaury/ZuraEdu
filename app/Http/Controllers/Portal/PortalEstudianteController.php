@@ -1219,12 +1219,12 @@ class PortalEstudianteController extends Controller
             $col = 1;
             foreach ($periodos as $p) {
                 $nota = $calificaciones->get($p->id)?->firstWhere('asignacion_id', $asigId)?->nota_final;
-                $ws->setCellValueByColumnAndRow($col + 1, $row, $nota ?? '');
+                $ws->setCellValue([$col + 1, $row], $nota ?? '');
                 if ($nota !== null) $notasFinal[] = $nota;
                 $col++;
             }
             $prom = count($notasFinal) ? round(array_sum($notasFinal) / count($notasFinal), 1) : '';
-            $ws->setCellValueByColumnAndRow($col + 1, $row, $prom);
+            $ws->setCellValue([$col + 1, $row], $prom);
             if ($row % 2 === 0) {
                 $ws->getStyle("A{$row}:{$lastCol}{$row}")->getFill()
                     ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('f0f6ff');
@@ -1234,7 +1234,7 @@ class PortalEstudianteController extends Controller
 
         foreach ($calAcad as $ca) {
             $ws->setCellValue("A{$row}", ($ca->asignacion?->asignatura?->nombre ?? '—') . ' (Acad.)');
-            $ws->setCellValueByColumnAndRow(count($headers), $row, $ca->nota_final ?? '');
+            $ws->setCellValue([count($headers), $row], $ca->nota_final ?? '');
             $row++;
         }
 

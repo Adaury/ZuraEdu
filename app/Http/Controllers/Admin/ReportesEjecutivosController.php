@@ -324,7 +324,7 @@ class ReportesEjecutivosController extends Controller
 
         $hdrs2 = ['Grado', 'Sección', 'Estudiantes', 'Promedio', '% Aprobados', 'En Riesgo', 'Semáforo'];
         foreach ($hdrs2 as $i => $h) {
-            $ws2->setCellValueByColumnAndRow($i + 1, 2, $h);
+            $ws2->setCellValue([$i + 1, 2], $h);
         }
         $ws2->getStyle('A2:G2')->applyFromArray($hdrStyle);
 
@@ -351,7 +351,7 @@ class ReportesEjecutivosController extends Controller
         }
 
         foreach (range(1, 7) as $c) {
-            $ws2->getColumnDimensionByColumn($c)->setAutoSize(true);
+            $ws2->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c))->setAutoSize(true);
         }
         $ws2->freezePane('A3');
 
@@ -364,7 +364,7 @@ class ReportesEjecutivosController extends Controller
 
         $hdrs3 = ['#', 'Asignatura', 'Promedio', 'Total Estudiantes'];
         foreach ($hdrs3 as $i => $h) {
-            $ws3->setCellValueByColumnAndRow($i + 1, 2, $h);
+            $ws3->setCellValue([$i + 1, 2], $h);
         }
         $ws3->getStyle('A2:D2')->applyFromArray($hdrStyle);
 
@@ -385,7 +385,7 @@ class ReportesEjecutivosController extends Controller
         }
 
         foreach (range(1, 4) as $c) {
-            $ws3->getColumnDimensionByColumn($c)->setAutoSize(true);
+            $ws3->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c))->setAutoSize(true);
         }
         $ws3->getColumnDimension('B')->setWidth(32);
 
@@ -398,7 +398,7 @@ class ReportesEjecutivosController extends Controller
 
         $hdrs4 = ['Grado', 'Estudiantes en Riesgo', '% del Total'];
         foreach ($hdrs4 as $i => $h) {
-            $ws4->setCellValueByColumnAndRow($i + 1, 2, $h);
+            $ws4->setCellValue([$i + 1, 2], $h);
         }
         $ws4->getStyle('A2:C2')->applyFromArray($hdrStyle);
 
@@ -420,7 +420,7 @@ class ReportesEjecutivosController extends Controller
         $ws4->setCellValue('B' . $row4, $riesgoData['totalEnRiesgo']);
         $ws4->getStyle('A' . $row4 . ':C' . $row4)->getFont()->setBold(true);
         foreach (range(1, 3) as $c) {
-            $ws4->getColumnDimensionByColumn($c)->setAutoSize(true);
+            $ws4->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c))->setAutoSize(true);
         }
 
         $ss->setActiveSheetIndex(0);

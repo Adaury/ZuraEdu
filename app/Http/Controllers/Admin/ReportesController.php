@@ -353,14 +353,14 @@ class ReportesController extends Controller
 
         // ── Fila 3: encabezados ──────────────────────────────────────────
         $col = 1;
-        $sheet->setCellValueByColumnAndRow($col++, 3, '#');
-        $sheet->setCellValueByColumnAndRow($col++, 3, 'Estudiante');
+        $sheet->setCellValue([$col++, 3], '#');
+        $sheet->setCellValue([$col++, 3], 'Estudiante');
 
         foreach ($asignaciones as $asi) {
-            $sheet->setCellValueByColumnAndRow($col++, 3, $asi->asignatura->nombre ?? '—');
+            $sheet->setCellValue([$col++, 3], $asi->asignatura->nombre ?? '—');
         }
-        $sheet->setCellValueByColumnAndRow($col++, 3, 'Promedio');
-        $sheet->setCellValueByColumnAndRow($col,   3, 'Situación');
+        $sheet->setCellValue([$col++, 3], 'Promedio');
+        $sheet->setCellValue([$col, 3], 'Situación');
 
         $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
         $sheet->getStyle("A3:{$lastCol}3")->applyFromArray($headerStyle);
@@ -374,17 +374,17 @@ class ReportesController extends Controller
             $sit      = $cals->where('situacion', 'R')->count() > 0 ? 'REPROBADO' : ($cals->whereNotNull('situacion')->count() > 0 ? 'APROBADO' : '—');
 
             $col = 1;
-            $sheet->setCellValueByColumnAndRow($col++, $row, $num++);
-            $sheet->setCellValueByColumnAndRow($col++, $row, $m->estudiante->nombre_completo ?? '—');
+            $sheet->setCellValue([$col++, $row], $num++);
+            $sheet->setCellValue([$col++, $row], $m->estudiante->nombre_completo ?? '—');
 
             foreach ($asignaciones as $asi) {
                 $cal  = $cals->where('asignacion_id', $asi->id)->first();
                 $nota = $cal?->nota_final;
-                $sheet->setCellValueByColumnAndRow($col++, $row, $nota ?? '');
+                $sheet->setCellValue([$col++, $row], $nota ?? '');
             }
 
-            $sheet->setCellValueByColumnAndRow($col++, $row, $promedio ? round($promedio, 2) : '');
-            $sheet->setCellValueByColumnAndRow($col,   $row, $sit);
+            $sheet->setCellValue([$col++, $row], $promedio ? round($promedio, 2) : '');
+            $sheet->setCellValue([$col, $row], $sit);
 
             $row++;
         }
@@ -392,7 +392,7 @@ class ReportesController extends Controller
         // ── Estilos finales ──────────────────────────────────────────────
         $sheet->getStyle("A1:A2")->getFont()->setBold(true)->setSize(11);
         foreach (range(1, $col) as $c) {
-            $sheet->getColumnDimensionByColumn($c)->setAutoSize(true);
+            $sheet->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c))->setAutoSize(true);
         }
         $sheet->freezePane('C4');
 
@@ -464,20 +464,20 @@ class ReportesController extends Controller
             $avgPct = $regs->whereNotNull('pct_asistencia')->avg('pct_asistencia');
             $estado = $avgPct === null ? '—' : ($avgPct >= 75 ? 'Normal' : 'Crítica');
 
-            $sheet->setCellValueByColumnAndRow(1, $row, $num++);
-            $sheet->setCellValueByColumnAndRow(2, $row, $m->estudiante->nombre_completo ?? '—');
-            $sheet->setCellValueByColumnAndRow(3, $row, $pcts['P1'] ? round($pcts['P1'], 1) : '');
-            $sheet->setCellValueByColumnAndRow(4, $row, $pcts['P2'] ? round($pcts['P2'], 1) : '');
-            $sheet->setCellValueByColumnAndRow(5, $row, $pcts['P3'] ? round($pcts['P3'], 1) : '');
-            $sheet->setCellValueByColumnAndRow(6, $row, $pcts['P4'] ? round($pcts['P4'], 1) : '');
-            $sheet->setCellValueByColumnAndRow(7, $row, $avgPct ? round($avgPct, 1) : '');
-            $sheet->setCellValueByColumnAndRow(8, $row, $estado);
+            $sheet->setCellValue([1, $row], $num++);
+            $sheet->setCellValue([2, $row], $m->estudiante->nombre_completo ?? '—');
+            $sheet->setCellValue([3, $row], $pcts['P1'] ? round($pcts['P1'], 1) : '');
+            $sheet->setCellValue([4, $row], $pcts['P2'] ? round($pcts['P2'], 1) : '');
+            $sheet->setCellValue([5, $row], $pcts['P3'] ? round($pcts['P3'], 1) : '');
+            $sheet->setCellValue([6, $row], $pcts['P4'] ? round($pcts['P4'], 1) : '');
+            $sheet->setCellValue([7, $row], $avgPct ? round($avgPct, 1) : '');
+            $sheet->setCellValue([8, $row], $estado);
 
             $row++;
         }
 
         foreach (range(1, 8) as $c) {
-            $sheet->getColumnDimensionByColumn($c)->setAutoSize(true);
+            $sheet->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c))->setAutoSize(true);
         }
         $sheet->freezePane('C3');
 

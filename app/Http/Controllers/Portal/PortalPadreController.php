@@ -772,11 +772,11 @@ class PortalPadreController extends Controller
             $prom = [];
             foreach ($periodos as $p) {
                 $nota = $calificaciones->get($p->id)?->firstWhere('asignacion_id', $asigId)?->nota_final;
-                $ws->setCellValueByColumnAndRow($col + 1, $row, $nota ?? '');
+                $ws->setCellValue([$col + 1, $row], $nota ?? '');
                 if ($nota !== null) $prom[] = $nota;
                 $col++;
             }
-            $ws->setCellValueByColumnAndRow($col + 1, $row, count($prom) ? round(array_sum($prom) / count($prom), 1) : '');
+            $ws->setCellValue([$col + 1, $row], count($prom) ? round(array_sum($prom) / count($prom), 1) : '');
             if ($row % 2 === 0) {
                 $ws->getStyle("A{$row}:{$lastCol}{$row}")->getFill()
                     ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('f0f6ff');
@@ -786,7 +786,7 @@ class PortalPadreController extends Controller
 
         foreach ($calAcad as $ca) {
             $ws->setCellValue("A{$row}", $ca->asignacion?->asignatura?->nombre . ' (Acad.)');
-            $ws->setCellValueByColumnAndRow(count($headers), $row, $ca->nota_final ?? '');
+            $ws->setCellValue([count($headers), $row], $ca->nota_final ?? '');
             $row++;
         }
 

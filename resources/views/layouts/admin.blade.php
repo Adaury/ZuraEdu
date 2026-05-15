@@ -3804,5 +3804,6 @@ window.addEventListener('sge:dashboard-updated', function(e) {
 </script>
 @endauth
 
+@include('partials.pwa-install-prompt')
 </body>
 </html>

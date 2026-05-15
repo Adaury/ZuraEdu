@@ -970,5 +970,6 @@ window._SGE_DEBUG     = {{ config('app.debug') ? 'true' : 'false' }};
 <div id="sge-toast-container" aria-live="polite" aria-atomic="false"
      style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;max-width:340px;"></div>
 
+@include('partials.pwa-install-prompt')
 </body>
 </html>

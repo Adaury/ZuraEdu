@@ -124,9 +124,12 @@ class OnboardingWizardController extends Controller
 
     private function paso3View($tenant)
     {
-        $grados    = Grado::where('tenant_id', $tenant->id)->orderBy('orden')->get();
-        $secciones = Seccion::orderBy('orden')->get();
-        return view('admin.onboarding.paso3', compact('tenant', 'grados', 'secciones'));
+        $grados = Grado::where('tenant_id', $tenant->id)->orderBy('orden')->get();
+
+        // Opciones predefinidas para el wizard; el + permite agregar más
+        $seccionesDefault = ['A', 'B', 'C', 'D'];
+
+        return view('admin.onboarding.paso3', compact('tenant', 'grados', 'seccionesDefault'));
     }
 
     private function guardarPaso3(Request $request, $tenant)

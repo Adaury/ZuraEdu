@@ -221,13 +221,13 @@
                 <div class="gc-secciones" onclick="event.stopPropagation()">
                     <div class="gc-sec-label">Secciones</div>
                     <div class="gc-chips" id="chips-{{ $grado->id }}">
-                        @foreach($secciones as $sec)
+                        @foreach($seccionesDefault as $secNombre)
                         <label class="chip-wrap">
                             <input type="checkbox"
                                    name="secciones[{{ $grado->id }}][]"
-                                   value="{{ $sec->nombre }}"
+                                   value="{{ $secNombre }}"
                                    {{ $loop->first ? 'checked' : '' }}>
-                            <span class="chip">{{ $sec->nombre }}</span>
+                            <span class="chip">{{ $secNombre }}</span>
                         </label>
                         @endforeach
 

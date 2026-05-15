@@ -66,8 +66,12 @@ class SupportSession extends Model
             'visitor_email'   => $this->visitor_email,
             'visitor_telefono'=> $this->visitor_telefono,
             'status'          => $this->status,
+            'atendido_por_nombre' => $this->agente?->name,
             'ultimo_mensaje'  => $this->ultimo_mensaje_at?->diffForHumans() ?? 'ahora',
-            'sin_leer'        => $this->mensajes()->where('origen', 'visitor')->where('leido', false)->count(),
+            // Usa withCount si ya fue precargado; evita N+1
+            'sin_leer'        => isset($this->sin_leer)
+                                    ? (int) $this->sin_leer
+                                    : $this->mensajes()->where('origen', 'visitor')->where('leido', false)->count(),
         ];
     }
 }

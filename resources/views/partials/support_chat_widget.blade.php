@@ -173,13 +173,33 @@
         appendBubble({ origen: 'visitor', mensaje: msg, hora: now() });
 
         try {
-            await fetch(_URL_SEND(_token), {
+            const res = await fetch(_URL_SEND(_token), {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': _CSRF, 'Accept': 'application/json' },
                 body:    JSON.stringify({ mensaje: msg }),
             });
+            if (res.status === 404) {
+                // Sesión cerrada/no encontrada
+                showClosedNotice();
+            }
         } catch {}
     };
+
+    function showClosedNotice() {
+        const input = document.getElementById('sc-msg-input');
+        const btn   = input?.nextElementSibling;
+        if (input) { input.disabled = true; input.placeholder = 'Esta conversación fue cerrada.'; }
+        if (btn)   btn.disabled = true;
+        appendBubble({
+            origen: 'admin',
+            mensaje: 'Esta conversación ha sido marcada como resuelta. Si necesitas más ayuda, recarga la página para iniciar una nueva.',
+            hora: now(),
+            user_name: 'Soporte',
+        });
+        // Limpiar token para forzar nueva sesión en próxima visita
+        localStorage.removeItem('sc_token');
+        _token = null;
+    }
 
     // ── Cargar historial al abrir ─────────────────────────────────────────
     async function loadMessages() {
@@ -187,17 +207,49 @@
         document.getElementById('sc-form-msg').style.display = 'flex';
         try {
             const res  = await fetch(_URL_MSGS(_token), { headers: { 'Accept': 'application/json' } });
+            if (res.status === 404) { resetSession(); return; }
             const msgs = await res.json();
             if (!res.ok) { resetSession(); return; }
+
             const body = document.getElementById('sc-body');
             // Limpiar el mensaje de bienvenida si hay historial
             if (msgs.length) body.querySelectorAll('.sc-bubble.admin, .sc-label').forEach(el => {
                 if (el.closest('#sc-body')?.children.length <= 2) el.parentElement?.remove();
             });
+            // Track de cuántos mensajes ya están renderizados para el polling
+            _renderedMsgIds = new Set(msgs.map(m => m.id));
             msgs.forEach(m => appendBubble(m, false));
             scrollBottom();
             subscribeEcho();
+            startPolling();
         } catch { resetSession(); }
+    }
+
+    // ── Polling de fallback (cuando Reverb no está disponible) ────────────
+    let _pollInterval  = null;
+    let _renderedMsgIds = new Set();
+
+    function startPolling() {
+        if (_pollInterval) return; // ya corriendo
+        _pollInterval = setInterval(pollNewMessages, 8000);
+    }
+
+    async function pollNewMessages() {
+        if (!_token) { clearInterval(_pollInterval); _pollInterval = null; return; }
+        // Si Echo está conectado y escuchando, no hace falta polling
+        if (_echoSub && window.Echo?.connector?.socket?.readyState === 1) return;
+        try {
+            const res  = await fetch(_URL_MSGS(_token), { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) return;
+            const msgs = await res.json();
+            msgs.forEach(m => {
+                if (!_renderedMsgIds.has(m.id)) {
+                    _renderedMsgIds.add(m.id);
+                    appendBubble(m, true);
+                    if (!_open) incrementBadge();
+                }
+            });
+        } catch {}
     }
 
     // ── Suscribirse a respuestas del admin vía Echo/Reverb ────────────────
@@ -207,6 +259,8 @@
             _echoSub = window.Echo
                 .channel(`support.${_token}`)
                 .listen('.admin.reply', (data) => {
+                    const tempId = `echo_${Date.now()}`;
+                    _renderedMsgIds.add(tempId); // no bloquear el mismo mensaje del polling
                     appendBubble({ origen: 'admin', mensaje: data.mensaje, hora: data.hora, user_name: data.admin_nombre });
                     if (!_open) incrementBadge();
                 });

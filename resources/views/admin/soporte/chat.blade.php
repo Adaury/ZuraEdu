@@ -2,58 +2,144 @@
 @section('title', 'Chat de Soporte')
 
 @section('content')
-<div class="d-flex h-100" style="min-height:calc(100vh - 120px);gap:0;">
 
-    {{-- ── Panel izquierdo: lista de sesiones ──────────────────────────── --}}
-    <div id="sc-sessions-panel" style="width:300px;min-width:260px;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;background:#fff;">
-        <div style="padding:1rem;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
-            <h6 class="mb-0 fw-bold" style="font-size:.9rem;"><i class="bi bi-headset me-2 text-primary"></i>Chats activos</h6>
-            <span id="sc-total-badge" class="badge bg-primary rounded-pill" style="display:none;"></span>
+<style>
+/* ── Layout ─────────────────────────────────────────────────────────── */
+#sc-wrap { display:flex; height:calc(100vh - 110px); gap:0; background:#fff; border-radius:1rem; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,.07); border:1px solid #e2e8f0; }
+
+/* ── Panel izquierdo ─────────────────────────────────────────────────── */
+#sc-left { width:300px; min-width:260px; display:flex; flex-direction:column; border-right:1px solid #e2e8f0; background:#fff; }
+#sc-left-header { padding:.9rem 1rem .6rem; border-bottom:1px solid #e2e8f0; }
+#sc-left-title { font-size:.88rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:.45rem; margin-bottom:.6rem; }
+.sc-dot { width:8px; height:8px; background:#22c55e; border-radius:50%; animation:scPulse 2s infinite; }
+
+/* Tabs */
+#sc-tabs { display:flex; gap:.25rem; }
+.sc-tab { flex:1; padding:.28rem 0; font-size:.72rem; font-weight:600; border:1px solid #e2e8f0; border-radius:.5rem; background:#f8fafc; color:#64748b; cursor:pointer; transition:all .15s; text-align:center; }
+.sc-tab.active { background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
+.sc-tab .sc-tab-count { background:rgba(255,255,255,.25); border-radius:99px; padding:0 5px; font-size:.65rem; margin-left:.2rem; }
+.sc-tab:not(.active) .sc-tab-count { background:#e2e8f0; color:#475569; }
+
+/* Buscador */
+#sc-search-wrap { padding:.45rem .7rem; border-bottom:1px solid #f1f5f9; }
+
+/* Lista */
+#sc-list { flex:1; overflow-y:auto; padding:.35rem .45rem; }
+.sc-card { padding:.6rem .7rem; border-radius:.6rem; margin-bottom:.25rem; cursor:pointer; border:1px solid transparent; transition:background .12s, border-color .12s; }
+.sc-card:hover { background:#f8fafc; }
+.sc-card.active { background:#eff6ff; border-color:#bfdbfe; }
+.sc-card-name { font-size:.82rem; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sc-card-sub { font-size:.67rem; color:#94a3b8; margin-top:.1rem; display:flex; align-items:center; gap:.3rem; }
+.sc-status-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.sc-status-open { background:#22c55e; }
+.sc-status-resolved { background:#94a3b8; }
+.sc-unread { background:#ef4444; color:#fff; border-radius:99px; font-size:.6rem; font-weight:700; min-width:17px; height:17px; display:flex; align-items:center; justify-content:center; padding:0 4px; flex-shrink:0; }
+
+/* ── Panel derecho ───────────────────────────────────────────────────── */
+#sc-right { flex:1; display:flex; flex-direction:column; background:#f8fafc; min-width:0; }
+#sc-empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#94a3b8; }
+#sc-conv { display:none; flex:1; flex-direction:column; }
+
+/* Cabecera conversación */
+#sc-conv-header { padding:.75rem 1.1rem; border-bottom:1px solid #e2e8f0; background:#fff; display:flex; align-items:center; gap:.65rem; }
+#sc-conv-avatar { width:36px; height:36px; background:#dbeafe; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+#sc-conv-name { font-weight:700; font-size:.875rem; color:#1e293b; }
+#sc-conv-sub { font-size:.72rem; color:#64748b; }
+#sc-resolved-banner { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:.5rem; padding:.3rem .7rem; font-size:.75rem; color:#166534; font-weight:600; display:none; }
+
+/* Mensajes */
+#sc-msgs { flex:1; overflow-y:auto; padding:1rem; display:flex; flex-direction:column; gap:.55rem; }
+.sc-msg-wrap { display:flex; flex-direction:column; }
+.sc-msg-wrap.admin { align-items:flex-end; }
+.sc-msg-wrap.visitor { align-items:flex-start; }
+.sc-msg-sender { font-size:.63rem; color:#64748b; font-weight:600; margin-bottom:2px; }
+.sc-bubble { max-width:74%; padding:.42rem .8rem; font-size:.83rem; line-height:1.48; word-break:break-word; box-shadow:0 1px 3px rgba(0,0,0,.07); }
+.sc-bubble.admin { background:#3b82f6; color:#fff; border-radius:14px 14px 4px 14px; }
+.sc-bubble.visitor { background:#fff; color:#1e293b; border-radius:14px 14px 14px 4px; }
+.sc-msg-time { font-size:.61rem; color:#94a3b8; margin-top:3px; }
+
+/* Input area */
+#sc-input-area { padding:.65rem .9rem; border-top:1px solid #e2e8f0; background:#fff; display:flex; gap:.45rem; align-items:center; }
+#sc-reply { flex:1; border:1px solid #e2e8f0; border-radius:10px; padding:.45rem .8rem; font-size:.85rem; outline:none; resize:none; height:38px; line-height:1.4; transition:border-color .15s; }
+#sc-reply:focus { border-color:#3b82f6; }
+#sc-reply:disabled { background:#f1f5f9; cursor:not-allowed; }
+#sc-send-btn { background:#3b82f6; color:#fff; border:none; border-radius:10px; width:38px; height:38px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:background .15s; }
+#sc-send-btn:hover:not(:disabled) { background:#2563eb; }
+#sc-send-btn:disabled { background:#cbd5e1; cursor:not-allowed; }
+#sc-resolved-notice { flex:1; text-align:center; font-size:.8rem; color:#64748b; padding:.45rem; }
+
+@keyframes scPulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+</style>
+
+<div id="sc-wrap">
+
+    {{-- ── Izquierda ─────────────────────────────────────────────────────── --}}
+    <div id="sc-left">
+        <div id="sc-left-header">
+            <div id="sc-left-title">
+                <i class="bi bi-headset text-primary"></i>
+                Chat de Soporte
+                <div class="sc-dot ms-auto"></div>
+            </div>
+            <div id="sc-tabs">
+                <button class="sc-tab active" data-status="open"     onclick="switchTab('open')">
+                    Abiertas <span class="sc-tab-count" id="tab-count-open">0</span>
+                </button>
+                <button class="sc-tab"         data-status="resolved" onclick="switchTab('resolved')">
+                    Resueltas <span class="sc-tab-count" id="tab-count-resolved">0</span>
+                </button>
+            </div>
         </div>
-        <div style="padding:.5rem;border-bottom:1px solid #f1f5f9;">
-            <input id="sc-search" type="text" placeholder="Buscar visitante..." class="form-control form-control-sm"
-                   oninput="scFilterSessions(this.value)">
+
+        <div id="sc-search-wrap">
+            <input id="sc-search" type="search" class="form-control form-control-sm"
+                   placeholder="Buscar visitante..."
+                   oninput="filterCards(this.value)">
         </div>
-        <div id="sc-sessions-list" style="flex:1;overflow-y:auto;padding:.4rem;">
-            <div class="text-center text-muted small py-4" id="sc-sessions-empty">
-                <i class="bi bi-chat-square-text" style="font-size:2rem;display:block;opacity:.3;margin-bottom:.5rem;"></i>
-                Sin conversaciones activas
+
+        <div id="sc-list">
+            <div id="sc-list-empty" class="text-center text-muted small py-4">
+                <i class="bi bi-chat-square-text" style="font-size:2rem;opacity:.25;display:block;margin-bottom:.4rem;"></i>
+                Sin conversaciones
             </div>
         </div>
     </div>
 
-    {{-- ── Panel derecho: conversación activa ──────────────────────────── --}}
-    <div id="sc-chat-area" style="flex:1;display:flex;flex-direction:column;background:#f8fafc;">
+    {{-- ── Derecha ────────────────────────────────────────────────────────── --}}
+    <div id="sc-right">
 
         {{-- Estado vacío --}}
-        <div id="sc-chat-empty" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#94a3b8;">
-            <i class="bi bi-chat-dots" style="font-size:3rem;margin-bottom:.75rem;"></i>
-            <p class="mb-0 fw-500" style="font-size:.9rem;">Selecciona una conversación</p>
+        <div id="sc-empty">
+            <i class="bi bi-chat-dots" style="font-size:3rem;margin-bottom:.75rem;opacity:.25;"></i>
+            <p class="mb-0" style="font-size:.88rem;">Selecciona una conversación</p>
         </div>
 
-        {{-- Conversación activa (oculta al inicio) --}}
-        <div id="sc-active-chat" style="display:none;flex:1;flex-direction:column;">
-            <div id="sc-chat-header" style="padding:.85rem 1.2rem;border-bottom:1px solid #e2e8f0;background:#fff;display:flex;align-items:center;gap:.75rem;">
-                <div style="width:38px;height:38px;background:#dbeafe;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        {{-- Conversación activa --}}
+        <div id="sc-conv">
+            <div id="sc-conv-header">
+                <div id="sc-conv-avatar">
                     <i class="bi bi-person-fill" style="color:#3b82f6;font-size:1.1rem;"></i>
                 </div>
-                <div style="flex:1;">
-                    <div id="sc-visitor-name" class="fw-bold" style="font-size:.88rem;"></div>
-                    <div id="sc-visitor-info" style="font-size:.72rem;color:#64748b;"></div>
+                <div style="flex:1;min-width:0;">
+                    <div id="sc-conv-name">—</div>
+                    <div id="sc-conv-sub"></div>
                 </div>
-                <button onclick="scCloseSession()" class="btn btn-sm btn-outline-success">
+                <div id="sc-resolved-banner">
+                    <i class="bi bi-check2-all me-1"></i>Resuelta
+                </div>
+                <button id="sc-close-btn" onclick="closeSession()"
+                        class="btn btn-sm btn-outline-success ms-2"
+                        style="font-size:.78rem;">
                     <i class="bi bi-check2-all me-1"></i>Resolver
                 </button>
             </div>
 
-            <div id="sc-messages-area" style="flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.6rem;max-height:calc(100vh - 280px);">
-            </div>
+            <div id="sc-msgs"></div>
 
-            <div style="padding:.7rem 1rem;border-top:1px solid #e2e8f0;background:#fff;display:flex;gap:.5rem;align-items:center;">
-                <input id="sc-reply-input" type="text" placeholder="Escribe tu respuesta..." maxlength="2000" autocomplete="off"
-                       class="form-control form-control-sm" style="border-radius:10px;"
-                       onkeydown="if(event.key==='Enter') scReply()">
-                <button onclick="scReply()" class="btn btn-primary btn-sm" style="border-radius:10px;width:38px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;">
+            <div id="sc-input-area">
+                <input id="sc-reply" type="text" placeholder="Escribe tu respuesta…" maxlength="2000" autocomplete="off"
+                       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendReply();}">
+                <button id="sc-send-btn" onclick="sendReply()">
                     <i class="bi bi-send-fill" style="font-size:.8rem;"></i>
                 </button>
             </div>
@@ -64,109 +150,161 @@
 
 @push('scripts')
 <script>
-const _SC_SESSIONS_URL = '{{ route('admin.soporte.chat.sessions') }}';
-const _SC_MSGS_URL     = (id) => `/admin/soporte/chat/${id}/mensajes`;
-const _SC_REPLY_URL    = (id) => `/admin/soporte/chat/${id}/reply`;
-const _SC_CLOSE_URL    = (id) => `/admin/soporte/chat/${id}/close`;
-const _SC_CSRF         = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+// ── Estado global ──────────────────────────────────────────────────────────
+const _SESSIONS_URL = (st) => `{{ route('admin.soporte.chat.sessions') }}?status=${st}`;
+const _MSGS_URL     = (id) => `/admin/soporte/chat/${id}/mensajes`;
+const _REPLY_URL    = (id) => `/admin/soporte/chat/${id}/reply`;
+const _CLOSE_URL    = (id) => `/admin/soporte/chat/${id}/close`;
+const _CSRF         = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
-let _sessions        = [];
-let _activeSessionId = null;
-let _activeToken     = null;
-let _echoSub         = null;
-let _pollTimer       = null;
+let _sessions      = [];
+let _currentTab    = 'open';
+let _activeId      = null;
+let _activeStatus  = null;
+let _pollTimer     = null;
+let _echoSub       = null;
+let _notifyEnabled = false;
 
-// ── Inicializar ───────────────────────────────────────────────────────────
-(async function init() {
-    await loadSessions();
-    subscribeSupport();
-    _pollTimer = setInterval(loadSessions, 15000);
-})();
-
-// ── Cargar sesiones ───────────────────────────────────────────────────────
-async function loadSessions() {
+// Audio beep vía Web Audio API (sin archivo externo)
+function playBeep() {
     try {
-        const res  = await fetch(_SC_SESSIONS_URL, { headers: { Accept: 'application/json' } });
-        _sessions  = await res.json();
-        renderSessions(_sessions);
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine'; osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(.18, ctx.currentTime + .02);
+        gain.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime + .4);
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + .4);
     } catch {}
 }
 
-function renderSessions(list) {
-    const container = document.getElementById('sc-sessions-list');
-    const empty     = document.getElementById('sc-sessions-empty');
-    const badge     = document.getElementById('sc-total-badge');
-    const sinLeer   = list.reduce((a, s) => a + (s.sin_leer ?? 0), 0);
-
-    if (!list.length) {
-        empty.style.display = 'block';
-        badge.style.display = 'none';
-        container.querySelectorAll('.sc-session-card').forEach(el => el.remove());
-        return;
+// ── Init ───────────────────────────────────────────────────────────────────
+(async function init() {
+    await loadSessions();
+    subscribeEcho();
+    _pollTimer = setInterval(async () => {
+        const prevOpenCount = _sessions.filter(s => s.status === 'open').length;
+        await loadSessions(false);
+        const newOpenCount = _sessions.filter(s => s.status === 'open').length;
+        if (newOpenCount > prevOpenCount) playBeep();
+    }, 12000);
+    // Habilitar notificaciones del navegador
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(p => { _notifyEnabled = p === 'granted'; });
+    } else {
+        _notifyEnabled = Notification.permission === 'granted';
     }
-    empty.style.display = 'none';
-    badge.textContent   = sinLeer > 0 ? String(sinLeer) : '';
-    badge.style.display = sinLeer > 0 ? '' : 'none';
+})();
 
-    // Mantener cards existentes, agregar/actualizar
-    const existingIds = new Set([...container.querySelectorAll('.sc-session-card')].map(el => el.dataset.id));
-    list.forEach(s => {
-        let card = container.querySelector(`.sc-session-card[data-id="${s.id}"]`);
+// ── Cargar sesiones ────────────────────────────────────────────────────────
+async function loadSessions(renderTabCounts = true) {
+    try {
+        const [resOpen, resResolved] = await Promise.all([
+            fetch(_SESSIONS_URL('open'),     { headers: { Accept: 'application/json' } }),
+            fetch(_SESSIONS_URL('resolved'), { headers: { Accept: 'application/json' } }),
+        ]);
+        const open     = await resOpen.json();
+        const resolved = await resResolved.json();
+        _sessions = [...open.map(s => ({...s, status:'open'})), ...resolved.map(s => ({...s, status:'resolved'}))];
+
+        if (renderTabCounts) {
+            document.getElementById('tab-count-open').textContent     = open.length;
+            document.getElementById('tab-count-resolved').textContent = resolved.length;
+        }
+
+        renderList();
+    } catch {}
+}
+
+// ── Cambiar tab ────────────────────────────────────────────────────────────
+function switchTab(status) {
+    _currentTab = status;
+    document.querySelectorAll('.sc-tab').forEach(t => t.classList.toggle('active', t.dataset.status === status));
+    renderList();
+}
+
+// ── Renderizar lista ───────────────────────────────────────────────────────
+function renderList(filter = '') {
+    const list    = document.getElementById('sc-list');
+    const empty   = document.getElementById('sc-list-empty');
+    const visible = _sessions.filter(s => {
+        if (s.status !== _currentTab) return false;
+        if (!filter) return true;
+        const q = filter.toLowerCase();
+        return s.visitor_nombre.toLowerCase().includes(q)
+            || (s.visitor_email ?? '').toLowerCase().includes(q);
+    });
+
+    empty.style.display = visible.length ? 'none' : 'block';
+
+    // Remover cards que ya no aplican
+    list.querySelectorAll('.sc-card').forEach(el => {
+        if (!visible.find(s => String(s.id) === el.dataset.id)) el.remove();
+    });
+
+    visible.forEach(s => {
+        let card = list.querySelector(`.sc-card[data-id="${s.id}"]`);
         if (!card) {
             card = document.createElement('div');
-            card.className = 'sc-session-card';
+            card.className = 'sc-card';
             card.dataset.id = s.id;
-            container.appendChild(card);
+            list.appendChild(card);
         }
+        card.classList.toggle('active', _activeId === s.id);
         card.onclick = () => openSession(s);
-        card.style.cssText = `cursor:pointer;padding:.65rem .75rem;border-radius:10px;margin-bottom:.3rem;transition:background .15s;background:${_activeSessionId === s.id ? '#eff6ff' : '#f8fafc'};border:1px solid ${_activeSessionId === s.id ? '#bfdbfe' : 'transparent'};`;
+
+        const unreadHtml = s.sin_leer > 0
+            ? `<span class="sc-unread ms-auto">${s.sin_leer}</span>` : '';
+        const agentHtml = s.status === 'resolved' && s.atendido_por_nombre
+            ? `<i class="bi bi-person-check-fill me-1" style="font-size:.6rem;"></i>${esc(s.atendido_por_nombre)}`
+            : s.ultimo_mensaje;
+
         card.innerHTML = `
             <div style="display:flex;align-items:center;gap:.5rem;">
-                <div style="width:32px;height:32px;background:#dbeafe;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="bi bi-person-fill" style="color:#3b82f6;font-size:.85rem;"></i>
-                </div>
+                <div class="sc-status-dot sc-status-${s.status}"></div>
                 <div style="flex:1;min-width:0;">
-                    <div style="font-weight:600;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(s.visitor_nombre)}</div>
-                    <div style="font-size:.68rem;color:#64748b;">${s.ultimo_mensaje}</div>
+                    <div class="sc-card-name">${esc(s.visitor_nombre)}</div>
+                    <div class="sc-card-sub">${agentHtml}${unreadHtml}</div>
                 </div>
-                ${s.sin_leer > 0 ? `<span style="background:#ef4444;color:#fff;border-radius:99px;font-size:.6rem;font-weight:700;min-width:17px;height:17px;display:flex;align-items:center;justify-content:center;padding:0 4px;">${s.sin_leer}</span>` : ''}
             </div>`;
     });
-    // Remover cards que ya no existen
-    container.querySelectorAll('.sc-session-card').forEach(el => {
-        if (!list.find(s => String(s.id) === el.dataset.id)) el.remove();
-    });
 }
 
-// ── Abrir sesión ──────────────────────────────────────────────────────────
-async function openSession(s) {
-    _activeSessionId = s.id;
-    _activeToken     = s.token;
+function filterCards(q) { renderList(q); }
 
-    document.getElementById('sc-chat-empty').style.display  = 'none';
-    document.getElementById('sc-active-chat').style.display = 'flex';
-    document.getElementById('sc-visitor-name').textContent  = s.visitor_nombre;
-    document.getElementById('sc-visitor-info').textContent  =
+// ── Abrir sesión ───────────────────────────────────────────────────────────
+async function openSession(s) {
+    _activeId     = s.id;
+    _activeStatus = s.status;
+
+    document.getElementById('sc-empty').style.display  = 'none';
+    document.getElementById('sc-conv').style.display   = 'flex';
+    document.getElementById('sc-conv-name').textContent = s.visitor_nombre;
+    document.getElementById('sc-conv-sub').textContent  =
         [s.visitor_email, s.visitor_telefono].filter(Boolean).join(' · ') || 'Sin contacto adicional';
 
-    // Resaltar card activa
-    document.querySelectorAll('.sc-session-card').forEach(c => {
-        const active = c.dataset.id === String(s.id);
-        c.style.background = active ? '#eff6ff' : '#f8fafc';
-        c.style.border     = `1px solid ${active ? '#bfdbfe' : 'transparent'}`;
-    });
+    const isResolved = s.status === 'resolved';
+    document.getElementById('sc-resolved-banner').style.display = isResolved ? '' : 'none';
+    document.getElementById('sc-close-btn').style.display       = isResolved ? 'none' : '';
+    const replyInput = document.getElementById('sc-reply');
+    const sendBtn    = document.getElementById('sc-send-btn');
+    replyInput.disabled = isResolved;
+    sendBtn.disabled    = isResolved;
+    replyInput.placeholder = isResolved ? 'Sesión cerrada — solo lectura' : 'Escribe tu respuesta…';
 
+    renderList(document.getElementById('sc-search').value);
     await loadMessages(s.id);
-    subscribeVisitorEcho(s.token);
-    document.getElementById('sc-reply-input')?.focus();
+    if (!isResolved) replyInput.focus();
 }
 
-// ── Cargar mensajes de sesión ─────────────────────────────────────────────
+// ── Cargar mensajes ────────────────────────────────────────────────────────
 async function loadMessages(sessionId) {
     try {
-        const res  = await fetch(_SC_MSGS_URL(sessionId), { headers: { Accept: 'application/json' } });
+        const res  = await fetch(_MSGS_URL(sessionId), { headers: { Accept: 'application/json' } });
         const msgs = await res.json();
-        const area = document.getElementById('sc-messages-area');
+        const area = document.getElementById('sc-msgs');
         area.innerHTML = '';
         msgs.forEach(m => appendMsg(m, false));
         area.scrollTop = area.scrollHeight;
@@ -174,87 +312,94 @@ async function loadMessages(sessionId) {
 }
 
 function appendMsg(m, scroll = true) {
-    const area    = document.getElementById('sc-messages-area');
+    const area    = document.getElementById('sc-msgs');
     const isAdmin = m.origen === 'admin';
     const wrap    = document.createElement('div');
-    wrap.style.cssText = `display:flex;flex-direction:column;align-items:${isAdmin ? 'flex-end' : 'flex-start'};gap:2px;`;
+    wrap.className = `sc-msg-wrap ${isAdmin ? 'admin' : 'visitor'}`;
     wrap.innerHTML = `
-        ${!isAdmin ? `<span style="font-size:.65rem;color:#64748b;font-weight:600;">${escHtml(m.user_name ?? '')}</span>` : ''}
-        <div style="max-width:75%;background:${isAdmin ? '#3b82f6' : '#fff'};color:${isAdmin ? '#fff' : '#1e293b'};
-                    border-radius:${isAdmin ? '14px 14px 4px 14px' : '14px 14px 14px 4px'};
-                    padding:.45rem .8rem;font-size:.83rem;line-height:1.45;
-                    box-shadow:0 1px 4px rgba(0,0,0,.08);">${escHtml(m.mensaje)}</div>
-        <span style="font-size:.62rem;color:#94a3b8;">${m.hora ?? ''}</span>`;
+        <div class="sc-msg-sender">${esc(m.user_name ?? (isAdmin ? 'Soporte' : ''))}</div>
+        <div class="sc-bubble ${isAdmin ? 'admin' : 'visitor'}">${esc(m.mensaje)}</div>
+        <div class="sc-msg-time">${m.hora ?? ''}</div>`;
     area.appendChild(wrap);
     if (scroll) area.scrollTop = area.scrollHeight;
 }
 
-// ── Responder ─────────────────────────────────────────────────────────────
-async function scReply() {
-    if (!_activeSessionId) return;
-    const input = document.getElementById('sc-reply-input');
+// ── Enviar respuesta ───────────────────────────────────────────────────────
+async function sendReply() {
+    if (!_activeId || _activeStatus === 'resolved') return;
+    const input = document.getElementById('sc-reply');
     const msg   = input.value.trim();
     if (!msg) return;
     input.value = '';
 
     try {
-        const res  = await fetch(_SC_REPLY_URL(_activeSessionId), {
+        const res  = await fetch(_REPLY_URL(_activeId), {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': _SC_CSRF, Accept: 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': _CSRF, Accept: 'application/json' },
             body:    JSON.stringify({ mensaje: msg }),
         });
+        if (res.status === 422) {
+            const err = await res.json();
+            alert(err.message ?? 'No se pudo enviar.');
+            return;
+        }
         const data = await res.json();
         appendMsg(data, true);
     } catch {}
 }
 
-// ── Cerrar/resolver sesión ────────────────────────────────────────────────
-async function scCloseSession() {
-    if (!_activeSessionId) return;
+// ── Cerrar sesión ──────────────────────────────────────────────────────────
+async function closeSession() {
+    if (!_activeId) return;
+    if (!confirm('¿Marcar esta conversación como resuelta?')) return;
     try {
-        await fetch(_SC_CLOSE_URL(_activeSessionId), {
+        await fetch(_CLOSE_URL(_activeId), {
             method:  'PATCH',
-            headers: { 'X-CSRF-TOKEN': _SC_CSRF, Accept: 'application/json' },
+            headers: { 'X-CSRF-TOKEN': _CSRF, Accept: 'application/json' },
         });
-        _activeSessionId = null;
-        _activeToken     = null;
-        document.getElementById('sc-chat-empty').style.display  = 'flex';
-        document.getElementById('sc-active-chat').style.display = 'none';
+        _activeStatus = 'resolved';
+        document.getElementById('sc-resolved-banner').style.display = '';
+        document.getElementById('sc-close-btn').style.display = 'none';
+        const replyInput = document.getElementById('sc-reply');
+        replyInput.disabled = true;
+        replyInput.placeholder = 'Sesión cerrada — solo lectura';
+        document.getElementById('sc-send-btn').disabled = true;
         await loadSessions();
     } catch {}
 }
 
-// ── Echo: admin escucha mensajes de visitantes ────────────────────────────
-function subscribeSupport() {
+// ── Echo — escuchar mensajes entrantes ────────────────────────────────────
+function subscribeEcho() {
     if (!window.Echo) return;
     try {
-        const tenantId = {{ tenant_id() ?? 0 }};
-        window.Echo
-            .private(`private-tenant.${tenantId}.support`)
-            .listen('.support.message', (data) => {
-                loadSessions();
-                if (_activeSessionId === data.session_id) {
-                    appendMsg({ origen: 'visitor', mensaje: data.mensaje, hora: data.hora, user_name: data.visitor_nombre });
+        const tid = {{ tenant_id() ?? 0 }};
+        _echoSub = window.Echo
+            .private(`private-tenant.${tid}.support`)
+            .listen('.support.message', async (data) => {
+                // Recargar lista (actualiza sin_leer)
+                await loadSessions(true);
+                // Si la sesión activa recibió el mensaje, agregarlo
+                if (_activeId === data.session_id) {
+                    appendMsg({
+                        origen:    'visitor',
+                        mensaje:   data.mensaje,
+                        hora:      data.hora,
+                        user_name: data.visitor_nombre,
+                    });
+                }
+                // Notificación
+                playBeep();
+                if (_notifyEnabled && document.hidden) {
+                    new Notification('Nuevo mensaje de soporte', {
+                        body: `${data.visitor_nombre}: ${data.mensaje.substring(0, 80)}`,
+                        icon: '/favicon.ico',
+                    });
                 }
             });
     } catch {}
 }
 
-// ── Echo: admin escucha respuestas al canal del visitor ───────────────────
-function subscribeVisitorEcho(token) {
-    // No necesitamos suscribir nada aquí desde el admin; ya escuchamos en support channel
-}
-
-// ── Filtrar sesiones ──────────────────────────────────────────────────────
-function scFilterSessions(q) {
-    const filtered = q
-        ? _sessions.filter(s => s.visitor_nombre.toLowerCase().includes(q.toLowerCase())
-            || (s.visitor_email ?? '').toLowerCase().includes(q.toLowerCase()))
-        : _sessions;
-    renderSessions(filtered);
-}
-
-function escHtml(str) {
+function esc(str) {
     const d = document.createElement('div');
     d.appendChild(document.createTextNode(str ?? ''));
     return d.innerHTML;

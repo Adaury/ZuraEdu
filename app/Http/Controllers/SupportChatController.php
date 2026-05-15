@@ -97,17 +97,23 @@ class SupportChatController extends Controller
         );
     }
 
-    // ── Admin: listar sesiones activas ────────────────────────────────────
+    // ── Admin: listar sesiones ────────────────────────────────────────────
 
-    public function adminIndex()
+    public function adminIndex(\Illuminate\Http\Request $request)
     {
         $tenantId = tenant_id() ?? 0;
+        $status   = $request->query('status', 'open'); // open | resolved | all
 
-        $sesiones = SupportSession::delTenant($tenantId)
+        $query = SupportSession::delTenant($tenantId)
+            ->withCount(['mensajes as sin_leer' => fn($q) => $q->where('origen', 'visitor')->where('leido', false)])
             ->orderByDesc('ultimo_mensaje_at')
-            ->limit(50)
-            ->get()
-            ->map->toCard();
+            ->limit(60);
+
+        if ($status !== 'all') {
+            $query->where('status', $status === 'resolved' ? 'resolved' : 'open');
+        }
+
+        $sesiones = $query->get()->map->toCard();
 
         return response()->json($sesiones);
     }
@@ -130,7 +136,7 @@ class SupportChatController extends Controller
     public function adminReply(Request $request, SupportSession $session)
     {
         abort_unless((tenant_id() ?? 0) === (int) $session->tenant_id, 403);
-        abort_if($session->status === 'closed', 422, 'La conversación está cerrada.');
+        abort_if(in_array($session->status, ['closed', 'resolved']), 422, 'La conversación ya está cerrada.');
 
         $data = $request->validate(['mensaje' => 'required|string|max:2000']);
 

@@ -1,5 +1,10 @@
 @extends('layouts.portal')
 @section('title', $claseVirtual->nombre)
+
+@section('sidebar')
+    @include('portal.estudiante._sidebar', ['activeKey' => 'classroom'])
+@endsection
+
 @section('content')
 
 @php

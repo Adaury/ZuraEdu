@@ -2,6 +2,10 @@
 
 @section('title', 'Editar Material')
 
+@section('sidebar')
+    @include('portal.docente._sidebar_clase', ['activeKey' => 'classroom', 'asignacion' => $claseVirtual->asignacion])
+@endsection
+
 @section('content')
 <div class="max-w-2xl mx-auto space-y-6" x-data="{ tipo: '{{ old('tipo', $material->tipo) }}' }">
 

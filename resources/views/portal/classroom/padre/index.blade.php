@@ -1,6 +1,10 @@
 @extends('layouts.portal')
 @section('title', 'Classroom de '.$estudiante->nombre_completo)
 
+@section('sidebar')
+    @include('portal.padre._sidebar', ['activeKey' => 'classroom'])
+@endsection
+
 @section('content')
 <div class="container-fluid px-0">
 

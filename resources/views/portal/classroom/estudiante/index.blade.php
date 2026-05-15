@@ -1,5 +1,10 @@
 @extends('layouts.portal')
 @section('title', 'Mi Classroom')
+
+@section('sidebar')
+    @include('portal.estudiante._sidebar', ['activeKey' => 'classroom'])
+@endsection
+
 @section('content')
 
 <div class="mb-4">

@@ -1,5 +1,10 @@
 @extends('layouts.portal')
 @section('title', 'Quiz — '.$material->titulo)
+
+@section('sidebar')
+    @include('portal.estudiante._sidebar', ['activeKey' => 'classroom'])
+@endsection
+
 @section('content')
 
 @php $color = $claseVirtual->portada_color ?? '#4f46e5'; @endphp

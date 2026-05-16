@@ -195,6 +195,17 @@ Route::prefix('portal/estudiante')->name('portal.estudiante.')->middleware(['aut
         Route::post('/',                                [\App\Http\Controllers\Portal\SolicitudesEstudianteController::class, 'store'])->name('store');
         Route::get('/{solicitud}',                      [\App\Http\Controllers\Portal\SolicitudesEstudianteController::class, 'show'])->name('show');
     });
+    // Evaluaciones Online (estudiante)
+    Route::prefix('evaluaciones')->name('evaluaciones.')->group(function () {
+        Route::get('/',                          [\App\Http\Controllers\Portal\EvaQuizEstudianteController::class, 'index'])->name('index');
+        Route::get('/intento/{intento}',         [\App\Http\Controllers\Portal\EvaQuizEstudianteController::class, 'tomar'])->name('tomar');
+        Route::post('/intento/{intento}/guardar',[\App\Http\Controllers\Portal\EvaQuizEstudianteController::class, 'guardarRespuesta'])->name('guardar');
+        Route::post('/intento/{intento}/enviar', [\App\Http\Controllers\Portal\EvaQuizEstudianteController::class, 'enviar'])->name('enviar');
+        Route::get('/intento/{intento}/resultado',[\App\Http\Controllers\Portal\EvaQuizEstudianteController::class, 'resultado'])->name('resultado');
+        Route::get('/{quiz}',                    [\App\Http\Controllers\Portal\EvaQuizEstudianteController::class, 'show'])->name('show');
+        Route::post('/{quiz}/iniciar',           [\App\Http\Controllers\Portal\EvaQuizEstudianteController::class, 'iniciar'])->name('iniciar');
+    });
+
     Route::get('/calendario',     [PortalEstudianteController::class, 'calendario'])->name('calendario');
     Route::get('/calendario/api', [PortalEstudianteController::class, 'calendarioApi'])->name('calendario.api');
     Route::prefix('classroom')->name('classroom.')->group(function () {
@@ -439,6 +450,19 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::get('/pdf',                     [PlanClaseDocenteController::class, 'planEvaluacionPdf'])->name('pdf');
         Route::get('/aplicar/{periodo}',       [PlanClaseDocenteController::class, 'aplicarNotasPeriodo'])->name('aplicar');
         Route::post('/aplicar/{periodo}',      [PlanClaseDocenteController::class, 'aplicarNotasPeriodoGuardar'])->name('aplicar.guardar');
+    });
+
+    // Evaluaciones Online
+    Route::prefix('/asignacion/{asignacion}/evaluaciones')->name('evaluaciones.')->group(function () {
+        Route::get('/',                             [\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'index'])->name('index');
+        Route::post('/',                            [\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'store'])->name('store');
+        Route::get('/{quiz}',                       [\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'show'])->name('show');
+        Route::put('/{quiz}',                       [\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'update'])->name('update');
+        Route::patch('/{quiz}/publicar',            [\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'togglePublicado'])->name('toggle-publicado');
+        Route::delete('/{quiz}',                    [\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'destroy'])->name('destroy');
+        Route::post('/{quiz}/preguntas',            [\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'storePregunta'])->name('preguntas.store');
+        Route::delete('/{quiz}/preguntas/{pregunta}',[\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'destroyPregunta'])->name('preguntas.destroy');
+        Route::get('/{quiz}/resultados',            [\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'resultados'])->name('resultados');
     });
 
     // Planificaciones (Área Técnica)

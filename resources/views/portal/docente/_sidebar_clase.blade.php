@@ -119,6 +119,11 @@ try {
    class="prt-sidebar-link {{ $ak === 'tareas' ? 'active' : '' }}">
     <i class="bi bi-check2-square"></i>Tareas / Agenda
 </a>
+<a href="{{ route('portal.docente.evaluaciones.index', $asignacion) }}"
+   class="prt-sidebar-link {{ $ak === 'evaluaciones' ? 'active' : '' }}"
+   style="{{ $ak === 'evaluaciones' ? '' : 'color:#6366f1;' }}">
+    <i class="bi bi-patch-question-fill"></i>Evaluaciones Online
+</a>
 @if(isset($asignacion) && $asignacion->area === 'tecnica')
 <a href="{{ route('portal.docente.planificacion.index', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'planificacion' ? 'active' : '' }}">

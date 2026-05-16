@@ -50,6 +50,32 @@
    class="prt-sidebar-link {{ $ak === 'plan-evaluacion' ? 'active' : '' }}">
     <i class="bi bi-bar-chart-steps"></i>Plan de Evaluación
 </a>
+<a href="{{ route('portal.estudiante.evaluaciones.index') }}"
+   class="prt-sidebar-link {{ $ak === 'evaluaciones' ? 'active' : '' }}"
+   style="{{ $ak === 'evaluaciones' ? '' : 'color:#6366f1;' }}">
+    <i class="bi bi-patch-question-fill"></i>Evaluaciones Online
+    @php
+    try {
+        $__euid = auth()->id();
+        $evaDisp = \Illuminate\Support\Facades\Cache::remember("user_{$__euid}_eva_disp", 120, function () {
+            $user = auth()->user();
+            $est  = $user->estudiante ?? null;
+            if (!$est) return 0;
+            $sy   = \App\Models\SchoolYear::actual();
+            $mat  = \App\Models\Matricula::where('estudiante_id', $est->id)->where('estado','activa')
+                ->when($sy, fn($q) => $q->where('school_year_id',$sy->id))->latest()->first();
+            if (!$mat) return 0;
+            $asgIds = \App\Models\Asignacion::where('grupo_id', $mat->grupo_id)->pluck('id');
+            return \App\Models\EvaQuiz::whereIn('asignacion_id', $asgIds)->where('publicado', true)
+                ->whereDoesntHave('intentos', fn($q) => $q->where('matricula_id',$mat->id)->where('estado','finalizado'))
+                ->count();
+        });
+    } catch(\Exception $e){ $evaDisp = 0; }
+    @endphp
+    @if($evaDisp > 0)
+    <span style="background:#6366f1;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $evaDisp }}</span>
+    @endif
+</a>
 
 {{-- ── VIDA ESCOLAR ── --}}
 <div class="prt-sidebar-section mt-2">Vida Escolar</div>

@@ -438,7 +438,7 @@
         </div>
         <div style="padding:1rem 1.25rem;overflow-y:auto;flex:1;">
             <div style="font-size:.77rem;color:#6b7280;margin-bottom:.75rem;" id="comFecha"></div>
-            <div style="font-size:.88rem;color:#374151;line-height:1.7;white-space:pre-line;" id="comCuerpo"></div>
+            <div style="font-size:.88rem;color:#374151;line-height:1.7;" id="comCuerpo" class="comunicado-body"></div>
         </div>
     </div>
 </div>
@@ -446,7 +446,7 @@
 function verComunicado(id, titulo, cuerpo, fecha) {
     document.getElementById('comTitulo').textContent = titulo;
     document.getElementById('comFecha').textContent = fecha;
-    document.getElementById('comCuerpo').textContent = cuerpo.replace(/<[^>]*>/g,'');
+    document.getElementById('comCuerpo').innerHTML = cuerpo;
     document.getElementById('modalComunicado').style.display = 'flex';
 }
 function cerrarComunicado() {

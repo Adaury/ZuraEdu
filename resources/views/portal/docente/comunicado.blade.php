@@ -127,8 +127,8 @@
                     <div style="font-size:.7rem;color:#64748b;margin-top:.1rem;">
                         <i class="bi bi-calendar3 me-1"></i>{{ $com->created_at->format('d/m/Y H:i') }}
                     </div>
-                    <div style="font-size:.78rem;color:#374151;margin-top:.4rem;line-height:1.45;display:none;" id="cuerpo-{{ $com->id }}">
-                        {{ $com->cuerpo }}
+                    <div style="font-size:.78rem;color:#374151;margin-top:.4rem;line-height:1.45;display:none;" id="cuerpo-{{ $com->id }}" class="comunicado-body">
+                        {!! $com->cuerpo !!}
                     </div>
                 </div>
                 <button type="button"

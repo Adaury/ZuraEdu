@@ -24,7 +24,7 @@
 <div class="prt-card" style="margin-bottom:.85rem;">
     <div class="prt-card-body" style="padding:.9rem 1.1rem;">
         <div style="font-size:.9rem;font-weight:700;color:#1e293b;margin-bottom:.3rem;">{{ $com->titulo }}</div>
-        <div style="font-size:.8rem;color:#374151;line-height:1.65;margin-bottom:.5rem;white-space:pre-line;">{{ $com->cuerpo }}</div>
+        <div style="font-size:.8rem;color:#374151;line-height:1.65;margin-bottom:.5rem;" class="comunicado-body">{!! $com->cuerpo !!}</div>
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.3rem;">
             <span style="font-size:.72rem;color:#9ca3af;">
                 <i class="bi bi-calendar3 me-1"></i>{{ $com->published_at?->format('d/m/Y') }}

@@ -20,6 +20,7 @@
     .p  { background:#d1fae5; color:#065f46; font-weight:700; }
     .a  { background:#fee2e2; color:#991b1b; font-weight:700; }
     .t  { background:#fef3c7; color:#854d0e; font-weight:700; }
+    .e  { background:#ede9fe; color:#6d28d9; font-weight:700; }
     .total-col { font-weight:700; background:#eff6ff; color:#1d4ed8; }
     .footer { margin-top:10px; font-size:6.5pt; color:#9ca3af; text-align:center;
               border-top:1px solid #e5e7eb; padding-top:5px; }
@@ -69,9 +70,9 @@
         @php
             $key    = \Carbon\Carbon::parse($f)->format('Y-m-d');
             $estado = $mapa[$mat->id][$key]?->estado ?? null;
-            $letra  = match($estado) { 'presente' => 'P', 'ausente' => 'A', 'tardanza' => 'T', default => '—' };
-            $cls    = match($letra) { 'P' => 'p', 'A' => 'a', 'T' => 't', default => '' };
-            if ($letra !== 'A' && $letra !== '—') $presentes++;
+            $letra  = match($estado) { 'presente' => 'P', 'ausente' => 'A', 'tarde','tardanza' => 'T', 'excusa' => 'E', 'retiro' => 'R', default => '—' };
+            $cls    = match($letra) { 'P' => 'p', 'A' => 'a', 'T' => 't', 'E' => 'e', default => '' };
+            if (!in_array($letra, ['A', '—'])) $presentes++;
         @endphp
         <td class="{{ $cls }}">{{ $letra }}</td>
         @endforeach
@@ -85,6 +86,7 @@
     <span><span class="dot" style="background:#d1fae5;"></span>P = Presente</span>
     <span><span class="dot" style="background:#fee2e2;"></span>A = Ausente</span>
     <span><span class="dot" style="background:#fef3c7;"></span>T = Tardanza</span>
+    <span><span class="dot" style="background:#ede9fe;"></span>E = Excusa</span>
     <span>— = Sin registro</span>
     <span>P/T = Presentes / Total sesiones</span>
 </div>

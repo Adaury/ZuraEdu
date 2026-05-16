@@ -133,6 +133,10 @@ try {
    class="prt-sidebar-link {{ $ak === 'planes' ? 'active' : '' }}">
     <i class="bi bi-journal-text"></i>Planes de Clase
 </a>
+<a href="{{ route('portal.docente.planif-anual.index', $asignacion) }}"
+   class="prt-sidebar-link {{ $ak === 'planif-anual' ? 'active' : '' }}">
+    <i class="bi bi-map-fill"></i>Plan Anual (Unidades)
+</a>
 <a href="{{ route('portal.docente.instrumentos.index', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'instrumentos' ? 'active' : '' }}">
     <i class="bi bi-clipboard-check-fill"></i>Instrumentos

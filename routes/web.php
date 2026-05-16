@@ -503,6 +503,20 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::get('/{quiz}/resultados',            [\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'resultados'])->name('resultados');
     });
 
+    // Planificación Anual por Unidades (todas las áreas)
+    Route::prefix('/asignacion/{asignacion}/planif-anual')->name('planif-anual.')->group(function () {
+        Route::get('/',                                    [\App\Http\Controllers\Portal\PlanifAnualController::class, 'index'])->name('index');
+        Route::post('/',                                   [\App\Http\Controllers\Portal\PlanifAnualController::class, 'store'])->name('store');
+        Route::get('/{plan}',                              [\App\Http\Controllers\Portal\PlanifAnualController::class, 'show'])->name('show');
+        Route::patch('/{plan}',                            [\App\Http\Controllers\Portal\PlanifAnualController::class, 'updatePlan'])->name('update');
+        Route::delete('/{plan}',                           [\App\Http\Controllers\Portal\PlanifAnualController::class, 'destroy'])->name('destroy');
+        Route::post('/{plan}/unidades',                    [\App\Http\Controllers\Portal\PlanifAnualController::class, 'storeUnidad'])->name('unidades.store');
+        Route::put('/{plan}/unidades/{unidad}',            [\App\Http\Controllers\Portal\PlanifAnualController::class, 'updateUnidad'])->name('unidades.update');
+        Route::delete('/{plan}/unidades/{unidad}',         [\App\Http\Controllers\Portal\PlanifAnualController::class, 'destroyUnidad'])->name('unidades.destroy');
+        Route::patch('/{plan}/unidades/{unidad}/mover',    [\App\Http\Controllers\Portal\PlanifAnualController::class, 'moverUnidad'])->name('unidades.mover');
+        Route::get('/{plan}/pdf',                          [\App\Http\Controllers\Portal\PlanifAnualController::class, 'pdf'])->name('pdf');
+    });
+
     // Planificaciones (Área Técnica)
     Route::prefix('/asignacion/{asignacion}/planificacion')->name('planificacion.')->group(function () {
         Route::get('/',                          [PlanificacionDocenteController::class, 'index'])->name('index');

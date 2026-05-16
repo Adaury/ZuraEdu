@@ -93,14 +93,20 @@
 
 {{-- TAB: Preguntas --}}
 <div id="tab-preguntas">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.4rem;">
         <div style="font-size:.78rem;color:#64748b;">
             Puntaje total: <strong style="color:#6366f1;">{{ $quiz->puntaje_total }}</strong> pts
         </div>
-        <button onclick="document.getElementById('modalPregunta').classList.add('active')"
-            style="background:#6366f1;color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:.4rem;">
-            <i class="bi bi-plus-lg"></i>Agregar Pregunta
-        </button>
+        <div style="display:flex;gap:.4rem;">
+            <button onclick="abrirBanco()"
+                style="background:#8b5cf6;color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:.4rem;">
+                <i class="bi bi-collection-fill"></i>Desde Banco
+            </button>
+            <button onclick="document.getElementById('modalPregunta').classList.add('active')"
+                style="background:#6366f1;color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:.4rem;">
+                <i class="bi bi-plus-lg"></i>Nueva Pregunta
+            </button>
+        </div>
     </div>
 
     <div id="listaPreguntas">
@@ -294,13 +300,53 @@
     </div>
 </div>
 
+{{-- Modal: Banco de Preguntas --}}
+<div id="modalBanco" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1001;align-items:flex-start;justify-content:center;padding-top:3vh;overflow-y:auto;">
+    <div style="background:#fff;border-radius:14px;padding:1.3rem;width:100%;max-width:620px;box-shadow:0 20px 60px rgba(0,0,0,.2);margin:0 auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+            <h3 style="margin:0;font-size:.93rem;font-weight:800;">
+                <i class="bi bi-collection-fill me-2" style="color:#8b5cf6;"></i>Importar desde Banco
+            </h3>
+            <button onclick="cerrarBanco()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#64748b;">&times;</button>
+        </div>
+        {{-- Filtros banco --}}
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.8rem;">
+            <input id="bq" placeholder="Buscar..." oninput="cargarBanco()"
+                style="flex:2;min-width:120px;border:1.5px solid #e2e8f0;border-radius:7px;padding:.38rem .6rem;font-size:.8rem;">
+            <select id="bTipo" onchange="cargarBanco()"
+                style="flex:1;min-width:100px;border:1.5px solid #e2e8f0;border-radius:7px;padding:.38rem .6rem;font-size:.8rem;">
+                <option value="">Todos los tipos</option>
+                <option value="multiple">Múltiple</option>
+                <option value="verdadero_falso">V/F</option>
+                <option value="abierta">Abierta</option>
+            </select>
+        </div>
+        <div id="bancoCargando" style="text-align:center;padding:1rem;color:#94a3b8;display:none;">
+            <i class="bi bi-arrow-clockwise" style="animation:spin 1s linear infinite;display:inline-block;"></i> Cargando...
+        </div>
+        <div id="bancoLista" style="max-height:45vh;overflow-y:auto;"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.9rem;border-top:1px solid #e2e8f0;padding-top:.8rem;">
+            <span style="font-size:.78rem;color:#64748b;"><span id="bancoSelCount">0</span> seleccionadas</span>
+            <div style="display:flex;gap:.4rem;">
+                <button onclick="cerrarBanco()" style="background:#f1f5f9;color:#475569;border:none;border-radius:8px;padding:.5rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer;">Cancelar</button>
+                <button onclick="importarBanco()" id="btnImportar" disabled
+                    style="background:#8b5cf6;color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;font-size:.8rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:.35rem;">
+                    <i class="bi bi-download"></i>Importar seleccionadas
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
 const CSRF   = '{{ csrf_token() }}';
 const QUIZ   = {{ $quiz->id }};
 const ASG    = {{ $asignacion->id }};
-const URL_PREG = '{{ route("portal.docente.evaluaciones.preguntas.store", [$asignacion, $quiz]) }}';
-const URL_DEL  = '/portal/docente/asignacion/' + ASG + '/evaluaciones/' + QUIZ + '/preguntas/';
+const URL_PREG    = '{{ route("portal.docente.evaluaciones.preguntas.store", [$asignacion, $quiz]) }}';
+const URL_DEL     = '/portal/docente/asignacion/' + ASG + '/evaluaciones/' + QUIZ + '/preguntas/';
+const URL_BANCO   = '{{ route("portal.docente.banco-preguntas.listar") }}';
+const URL_IMPORTAR= '{{ route("portal.docente.banco-preguntas.importar", $quiz) }}';
 
 function switchTab(tab, btn) {
     document.getElementById('tab-preguntas').style.display = tab === 'preguntas' ? '' : 'none';
@@ -410,6 +456,97 @@ async function eliminarPregunta(id, btn) {
                     <p style="margin:0;font-size:.85rem;">Agrega la primera pregunta.</p>
                 </div>`;
         }
+    }
+}
+
+// ── Banco de preguntas ──────────────────────────────────────────────────────
+let bancoSeleccionados = new Set();
+
+function abrirBanco() {
+    bancoSeleccionados.clear();
+    actualizarBtnImportar();
+    document.getElementById('modalBanco').style.display = 'flex';
+    cargarBanco();
+}
+
+function cerrarBanco() {
+    document.getElementById('modalBanco').style.display = 'none';
+}
+
+async function cargarBanco() {
+    const q    = document.getElementById('bq').value;
+    const tipo = document.getElementById('bTipo').value;
+    const lista = document.getElementById('bancoLista');
+    const spin  = document.getElementById('bancoCargando');
+
+    spin.style.display  = '';
+    lista.innerHTML     = '';
+
+    const params = new URLSearchParams();
+    if (q)    params.set('q', q);
+    if (tipo) params.set('tipo', tipo);
+
+    const r    = await fetch(URL_BANCO + '?' + params.toString(), { headers: { 'Accept': 'application/json' } });
+    const data = await r.json();
+    spin.style.display = 'none';
+
+    if (!data.length) {
+        lista.innerHTML = '<div style="text-align:center;padding:1.5rem;color:#94a3b8;font-size:.82rem;">No hay preguntas en el banco para estos filtros.</div>';
+        return;
+    }
+
+    const tipoLabels = { multiple: 'Múltiple', verdadero_falso: 'V/F', abierta: 'Abierta' };
+    const tipoColors = { multiple: '#6366f1', verdadero_falso: '#10b981', abierta: '#f59e0b' };
+
+    lista.innerHTML = data.map(p => `
+        <div onclick="toggleBancoSel(${p.id}, this)"
+            style="border:2px solid ${bancoSeleccionados.has(p.id) ? '#8b5cf6' : '#e2e8f0'};border-radius:9px;padding:.65rem .8rem;margin-bottom:.4rem;cursor:pointer;background:${bancoSeleccionados.has(p.id) ? '#faf5ff' : '#fff'};transition:.15s;"
+            id="bprow-${p.id}">
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.2rem;">
+                <span style="background:${tipoColors[p.tipo]};color:#fff;border-radius:99px;padding:.1rem .45rem;font-size:.65rem;font-weight:700;">${tipoLabels[p.tipo]}</span>
+                ${p.asignatura ? `<span style="font-size:.7rem;color:#64748b;">${p.asignatura.nombre}</span>` : ''}
+                ${p.categoria ? `<span style="background:#ede9fe;color:#6d28d9;border-radius:99px;padding:.1rem .38rem;font-size:.65rem;font-weight:600;">${p.categoria}</span>` : ''}
+                <span style="margin-left:auto;font-size:.7rem;font-weight:700;color:#475569;">${p.puntos_default} pts</span>
+                <i class="bi bi-${bancoSeleccionados.has(p.id) ? 'check-square-fill' : 'square'}" style="color:${bancoSeleccionados.has(p.id) ? '#8b5cf6' : '#cbd5e1'};font-size:.85rem;" id="bpcheck-${p.id}"></i>
+            </div>
+            <div style="font-size:.82rem;font-weight:600;">${p.enunciado.length > 100 ? p.enunciado.substring(0,100)+'…' : p.enunciado}</div>
+        </div>`).join('');
+}
+
+function toggleBancoSel(id, el) {
+    if (bancoSeleccionados.has(id)) {
+        bancoSeleccionados.delete(id);
+        el.style.borderColor = '#e2e8f0';
+        el.style.background  = '#fff';
+        const chk = document.getElementById('bpcheck-' + id);
+        if (chk) { chk.className = 'bi bi-square'; chk.style.color = '#cbd5e1'; }
+    } else {
+        bancoSeleccionados.add(id);
+        el.style.borderColor = '#8b5cf6';
+        el.style.background  = '#faf5ff';
+        const chk = document.getElementById('bpcheck-' + id);
+        if (chk) { chk.className = 'bi bi-check-square-fill'; chk.style.color = '#8b5cf6'; }
+    }
+    actualizarBtnImportar();
+}
+
+function actualizarBtnImportar() {
+    const n   = bancoSeleccionados.size;
+    document.getElementById('bancoSelCount').textContent = n;
+    document.getElementById('btnImportar').disabled = n === 0;
+}
+
+async function importarBanco() {
+    if (!bancoSeleccionados.size) return;
+    const r = await fetch(URL_IMPORTAR, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+        body: JSON.stringify({ ids: [...bancoSeleccionados] })
+    });
+    const data = await r.json();
+    if (data.ok) {
+        cerrarBanco();
+        window.location.reload();
     }
 }
 </script>

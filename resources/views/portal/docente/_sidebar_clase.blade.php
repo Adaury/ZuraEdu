@@ -41,6 +41,15 @@ $ak  = $activeKey ?? '';
    class="prt-sidebar-link {{ $ak === 'mis-estadisticas' ? 'active' : '' }}">
     <i class="bi bi-bar-chart-fill"></i>Estadísticas
 </a>
+<a href="{{ route('portal.docente.banco-preguntas.index') }}"
+   class="prt-sidebar-link {{ $ak === 'banco-preguntas' ? 'active' : '' }}"
+   style="{{ $ak === 'banco-preguntas' ? '' : 'color:#8b5cf6;' }}">
+    <i class="bi bi-collection-fill"></i>Banco de Preguntas
+    @php try { $totalBancoSb = \App\Models\BancoPregunta::where('docente_id', auth()->user()->docente?->id ?? 0)->count(); } catch(\Exception $e){ $totalBancoSb=0; } @endphp
+    @if($totalBancoSb > 0)
+    <span style="background:#8b5cf6;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $totalBancoSb }}</span>
+    @endif
+</a>
 @php
 try {
     $docenteSb = auth()->user()->docente ?? null;

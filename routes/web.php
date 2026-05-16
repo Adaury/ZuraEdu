@@ -452,6 +452,16 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::post('/aplicar/{periodo}',      [PlanClaseDocenteController::class, 'aplicarNotasPeriodoGuardar'])->name('aplicar.guardar');
     });
 
+    // Banco de Preguntas
+    Route::prefix('banco-preguntas')->name('banco-preguntas.')->group(function () {
+        Route::get('/',                          [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'index'])->name('index');
+        Route::post('/',                         [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'store'])->name('store');
+        Route::put('/{bancoPregunta}',           [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'update'])->name('update');
+        Route::delete('/{bancoPregunta}',        [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'destroy'])->name('destroy');
+        Route::get('/listar',                    [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'listar'])->name('listar');
+        Route::post('/importar/{quiz}',          [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'importarAlQuiz'])->name('importar');
+    });
+
     // Evaluaciones Online
     Route::prefix('/asignacion/{asignacion}/evaluaciones')->name('evaluaciones.')->group(function () {
         Route::get('/',                             [\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'index'])->name('index');

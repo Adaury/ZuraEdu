@@ -49,6 +49,10 @@
    class="prt-sidebar-link {{ $ak === 'planificaciones' ? 'active' : '' }}">
     <i class="bi bi-journal-bookmark-fill"></i>Planificaciones
 </a>
+<a href="{{ route('portal.padre.hijo.plan-evaluacion', $estudiante) }}"
+   class="prt-sidebar-link {{ $ak === 'plan-evaluacion' ? 'active' : '' }}">
+    <i class="bi bi-bar-chart-steps"></i>Plan de Evaluación
+</a>
 <a href="{{ route('portal.padre.hijo.documentos', $estudiante) }}"
    class="prt-sidebar-link {{ $ak === 'documentos' ? 'active' : '' }}">
     <i class="bi bi-folder2-open"></i>Documentos

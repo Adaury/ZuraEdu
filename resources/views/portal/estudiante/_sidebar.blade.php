@@ -46,6 +46,10 @@
    class="prt-sidebar-link {{ $ak === 'planificaciones' ? 'active' : '' }}">
     <i class="bi bi-journal-bookmark-fill"></i>Planificaciones
 </a>
+<a href="{{ route('portal.estudiante.plan-evaluacion') }}"
+   class="prt-sidebar-link {{ $ak === 'plan-evaluacion' ? 'active' : '' }}">
+    <i class="bi bi-bar-chart-steps"></i>Plan de Evaluación
+</a>
 
 {{-- ── VIDA ESCOLAR ── --}}
 <div class="prt-sidebar-section mt-2">Vida Escolar</div>

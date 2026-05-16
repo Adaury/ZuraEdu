@@ -25,6 +25,8 @@ use App\Models\ProyectoEscolar;
 use App\Models\Reconocimiento;
 use App\Models\Representante;
 use App\Models\Pago;
+use App\Models\PlanEvaluacionPeriodo;
+use App\Models\InstrumentoEvaluacion;
 use App\Models\SchoolYear;
 use App\Services\CardNetService;
 use Illuminate\Http\Request;
@@ -1853,5 +1855,60 @@ class PortalPadreController extends Controller
         }
 
         return $cal->concat($evs)->concat($reu)->concat($pers)->values()->all();
+    }
+
+    public function planEvaluacionHijo(Estudiante $estudiante)
+    {
+        $representante = $this->getRepresentante();
+        if (! $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists()) abort(403);
+
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()->first();
+
+        $periodos   = collect();
+        $planesData = collect();
+
+        if ($matricula) {
+            $periodos = Periodo::where('school_year_id', $schoolYear?->id)
+                ->where('tenant_id', tenant_id())
+                ->orderBy('numero')
+                ->get();
+
+            $asignaciones = Asignacion::with('asignatura', 'docente')
+                ->where('grupo_id', $matricula->grupo_id)
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->get();
+
+            $asignacionIds = $asignaciones->pluck('id');
+
+            $planes = PlanEvaluacionPeriodo::with(['periodo', 'asignacion.asignatura'])
+                ->whereIn('asignacion_id', $asignacionIds)
+                ->where('publicado', true)
+                ->get();
+
+            $instrumentos = InstrumentoEvaluacion::with('criterios')
+                ->whereIn('asignacion_id', $asignacionIds)
+                ->where('publicado', true)
+                ->whereNotNull('periodo_id')
+                ->get();
+
+            $planesData = $asignaciones->map(function ($asignacion) use ($planes, $periodos, $instrumentos) {
+                $planesAsig = $planes->where('asignacion_id', $asignacion->id)->keyBy('periodo_id');
+                $instAsig   = $instrumentos->where('asignacion_id', $asignacion->id)->groupBy('periodo_id');
+
+                $tienePlanes = $planesAsig->isNotEmpty();
+                return compact('asignacion', 'planesAsig', 'instAsig', 'tienePlanes');
+            })->filter(fn($row) => $row['tienePlanes'])->values();
+        }
+
+        $categorias = PlanEvaluacionPeriodo::$categorias;
+
+        return view('portal.padre.plan_evaluacion_hijo', compact(
+            'estudiante', 'schoolYear', 'matricula', 'periodos', 'planesData', 'categorias'
+        ));
     }
 }

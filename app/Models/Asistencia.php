@@ -12,12 +12,21 @@ class Asistencia extends Model
 
     public const ESTADOS = ['presente', 'ausente', 'tardanza', 'justificado'];
 
+    public const TIPOS_JUSTIFICACION = [
+        'medica'              => 'Cita médica',
+        'personal'            => 'Asunto personal',
+        'emergencia_familiar' => 'Emergencia familiar',
+        'duelo'               => 'Duelo',
+        'otra'                => 'Otra',
+    ];
+
     protected $fillable = [
         'fecha',
         'matricula_id',
         'asignacion_id',
         'estado',
         'justificacion',
+        'justificacion_tipo',
         'registrado_por',
     ];
 

@@ -226,6 +226,7 @@ Route::prefix('portal/padre')->name('portal.padre.')->middleware(['auth', 'activ
     Route::get('/hijo/{estudiante}/asistencia',          [PortalPadreController::class, 'asistenciaHijo'])->name('hijo.asistencia');
     Route::get('/hijo/{estudiante}/asistencia/pdf',      [PortalPadreController::class, 'asistenciaHijoPdf'])->name('hijo.asistencia.pdf');
     Route::get('/hijo/{estudiante}/asistencia/excel',    [PortalPadreController::class, 'asistenciaHijoExcel'])->name('hijo.asistencia.excel');
+    Route::post('/hijo/{estudiante}/solicitar-justificacion', [PortalPadreController::class, 'solicitarJustificacion'])->name('hijo.solicitar-justificacion');
     Route::get('/hijo/{estudiante}/horario',           [PortalPadreController::class, 'horarioHijo'])->name('hijo.horario');
     Route::get('/hijo/{estudiante}/horario/pdf',          [PortalPadreController::class, 'horarioPdf'])->name('hijo.horario.pdf');
     Route::get('/hijo/{estudiante}/horario/excel',        [PortalPadreController::class, 'horarioExcel'])->name('hijo.horario.excel');
@@ -290,6 +291,7 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::get('/asignacion/{asignacion}/asistencia/pdf',         [PortalDocenteController::class, 'exportarAsistenciaPdf'])->name('asistencia.pdf');
     Route::get('/asignacion/{asignacion}/asistencia/excel',       [PortalDocenteController::class, 'exportarAsistenciaExcel'])->name('asistencia.excel');
     Route::post('/asignacion/{asignacion}/asistencia/importar',   [PortalDocenteController::class, 'importarAsistencia'])->name('asistencia.importar');
+    Route::patch('/asignacion/{asignacion}/asistencia/{asistencia}/justificar', [PortalDocenteController::class, 'justificarAsistencia'])->name('asistencia.justificar');
     // ── Asistencia QR ──────────────────────────────────────────────────────
     Route::get('/asignacion/{asignacion}/asistencia/qr',                   [\App\Http\Controllers\AsistenciaQrController::class, 'panel'])->name('asistencia.qr.panel');
     Route::post('/asignacion/{asignacion}/asistencia/qr/crear',            [\App\Http\Controllers\AsistenciaQrController::class, 'crearToken'])->name('asistencia.qr.crear');

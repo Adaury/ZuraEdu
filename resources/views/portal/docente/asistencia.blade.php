@@ -179,6 +179,77 @@
     </div>
 </div>
 
+{{-- ── Panel de justificaciones ──────────────────────────────────────── --}}
+@if($ausenciasSinJustificar->isNotEmpty())
+<div class="prt-card" style="margin-top:1.25rem;" id="panel-justificaciones">
+    <div class="prt-card-header" style="cursor:pointer;" onclick="toggleJustificaciones()">
+        <i class="bi bi-patch-check-fill" style="color:#f59e0b;"></i>
+        <h3>Ausencias sin justificar
+            <span style="background:#f59e0b;color:#fff;border-radius:99px;font-size:.65rem;padding:.1rem .45rem;font-weight:700;margin-left:.4rem;">{{ $ausenciasSinJustificar->count() }}</span>
+        </h3>
+        <i class="bi bi-chevron-down ms-auto" id="just-chevron" style="font-size:.75rem;transition:transform .2s;"></i>
+    </div>
+    <div id="just-body" style="display:none;">
+    @foreach($ausenciasSinJustificar as $aus)
+    @php $mat = $aus->matricula; $est = $mat?->estudiante; @endphp
+    <div id="aus-row-{{ $aus->id }}"
+         style="border-top:1px solid #f1f5f9;padding:.6rem 1rem;"
+         x-data="justificarRow({{ $aus->id }}, {{ $asignacion->id }})">
+
+        <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+            <div style="width:32px;height:32px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;color:#dc2626;flex-shrink:0;">
+                {{ strtoupper(substr($est?->nombres ?? '?', 0, 1)) }}
+            </div>
+            <div style="flex:1;min-width:120px;">
+                <div style="font-size:.82rem;font-weight:700;color:#1e293b;">{{ $est?->nombre_completo ?? '—' }}</div>
+                <div style="font-size:.7rem;color:#94a3b8;">{{ $aus->fecha->format('d/m/Y') }} &mdash; {{ $aus->asignacion?->asignatura?->nombre ?? '' }}</div>
+            </div>
+            <span style="background:#fee2e2;color:#dc2626;font-size:.68rem;font-weight:700;padding:.15rem .5rem;border-radius:6px;">AUSENTE</span>
+            <button @click="abierto = !abierto"
+                    style="background:#fef3c7;color:#d97706;border:1px solid #fde68a;border-radius:8px;font-size:.72rem;font-weight:700;padding:.25rem .65rem;cursor:pointer;">
+                <i class="bi bi-patch-plus-fill me-1"></i>Justificar
+            </button>
+        </div>
+
+        <div x-show="abierto" x-transition style="margin-top:.55rem;padding:.6rem;background:#fefce8;border-radius:8px;border:1px solid #fde68a;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.45rem;">
+                <div>
+                    <label style="font-size:.7rem;font-weight:700;color:#92400e;display:block;margin-bottom:.2rem;">Tipo</label>
+                    <select x-model="tipo" style="width:100%;border:1.5px solid #fde68a;border-radius:7px;font-size:.78rem;padding:.28rem .4rem;background:#fff;">
+                        <option value="">-- Seleccione --</option>
+                        @foreach($tiposJustificacion as $val => $label)
+                        <option value="{{ $val }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div style="grid-column:1/-1;">
+                    <label style="font-size:.7rem;font-weight:700;color:#92400e;display:block;margin-bottom:.2rem;">Motivo <span style="color:#dc2626;">*</span></label>
+                    <input x-model="motivo" type="text" maxlength="500"
+                           placeholder="Describe el motivo de la ausencia…"
+                           style="width:100%;border:1.5px solid #fde68a;border-radius:7px;font-size:.78rem;padding:.3rem .45rem;background:#fff;">
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+                <button @click="guardar()"
+                        :disabled="guardando || !motivo.trim()"
+                        style="background:#10b981;color:#fff;border:none;border-radius:8px;font-size:.75rem;font-weight:700;padding:.3rem .85rem;cursor:pointer;transition:opacity .15s;"
+                        :style="(!motivo.trim() ? 'opacity:.4;' : '')">
+                    <i class="bi bi-check-lg me-1"></i>Guardar justificación
+                </button>
+                <button @click="abierto = false" style="background:#f1f5f9;color:#64748b;border:none;border-radius:8px;font-size:.72rem;padding:.3rem .65rem;cursor:pointer;">
+                    Cancelar
+                </button>
+                <span x-show="guardado" style="color:#10b981;font-size:.72rem;font-weight:700;">
+                    <i class="bi bi-check-circle-fill"></i> Justificada
+                </span>
+            </div>
+        </div>
+    </div>
+    @endforeach
+    </div>
+</div>
+@endif
+
 @endsection
 
 @push('scripts')
@@ -221,6 +292,68 @@ function toggleOffline() {
     const open    = panel.style.display === 'none' || panel.style.display === '';
     panel.style.display   = open ? 'block' : 'none';
     chevron.style.transform = open ? 'rotate(180deg)' : '';
+}
+
+function toggleJustificaciones() {
+    const body    = document.getElementById('just-body');
+    const chevron = document.getElementById('just-chevron');
+    const open    = body.style.display === 'none' || body.style.display === '';
+    body.style.display = open ? 'block' : 'none';
+    if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : '';
+}
+
+function justificarRow(asistenciaId, asignacionId) {
+    return {
+        abierto:   false,
+        tipo:      '',
+        motivo:    '',
+        guardando: false,
+        guardado:  false,
+
+        async guardar() {
+            if (!this.motivo.trim()) return;
+            this.guardando = true;
+            try {
+                const res = await fetch(
+                    `/portal/docente/asignacion/${asignacionId}/asistencia/${asistenciaId}/justificar`,
+                    {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept':       'application/json',
+                        },
+                        body: JSON.stringify({
+                            justificacion:      this.motivo,
+                            justificacion_tipo: this.tipo || null,
+                        }),
+                    }
+                );
+                const data = await res.json();
+                if (data.ok) {
+                    this.guardado = true;
+                    // Colapsar y marcar la fila como justificada
+                    this.abierto = false;
+                    const row = document.getElementById(`aus-row-${asistenciaId}`);
+                    if (row) {
+                        row.style.opacity = '.4';
+                        row.style.pointerEvents = 'none';
+                        // Actualizar badge
+                        const badge = row.querySelector('[style*="AUSENTE"]');
+                        if (badge) { badge.textContent = 'JUSTIFICADA'; badge.style.background = '#d1fae5'; badge.style.color = '#059669'; }
+                    }
+                    // Actualizar contador del header
+                    const cnt = document.querySelector('#panel-justificaciones .prt-card-header span');
+                    if (cnt) {
+                        const n = parseInt(cnt.textContent) - 1;
+                        cnt.textContent = n;
+                        if (n <= 0) document.getElementById('panel-justificaciones').style.display = 'none';
+                    }
+                }
+            } catch(e) { console.error(e); }
+            finally { this.guardando = false; }
+        }
+    };
 }
 </script>
 @endpush

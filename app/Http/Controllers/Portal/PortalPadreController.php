@@ -28,6 +28,7 @@ use App\Models\Pago;
 use App\Models\PlanEvaluacionPeriodo;
 use App\Models\InstrumentoEvaluacion;
 use App\Models\SchoolYear;
+use App\Models\SolicitudRepresentante;
 use App\Services\CardNetService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -1002,8 +1003,21 @@ class PortalPadreController extends Controller
 
         $resumenAsistencia = $this->calcularAsistencia($matricula);
 
+        // Ausencias individuales para mostrar estado de justificación
+        $ausenciasDetalle = $matricula
+            ? Asistencia::with('asignacion.asignatura')
+                ->where('matricula_id', $matricula->id)
+                ->where('estado', 'ausente')
+                ->orderBy('fecha', 'desc')
+                ->limit(30)
+                ->get()
+            : collect();
+
+        $tiposJustificacion = \App\Models\Asistencia::TIPOS_JUSTIFICACION;
+
         return view('portal.padre.asistencia_hijo', compact(
-            'representante', 'estudiante', 'matricula', 'schoolYear', 'resumenAsistencia'
+            'representante', 'estudiante', 'matricula', 'schoolYear',
+            'resumenAsistencia', 'ausenciasDetalle', 'tiposJustificacion'
         ));
     }
 
@@ -1105,6 +1119,35 @@ class PortalPadreController extends Controller
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
             'Cache-Control'       => 'max-age=0',
         ]);
+    }
+
+    // ── Solicitar justificación de ausencia ──────────────────────────────
+    public function solicitarJustificacion(Request $request, Estudiante $estudiante)
+    {
+        $representante = $this->getRepresentante();
+        if (! $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists()) abort(403);
+
+        $data = $request->validate([
+            'fecha_evento'  => 'required|date',
+            'descripcion'   => 'required|string|max:1000',
+            'tipo'          => 'nullable|string|max:40',
+        ]);
+
+        $tipoLabel = \App\Models\Asistencia::TIPOS_JUSTIFICACION[$data['tipo'] ?? ''] ?? 'Ausencia';
+        $fecha     = \Carbon\Carbon::parse($data['fecha_evento'])->format('d/m/Y');
+
+        SolicitudRepresentante::create([
+            'tenant_id'       => tenant_id(),
+            'representante_id'=> $representante->id,
+            'estudiante_id'   => $estudiante->id,
+            'tipo'            => 'justificacion_ausencia',
+            'asunto'          => "Justificación de ausencia — {$fecha}",
+            'descripcion'     => "Tipo: {$tipoLabel}\n{$data['descripcion']}",
+            'fecha_evento'    => $data['fecha_evento'],
+            'estado'          => 'pendiente',
+        ]);
+
+        return back()->with('success', 'Solicitud de justificación enviada correctamente.');
     }
 
     // ── Horario web del hijo ─────────────────────────────────────────────

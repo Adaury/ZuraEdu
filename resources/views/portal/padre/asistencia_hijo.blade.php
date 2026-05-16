@@ -140,5 +140,98 @@
 </div>
 @endif
 
+{{-- ── Ausencias recientes y solicitudes de justificación ────────────── --}}
+@if(isset($ausenciasDetalle) && $ausenciasDetalle->isNotEmpty())
+<div class="prt-card" style="margin-top:1rem;">
+    <div class="prt-card-header">
+        <i class="bi bi-calendar-x" style="color:#f59e0b;"></i>
+        <h3>Ausencias recientes</h3>
+    </div>
+    <div class="prt-card-body" style="padding:.5rem 0 0;">
+
+        @if(session('success'))
+        <div style="background:#d1fae5;color:#065f46;border-radius:8px;padding:.6rem .9rem;font-size:.8rem;font-weight:700;margin:.5rem 1rem;">
+            <i class="bi bi-check-circle-fill me-1"></i>{{ session('success') }}
+        </div>
+        @endif
+
+        @foreach($ausenciasDetalle as $aus)
+        @php
+            $tipoLabel = $aus->justificacion_tipo
+                ? ($tiposJustificacion[$aus->justificacion_tipo] ?? $aus->justificacion_tipo)
+                : null;
+        @endphp
+        <div style="border-top:1px solid #f1f5f9;padding:.6rem 1rem;" x-data="{ solicitar: false }">
+            <div style="display:flex;align-items:flex-start;gap:.6rem;flex-wrap:wrap;">
+                <div style="flex:1;min-width:120px;">
+                    <div style="font-size:.8rem;font-weight:700;color:#1e293b;">
+                        {{ $aus->fecha->format('d/m/Y') }}
+                        <span style="font-size:.7rem;color:#94a3b8;font-weight:400;margin-left:.4rem;">
+                            {{ $aus->asignacion?->asignatura?->nombre ?? '—' }}
+                        </span>
+                    </div>
+                    @if($aus->justificacion)
+                    <div style="font-size:.72rem;color:#059669;margin-top:.2rem;">
+                        <i class="bi bi-patch-check-fill me-1"></i>
+                        Justificada: {{ $aus->justificacion }}
+                        @if($tipoLabel) · <em>{{ $tipoLabel }}</em> @endif
+                    </div>
+                    @endif
+                </div>
+                @if(!$aus->justificacion)
+                <span style="background:#fee2e2;color:#dc2626;font-size:.68rem;font-weight:700;padding:.15rem .5rem;border-radius:6px;flex-shrink:0;">Ausente</span>
+                <button @click="solicitar = !solicitar"
+                        style="background:#fef3c7;color:#d97706;border:1px solid #fde68a;border-radius:8px;font-size:.7rem;font-weight:700;padding:.22rem .6rem;cursor:pointer;flex-shrink:0;">
+                    <i class="bi bi-send-fill me-1"></i>Solicitar justificación
+                </button>
+                @else
+                <span style="background:#d1fae5;color:#059669;font-size:.68rem;font-weight:700;padding:.15rem .5rem;border-radius:6px;flex-shrink:0;">
+                    <i class="bi bi-patch-check-fill me-1"></i>Justificada
+                </span>
+                @endif
+            </div>
+
+            {{-- Formulario de solicitud --}}
+            @if(!$aus->justificacion)
+            <div x-show="solicitar" x-transition style="margin-top:.5rem;background:#fefce8;border-radius:8px;border:1px solid #fde68a;padding:.65rem .8rem;">
+                <form method="POST" action="{{ route('portal.padre.hijo.solicitar-justificacion', $estudiante) }}">
+                    @csrf
+                    <input type="hidden" name="fecha_evento" value="{{ $aus->fecha->format('Y-m-d') }}">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.45rem;margin-bottom:.45rem;">
+                        <div>
+                            <label style="font-size:.7rem;font-weight:700;color:#92400e;display:block;margin-bottom:.2rem;">Tipo</label>
+                            <select name="tipo" style="width:100%;border:1.5px solid #fde68a;border-radius:7px;font-size:.75rem;padding:.28rem .4rem;background:#fff;">
+                                <option value="">-- Seleccione --</option>
+                                @foreach($tiposJustificacion as $val => $label)
+                                <option value="{{ $val }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div style="grid-column:1/-1;">
+                            <label style="font-size:.7rem;font-weight:700;color:#92400e;display:block;margin-bottom:.2rem;">Descripción <span style="color:#dc2626;">*</span></label>
+                            <textarea name="descripcion" rows="2" required maxlength="1000"
+                                      placeholder="Explica el motivo de la ausencia…"
+                                      style="width:100%;border:1.5px solid #fde68a;border-radius:7px;font-size:.75rem;padding:.3rem .45rem;background:#fff;resize:vertical;"></textarea>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:.5rem;">
+                        <button type="submit"
+                                style="background:#10b981;color:#fff;border:none;border-radius:8px;font-size:.73rem;font-weight:700;padding:.28rem .75rem;cursor:pointer;">
+                            <i class="bi bi-send me-1"></i>Enviar solicitud
+                        </button>
+                        <button type="button" @click="solicitar = false"
+                                style="background:#f1f5f9;color:#64748b;border:none;border-radius:8px;font-size:.7rem;padding:.28rem .6rem;cursor:pointer;">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+            @endif
+        </div>
+        @endforeach
+    </div>
+</div>
+@endif
+
 @endif
 @endsection

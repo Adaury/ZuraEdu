@@ -141,8 +141,19 @@ class PortalDocenteController extends Controller
             ->get()
             ->keyBy('matricula_id');
 
+        // Ausencias sin justificar (últimas 30 días) para el panel de justificaciones
+        $ausenciasSinJustificar = Asistencia::with('matricula.estudiante')
+            ->where('asignacion_id', $asignacion->id)
+            ->where('estado', 'ausente')
+            ->where('fecha', '>=', now()->subDays(30)->toDateString())
+            ->orderBy('fecha', 'desc')
+            ->get();
+
+        $tiposJustificacion = Asistencia::TIPOS_JUSTIFICACION;
+
         return view('portal.docente.asistencia', compact(
-            'docente', 'asignacion', 'matriculas', 'fecha', 'registradas'
+            'docente', 'asignacion', 'matriculas', 'fecha', 'registradas',
+            'ausenciasSinJustificar', 'tiposJustificacion'
         ));
     }
 
@@ -198,6 +209,30 @@ class PortalDocenteController extends Controller
         return redirect()
             ->route('portal.docente.asistencia', $asignacion)
             ->with('success', 'Asistencia registrada correctamente para el ' . $request->fecha);
+    }
+
+    // ── Justificar ausencia individual ──────────────────────────────────
+    public function justificarAsistencia(Request $request, Asignacion $asignacion, Asistencia $asistencia)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+        if ($asistencia->asignacion_id !== $asignacion->id) abort(404);
+
+        $data = $request->validate([
+            'justificacion'      => 'required|string|max:500',
+            'justificacion_tipo' => 'nullable|string|max:40',
+        ]);
+
+        $asistencia->update([
+            'estado'             => 'justificado',
+            'justificacion'      => $data['justificacion'],
+            'justificacion_tipo' => $data['justificacion_tipo'] ?? null,
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
+        return back()->with('success', 'Ausencia justificada correctamente.');
     }
 
     // ── Ver estudiantes del grupo ────────────────────────────────────────

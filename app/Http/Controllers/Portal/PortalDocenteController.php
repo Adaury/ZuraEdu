@@ -1630,6 +1630,122 @@ class PortalDocenteController extends Controller
         return $resultado;
     }
 
+    // ── Reporte de rendimiento del grupo ────────────────────────────────
+    public function rendimientoGrupo(Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $schoolYear = SchoolYear::actual();
+        $esTecnica  = ($asignacion->area ?? '') === 'tecnica';
+
+        $periodos = $schoolYear
+            ? Periodo::where('school_year_id', $schoolYear->id)
+                ->where('tenant_id', tenant_id())
+                ->orderBy('numero')->get()
+            : collect();
+
+        $matriculas = Matricula::with('estudiante')
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->orderBy('numero_orden')
+            ->get();
+
+        $matIds = $matriculas->pluck('id');
+
+        // Calificaciones
+        if ($esTecnica) {
+            $cals = Calificacion::whereIn('matricula_id', $matIds)
+                ->where('asignacion_id', $asignacion->id)
+                ->get()->groupBy('matricula_id');
+        } else {
+            $cals = CalificacionAcademica::whereIn('matricula_id', $matIds)
+                ->where('asignacion_id', $asignacion->id)
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->get()->keyBy('matricula_id');
+        }
+
+        // Asistencias por estudiante
+        $asistencias = Asistencia::where('asignacion_id', $asignacion->id)
+            ->whereIn('matricula_id', $matIds)
+            ->selectRaw('matricula_id,
+                COUNT(*) as total,
+                SUM(estado = "presente") as presentes,
+                SUM(estado = "ausente") as ausentes,
+                SUM(estado IN ("tarde","tardanza")) as tardanzas')
+            ->groupBy('matricula_id')
+            ->get()->keyBy('matricula_id');
+
+        // Construir filas de estudiantes
+        $umbral = 65;
+        $rangos = ['100-90' => 0, '89-80' => 0, '79-70' => 0, '69-65' => 0, '<65' => 0, 'sin_nota' => 0];
+        $sumaNotas = 0; $cntNotas = 0;
+
+        $filas = $matriculas->map(function ($mat) use ($cals, $asistencias, $esTecnica, $periodos, $umbral, &$rangos, &$sumaNotas, &$cntNotas) {
+            // Nota final y por período
+            $notaFinal = null;
+            $notasPeriodo = [];
+
+            if ($esTecnica) {
+                $calsMat = $cals->get($mat->id, collect());
+                foreach ($periodos as $p) {
+                    $c = $calsMat->firstWhere('periodo_id', $p->id);
+                    $notasPeriodo[$p->numero] = $c?->nota_final;
+                }
+                $todasNotas = $calsMat->pluck('nota_final')->filter();
+                $notaFinal  = $todasNotas->count() ? round($todasNotas->avg(), 1) : null;
+            } else {
+                $cal = $cals->get($mat->id);
+                $notaFinal = $cal?->nota_final !== null ? round($cal->nota_final, 1) : null;
+                foreach ($periodos as $p) {
+                    $n = $p->numero;
+                    $campo = "comp1_p{$n}";
+                    $notasPeriodo[$n] = $cal?->$campo;
+                }
+            }
+
+            // Rangos
+            if ($notaFinal === null) {
+                $rangos['sin_nota']++;
+            } elseif ($notaFinal >= 90) {
+                $rangos['100-90']++; $sumaNotas += $notaFinal; $cntNotas++;
+            } elseif ($notaFinal >= 80) {
+                $rangos['89-80']++; $sumaNotas += $notaFinal; $cntNotas++;
+            } elseif ($notaFinal >= 70) {
+                $rangos['79-70']++; $sumaNotas += $notaFinal; $cntNotas++;
+            } elseif ($notaFinal >= $umbral) {
+                $rangos['69-65']++; $sumaNotas += $notaFinal; $cntNotas++;
+            } else {
+                $rangos['<65']++; $sumaNotas += $notaFinal; $cntNotas++;
+            }
+
+            $asist = $asistencias->get($mat->id);
+            $pctAsist = ($asist && $asist->total > 0)
+                ? round(($asist->presentes / $asist->total) * 100) : null;
+
+            return [
+                'matricula'    => $mat,
+                'notaFinal'    => $notaFinal,
+                'notasPeriodo' => $notasPeriodo,
+                'enRiesgo'     => $notaFinal !== null && $notaFinal < $umbral,
+                'sinNota'      => $notaFinal === null,
+                'pctAsist'     => $pctAsist,
+                'ausentes'     => $asist?->ausentes ?? 0,
+            ];
+        });
+
+        $promedio   = $cntNotas > 0 ? round($sumaNotas / $cntNotas, 1) : null;
+        $aprobados  = $rangos['100-90'] + $rangos['89-80'] + $rangos['79-70'] + $rangos['69-65'];
+        $reprobados = $rangos['<65'];
+        $enRiesgo   = $filas->filter(fn($f) => $f['enRiesgo']);
+
+        return view('portal.docente.rendimiento', compact(
+            'docente', 'asignacion', 'schoolYear', 'periodos', 'matriculas',
+            'filas', 'rangos', 'promedio', 'aprobados', 'reprobados', 'enRiesgo', 'esTecnica'
+        ));
+    }
+
     // ── Mis planificaciones ──────────────────────────────────────────────
     public function misPlanificaciones()
     {

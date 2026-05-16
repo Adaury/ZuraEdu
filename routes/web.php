@@ -310,6 +310,7 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::get('/asignacion/{asignacion}/observaciones/pdf',     [PortalDocenteController::class, 'observacionesPdf'])->name('observaciones.pdf');
     Route::get('/asignacion/{asignacion}/observaciones/excel',   [PortalDocenteController::class, 'observacionesExcel'])->name('observaciones.excel');
     Route::post('/asignacion/{asignacion}/observaciones',         [PortalDocenteController::class, 'guardarObservacion'])->name('observaciones.guardar');
+    Route::get('/asignacion/{asignacion}/rendimiento',            [PortalDocenteController::class, 'rendimientoGrupo'])->name('rendimiento');
     Route::get('/asignacion/{asignacion}/boletines',              [PortalDocenteController::class, 'boletines'])->name('boletines');
     Route::get('/asignacion/{asignacion}/boletines/zip',          [PortalDocenteController::class, 'boletinesZip'])->name('boletines.zip');
     Route::get('/asignacion/{asignacion}/acta-pdf',               [PortalDocenteController::class, 'actaPdf'])->name('acta.pdf');

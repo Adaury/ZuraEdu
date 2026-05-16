@@ -297,6 +297,7 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::post('/asistencia/qr/{qrToken}/cerrar',                         [\App\Http\Controllers\AsistenciaQrController::class, 'cerrar'])->name('asistencia.qr.cerrar');
     Route::get('/asignacion/{asignacion}/estudiantes/excel',      [PortalDocenteController::class, 'estudiantesExcel'])->name('estudiantes.excel');
     Route::get('/asignacion/{asignacion}/estudiantes',            [PortalDocenteController::class, 'estudiantes'])->name('estudiantes');
+    Route::get('/asignacion/{asignacion}/estudiantes/{matricula}/ficha', [PortalDocenteController::class, 'fichaEstudiante'])->name('estudiantes.ficha');
     Route::get('/asignacion/{asignacion}/calificaciones',                 [PortalDocenteController::class, 'calificaciones'])->name('calificaciones');
     Route::post('/asignacion/{asignacion}/calificaciones',                [PortalDocenteController::class, 'guardarCalificaciones'])->name('calificaciones.guardar');
     Route::get('/asignacion/{asignacion}/calificaciones/plantilla',       [PortalDocenteController::class, 'descargarPlantillaCalificaciones'])->name('calificaciones.plantilla');

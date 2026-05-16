@@ -239,6 +239,83 @@ class PortalDocenteController extends Controller
         return view('portal.docente.estudiantes', compact('docente', 'asignacion', 'matriculas'));
     }
 
+    public function fichaEstudiante(Asignacion $asignacion, Matricula $matricula)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+        if ($matricula->grupo_id !== $asignacion->grupo_id) abort(404);
+
+        $asignacion->load(['asignatura', 'grupo.grado', 'grupo.seccion']);
+        $matricula->load(['estudiante.representantes']);
+        $schoolYear = SchoolYear::actual();
+        $esTecnica  = ($asignacion->area ?? '') === 'tecnica';
+
+        // Períodos del año
+        $periodos = $schoolYear
+            ? Periodo::where('school_year_id', $schoolYear->id)
+                ->where('tenant_id', tenant_id())
+                ->orderBy('numero')->get()
+            : collect();
+
+        // Notas por período
+        $notasPeriodo = [];
+        $notaFinal    = null;
+        if ($esTecnica) {
+            $cals = Calificacion::where('asignacion_id', $asignacion->id)
+                ->where('matricula_id', $matricula->id)
+                ->get()->keyBy('periodo_id');
+            foreach ($periodos as $p) {
+                $notasPeriodo[$p->numero] = $cals->get($p->id)?->nota_final;
+            }
+            $vals = collect($notasPeriodo)->filter();
+            $notaFinal = $vals->count() ? round($vals->avg(), 1) : null;
+        } else {
+            $cal = CalificacionAcademica::where('asignacion_id', $asignacion->id)
+                ->where('matricula_id', $matricula->id)
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->first();
+            foreach ($periodos as $p) {
+                $notasPeriodo[$p->numero] = $cal?->{"comp1_p{$p->numero}"};
+            }
+            $notaFinal = $cal?->nota_final !== null ? round($cal->nota_final, 1) : null;
+        }
+
+        // Asistencia detallada
+        $asistencias = Asistencia::where('asignacion_id', $asignacion->id)
+            ->where('matricula_id', $matricula->id)
+            ->orderBy('fecha')
+            ->get();
+
+        $asistResumen = [
+            'total'     => $asistencias->count(),
+            'presentes' => $asistencias->whereIn('estado', ['presente'])->count(),
+            'tardes'    => $asistencias->whereIn('estado', ['tarde', 'tardanza'])->count(),
+            'excusas'   => $asistencias->where('estado', 'excusa')->count(),
+            'ausentes'  => $asistencias->where('estado', 'ausente')->count(),
+        ];
+        $asistResumen['pct'] = $asistResumen['total'] > 0
+            ? round(($asistResumen['presentes'] + $asistResumen['tardes'] + $asistResumen['excusas']) / $asistResumen['total'] * 100, 1)
+            : null;
+
+        // Observaciones del docente sobre este estudiante (en esta asignación)
+        $observaciones = Observacion::where('asignacion_id', $asignacion->id)
+            ->where('estudiante_id', $matricula->estudiante_id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        // Instrumentos evaluados (en esta asignación, para este estudiante)
+        $instrumentos = \App\Models\InstrumentoEvaluacion::where('asignacion_id', $asignacion->id)
+            ->with(['criterios', 'evaluaciones' => fn($q) => $q->where('matricula_id', $matricula->id)])
+            ->orderBy('created_at')
+            ->get();
+
+        return view('portal.docente.ficha_estudiante', compact(
+            'docente', 'asignacion', 'matricula', 'schoolYear', 'esTecnica',
+            'periodos', 'notasPeriodo', 'notaFinal',
+            'asistencias', 'asistResumen', 'observaciones', 'instrumentos'
+        ));
+    }
+
     public function estudiantesPdf(Asignacion $asignacion)
     {
         $docente = $this->getDocente();

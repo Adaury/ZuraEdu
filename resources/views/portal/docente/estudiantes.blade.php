@@ -162,6 +162,11 @@
                    title="Ver observaciones">
                     <i class="bi bi-chat-square-text"></i>
                 </a>
+                <a href="{{ route('portal.docente.estudiantes.ficha', [$asignacion, $m]) }}"
+                   style="background:#eff6ff;color:#1d4ed8;border-radius:7px;padding:.3rem .55rem;font-size:.7rem;font-weight:600;text-decoration:none;"
+                   title="Ver ficha completa">
+                    <i class="bi bi-person-vcard-fill"></i>
+                </a>
             </div>
         </div>
         @empty

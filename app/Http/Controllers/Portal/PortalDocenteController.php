@@ -154,7 +154,7 @@ class PortalDocenteController extends Controller
         $request->validate([
             'fecha'                => 'required|date',
             'estados'              => 'required|array',
-            'estados.*'            => 'required|in:presente,ausente,tardanza,justificado',
+            'estados.*'            => 'required|in:presente,ausente,tarde,excusa,retiro',
         ]);
 
         $schoolYear = SchoolYear::actual();
@@ -223,7 +223,7 @@ class PortalDocenteController extends Controller
 
         $asists = Asistencia::where('asignacion_id', $asignacion->id)
             ->whereIn('matricula_id', $mids)
-            ->selectRaw('matricula_id, COUNT(*) as total, SUM(estado IN ("presente","tardanza")) as presentes')
+            ->selectRaw('matricula_id, COUNT(*) as total, SUM(estado IN ("presente","tarde")) as presentes')
             ->groupBy('matricula_id')
             ->get()->keyBy('matricula_id');
 
@@ -261,7 +261,7 @@ class PortalDocenteController extends Controller
 
         $asists = Asistencia::where('asignacion_id', $asignacion->id)
             ->whereIn('matricula_id', $mids)
-            ->selectRaw('matricula_id, COUNT(*) as total, SUM(estado IN ("presente","tardanza")) as presentes')
+            ->selectRaw('matricula_id, COUNT(*) as total, SUM(estado IN ("presente","tarde")) as presentes')
             ->groupBy('matricula_id')
             ->get()->keyBy('matricula_id');
 
@@ -306,7 +306,7 @@ class PortalDocenteController extends Controller
 
         $asists = Asistencia::where('asignacion_id', $asignacion->id)
             ->whereIn('matricula_id', $mids)
-            ->selectRaw('matricula_id, COUNT(*) as total, SUM(estado IN ("presente","tardanza")) as presentes')
+            ->selectRaw('matricula_id, COUNT(*) as total, SUM(estado IN ("presente","tarde")) as presentes')
             ->groupBy('matricula_id')
             ->get()->keyBy('matricula_id');
 
@@ -1910,7 +1910,7 @@ class PortalDocenteController extends Controller
             // % de asistencia del grupo en esta asignación
             $totalAsist = Asistencia::where('asignacion_id', $asig->id)->count();
             $presentes  = Asistencia::where('asignacion_id', $asig->id)
-                ->whereIn('estado', ['presente', 'tardanza'])->count();
+                ->whereIn('estado', ['presente', 'tarde'])->count();
             $pctAsist = $totalAsist > 0 ? round($presentes / $totalAsist * 100, 1) : null;
 
             $estadisticasPorAsignacion[] = [
@@ -1925,7 +1925,7 @@ class PortalDocenteController extends Controller
         // % de asistencia promedio general de sus grupos
         $totalAsistGlobal = Asistencia::whereIn('asignacion_id', $asignaciones->pluck('id'))->count();
         $presentesGlobal  = Asistencia::whereIn('asignacion_id', $asignaciones->pluck('id'))
-            ->whereIn('estado', ['presente', 'tardanza'])->count();
+            ->whereIn('estado', ['presente', 'tarde'])->count();
         $pctAsistGlobal = $totalAsistGlobal > 0 ? round($presentesGlobal / $totalAsistGlobal * 100, 1) : null;
 
         // Planes de clase y planificaciones creadas
@@ -2044,7 +2044,7 @@ class PortalDocenteController extends Controller
             // % asistencia global sobre todas las asignaciones del docente
             $asistEst   = $asistencias->get($m->id, collect());
             $total      = $asistEst->count();
-            $presentes  = $asistEst->whereIn('estado', ['presente', 'tardanza'])->count();
+            $presentes  = $asistEst->whereIn('estado', ['presente', 'tarde'])->count();
             $m->_asist  = $total > 0 ? round($presentes / $total * 100, 1) : null;
 
             // Alertas activas
@@ -2161,7 +2161,7 @@ class PortalDocenteController extends Controller
                 $total = $registros->count();
                 if ($total < 5) continue;
 
-                $presentes = $registros->whereIn('estado', ['presente', 'tardanza', 'justificado'])->count();
+                $presentes = $registros->whereIn('estado', ['presente', 'tarde', 'excusa'])->count();
                 $pct       = round($presentes / $total * 100, 1);
 
                 if ($pct < 75 && $pct >= 70) {
@@ -2604,7 +2604,7 @@ class PortalDocenteController extends Controller
             foreach ($fechas as $j => $f) {
                 $col    = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($j + 5);
                 $estado = $mapa[$mat->id][\Carbon\Carbon::parse($f)->format('Y-m-d')]?->estado ?? '—';
-                $letra  = match($estado) { 'presente' => 'P', 'ausente' => 'A', 'tardanza' => 'T', default => '—' };
+                $letra  = match($estado) { 'presente' => 'P', 'ausente' => 'A', 'tarde' => 'T', 'excusa' => 'E', 'retiro' => 'R', default => '—' };
                 $ws->setCellValue("{$col}{$row}", $letra);
                 if ($letra !== 'A') $presentes++;
 
@@ -2688,7 +2688,8 @@ class PortalDocenteController extends Controller
             ->with('estudiante')->get()->keyBy('numero_matricula');
         $matPorCedula = $matPorNum->groupBy(fn($m) => $m->estudiante?->cedula ?? '');
 
-        $mapaEstados = ['tarde' => 'tardanza', 'excusa' => 'justificado'];
+        // Alias compatibles con valores anteriores del ENUM
+        $mapaEstados = ['tardanza' => 'tarde', 'justificado' => 'excusa'];
         $importados = 0; $omitidos = 0; $errores = [];
 
         foreach ($rows as $idx => $row) {
@@ -2705,7 +2706,7 @@ class PortalDocenteController extends Controller
 
             $estado = strtolower(trim($row['estado'] ?? 'presente'));
             $estado = $mapaEstados[$estado] ?? $estado;
-            if (! in_array($estado, ['presente', 'ausente', 'tardanza', 'justificado', 'retiro'])) {
+            if (! in_array($estado, ['presente', 'ausente', 'tarde', 'excusa', 'retiro'])) {
                 $estado = 'presente';
             }
 

@@ -84,7 +84,7 @@
                 </div>
                 <div class="dm-text-primary" style="flex:1;min-width:0;font-size:.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $m->estudiante?->nombre_completo ?? '—' }}</div>
                 <div class="est-row-buttons" data-matricula="{{ $m->id }}">
-                    @foreach(['presente' => ['#15803d','#dcfce7','✔ Presente'], 'tardanza' => ['#92400e','#fef9c3','⏰ Tardanza'], 'ausente' => ['#991b1b','#fee2e2','✖ Ausente']] as $val => $info)
+                    @foreach(['presente' => ['#15803d','#dcfce7','✔ Presente'], 'tarde' => ['#92400e','#fef9c3','⏰ Tarde'], 'excusa' => ['#1d4ed8','#dbeafe','📋 Excusa'], 'ausente' => ['#991b1b','#fee2e2','✖ Ausente']] as $val => $info)
                     <label style="cursor:pointer;">
                         <input type="radio" name="estados[{{ $m->id }}]" value="{{ $val }}"
                                {{ $estadoActual === $val ? 'checked' : '' }}
@@ -130,7 +130,7 @@
             <ol style="margin:.4rem 0 0 1.1rem;padding:0;line-height:2;">
                 <li>Descarga la plantilla CSV. Ya incluye todos los estudiantes del grupo y la fecha de hoy.</li>
                 <li>Abre el archivo en Excel o cualquier hoja de cálculo.</li>
-                <li>Columna <code>estado</code>: escribe <code>presente</code>, <code>ausente</code>, <code>tardanza</code> o <code>justificado</code>.</li>
+                <li>Columna <code>estado</code>: escribe <code>presente</code>, <code>tarde</code>, <code>excusa</code> o <code>ausente</code>.</li>
                 <li>Columna <code>fecha</code>: formato <code>AAAA-MM-DD</code> (ej: <code>{{ now()->format('Y-m-d') }}</code>).</li>
                 <li>Puedes registrar varios días en el mismo archivo (una fila por estudiante por día).</li>
                 <li>Guarda como CSV y sube el archivo aquí.</li>
@@ -183,23 +183,29 @@
 
 @push('scripts')
 <script>
-function highlightRow(radio) {
-    const colores = { presente: '#dcfce7', tardanza: '#fef9c3', ausente: '#fee2e2' };
-    const textColors = { presente: '#15803d', tardanza: '#92400e', ausente: '#991b1b' };
-    const row = radio.closest('.est-row');
-    row.style.background = colores[radio.value] + '55';
+const ESTADO_COLORES = {
+    presente: { bg: '#dcfce7', text: '#15803d' },
+    tarde:    { bg: '#fef9c3', text: '#92400e' },
+    excusa:   { bg: '#dbeafe', text: '#1d4ed8' },
+    ausente:  { bg: '#fee2e2', text: '#991b1b' },
+    retiro:   { bg: '#f3e8ff', text: '#7e22ce' },
+};
 
-    // Reset all labels in this group
+function highlightRow(radio) {
+    const c   = ESTADO_COLORES[radio.value] ?? { bg: '#f1f5f9', text: '#64748b' };
+    const row = radio.closest('.est-row');
+    row.style.background = c.bg + '66';
+
     row.querySelectorAll('.est-btn').forEach(btn => {
-        btn.style.background = '#f1f5f9';
-        btn.style.color = '#64748b';
+        btn.style.background  = '#f1f5f9';
+        btn.style.color       = '#64748b';
         btn.style.borderColor = 'transparent';
     });
-    // Highlight selected
+
     const selSpan = radio.nextElementSibling;
-    selSpan.style.background = colores[radio.value];
-    selSpan.style.color = textColors[radio.value];
-    selSpan.style.borderColor = textColors[radio.value];
+    selSpan.style.background  = c.bg;
+    selSpan.style.color       = c.text;
+    selSpan.style.borderColor = c.text;
 }
 
 function marcarTodos(estado) {
@@ -207,6 +213,14 @@ function marcarTodos(estado) {
         r.checked = true;
         highlightRow(r);
     });
+}
+
+function toggleOffline() {
+    const panel   = document.getElementById('offline-panel');
+    const chevron = document.getElementById('offline-chevron');
+    const open    = panel.style.display === 'none' || panel.style.display === '';
+    panel.style.display   = open ? 'block' : 'none';
+    chevron.style.transform = open ? 'rotate(180deg)' : '';
 }
 </script>
 @endpush

@@ -1072,7 +1072,7 @@ class AsistenciaController extends Controller
                 $total    = $registros->count();
                 if ($total < 5) continue; // No alertar con pocos registros
 
-                $presentes = $registros->whereIn('estado', ['presente', 'tardanza', 'justificado'])->count();
+                $presentes = $registros->whereIn('estado', ['presente', 'tarde', 'excusa'])->count();
                 $pct       = round($presentes / $total * 100, 1);
 
                 // Solo alerta cuando cruza el umbral por primera vez (entre 80% y 74%)

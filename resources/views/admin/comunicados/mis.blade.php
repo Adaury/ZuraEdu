@@ -33,7 +33,7 @@
                 <p class="text-muted mb-2" style="font-size:.77rem;">
                     <i class="bi bi-person me-1"></i>{{ $c->autor?->name ?? '—' }}
                 </p>
-                <div style="font-size:.88rem;color:#374151;line-height:1.6;white-space:pre-line;">{{ $c->cuerpo }}</div>
+                <div style="font-size:.88rem;color:#374151;line-height:1.6;" class="comunicado-body">{!! $c->cuerpo !!}</div>
             </div>
         </div>
     </div>

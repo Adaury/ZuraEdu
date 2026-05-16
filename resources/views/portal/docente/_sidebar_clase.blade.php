@@ -85,6 +85,10 @@ try {
    class="prt-sidebar-link {{ $ak === 'calificaciones' ? 'active' : '' }}">
     <i class="bi bi-journal-check"></i>Calificaciones
 </a>
+<a href="{{ route('portal.docente.conducta.index', $asignacion) }}"
+   class="prt-sidebar-link {{ $ak === 'conducta' ? 'active' : '' }}">
+    <i class="bi bi-person-check-fill"></i>Conducta
+</a>
 <a href="{{ route('portal.docente.estudiantes', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'estudiantes' ? 'active' : '' }}">
     <i class="bi bi-people-fill"></i>Estudiantes

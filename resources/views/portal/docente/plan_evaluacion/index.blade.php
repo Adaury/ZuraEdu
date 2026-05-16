@@ -178,10 +178,16 @@
                     <i class="bi bi-clipboard-check-fill" style="color:#10b981;"></i>
                     <h3>Instrumentos — {{ $periodo->nombre }}</h3>
                 </div>
-                <a href="{{ route('portal.docente.instrumentos.create', $asignacion) }}?periodo_id={{ $periodo->id }}"
-                   style="background:#1d4ed8;color:#fff;border-radius:8px;padding:.35rem .85rem;font-size:.75rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.35rem;margin-left:auto;">
-                    <i class="bi bi-plus-circle"></i>Nuevo instrumento
-                </a>
+                <div style="display:flex;gap:.5rem;margin-left:auto;flex-wrap:wrap;">
+                    <a href="{{ route('portal.docente.plan-evaluacion.aplicar', [$asignacion, $periodo]) }}"
+                       style="background:#059669;color:#fff;border-radius:8px;padding:.35rem .85rem;font-size:.75rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.35rem;">
+                        <i class="bi bi-calculator"></i>Aplicar notas
+                    </a>
+                    <a href="{{ route('portal.docente.instrumentos.create', $asignacion) }}?periodo_id={{ $periodo->id }}"
+                       style="background:#1d4ed8;color:#fff;border-radius:8px;padding:.35rem .85rem;font-size:.75rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.35rem;">
+                        <i class="bi bi-plus-circle"></i>Nuevo instrumento
+                    </a>
+                </div>
             </div>
 
             @if($instPeriod->isEmpty())

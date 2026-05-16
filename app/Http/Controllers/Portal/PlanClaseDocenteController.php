@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Portal;
 use App\Http\Controllers\Controller;
 use App\Traits\HasDocenteContext;
 use App\Models\Asignacion;
+use App\Models\CalificacionAcademica;
+use App\Models\Matricula;
 use App\Models\InstrumentoCriterio;
 use App\Models\InstrumentoEvaluacion;
 use App\Models\InstrumentoEvaluacionEstudiante;
@@ -609,6 +611,108 @@ class PlanClaseDocenteController extends Controller
         );
 
         return back()->with('success', 'Plan de evaluación guardado correctamente.');
+    }
+
+    public function aplicarNotasPeriodo(Asignacion $asignacion, Periodo $periodo)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $schoolYear = SchoolYear::actual();
+        $plan = PlanEvaluacionPeriodo::where('asignacion_id', $asignacion->id)
+            ->where('periodo_id', $periodo->id)
+            ->first();
+
+        $matriculas = $asignacion->grupo->matriculas()->activas()->with('estudiante')
+            ->orderBy('numero_orden')->get();
+
+        // Instrumentos del período con sus evaluaciones
+        $instrumentos = InstrumentoEvaluacion::with(['criterios', 'evaluaciones'])
+            ->where('asignacion_id', $asignacion->id)
+            ->where('periodo_id', $periodo->id)
+            ->get();
+
+        // Calificaciones actuales del período
+        $calActuales = CalificacionAcademica::where('asignacion_id', $asignacion->id)
+            ->whereIn('matricula_id', $matriculas->pluck('id'))
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->get()->keyBy('matricula_id');
+
+        $campo = 'comp1_p' . min($periodo->numero, 4);
+
+        // Calcular nota propuesta para cada estudiante
+        $preview = $matriculas->map(function ($mat) use ($instrumentos, $calActuales, $campo) {
+            $ponderaciones = [];
+            foreach ($instrumentos as $inst) {
+                $ev = $inst->evaluaciones->firstWhere('matricula_id', $mat->id);
+                if ($ev && $ev->ponderacion !== null) {
+                    $ponderaciones[] = (float) $ev->ponderacion;
+                }
+            }
+            $notaPropuesta = count($ponderaciones)
+                ? round(array_sum($ponderaciones) / count($ponderaciones), 2)
+                : null;
+
+            $notaActual = $calActuales[$mat->id]?->$campo;
+
+            return [
+                'matricula'     => $mat,
+                'notaPropuesta' => $notaPropuesta,
+                'notaActual'    => $notaActual,
+                'evaluados'     => count($ponderaciones),
+                'total'         => $instrumentos->count(),
+            ];
+        });
+
+        $categorias = PlanEvaluacionPeriodo::$categorias;
+
+        return view('portal.docente.plan_evaluacion.aplicar', compact(
+            'docente', 'asignacion', 'periodo', 'plan', 'instrumentos',
+            'preview', 'campo', 'schoolYear', 'categorias'
+        ));
+    }
+
+    public function aplicarNotasPeriodoGuardar(Request $request, Asignacion $asignacion, Periodo $periodo)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $schoolYear = SchoolYear::actual();
+        $campo = 'comp1_p' . min($periodo->numero, 4);
+        $camposComp = [];
+        for ($c = 1; $c <= 4; $c++) {
+            $camposComp["comp{$c}_p{$periodo->numero}"] = null;
+        }
+
+        $notas = $request->input('notas', []);
+
+        DB::transaction(function () use ($notas, $asignacion, $schoolYear, $periodo) {
+            foreach ($notas as $matId => $nota) {
+                $nota = $nota !== '' ? round((float) $nota, 2) : null;
+                $n    = min($periodo->numero, 4);
+
+                $update = [];
+                for ($c = 1; $c <= 4; $c++) {
+                    $update["comp{$c}_p{$n}"] = $nota;
+                }
+
+                CalificacionAcademica::updateOrCreate(
+                    [
+                        'matricula_id'   => $matId,
+                        'asignacion_id'  => $asignacion->id,
+                        'school_year_id' => $schoolYear?->id,
+                    ],
+                    array_merge($update, [
+                        'tenant_id'      => tenant_id(),
+                        'modificado_por' => auth()->id(),
+                    ])
+                );
+            }
+        });
+
+        return redirect()
+            ->route('portal.docente.plan-evaluacion.index', $asignacion)
+            ->with('success', "Notas del {$periodo->nombre} aplicadas correctamente.");
     }
 
     public function planEvaluacionPdf(Asignacion $asignacion)

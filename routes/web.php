@@ -424,9 +424,11 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
 
     // Plan de Evaluación por Período
     Route::prefix('/asignacion/{asignacion}/plan-evaluacion')->name('plan-evaluacion.')->group(function () {
-        Route::get('/',    [PlanClaseDocenteController::class, 'planEvaluacionIndex'])->name('index');
-        Route::post('/',   [PlanClaseDocenteController::class, 'planEvaluacionGuardar'])->name('guardar');
-        Route::get('/pdf', [PlanClaseDocenteController::class, 'planEvaluacionPdf'])->name('pdf');
+        Route::get('/',                        [PlanClaseDocenteController::class, 'planEvaluacionIndex'])->name('index');
+        Route::post('/',                       [PlanClaseDocenteController::class, 'planEvaluacionGuardar'])->name('guardar');
+        Route::get('/pdf',                     [PlanClaseDocenteController::class, 'planEvaluacionPdf'])->name('pdf');
+        Route::get('/aplicar/{periodo}',       [PlanClaseDocenteController::class, 'aplicarNotasPeriodo'])->name('aplicar');
+        Route::post('/aplicar/{periodo}',      [PlanClaseDocenteController::class, 'aplicarNotasPeriodoGuardar'])->name('aplicar.guardar');
     });
 
     // Planificaciones (Área Técnica)

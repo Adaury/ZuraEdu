@@ -289,6 +289,7 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::post('/asistencia-rapida/guardar',                     [PortalDocenteController::class, 'asistenciaRapidaGuardar'])->name('asistencia-rapida.guardar');
     Route::get('/asignacion/{asignacion}/asistencia',             [PortalDocenteController::class, 'asistencia'])->name('asistencia');
     Route::post('/asignacion/{asignacion}/asistencia',            [PortalDocenteController::class, 'guardarAsistencia'])->name('asistencia.guardar');
+    Route::get('/asignacion/{asignacion}/asistencia/estadisticas', [PortalDocenteController::class, 'estadisticasAsistencia'])->name('asistencia.estadisticas');
     Route::get('/asignacion/{asignacion}/asistencia/plantilla',   [PortalDocenteController::class, 'descargarPlantillaAsistencia'])->name('asistencia.plantilla');
     Route::get('/asignacion/{asignacion}/asistencia/pdf',         [PortalDocenteController::class, 'exportarAsistenciaPdf'])->name('asistencia.pdf');
     Route::get('/asignacion/{asignacion}/asistencia/excel',       [PortalDocenteController::class, 'exportarAsistenciaExcel'])->name('asistencia.excel');

@@ -3592,4 +3592,105 @@ class PortalDocenteController extends Controller
             'completo'  => $marcados >= $total,
         ]);
     }
+
+    // ── Estadísticas de Asistencia ───────────────────────────────────────────
+    public function estadisticasAsistencia(Asignacion $asignacion)
+    {
+        $docente    = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $schoolYear = SchoolYear::actual();
+        $umbral     = 75; // % mínimo de asistencia
+
+        $periodos = $schoolYear
+            ? Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get()
+            : collect();
+
+        $matriculas = Matricula::with('estudiante')
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->get();
+
+        // Todas las asistencias de esta asignación
+        $todasAsistencias = Asistencia::where('asignacion_id', $asignacion->id)->get();
+
+        // Días únicos con registro (total de clases dadas)
+        $diasRegistrados = $todasAsistencias->pluck('fecha')->unique()->count();
+
+        // Estadísticas por estudiante
+        $porEstudiante = $matriculas->map(function ($m) use ($todasAsistencias, $periodos, $umbral) {
+            $mAsist = $todasAsistencias->where('matricula_id', $m->id);
+            $total  = $mAsist->count();
+
+            $resumen = [
+                'matricula' => $m,
+                'total'     => $total,
+                'presente'  => $mAsist->whereIn('estado', ['presente'])->count(),
+                'tarde'     => $mAsist->whereIn('estado', ['tarde', 'tardanza'])->count(),
+                'excusa'    => $mAsist->whereIn('estado', ['excusa', 'justificado'])->count(),
+                'ausente'   => $mAsist->where('estado', 'ausente')->count(),
+                'pct'       => $total > 0 ? round(($total - $mAsist->where('estado', 'ausente')->count()) / $total * 100) : null,
+                'critico'   => false,
+                'periodos'  => [],
+            ];
+
+            if ($resumen['pct'] !== null && $resumen['pct'] < $umbral) {
+                $resumen['critico'] = true;
+            }
+
+            // Desglose por período
+            foreach ($periodos as $p) {
+                $pAsist = $mAsist->filter(fn($a) => $p->fecha_inicio && $p->fecha_fin
+                    && $a->fecha >= $p->fecha_inicio && $a->fecha <= $p->fecha_fin);
+                $pTotal  = $pAsist->count();
+                $pAus    = $pAsist->where('estado', 'ausente')->count();
+                $resumen['periodos'][$p->numero] = [
+                    'total'   => $pTotal,
+                    'ausente' => $pAus,
+                    'pct'     => $pTotal > 0 ? round(($pTotal - $pAus) / $pTotal * 100) : null,
+                ];
+            }
+
+            return $resumen;
+        });
+
+        $criticos   = $porEstudiante->where('critico', true)->count();
+        $pctGrupo   = $diasRegistrados > 0 && $matriculas->count() > 0
+            ? round($todasAsistencias->whereNotIn('estado', ['ausente'])->count()
+                / ($diasRegistrados * $matriculas->count()) * 100)
+            : null;
+
+        // Evolución mensual del grupo (% asistencia por mes)
+        $porMes = $todasAsistencias->groupBy(fn($a) => $a->fecha->format('Y-m'))
+            ->map(function ($grupo) {
+                $total = $grupo->count();
+                $aus   = $grupo->where('estado', 'ausente')->count();
+                return $total > 0 ? round(($total - $aus) / $total * 100) : null;
+            })->sortKeys();
+
+        $chartLabels = $porMes->keys()->map(function ($ym) {
+            $meses = ['01'=>'Ene','02'=>'Feb','03'=>'Mar','04'=>'Abr','05'=>'May','06'=>'Jun',
+                      '07'=>'Jul','08'=>'Ago','09'=>'Sep','10'=>'Oct','11'=>'Nov','12'=>'Dic'];
+            [$y, $m] = explode('-', $ym);
+            return ($meses[$m] ?? $m) . ' ' . substr($y, 2);
+        })->values()->toJson();
+        $chartData = $porMes->values()->toJson();
+
+        // Día de la semana con más ausencias
+        $diasSemana = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+        $ausenciaPorDia = array_fill(0, 7, 0);
+        $todasAsistencias->where('estado', 'ausente')->each(function ($a) use (&$ausenciaPorDia) {
+            $dow = (int) $a->fecha->format('N') - 1; // 0=Lun
+            $ausenciaPorDia[$dow]++;
+        });
+
+        return view('portal.docente.asistencia_estadisticas', compact(
+            'docente', 'asignacion', 'schoolYear', 'periodos',
+            'matriculas', 'porEstudiante', 'diasRegistrados',
+            'pctGrupo', 'criticos', 'umbral',
+            'chartLabels', 'chartData',
+            'diasSemana', 'ausenciaPorDia'
+        ));
+    }
 }

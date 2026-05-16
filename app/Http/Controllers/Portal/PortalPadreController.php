@@ -610,7 +610,25 @@ class PortalPadreController extends Controller
     // ── Página de comunicados ────────────────────────────────────────────
     public function comunicados()
     {
+        // Grupos de los hijos del representante
+        $representante = \App\Models\Representante::where('user_id', auth()->id())->first();
+        $grupoIds = collect();
+        if ($representante) {
+            $estudianteIds = $representante->estudiantes()->pluck('estudiantes.id');
+            $grupoIds = \App\Models\Matricula::whereIn('estudiante_id', $estudianteIds)
+                ->where('estado', 'activa')
+                ->pluck('grupo_id')
+                ->unique();
+        }
+
         $comunicados = Comunicado::publicados()
+            ->where(function ($q) use ($grupoIds) {
+                $q->whereIn('tipo_destinatarios', ['todos'])
+                  ->orWhere(function ($g) use ($grupoIds) {
+                      $g->where('tipo_destinatarios', 'grupo')
+                        ->whereIn('grupo_id', $grupoIds);
+                  });
+            })
             ->orderByDesc('published_at')
             ->paginate(15);
 

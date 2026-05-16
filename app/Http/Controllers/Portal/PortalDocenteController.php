@@ -1746,6 +1746,78 @@ class PortalDocenteController extends Controller
         ));
     }
 
+    // ── Comunicado al grupo ──────────────────────────────────────────────
+    public function comunicadoGrupo(Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $asignacion->load(['asignatura', 'grupo']);
+        $schoolYear = SchoolYear::actual();
+
+        $comunicados = Comunicado::where('grupo_id', $asignacion->grupo_id)
+            ->where('autor_id', auth()->id())
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get();
+
+        return view('portal.docente.comunicado', compact(
+            'docente', 'asignacion', 'schoolYear', 'comunicados'
+        ));
+    }
+
+    public function comunicadoGrupoEnviar(Request $request, Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $request->validate([
+            'titulo' => 'required|string|max:200',
+            'cuerpo' => 'required|string|max:3000',
+        ]);
+
+        $schoolYear = SchoolYear::actual();
+
+        $comunicado = Comunicado::create([
+            'titulo'             => $request->titulo,
+            'cuerpo'             => $request->cuerpo,
+            'autor_id'           => auth()->id(),
+            'tipo_destinatarios' => 'grupo',
+            'grupo_id'           => $asignacion->grupo_id,
+            'published_at'       => now(),
+            'activo'             => true,
+        ]);
+
+        // Recolectar user_ids únicos de representantes de los estudiantes del grupo
+        $matriculas = Matricula::with(['estudiante.representantes'])
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->get();
+
+        $userIds = $matriculas
+            ->flatMap(fn($m) => $m->estudiante?->representantes ?? collect())
+            ->pluck('user_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (!empty($userIds)) {
+            Notificacion::enviarA(
+                $userIds,
+                'comunicado',
+                $request->titulo,
+                Str::limit($request->cuerpo, 120),
+                ['comunicado_id' => $comunicado->id, 'grupo_id' => $asignacion->grupo_id]
+            );
+        }
+
+        return redirect()
+            ->route('portal.docente.comunicado', $asignacion)
+            ->with('success', 'Comunicado enviado a ' . count($userIds) . ' representante(s).');
+    }
+
     // ── Mis planificaciones ──────────────────────────────────────────────
     public function misPlanificaciones()
     {

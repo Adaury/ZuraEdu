@@ -82,6 +82,10 @@ try {
    class="prt-sidebar-link {{ $ak === 'rendimiento' ? 'active' : '' }}">
     <i class="bi bi-graph-up-arrow"></i>Rendimiento
 </a>
+<a href="{{ route('portal.docente.comunicado', $asignacion) }}"
+   class="prt-sidebar-link {{ $ak === 'comunicado' ? 'active' : '' }}">
+    <i class="bi bi-megaphone-fill"></i>Comunicado
+</a>
 <a href="{{ route('portal.docente.recursos', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'recursos' ? 'active' : '' }}">
     <i class="bi bi-folder-fill"></i>Recursos

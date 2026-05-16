@@ -2077,62 +2077,99 @@ class PortalDocenteController extends Controller
                 ->count()
             : 0;
 
-        // Promedio de calificaciones y % asistencia por asignación
+        $asigIds = $asignaciones->pluck('id');
+
+        // Bulk: matrículas activas por grupo
+        $matriculasPorGrupo = Matricula::whereIn('grupo_id', $grupoIds)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $syId))
+            ->select('id', 'grupo_id')
+            ->get()->groupBy('grupo_id');
+
+        // Bulk: calificaciones académicas y técnicas
+        $califAcadAll = CalificacionAcademica::whereIn('asignacion_id', $asigIds)
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $syId))
+            ->select('asignacion_id', 'nota_final')
+            ->get()->groupBy('asignacion_id');
+
+        $califTecAll = Calificacion::whereIn('asignacion_id', $asigIds)
+            ->select('asignacion_id', 'nota_final')
+            ->get()->groupBy('asignacion_id');
+
+        // Bulk: asistencias por asignación
+        $asistStats = Asistencia::whereIn('asignacion_id', $asigIds)
+            ->selectRaw('asignacion_id, COUNT(*) as total,
+                SUM(estado = "presente") + SUM(estado IN ("tarde","tardanza")) as presentes,
+                SUM(estado = "ausente") as ausentes')
+            ->groupBy('asignacion_id')
+            ->get()->keyBy('asignacion_id');
+
+        // Estadísticas por asignación
         $estadisticasPorAsignacion = [];
+        $umbral = 65;
         foreach ($asignaciones as $asig) {
             $esTecnica = ($asig->area ?? '') === 'tecnica';
+            $notas = $esTecnica
+                ? ($califTecAll->get($asig->id, collect())->pluck('nota_final')->filter())
+                : ($califAcadAll->get($asig->id, collect())->pluck('nota_final')->filter());
 
-            // Promedio de nota_final publicadas
-            if ($esTecnica) {
-                $notas = Calificacion::where('asignacion_id', $asig->id)
-                    ->whereNotNull('nota_final')
-                    ->pluck('nota_final');
-            } else {
-                $notas = CalificacionAcademica::where('asignacion_id', $asig->id)
-                    ->when($schoolYear, fn($q) => $q->where('school_year_id', $syId))
-                    ->whereNotNull('nota_final')
-                    ->pluck('nota_final');
-            }
-            $promedio = $notas->count() ? round($notas->avg(), 1) : null;
+            $promedio   = $notas->count() ? round($notas->avg(), 1) : null;
+            $aprobados  = $notas->filter(fn($n) => $n >= $umbral)->count();
+            $reprobados = $notas->filter(fn($n) => $n < $umbral)->count();
+            $totalMats  = $matriculasPorGrupo->get($asig->grupo_id, collect())->count();
+            $sinNota    = max(0, $totalMats - $notas->count());
 
-            // % de asistencia del grupo en esta asignación
-            $totalAsist = Asistencia::where('asignacion_id', $asig->id)->count();
-            $presentes  = Asistencia::where('asignacion_id', $asig->id)
-                ->whereIn('estado', ['presente', 'tarde'])->count();
-            $pctAsist = $totalAsist > 0 ? round($presentes / $totalAsist * 100, 1) : null;
+            $asist    = $asistStats->get($asig->id);
+            $pctAsist = ($asist && $asist->total > 0)
+                ? round($asist->presentes / $asist->total * 100, 1) : null;
 
             $estadisticasPorAsignacion[] = [
+                'asignacion' => $asig,
                 'asignatura' => $asig->asignatura?->nombre ?? '—',
                 'grupo'      => $asig->grupo?->nombre_completo ?? '—',
                 'promedio'   => $promedio,
+                'aprobados'  => $aprobados,
+                'reprobados' => $reprobados,
+                'sin_nota'   => $sinNota,
+                'total_mats' => $totalMats,
                 'pct_asist'  => $pctAsist,
-                'total_asist'=> $totalAsist,
+                'ausentes'   => $asist?->ausentes ?? 0,
+                'total_asist'=> $asist?->total ?? 0,
             ];
         }
 
-        // % de asistencia promedio general de sus grupos
-        $totalAsistGlobal = Asistencia::whereIn('asignacion_id', $asignaciones->pluck('id'))->count();
-        $presentesGlobal  = Asistencia::whereIn('asignacion_id', $asignaciones->pluck('id'))
-            ->whereIn('estado', ['presente', 'tarde'])->count();
-        $pctAsistGlobal = $totalAsistGlobal > 0 ? round($presentesGlobal / $totalAsistGlobal * 100, 1) : null;
+        // Totales globales
+        $totalAsistGlobal = $asistStats->sum('total');
+        $presentesGlobal  = $asistStats->sum('presentes');
+        $pctAsistGlobal   = $totalAsistGlobal > 0 ? round($presentesGlobal / $totalAsistGlobal * 100, 1) : null;
+        $totalAprobados   = collect($estadisticasPorAsignacion)->sum('aprobados');
+        $totalReprobados  = collect($estadisticasPorAsignacion)->sum('reprobados');
+        $totalSinNota     = collect($estadisticasPorAsignacion)->sum('sin_nota');
 
         // Planes de clase y planificaciones creadas
-        $totalPlanificaciones = \App\Models\Planificacion::whereIn('asignacion_id', $asignaciones->pluck('id'))->count();
-        $totalPlanesClase     = \App\Models\PlanClase::whereIn('asignacion_id', $asignaciones->pluck('id'))->count();
+        $totalPlanificaciones = \App\Models\Planificacion::whereIn('asignacion_id', $asigIds)->count();
+        $totalPlanesClase     = \App\Models\PlanClase::whereIn('asignacion_id', $asigIds)->count();
 
-        // Datos para Chart.js (promedio por asignación)
+        // Chart.js
         $chartLabels = collect($estadisticasPorAsignacion)
-            ->map(fn($e) => \Illuminate\Support\Str::limit($e['asignatura'], 20))
+            ->map(fn($e) => Str::limit($e['asignatura'], 18) . ' · ' . Str::limit($e['grupo'], 12))
             ->values()->toJson();
-        $chartData   = collect($estadisticasPorAsignacion)
+        $chartData = collect($estadisticasPorAsignacion)
             ->map(fn($e) => $e['promedio'] ?? 0)
+            ->values()->toJson();
+        $chartAprobados = collect($estadisticasPorAsignacion)
+            ->map(fn($e) => $e['aprobados'])
+            ->values()->toJson();
+        $chartReprobados = collect($estadisticasPorAsignacion)
+            ->map(fn($e) => $e['reprobados'])
             ->values()->toJson();
 
         return view('portal.docente.mis_estadisticas', compact(
             'docente', 'schoolYear', 'asignaciones',
             'totalEstudiantes', 'estadisticasPorAsignacion',
             'pctAsistGlobal', 'totalPlanificaciones', 'totalPlanesClase',
-            'chartLabels', 'chartData'
+            'totalAprobados', 'totalReprobados', 'totalSinNota',
+            'chartLabels', 'chartData', 'chartAprobados', 'chartReprobados'
         ));
     }
 

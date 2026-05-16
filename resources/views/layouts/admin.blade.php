@@ -2365,6 +2365,11 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('admin.bachillerato-tecnico.index') }}" class="{{ request()->routeIs('admin.bachillerato-tecnico*') ? 'active' : '' }}">
+                        <i class="bi bi-mortarboard-fill"></i>Bachillerato Técnico
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.especialidades.index') }}" class="{{ request()->routeIs('admin.especialidades*') ? 'active' : '' }}">
                         <i class="bi bi-tools"></i>Especialidades Técnicas
                     </a>

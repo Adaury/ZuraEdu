@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\PlanClaseController;
 use App\Http\Controllers\Admin\InstrumentoController;
 use App\Http\Controllers\Admin\HomepageController;
 use App\Http\Controllers\Admin\ObservacionController;
+use App\Http\Controllers\Admin\BachilleratoTecnicoController;
 
 // ── Asignaturas ───────────────────────────────────────────────────────────
 Route::middleware('can:gestionar-asignaturas')->group(function () {
@@ -220,4 +221,25 @@ Route::prefix('planificacion')->name('planificacion.')->group(function () {
     Route::put('/{planificacion}',                 [PlanificacionController::class, 'update'])->name('update');
     Route::delete('/{planificacion}',              [PlanificacionController::class, 'destroy'])->name('destroy');
     Route::patch('/{planificacion}/publicado',     [PlanificacionController::class, 'togglePublicado'])->name('toggle-publicado');
+});
+
+
+// ── Bachillerato Técnico (MINERD) — Áreas, Cursos, Módulos ───────────────
+Route::prefix('bachillerato-tecnico')->name('bachillerato-tecnico.')->group(function () {
+    Route::get('/',                                   [BachilleratoTecnicoController::class, 'index'])->name('index');
+    // Áreas Técnicas
+    Route::post('areas',                              [BachilleratoTecnicoController::class, 'storeArea'])->name('areas.store');
+    Route::put('areas/{area}',                        [BachilleratoTecnicoController::class, 'updateArea'])->name('areas.update');
+    Route::delete('areas/{area}',                     [BachilleratoTecnicoController::class, 'destroyArea'])->name('areas.destroy');
+    Route::patch('areas/{area}/toggle',               [BachilleratoTecnicoController::class, 'toggleArea'])->name('areas.toggle');
+    // Cursos Técnicos
+    Route::post('cursos',                             [BachilleratoTecnicoController::class, 'storeCurso'])->name('cursos.store');
+    Route::put('cursos/{curso}',                      [BachilleratoTecnicoController::class, 'updateCurso'])->name('cursos.update');
+    Route::delete('cursos/{curso}',                   [BachilleratoTecnicoController::class, 'destroyCurso'])->name('cursos.destroy');
+    Route::patch('cursos/{curso}/toggle',             [BachilleratoTecnicoController::class, 'toggleCurso'])->name('cursos.toggle');
+    // Módulos Formativos
+    Route::post('modulos',                            [BachilleratoTecnicoController::class, 'storeModulo'])->name('modulos.store');
+    Route::put('modulos/{modulo}',                    [BachilleratoTecnicoController::class, 'updateModulo'])->name('modulos.update');
+    Route::delete('modulos/{modulo}',                 [BachilleratoTecnicoController::class, 'destroyModulo'])->name('modulos.destroy');
+    Route::patch('modulos/{modulo}/toggle',           [BachilleratoTecnicoController::class, 'toggleModulo'])->name('modulos.toggle');
 });

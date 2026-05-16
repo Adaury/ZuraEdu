@@ -718,6 +718,115 @@ class PortalDocenteController extends Controller
         return $pdf->download("acta_{$slug}.pdf");
     }
 
+    // ── Acta de Calificaciones — página índice ────────────────────────────
+    public function actaCalificaciones(Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $asignacion->load(['asignatura', 'grupo.grado', 'grupo.seccion']);
+        $schoolYear = SchoolYear::actual();
+        $esTecnica  = $asignacion->area === 'tecnica';
+
+        $matriculas = Matricula::with('estudiante')
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->orderBy('id')->get();
+
+        $periodos = Periodo::when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->orderBy('numero')->get();
+
+        if ($esTecnica) {
+            $calificaciones = Calificacion::where('asignacion_id', $asignacion->id)
+                ->whereIn('periodo_id', $periodos->pluck('id'))
+                ->get()->groupBy(fn($c) => $c->matricula_id . '_' . $c->periodo_id);
+        } else {
+            $calificaciones = CalificacionAcademica::where('asignacion_id', $asignacion->id)
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->get()->keyBy('matricula_id');
+        }
+
+        // Calcular datos por estudiante
+        $estudiantesData = [];
+        foreach ($matriculas as $mat) {
+            $notasPeriodos = [];
+            $notaFinal = null;
+            $situacion = null;
+
+            if ($esTecnica) {
+                foreach ($periodos as $p) {
+                    $key = $mat->id . '_' . $p->id;
+                    $cal = $calificaciones[$key] ?? null;
+                    $notasPeriodos[$p->numero] = $cal?->first()?->nota_final;
+                }
+                $validas = array_filter($notasPeriodos, fn($v) => $v !== null);
+                $notaFinal = count($validas) ? round(array_sum($validas) / count($validas), 2) : null;
+                $situacion = $notaFinal !== null ? ($notaFinal >= 65 ? 'A' : 'R') : null;
+            } else {
+                $cal = $calificaciones[$mat->id] ?? null;
+                foreach ($periodos as $p) {
+                    $n = $p->numero;
+                    $vals = [];
+                    for ($ci = 1; $ci <= 4; $ci++) {
+                        $pb = $cal?->{"comp{$ci}_p{$n}"};
+                        if ($pb !== null) {
+                            $rv = $cal?->{"comp{$ci}_r{$n}"};
+                            $pb = (float)$pb;
+                            $cv = ($rv !== null && (float)$pb < 70)
+                                ? round($pb + min((float)$rv, max(0.0, 100.0 - $pb)), 2)
+                                : round($pb, 2);
+                            $vals[] = $cv;
+                        }
+                    }
+                    $notasPeriodos[$p->numero] = $vals ? round(array_sum($vals) / count($vals), 2) : null;
+                }
+                $notaFinal = $cal?->nota_extraordinaria ?? $cal?->nota_completiva ?? $cal?->nota_final;
+                $situacion = $cal?->situacion;
+            }
+
+            $estudiantesData[$mat->id] = [
+                'matricula'     => $mat,
+                'notasPeriodos' => $notasPeriodos,
+                'notaFinal'     => $notaFinal ? round((float)$notaFinal, 2) : null,
+                'situacion'     => $situacion,
+            ];
+        }
+
+        $notasFinales = collect($estudiantesData)->pluck('notaFinal')->filter()->values();
+        $stats = [
+            'total'      => $matriculas->count(),
+            'con_notas'  => $notasFinales->count(),
+            'aprobados'  => collect($estudiantesData)->where('situacion', 'A')->count(),
+            'reprobados' => collect($estudiantesData)->where('situacion', 'R')->count(),
+            'promedio'   => $notasFinales->count() ? round($notasFinales->avg(), 2) : null,
+            'maximo'     => $notasFinales->count() ? round($notasFinales->max(), 2) : null,
+            'minimo'     => $notasFinales->count() ? round($notasFinales->min(), 2) : null,
+            'rangos'     => [
+                '90_100'  => $notasFinales->filter(fn($n) => $n >= 90)->count(),
+                '80_89'   => $notasFinales->filter(fn($n) => $n >= 80 && $n < 90)->count(),
+                '70_79'   => $notasFinales->filter(fn($n) => $n >= 70 && $n < 80)->count(),
+                '60_69'   => $notasFinales->filter(fn($n) => $n >= 60 && $n < 70)->count(),
+                'menos60' => $notasFinales->filter(fn($n) => $n < 60)->count(),
+            ],
+        ];
+
+        // Promedio por período
+        $promediosPeriodo = [];
+        foreach ($periodos as $p) {
+            $notasPer = collect($estudiantesData)
+                ->pluck('notasPeriodos')
+                ->pluck($p->numero)
+                ->filter();
+            $promediosPeriodo[$p->numero] = $notasPer->count() ? round($notasPer->avg(), 2) : null;
+        }
+
+        return view('portal.docente.acta_calificaciones', compact(
+            'docente', 'asignacion', 'matriculas', 'periodos', 'esTecnica',
+            'estudiantesData', 'stats', 'promediosPeriodo', 'schoolYear'
+        ));
+    }
+
     // ── AJAX: guardar una celda P (nota base) o R (recuperación) ────────────
     public function guardarCeldaAcad(Request $request, Asignacion $asignacion)
     {

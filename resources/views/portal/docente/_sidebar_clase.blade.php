@@ -97,6 +97,10 @@ try {
    class="prt-sidebar-link {{ $ak === 'boletines' ? 'active' : '' }}">
     <i class="bi bi-file-earmark-text-fill"></i>Boletines
 </a>
+<a href="{{ route('portal.docente.acta-calificaciones', $asignacion) }}"
+   class="prt-sidebar-link {{ $ak === 'acta-calificaciones' ? 'active' : '' }}">
+    <i class="bi bi-file-earmark-spreadsheet-fill"></i>Acta de Calificaciones
+</a>
 <a href="{{ route('portal.docente.rendimiento', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'rendimiento' ? 'active' : '' }}">
     <i class="bi bi-graph-up-arrow"></i>Rendimiento

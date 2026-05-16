@@ -158,6 +158,90 @@ tbody tr:nth-child(even) td { background:#f8faff; }
     </tbody>
 </table>
 
+{{-- ── Estadísticas ── --}}
+@php
+    $notasFinalesPdf = [];
+    $aprobadosPdf = 0;
+    $reprobadosPdf = 0;
+    foreach($matriculas as $mat) {
+        $estPdf = $mat->estudiante;
+        if ($esTecnica) {
+            $nvPdf = [];
+            foreach($periodos as $pp) {
+                $kk = $mat->id . '_' . $pp->id;
+                $cc = $calificaciones[$kk] ?? null;
+                $vv = $cc?->nota_final;
+                if ($vv !== null) $nvPdf[] = $vv;
+            }
+            $nfPdf = count($nvPdf) ? round(array_sum($nvPdf)/count($nvPdf),2) : null;
+            $situPdf = $nfPdf !== null ? ($nfPdf >= 65 ? 'A' : 'R') : null;
+        } else {
+            $calPdf = $calificaciones[$mat->id] ?? null;
+            $nfPdf  = $calPdf?->nota_extraordinaria ?? $calPdf?->nota_completiva ?? $calPdf?->nota_final;
+            $situPdf = $calPdf?->situacion;
+        }
+        if ($nfPdf !== null) { $notasFinalesPdf[] = (float)$nfPdf; }
+        if ($situPdf === 'A') $aprobadosPdf++;
+        if ($situPdf === 'R') $reprobadosPdf++;
+    }
+    $totalConNotas = count($notasFinalesPdf);
+    $promedioPdf = $totalConNotas ? round(array_sum($notasFinalesPdf)/$totalConNotas,2) : null;
+    $maxPdf = $totalConNotas ? max($notasFinalesPdf) : null;
+    $minPdf = $totalConNotas ? min($notasFinalesPdf) : null;
+    $pctAprobPdf = $totalConNotas ? round($aprobadosPdf/$totalConNotas*100) : 0;
+    $rangos90 = count(array_filter($notasFinalesPdf, fn($n) => $n >= 90));
+    $rangos80 = count(array_filter($notasFinalesPdf, fn($n) => $n >= 80 && $n < 90));
+    $rangos70 = count(array_filter($notasFinalesPdf, fn($n) => $n >= 70 && $n < 80));
+    $rangos60 = count(array_filter($notasFinalesPdf, fn($n) => $n >= 60 && $n < 70));
+    $rangosM60 = count(array_filter($notasFinalesPdf, fn($n) => $n < 60));
+@endphp
+<div style="margin-top:.6rem;border:1px solid #dbeafe;border-radius:4px;padding:6px 10px;background:#f8faff;">
+    <div style="font-size:7.5pt;font-weight:700;color:#1e3a6e;margin-bottom:5px;border-bottom:1px solid #dbeafe;padding-bottom:3px;">
+        Estadísticas de la Clase
+    </div>
+    <table style="width:100%;border-collapse:collapse;">
+        <tr>
+            <td style="width:14%;text-align:center;padding:3px 0;border:none;">
+                <div style="font-size:10pt;font-weight:900;color:#1e3a6e;">{{ $matriculas->count() }}</div>
+                <div style="font-size:6pt;color:#6b7280;margin-top:1px;">Total</div>
+            </td>
+            <td style="width:14%;text-align:center;padding:3px 0;border:none;">
+                <div style="font-size:10pt;font-weight:900;color:#065f46;">{{ $aprobadosPdf }}</div>
+                <div style="font-size:6pt;color:#6b7280;margin-top:1px;">Aprobados</div>
+            </td>
+            <td style="width:14%;text-align:center;padding:3px 0;border:none;">
+                <div style="font-size:10pt;font-weight:900;color:#991b1b;">{{ $reprobadosPdf }}</div>
+                <div style="font-size:6pt;color:#6b7280;margin-top:1px;">Reprobados</div>
+            </td>
+            <td style="width:14%;text-align:center;padding:3px 0;border:none;">
+                <div style="font-size:10pt;font-weight:900;color:#1d4ed8;">{{ $promedioPdf ?? '—' }}</div>
+                <div style="font-size:6pt;color:#6b7280;margin-top:1px;">Promedio</div>
+            </td>
+            <td style="width:14%;text-align:center;padding:3px 0;border:none;">
+                <div style="font-size:10pt;font-weight:900;color:#d97706;">{{ $maxPdf ?? '—' }}</div>
+                <div style="font-size:6pt;color:#6b7280;margin-top:1px;">Máxima</div>
+            </td>
+            <td style="width:14%;text-align:center;padding:3px 0;border:none;">
+                <div style="font-size:10pt;font-weight:900;color:#6b7280;">{{ $minPdf ?? '—' }}</div>
+                <div style="font-size:6pt;color:#6b7280;margin-top:1px;">Mínima</div>
+            </td>
+            <td style="width:16%;text-align:center;padding:3px 0;border:none;">
+                <div style="font-size:10pt;font-weight:900;color:{{ $pctAprobPdf >= 70 ? '#065f46' : '#991b1b' }};">{{ $pctAprobPdf }}%</div>
+                <div style="font-size:6pt;color:#6b7280;margin-top:1px;">% Aprobación</div>
+            </td>
+        </tr>
+    </table>
+    <div style="margin-top:5px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        @php $totalR = $totalConNotas ?: 1; @endphp
+        @foreach([['90–100',$rangos90,'#065f46'],['80–89',$rangos80,'#1d4ed8'],['70–79',$rangos70,'#d97706'],['60–69',$rangos60,'#9a3412'],['<60',$rangosM60,'#991b1b']] as $rg)
+        <div style="display:flex;align-items:center;gap:3px;">
+            <div style="width:{{ max(1,round($rg[1]/$totalR*60)) }}px;height:6px;background:{{ $rg[2] }};border-radius:99px;"></div>
+            <span style="font-size:6pt;color:{{ $rg[2] }};font-weight:700;">{{ $rg[0] }}: {{ $rg[1] }}</span>
+        </div>
+        @endforeach
+    </div>
+</div>
+
 <div style="margin-top:1.5rem;display:flex;justify-content:space-around;">
     <div style="text-align:center;width:180px;">
         <div style="border-top:1px solid #374151;margin-bottom:.25rem;"></div>

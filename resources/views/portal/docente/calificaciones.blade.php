@@ -311,6 +311,10 @@
             </span>
         </div>
     </div>
+    <a href="{{ route('portal.docente.acta-calificaciones', $asignacion) }}"
+       style="background:#1e3a6e;color:#fff;border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.4rem;white-space:nowrap;flex-shrink:0;">
+        <i class="bi bi-file-earmark-spreadsheet-fill"></i>Acta Oficial
+    </a>
     <a href="{{ route('portal.docente.calificaciones.exportar-pdf', $asignacion) }}" target="_blank"
        style="background:#991b1b;color:#fff;border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.4rem;white-space:nowrap;flex-shrink:0;">
         <i class="bi bi-file-earmark-pdf"></i>PDF

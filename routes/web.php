@@ -334,6 +334,7 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::get('/asignacion/{asignacion}/boletines',              [PortalDocenteController::class, 'boletines'])->name('boletines');
     Route::get('/asignacion/{asignacion}/boletines/zip',          [PortalDocenteController::class, 'boletinesZip'])->name('boletines.zip');
     Route::get('/asignacion/{asignacion}/acta-pdf',               [PortalDocenteController::class, 'actaPdf'])->name('acta.pdf');
+    Route::get('/asignacion/{asignacion}/acta-calificaciones',    [PortalDocenteController::class, 'actaCalificaciones'])->name('acta-calificaciones');
     Route::get('/asignacion/{asignacion}/boletin/{matricula}',     [PortalDocenteController::class, 'verBoletin'])->name('boletin.ver');
     Route::get('/asignacion/{asignacion}/boletin/{matricula}/pdf', [PortalDocenteController::class, 'pdfBoletin'])->name('boletin.pdf');
     // Recursos por materia

@@ -1768,8 +1768,9 @@ if (auth()->check()) {
                 $isDocente      = $u->hasRole('Docente');
                 $isSecre        = $u->hasAnyRole(['Secretaría','Secretaria Docente','Secretaria']);
                 $isPersonalAdm  = $u->hasRole('Personal Administrativo');
+                $isSuperAdmin   = $u->hasRole('super_admin');
                 $canSupervisar  = $isAdmin || $isDir || $isPersonalAdm;
-                $canConfig      = $isAdmin;
+                $canConfig      = $isAdmin || $isSuperAdmin;
                 $canAcad        = $isAdmin || $isDir || $isCoord || $isSecre || $isPersonalAdm;
                 $canCalif       = $isAdmin || $isDir || $isCoord || $isDocente;
                 $docenteArea    = null;
@@ -2348,7 +2349,7 @@ if (auth()->check()) {
             @if($canConfig || $isDir)
             <div class="nav-section-title">Configuración</div>
             <ul class="list-unstyled mb-0">
-                @if($isAdmin || $isDir)
+                @if($isAdmin || $isDir || $isSuperAdmin)
                 <li class="nav-item">
                     <a href="{{ route('admin.asignaturas.index') }}" class="{{ request()->routeIs('admin.asignaturas*') ? 'active' : '' }}">
                         <i class="bi bi-book"></i>Asignaturas

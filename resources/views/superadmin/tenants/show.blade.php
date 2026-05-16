@@ -96,6 +96,13 @@
                     <i class="bi bi-bar-chart-fill me-1"></i>Reportes
                 </button>
             </form>
+            <form method="POST" action="{{ route('superadmin.tenants.enter-panel', $tenant) }}" class="d-inline">
+                @csrf
+                <input type="hidden" name="destino" value="/admin/bachillerato-tecnico">
+                <button class="btn btn-sm" style="background:#1e3a6e;color:#fff;border:none;border-radius:8px;">
+                    <i class="bi bi-mortarboard-fill me-1"></i>Bachillerato Técnico
+                </button>
+            </form>
             <a href="{{ $tenant->url }}" target="_blank"
                class="btn btn-sm btn-outline-secondary" style="border-radius:8px;">
                 <i class="bi bi-globe me-1"></i>Ver página pública

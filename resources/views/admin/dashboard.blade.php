@@ -35,6 +35,11 @@
 </div>
 @endif
 
+{{-- ── CHECKLIST POST-ONBOARDING ────────────────────────────────────────── --}}
+@if(! empty($setupChecklist) && ! $setupChecklist['todo_listo'])
+    @include('admin.dashboard._setup_checklist', ['checklist' => $setupChecklist])
+@endif
+
 {{-- ══════════════════════════════════════════════
      BANNER BIENVENIDA ESTILO ZURA
      ══════════════════════════════════════════════ --}}

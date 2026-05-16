@@ -338,6 +338,15 @@ class DashboardController extends Controller
             });
         }
 
+        // ── Checklist post-onboarding (solo admin, no docentes) ─────────────
+        $setupChecklist = null;
+        if (! $isDocente && ($currentTenant = app('tenant')) && $currentTenant->onboarding_completado) {
+            $meta = $currentTenant->metadatos ?? [];
+            if (empty($meta['setup_checklist_dismissed'])) {
+                $setupChecklist = $this->buildSetupChecklist($schoolYear);
+            }
+        }
+
         return view('admin.dashboard', compact(
             'schoolYear',
             'totalEstudiantes',
@@ -359,8 +368,89 @@ class DashboardController extends Controller
             'totalIncidentesMes',
             'transporteStats',
             'agendaProxima',
-            'preMatriculasPendientes'
+            'preMatriculasPendientes',
+            'setupChecklist'
         ));
+    }
+
+    /** Construye los pasos del checklist de configuración inicial. */
+    private function buildSetupChecklist(?SchoolYear $schoolYear): array
+    {
+        $syId = $schoolYear?->id ?? 0;
+
+        $pasos = [
+            [
+                'key'    => 'asignaturas',
+                'titulo' => 'Crear asignaturas',
+                'desc'   => 'Define las materias que se impartirán en cada grado.',
+                'icon'   => 'bi-book-fill',
+                'color'  => '#f59e0b',
+                'route'  => route('admin.asignaturas.index'),
+                'label'  => 'Ir a Asignaturas',
+                'done'   => Asignatura::count() > 0,
+            ],
+            [
+                'key'    => 'docentes',
+                'titulo' => 'Agregar docentes',
+                'desc'   => 'Registra al personal docente del centro educativo.',
+                'icon'   => 'bi-person-video3',
+                'color'  => '#3b82f6',
+                'route'  => route('admin.docentes.create'),
+                'label'  => 'Agregar Docente',
+                'done'   => Docente::count() > 0,
+            ],
+            [
+                'key'    => 'asignaciones',
+                'titulo' => 'Asignar docentes a grupos',
+                'desc'   => 'Vincula cada docente con un grupo y su asignatura.',
+                'icon'   => 'bi-grid-3x3-gap-fill',
+                'color'  => '#8b5cf6',
+                'route'  => route('admin.asignaciones.create'),
+                'label'  => 'Crear Asignación',
+                'done'   => $syId > 0 && Asignacion::where('school_year_id', $syId)->exists(),
+            ],
+            [
+                'key'    => 'matriculas',
+                'titulo' => 'Matricular estudiantes',
+                'desc'   => 'Inscribe a los estudiantes en los grupos del año escolar.',
+                'icon'   => 'bi-mortarboard-fill',
+                'color'  => '#10b981',
+                'route'  => route('admin.estudiantes.index'),
+                'label'  => 'Ir a Estudiantes',
+                'done'   => $syId > 0 && Matricula::where('estado', 'activa')->where('school_year_id', $syId)->exists(),
+            ],
+            [
+                'key'    => 'horario',
+                'titulo' => 'Publicar horario',
+                'desc'   => 'Genera y publica el horario de clases para los grupos.',
+                'icon'   => 'bi-calendar-week-fill',
+                'color'  => '#ec4899',
+                'route'  => route('admin.horarios.index'),
+                'label'  => 'Ir a Horarios',
+                'done'   => $syId > 0 && Horario::where('school_year_id', $syId)->where('estado', 'publicado')->exists(),
+            ],
+        ];
+
+        $completados = collect($pasos)->where('done', true)->count();
+
+        return [
+            'pasos'       => $pasos,
+            'completados' => $completados,
+            'total'       => count($pasos),
+            'porcentaje'  => (int) round(($completados / count($pasos)) * 100),
+            'todo_listo'  => $completados === count($pasos),
+        ];
+    }
+
+    /** Descarta el checklist de configuración (lo guarda en metadatos del tenant). */
+    public function dismissSetupChecklist()
+    {
+        $tenant = app('tenant');
+        $meta   = $tenant->metadatos ?? [];
+        $meta['setup_checklist_dismissed'] = true;
+        $tenant->update(['metadatos' => $meta]);
+
+        return response()->json(['ok' => true]);
     }
 
     /**

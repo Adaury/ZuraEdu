@@ -445,8 +445,9 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.access'])->group(function () {
 
-    Route::get('/dashboard',       [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/dashboard/stats', [DashboardController::class, 'statsJson'])->name('dashboard.stats');
+    Route::get('/dashboard',                    [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/stats',             [DashboardController::class, 'statsJson'])->name('dashboard.stats');
+    Route::post('/dashboard/dismiss-checklist',[DashboardController::class, 'dismissSetupChecklist'])->name('dashboard.dismiss-checklist');
 
     // ── Onboarding Wizard (nuevo tenant) ─────────────────────────────────────
     Route::prefix('onboarding')->name('onboarding.')->group(function () {

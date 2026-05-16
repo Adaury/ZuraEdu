@@ -281,7 +281,7 @@ class PagoController extends Controller
         $syActual = SchoolYear::actual();
 
         $q = Matricula::where('school_year_id', $syActual?->id)
-                      ->where('estado', 'activo');
+                      ->where('estado', 'activa');
 
         if (!empty($data['grupo_id'])) {
             $q->where('grupo_id', $data['grupo_id']);

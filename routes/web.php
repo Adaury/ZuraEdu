@@ -452,6 +452,15 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::post('/aplicar/{periodo}',      [PlanClaseDocenteController::class, 'aplicarNotasPeriodoGuardar'])->name('aplicar.guardar');
     });
 
+    // Diario de Clase
+    Route::prefix('/asignacion/{asignacion}/diario')->name('diario.')->group(function () {
+        Route::get('/',                          [\App\Http\Controllers\Portal\DiarioClaseController::class, 'index'])->name('index');
+        Route::post('/',                         [\App\Http\Controllers\Portal\DiarioClaseController::class, 'store'])->name('store');
+        Route::put('/{diarioClase}',             [\App\Http\Controllers\Portal\DiarioClaseController::class, 'update'])->name('update');
+        Route::delete('/{diarioClase}',          [\App\Http\Controllers\Portal\DiarioClaseController::class, 'destroy'])->name('destroy');
+        Route::get('/pdf',                       [\App\Http\Controllers\Portal\DiarioClaseController::class, 'pdf'])->name('pdf');
+    });
+
     // Banco de Preguntas
     Route::prefix('banco-preguntas')->name('banco-preguntas.')->group(function () {
         Route::get('/',                          [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'index'])->name('index');

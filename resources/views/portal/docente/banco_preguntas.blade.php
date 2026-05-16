@@ -1,6 +1,15 @@
-@extends('layouts.portal-docente')
-@section('title', 'Banco de Preguntas')
-@section('activeKey', 'banco-preguntas')
+@extends('layouts.portal')
+@section('page-title', 'Banco de Preguntas')
+@section('portal-name', 'Portal Docente')
+
+@section('sidebar')
+    @include('portal.docente._sidebar_clase', ['activeKey' => 'banco-preguntas'])
+@endsection
+
+@section('bottom-nav')
+<a href="{{ route('portal.docente.dashboard') }}" class="prt-nav-item"><i class="bi bi-house-fill"></i>Inicio</a>
+<a href="{{ route('portal.docente.banco-preguntas.index') }}" class="prt-nav-item active"><i class="bi bi-collection-fill"></i>Banco</a>
+@endsection
 
 @push('styles')
 <style>

@@ -108,6 +108,10 @@ try {
    class="prt-sidebar-link {{ $ak === 'recursos' ? 'active' : '' }}">
     <i class="bi bi-folder-fill"></i>Recursos
 </a>
+<a href="{{ route('portal.docente.diario.index', $asignacion) }}"
+   class="prt-sidebar-link {{ $ak === 'diario' ? 'active' : '' }}">
+    <i class="bi bi-journal-text"></i>Diario de Clase
+</a>
 
 {{-- ── PLANIFICACIÓN ── --}}
 <div class="prt-sidebar-section mt-2">Planificación</div>

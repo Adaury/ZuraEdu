@@ -1,6 +1,16 @@
-@extends('layouts.portal-docente')
-@section('title', 'Evaluaciones Online')
-@section('activeKey', 'evaluaciones')
+@extends('layouts.portal')
+@section('page-title', 'Evaluaciones Online')
+@section('portal-name', 'Portal Docente')
+
+@section('sidebar')
+    @include('portal.docente._sidebar_clase', ['activeKey' => 'evaluaciones', 'asignacion' => $asignacion])
+@endsection
+
+@section('bottom-nav')
+<a href="{{ route('portal.docente.dashboard') }}" class="prt-nav-item"><i class="bi bi-house-fill"></i>Inicio</a>
+<a href="{{ route('portal.docente.evaluaciones.index', $asignacion) }}" class="prt-nav-item active"><i class="bi bi-patch-question-fill"></i>Evaluaciones</a>
+<a href="{{ route('portal.docente.calificaciones', $asignacion) }}" class="prt-nav-item"><i class="bi bi-journal-check"></i>Notas</a>
+@endsection
 
 @push('styles')
 <style>

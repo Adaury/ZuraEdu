@@ -41,6 +41,11 @@ $ak  = $activeKey ?? '';
    class="prt-sidebar-link {{ $ak === 'mis-estadisticas' ? 'active' : '' }}">
     <i class="bi bi-bar-chart-fill"></i>Estadísticas
 </a>
+<a href="{{ route('portal.docente.rubricas.index') }}"
+   class="prt-sidebar-link {{ $ak === 'rubricas' ? 'active' : '' }}"
+   style="{{ $ak === 'rubricas' ? '' : 'color:#ec4899;' }}">
+    <i class="bi bi-table"></i>Rúbricas
+</a>
 <a href="{{ route('portal.docente.banco-preguntas.index') }}"
    class="prt-sidebar-link {{ $ak === 'banco-preguntas' ? 'active' : '' }}"
    style="{{ $ak === 'banco-preguntas' ? '' : 'color:#8b5cf6;' }}">

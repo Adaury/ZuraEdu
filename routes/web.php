@@ -452,6 +452,18 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::post('/aplicar/{periodo}',      [PlanClaseDocenteController::class, 'aplicarNotasPeriodoGuardar'])->name('aplicar.guardar');
     });
 
+    // Rúbricas de Evaluación
+    Route::prefix('rubricas')->name('rubricas.')->group(function () {
+        Route::get('/',                          [\App\Http\Controllers\Portal\RubricaDocenteController::class, 'index'])->name('index');
+        Route::post('/',                         [\App\Http\Controllers\Portal\RubricaDocenteController::class, 'store'])->name('store');
+        Route::get('/{rubrica}',                 [\App\Http\Controllers\Portal\RubricaDocenteController::class, 'show'])->name('show');
+        Route::put('/{rubrica}',                 [\App\Http\Controllers\Portal\RubricaDocenteController::class, 'update'])->name('update');
+        Route::delete('/{rubrica}',              [\App\Http\Controllers\Portal\RubricaDocenteController::class, 'destroy'])->name('destroy');
+        Route::get('/{rubrica}/aplicar',         [\App\Http\Controllers\Portal\RubricaDocenteController::class, 'aplicar'])->name('aplicar');
+        Route::post('/{rubrica}/guardar',        [\App\Http\Controllers\Portal\RubricaDocenteController::class, 'guardarAplicacion'])->name('guardar');
+        Route::get('/{rubrica}/resultados',      [\App\Http\Controllers\Portal\RubricaDocenteController::class, 'resultados'])->name('resultados');
+    });
+
     // Diario de Clase
     Route::prefix('/asignacion/{asignacion}/diario')->name('diario.')->group(function () {
         Route::get('/',                          [\App\Http\Controllers\Portal\DiarioClaseController::class, 'index'])->name('index');

@@ -3491,4 +3491,105 @@ class PortalDocenteController extends Controller
 
         return $pdf->download('ficha_actividad_' . $docente->apellidos . '_' . now()->format('Ymd') . '.pdf');
     }
+
+    // ── Asistencia Rápida — hub de todas las clases del día ──────────────────
+    public function asistenciaRapida()
+    {
+        $docente    = $this->getDocente();
+        $schoolYear = SchoolYear::actual();
+        $fecha      = request('fecha', now()->toDateString());
+
+        $asignaciones = Asignacion::with(['asignatura', 'grupo'])
+            ->where('docente_id', $docente->id)
+            ->where('activo', true)
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->get();
+
+        // Para cada asignación cargar matriculas + asistencias del día
+        $data = $asignaciones->map(function ($asig) use ($fecha, $schoolYear) {
+            $matriculas = Matricula::with('estudiante')
+                ->where('grupo_id', $asig->grupo_id)
+                ->where('estado', 'activa')
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->get();
+
+            $registradas = Asistencia::where('asignacion_id', $asig->id)
+                ->whereDate('fecha', $fecha)
+                ->get()
+                ->keyBy('matricula_id');
+
+            $total    = $matriculas->count();
+            $marcados = $registradas->count();
+            $presentes = $registradas->where('estado', 'presente')->count();
+
+            return [
+                'asignacion' => $asig,
+                'matriculas' => $matriculas,
+                'registradas'=> $registradas,
+                'total'      => $total,
+                'marcados'   => $marcados,
+                'presentes'  => $presentes,
+                'completo'   => $marcados >= $total && $total > 0,
+            ];
+        })->sortBy([
+            ['completo', 'asc'],  // incompletas primero
+            fn($a, $b) => $a['asignacion']->asignatura?->nombre <=> $b['asignacion']->asignatura?->nombre,
+        ])->values();
+
+        return view('portal.docente.asistencia_rapida', compact(
+            'docente', 'data', 'fecha', 'schoolYear'
+        ));
+    }
+
+    public function asistenciaRapidaGuardar(Request $request)
+    {
+        $request->validate([
+            'asignacion_id' => 'required|integer',
+            'matricula_id'  => 'required|integer',
+            'estado'        => 'required|in:presente,ausente,tarde,excusa',
+            'fecha'         => 'required|date',
+        ]);
+
+        $docente    = $this->getDocente();
+        $asignacion = Asignacion::findOrFail($request->asignacion_id);
+
+        if ($asignacion->docente_id !== $docente->id) {
+            return response()->json(['error' => 'Acceso denegado'], 403);
+        }
+
+        $asistencia = Asistencia::updateOrCreate(
+            [
+                'matricula_id'  => $request->matricula_id,
+                'asignacion_id' => $asignacion->id,
+                'fecha'         => $request->fecha,
+            ],
+            [
+                'estado'         => $request->estado,
+                'registrado_por' => auth()->id(),
+            ]
+        );
+
+        if ($request->estado === 'ausente') {
+            $this->notificarAusencia($request->matricula_id, $asignacion, $request->fecha);
+        }
+
+        // Contar marcados para esta asignación en esta fecha
+        $marcados = Asistencia::where('asignacion_id', $asignacion->id)
+            ->whereDate('fecha', $request->fecha)
+            ->count();
+
+        $schoolYear = SchoolYear::actual();
+        $total = Matricula::where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->count();
+
+        return response()->json([
+            'ok'        => true,
+            'estado'    => $asistencia->estado,
+            'marcados'  => $marcados,
+            'total'     => $total,
+            'completo'  => $marcados >= $total,
+        ]);
+    }
 }

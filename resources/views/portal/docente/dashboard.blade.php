@@ -8,6 +8,9 @@
     <a href="{{ route('portal.docente.dashboard') }}" class="prt-sidebar-link {{ request()->routeIs('portal.docente.dashboard') ? 'active' : '' }}">
         <i class="bi bi-house-fill"></i>Inicio
     </a>
+    <a href="{{ route('portal.docente.asistencia-rapida') }}" class="prt-sidebar-link" style="color:#f59e0b;">
+        <i class="bi bi-lightning-charge-fill"></i>Asistencia Rápida
+    </a>
     <a href="{{ route('portal.docente.mis-estadisticas') }}" class="prt-sidebar-link">
         <i class="bi bi-bar-chart-fill"></i>Mis Estadísticas
     </a>
@@ -280,6 +283,19 @@
     </div>
     @endif
 </div>
+
+{{-- ── Acceso rápido: Asistencia del día ──────────────────────────── --}}
+<a href="{{ route('portal.docente.asistencia-rapida') }}"
+   style="display:flex;align-items:center;gap:.85rem;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:12px;padding:.85rem 1.1rem;color:#fff;text-decoration:none;margin-bottom:1rem;box-shadow:0 3px 10px rgba(217,119,6,.3);">
+    <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.3rem;">
+        <i class="bi bi-lightning-charge-fill"></i>
+    </div>
+    <div style="flex:1;min-width:0;">
+        <div style="font-size:.92rem;font-weight:800;line-height:1.2;">Asistencia Rápida</div>
+        <div style="font-size:.73rem;opacity:.88;margin-top:.1rem;">Toma la asistencia de todas tus clases de hoy en un solo lugar</div>
+    </div>
+    <i class="bi bi-arrow-right-circle-fill" style="font-size:1.4rem;opacity:.85;flex-shrink:0;"></i>
+</a>
 
 {{-- ── Stats ────────────────────────────────────────────────────────── --}}
 <div class="prt-stats doc-stats" style="grid-template-columns:repeat(3,1fr);">

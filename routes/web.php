@@ -285,6 +285,8 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::get('/horario/pdf',                                    [PortalDocenteController::class, 'horarioPdf'])->name('horario.pdf');
     Route::get('/horario/excel',                                  [PortalDocenteController::class, 'horarioExcel'])->name('horario.excel');
     Route::post('/setup',                                         [DocenteSetupController::class, 'store'])->name('setup.store');
+    Route::get('/asistencia-rapida',                              [PortalDocenteController::class, 'asistenciaRapida'])->name('asistencia-rapida');
+    Route::post('/asistencia-rapida/guardar',                     [PortalDocenteController::class, 'asistenciaRapidaGuardar'])->name('asistencia-rapida.guardar');
     Route::get('/asignacion/{asignacion}/asistencia',             [PortalDocenteController::class, 'asistencia'])->name('asistencia');
     Route::post('/asignacion/{asignacion}/asistencia',            [PortalDocenteController::class, 'guardarAsistencia'])->name('asistencia.guardar');
     Route::get('/asignacion/{asignacion}/asistencia/plantilla',   [PortalDocenteController::class, 'descargarPlantillaAsistencia'])->name('asistencia.plantilla');

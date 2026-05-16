@@ -16,6 +16,11 @@ $ak  = $activeKey ?? '';
    class="prt-sidebar-link {{ $ak === 'dashboard' ? 'active' : '' }}">
     <i class="bi bi-house-fill"></i>Inicio
 </a>
+<a href="{{ route('portal.docente.asistencia-rapida') }}"
+   class="prt-sidebar-link {{ $ak === 'asistencia-rapida' ? 'active' : '' }}"
+   style="{{ $ak === 'asistencia-rapida' ? '' : 'color:#f59e0b;' }}">
+    <i class="bi bi-lightning-charge-fill"></i>Asistencia Rápida
+</a>
 <a href="{{ route('portal.docente.horario') }}"
    class="prt-sidebar-link {{ $ak === 'horario' ? 'active' : '' }}">
     <i class="bi bi-calendar3"></i>Mi Horario

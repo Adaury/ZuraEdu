@@ -13,6 +13,13 @@ Route::prefix('cierre-ano')->name('cierre-ano.')->group(function () {
     // Ejecutar cierre de año (POST con confirmación)
     Route::post('/ejecutar', [CierreAnoController::class, 'ejecutar'])->name('ejecutar');
 
+    // Crear nuevo año escolar (POST) tras el cierre
+    Route::post('/crear-nuevo-ano', [CierreAnoController::class, 'crearNuevoAno'])->name('crear-nuevo-ano');
+
+    // Wizard de traslado de estudiantes al nuevo año
+    Route::get('/trasladar',  [CierreAnoController::class, 'trasladar'])->name('trasladar');
+    Route::post('/trasladar', [CierreAnoController::class, 'ejecutarTraslado'])->name('ejecutar-traslado');
+
     // Acta de Promoción PDF por grupo
     Route::get('/{grupo}/acta-pdf', [CierreAnoController::class, 'actaPdf'])->name('acta-pdf');
 

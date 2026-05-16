@@ -41,14 +41,22 @@
                 <div class="card shadow-sm mb-4">
                     <div class="card-header fw-semibold"><i class="bi bi-info-circle me-1"></i>Información General</div>
                     <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label">Período</label>
-                            <select name="periodo_id" class="form-select">
-                                <option value="">-- Sin período específico --</option>
-                                @foreach($periodos as $p)
-                                    <option value="{{ $p->id }}" @selected(old('periodo_id', request('periodo_id')) == $p->id)>{{ $p->nombre }}</option>
-                                @endforeach
-                            </select>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;" class="mb-3">
+                            <div>
+                                <label class="form-label">Período</label>
+                                <select name="periodo_id" class="form-select">
+                                    <option value="">-- Sin período específico --</option>
+                                    @foreach($periodos as $p)
+                                        <option value="{{ $p->id }}" @selected(old('periodo_id', request('periodo_id')) == $p->id)>{{ $p->nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label"><i class="bi bi-calendar-event me-1 text-primary"></i>Fecha de aplicación</label>
+                                <input type="date" name="fecha_aplicacion" class="form-control"
+                                       value="{{ old('fecha_aplicacion') }}"
+                                       title="Fecha en que se aplicará esta evaluación (aparecerá en el calendario)">
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Título <span class="text-danger">*</span></label>

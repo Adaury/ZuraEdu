@@ -64,6 +64,7 @@
         <button class="cal-fpill" data-tipo="reunion" onclick="setFiltro(this,'reunion')">🤝 Reuniones</button>
         <button class="cal-fpill" data-tipo="periodo" onclick="setFiltro(this,'periodo')">📅 Períodos</button>
         <button class="cal-fpill" data-tipo="suspension" onclick="setFiltro(this,'suspension')">🚫 Suspensiones</button>
+        <button class="cal-fpill" data-tipo="evaluacion" onclick="setFiltro(this,'evaluacion')" style="color:#7c3aed;">📋 Evaluaciones</button>
     </div>
 
     {{-- Grilla del mes --}}
@@ -106,6 +107,7 @@ const TIPO_LABELS = {
     actividad:       'Actividad',
     feriado:         'Feriado',
     reunion:         'Reunión',
+    evaluacion:      'Evaluación',
     otro:            'Otro',
     evento_academico:'Evento Académico',
     evento_deportivo:'Evento Deportivo',
@@ -125,6 +127,7 @@ function eventMatchesFiltro(e) {
     if (calFiltro === 'reunion') return e.tipo === 'reunion';
     if (calFiltro === 'periodo') return e.tipo === 'inicio_periodo' || e.tipo === 'fin_periodo';
     if (calFiltro === 'suspension') return e.tipo === 'suspension';
+    if (calFiltro === 'evaluacion') return e.tipo === 'evaluacion' || e.fuente === 'evaluacion';
     return false;
 }
 
@@ -190,10 +193,10 @@ function selectDay(ds, d) {
             '<div class="cal-empty"><i class="bi bi-calendar-x" style="font-size:1.5rem;display:block;margin-bottom:.4rem;"></i>Sin eventos este día</div>';
     } else {
         document.getElementById('panelList').innerHTML = evs.map(e => `
-            <div class="cal-event-item">
+            <div class="cal-event-item" ${e.url ? `style="cursor:pointer;" onclick="window.location='${e.url}'"` : ''}>
                 <div class="cal-event-dot" style="background:${e.color};"></div>
-                <div>
-                    <div class="cal-event-name">${e.titulo}</div>
+                <div style="flex:1;min-width:0;">
+                    <div class="cal-event-name">${e.titulo}${e.url ? ' <i class="bi bi-box-arrow-up-right" style="font-size:.65rem;color:#94a3b8;"></i>' : ''}</div>
                     ${e.desc ? `<div class="cal-event-desc">${e.desc}</div>` : ''}
                     <div class="cal-event-tipo">${tipoLabel(e.tipo)}</div>
                 </div>

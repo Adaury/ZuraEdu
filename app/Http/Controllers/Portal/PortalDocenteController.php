@@ -1823,6 +1823,119 @@ class PortalDocenteController extends Controller
         ));
     }
 
+    // ── Historial de notas por estudiante ───────────────────────────────
+    public function historialNotas(Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $schoolYear = SchoolYear::actual();
+        $esTecnica  = ($asignacion->area ?? '') === 'tecnica';
+
+        $periodos = $schoolYear
+            ? Periodo::where('school_year_id', $schoolYear->id)
+                ->where('tenant_id', tenant_id())
+                ->orderBy('numero')->get()
+            : collect();
+
+        $matriculas = Matricula::with('estudiante')
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->orderBy('numero_orden')
+            ->get();
+
+        $matIds = $matriculas->pluck('id');
+
+        if ($esTecnica) {
+            $cals = Calificacion::whereIn('matricula_id', $matIds)
+                ->where('asignacion_id', $asignacion->id)
+                ->get()->groupBy('matricula_id');
+        } else {
+            $cals = CalificacionAcademica::whereIn('matricula_id', $matIds)
+                ->where('asignacion_id', $asignacion->id)
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->get()->keyBy('matricula_id');
+        }
+
+        // Construir filas con notas por período y tendencia
+        $filas = $matriculas->map(function ($mat) use ($cals, $esTecnica, $periodos) {
+            $notasPeriodo = [];
+            $notaFinal    = null;
+
+            if ($esTecnica) {
+                $calsMat = $cals->get($mat->id, collect());
+                foreach ($periodos as $p) {
+                    $c = $calsMat->firstWhere('periodo_id', $p->id);
+                    $notasPeriodo[$p->numero] = $c?->nota_final !== null ? round($c->nota_final, 1) : null;
+                }
+                $vals = collect($notasPeriodo)->filter();
+                $notaFinal = $vals->count() ? round($vals->avg(), 1) : null;
+            } else {
+                $cal = $cals->get($mat->id);
+                $notaFinal = $cal?->nota_final !== null ? round($cal->nota_final, 1) : null;
+                foreach ($periodos as $p) {
+                    $n = $p->numero;
+                    $v = $cal?->{"comp1_p{$n}"};
+                    $notasPeriodo[$n] = $v !== null ? round($v, 1) : null;
+                }
+            }
+
+            // Tendencia: comparar primer y último período con nota
+            $conNota = collect($notasPeriodo)->filter(fn($v) => $v !== null);
+            $tendencia = 'neutral';
+            $diff      = null;
+            if ($conNota->count() >= 2) {
+                $primero = $conNota->first();
+                $ultimo  = $conNota->last();
+                $diff    = round($ultimo - $primero, 1);
+                $tendencia = $diff >= 3 ? 'up' : ($diff <= -3 ? 'down' : 'neutral');
+            }
+
+            // Riesgo: cualquier período con nota < 65, o nota final < 65
+            $enRiesgo = $conNota->filter(fn($v) => $v < 65)->isNotEmpty();
+
+            return [
+                'matricula'    => $mat,
+                'notasPeriodo' => $notasPeriodo,
+                'notaFinal'    => $notaFinal,
+                'tendencia'    => $tendencia,
+                'diff'         => $diff,
+                'enRiesgo'     => $enRiesgo,
+                'sinNota'      => $conNota->isEmpty(),
+            ];
+        });
+
+        // Promedios del grupo por período para el gráfico
+        $promediosPeriodo = [];
+        foreach ($periodos as $p) {
+            $vals = $filas->pluck("notasPeriodo.{$p->numero}")->filter();
+            $promediosPeriodo[$p->numero] = $vals->count() ? round($vals->avg(), 1) : null;
+        }
+
+        // KPIs
+        $conNotaFinal = $filas->filter(fn($f) => $f['notaFinal'] !== null);
+        $promedioFinal = $conNotaFinal->count()
+            ? round($conNotaFinal->avg(fn($f) => $f['notaFinal']), 1)
+            : null;
+        $enRiesgoCount  = $filas->where('enRiesgo', true)->count();
+        $mejorandoCount = $filas->where('tendencia', 'up')->count();
+        $declinandoCount = $filas->where('tendencia', 'down')->count();
+
+        // Datos para Chart.js
+        $chartLabels = json_encode($periodos->map(fn($p) => $p->nombre)->values()->all());
+        $chartData   = json_encode($periodos->map(fn($p) => $promediosPeriodo[$p->numero])->values()->all());
+
+        $asignacion->load(['asignatura', 'grupo.grado', 'grupo.seccion']);
+
+        return view('portal.docente.historial_notas', compact(
+            'docente', 'asignacion', 'schoolYear', 'periodos',
+            'filas', 'promediosPeriodo', 'promedioFinal',
+            'enRiesgoCount', 'mejorandoCount', 'declinandoCount',
+            'chartLabels', 'chartData', 'esTecnica'
+        ));
+    }
+
     // ── Comunicado al grupo ──────────────────────────────────────────────
     public function comunicadoGrupo(Asignacion $asignacion)
     {
@@ -3249,7 +3362,31 @@ class PortalDocenteController extends Controller
             }
         }
 
-        return $cal->concat($evs)->concat($reu)->concat($pers)->values()->all();
+        // Instrumentos/evaluaciones del docente con fecha_aplicacion
+        $instrEvents = collect();
+        try {
+            $docente = $this->getDocente();
+            $instrEvents = \App\Models\InstrumentoEvaluacion::where('docente_id', $docente->id)
+                ->whereNotNull('fecha_aplicacion')
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->with(['asignacion.asignatura', 'asignacion.grupo'])
+                ->get()
+                ->map(fn($inst) => [
+                    'id'     => 'inst_' . $inst->id,
+                    'titulo' => $inst->titulo,
+                    'inicio' => $inst->fecha_aplicacion->format('Y-m-d'),
+                    'fin'    => null,
+                    'tipo'   => 'evaluacion',
+                    'color'  => '#7c3aed',
+                    'desc'   => ($inst->asignacion?->asignatura?->nombre ?? '') .
+                                ($inst->asignacion?->grupo ? ' · ' . $inst->asignacion->grupo->nombre_completo : '') .
+                                ' · ' . ($inst->tipo_label),
+                    'fuente' => 'evaluacion',
+                    'url'    => route('portal.docente.instrumentos.show', [$inst->asignacion_id, $inst->id]),
+                ]);
+        } catch (\Throwable) {}
+
+        return $cal->concat($evs)->concat($reu)->concat($pers)->concat($instrEvents)->values()->all();
     }
 
     // ── Constancia de trabajo PDF ────────────────────────────────────────

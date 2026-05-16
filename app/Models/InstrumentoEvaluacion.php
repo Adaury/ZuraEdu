@@ -20,12 +20,13 @@ class InstrumentoEvaluacion extends Model
         'asignacion_id', 'school_year_id', 'periodo_id', 'docente_id',
         'titulo', 'tipo', 'competencia', 'descripcion',
         'indicadores_logro', 'observaciones', 'valoracion_global',
-        'niveles_desempeno', 'publicado', 'creado_por',
+        'niveles_desempeno', 'publicado', 'fecha_aplicacion', 'creado_por',
     ];
 
     protected $casts = [
         'niveles_desempeno' => 'array',
         'publicado'         => 'boolean',
+        'fecha_aplicacion'  => 'date',
     ];
 
     public static array $tiposLabels = [

@@ -414,6 +414,7 @@ class PlanClaseDocenteController extends Controller
             'titulo'               => 'required|string|max:200',
             'tipo'                 => 'required|in:lista_cotejo,rubrica,escala_estimacion',
             'periodo_id'           => 'nullable|exists:periodos,id',
+            'fecha_aplicacion'     => 'nullable|date',
             'criterios'            => 'required|array|min:1',
             'criterios.*.nombre'   => 'required|string|max:200',
         ]);
@@ -433,6 +434,7 @@ class PlanClaseDocenteController extends Controller
                 'indicadores_logro'=> $request->indicadores_logro,
                 'observaciones'    => $request->observaciones,
                 'publicado'        => false,
+                'fecha_aplicacion' => $request->fecha_aplicacion ?: null,
                 'creado_por'       => Auth::id(),
                 'niveles_desempeno'=> $request->tipo === 'rubrica' ? InstrumentoEvaluacion::$nivelesDefault : null,
             ]);

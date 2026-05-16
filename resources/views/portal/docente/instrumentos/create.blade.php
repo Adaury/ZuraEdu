@@ -42,6 +42,15 @@
                     <div class="card-header fw-semibold"><i class="bi bi-info-circle me-1"></i>Información General</div>
                     <div class="card-body">
                         <div class="mb-3">
+                            <label class="form-label">Período</label>
+                            <select name="periodo_id" class="form-select">
+                                <option value="">-- Sin período específico --</option>
+                                @foreach($periodos as $p)
+                                    <option value="{{ $p->id }}" @selected(old('periodo_id', request('periodo_id')) == $p->id)>{{ $p->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Título <span class="text-danger">*</span></label>
                             <input type="text" name="titulo" class="form-control @error('titulo') is-invalid @enderror"
                                 value="{{ old('titulo') }}" required maxlength="200">

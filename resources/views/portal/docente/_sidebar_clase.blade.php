@@ -2,7 +2,7 @@
     Sidebar contextual para vistas de asignación del portal docente.
     Uso: @include('portal.docente._sidebar_clase', ['activeKey' => 'calificaciones', 'asignacion' => $asignacion])
     activeKey: asistencia|calificaciones|estudiantes|observaciones|boletines|
-               recursos|planes|instrumentos|planificacion|tareas|
+               recursos|planes|instrumentos|plan-evaluacion|planificacion|tareas|
                mis-estadisticas|mis-planificaciones|mis-estudiantes|classroom
 --}}
 @php
@@ -93,6 +93,10 @@ try {
 <a href="{{ route('portal.docente.instrumentos.index', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'instrumentos' ? 'active' : '' }}">
     <i class="bi bi-clipboard-check-fill"></i>Instrumentos
+</a>
+<a href="{{ route('portal.docente.plan-evaluacion.index', $asignacion) }}"
+   class="prt-sidebar-link {{ $ak === 'plan-evaluacion' ? 'active' : '' }}">
+    <i class="bi bi-bar-chart-steps"></i>Plan de Evaluación
 </a>
 <a href="{{ route('portal.docente.tareas.index', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'tareas' ? 'active' : '' }}">

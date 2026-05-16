@@ -420,6 +420,13 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::get('/{instrumento}/pdf',         [PlanClaseDocenteController::class, 'instrumentosPdf'])->name('pdf');
     });
 
+    // Plan de Evaluación por Período
+    Route::prefix('/asignacion/{asignacion}/plan-evaluacion')->name('plan-evaluacion.')->group(function () {
+        Route::get('/',    [PlanClaseDocenteController::class, 'planEvaluacionIndex'])->name('index');
+        Route::post('/',   [PlanClaseDocenteController::class, 'planEvaluacionGuardar'])->name('guardar');
+        Route::get('/pdf', [PlanClaseDocenteController::class, 'planEvaluacionPdf'])->name('pdf');
+    });
+
     // Planificaciones (Área Técnica)
     Route::prefix('/asignacion/{asignacion}/planificacion')->name('planificacion.')->group(function () {
         Route::get('/',                          [PlanificacionDocenteController::class, 'index'])->name('index');

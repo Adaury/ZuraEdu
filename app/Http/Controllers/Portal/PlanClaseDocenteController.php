@@ -11,7 +11,10 @@ use App\Models\InstrumentoEvaluacionEstudiante;
 use App\Models\PlanClase;
 use App\Models\PlanClaseMomento;
 use App\Models\BoletinConfig;
+use App\Models\Periodo;
+use App\Models\PlanEvaluacionPeriodo;
 use App\Models\SchoolYear;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +24,7 @@ class PlanClaseDocenteController extends Controller
 {
     use HasDocenteContext;
 
-    // ══ PLANES DE CLASE ══════════════════════════════════════════════════
+    // â•â• PLANES DE CLASE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     public function planesIndex(Asignacion $asignacion)
     {
@@ -188,7 +191,7 @@ class PlanClaseDocenteController extends Controller
         return $pdf->download("planes_clase_{$slug}.pdf");
     }
 
-    // ── Planes clase lista Excel ─────────────────────────────────────────
+    // â”€â”€ Planes clase lista Excel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     public function planesListaExcel(Asignacion $asignacion)
     {
         $docente = $this->getDocente();
@@ -218,11 +221,11 @@ class PlanClaseDocenteController extends Controller
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
         $sheet->mergeCells('A2:G2');
-        $sheet->setCellValue('A2', 'Planes de Clase — ' . ($asignacion->asignatura?->nombre ?? '') . ' · ' . ($asignacion->grupo?->nombre_completo ?? ''));
+        $sheet->setCellValue('A2', 'Planes de Clase â€” ' . ($asignacion->asignatura?->nombre ?? '') . ' Â· ' . ($asignacion->grupo?->nombre_completo ?? ''));
         $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(11);
         $sheet->getStyle('A2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
-        $headers = ['#', 'Título', 'Tipo', 'Semana', 'Fecha Inicio', 'Fecha Fin', 'Publicado'];
+        $headers = ['#', 'TÃ­tulo', 'Tipo', 'Semana', 'Fecha Inicio', 'Fecha Fin', 'Publicado'];
         $col = 'A';
         foreach ($headers as $h) {
             $sheet->setCellValue($col . '4', $h);
@@ -237,11 +240,11 @@ class PlanClaseDocenteController extends Controller
             $bg = ($idx % 2 === 0) ? 'f0f4ff' : 'ffffff';
             $sheet->setCellValue('A' . $row, $idx + 1);
             $sheet->setCellValue('B' . $row, $plan->titulo);
-            $sheet->setCellValue('C' . $row, ucfirst($plan->tipo_plan ?? '—'));
-            $sheet->setCellValue('D' . $row, $plan->semana ?? '—');
-            $sheet->setCellValue('E' . $row, $plan->fecha_inicio?->format('d/m/Y') ?? '—');
-            $sheet->setCellValue('F' . $row, $plan->fecha_fin?->format('d/m/Y') ?? '—');
-            $sheet->setCellValue('G' . $row, $plan->publicado ? 'Sí' : 'No');
+            $sheet->setCellValue('C' . $row, ucfirst($plan->tipo_plan ?? 'â€”'));
+            $sheet->setCellValue('D' . $row, $plan->semana ?? 'â€”');
+            $sheet->setCellValue('E' . $row, $plan->fecha_inicio?->format('d/m/Y') ?? 'â€”');
+            $sheet->setCellValue('F' . $row, $plan->fecha_fin?->format('d/m/Y') ?? 'â€”');
+            $sheet->setCellValue('G' . $row, $plan->publicado ? 'SÃ­' : 'No');
             $sheet->getStyle("A{$row}:G{$row}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
                 ->getStartColor()->setRGB($bg);
             if (! $plan->publicado) {
@@ -263,7 +266,7 @@ class PlanClaseDocenteController extends Controller
         }, $filename, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
     }
 
-    // ══ INSTRUMENTOS DE EVALUACIÓN ════════════════════════════════════════
+    // â•â• INSTRUMENTOS DE EVALUACIÃ“N â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     public function instrumentosListaPdf(Asignacion $asignacion)
     {
@@ -291,7 +294,7 @@ class PlanClaseDocenteController extends Controller
         return $pdf->download("instrumentos_{$slug}.pdf");
     }
 
-    // ── Instrumentos lista Excel ─────────────────────────────────────────
+    // â”€â”€ Instrumentos lista Excel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     public function instrumentosListaExcel(Asignacion $asignacion)
     {
         $docente = $this->getDocente();
@@ -320,11 +323,11 @@ class PlanClaseDocenteController extends Controller
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
         $sheet->mergeCells('A2:F2');
-        $sheet->setCellValue('A2', 'Instrumentos — ' . ($asignacion->asignatura?->nombre ?? '') . ' · ' . ($asignacion->grupo?->nombre_completo ?? ''));
+        $sheet->setCellValue('A2', 'Instrumentos â€” ' . ($asignacion->asignatura?->nombre ?? '') . ' Â· ' . ($asignacion->grupo?->nombre_completo ?? ''));
         $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(11);
         $sheet->getStyle('A2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
-        $headers = ['#', 'Título', 'Tipo', 'Criterios', 'Puntaje Total', 'Fecha'];
+        $headers = ['#', 'TÃ­tulo', 'Tipo', 'Criterios', 'Puntaje Total', 'Fecha'];
         $col = 'A';
         foreach ($headers as $h) {
             $sheet->setCellValue($col . '4', $h);
@@ -339,16 +342,16 @@ class PlanClaseDocenteController extends Controller
             $bg = ($idx % 2 === 0) ? 'f0f4ff' : 'ffffff';
             $tipo = match($instr->tipo ?? '') {
                 'lc'  => 'Lista de Cotejo',
-                'rb'  => 'Rúbrica',
-                'es'  => 'Escala de Estimación',
-                default => strtoupper($instr->tipo ?? '—'),
+                'rb'  => 'RÃºbrica',
+                'es'  => 'Escala de EstimaciÃ³n',
+                default => strtoupper($instr->tipo ?? 'â€”'),
             };
             $puntajeTotal = $instr->criterios->sum('puntaje_maximo') ?? 0;
             $sheet->setCellValue('A' . $row, $idx + 1);
             $sheet->setCellValue('B' . $row, $instr->titulo);
             $sheet->setCellValue('C' . $row, $tipo);
             $sheet->setCellValue('D' . $row, $instr->criterios->count());
-            $sheet->setCellValue('E' . $row, $puntajeTotal ?: '—');
+            $sheet->setCellValue('E' . $row, $puntajeTotal ?: 'â€”');
             $sheet->setCellValue('F' . $row, $instr->created_at?->format('d/m/Y'));
             $sheet->getStyle("A{$row}:F{$row}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
                 ->getStartColor()->setRGB($bg);
@@ -392,8 +395,12 @@ class PlanClaseDocenteController extends Controller
         $niveles = InstrumentoEvaluacion::$nivelesDefault;
         $matriculas = $asignacion->grupo->matriculas()->activas()->with('estudiante')
             ->orderBy('numero_orden')->get();
+        $schoolYear = SchoolYear::actual();
+        $periodos   = Periodo::where('school_year_id', $schoolYear?->id)
+            ->where('tenant_id', tenant_id())
+            ->orderBy('numero')->get();
 
-        return view('portal.docente.instrumentos.create', compact('docente', 'asignacion', 'tipos', 'niveles', 'matriculas'));
+        return view('portal.docente.instrumentos.create', compact('docente', 'asignacion', 'tipos', 'niveles', 'matriculas', 'periodos'));
     }
 
     public function instrumentosStore(Request $request, Asignacion $asignacion)
@@ -404,6 +411,7 @@ class PlanClaseDocenteController extends Controller
         $request->validate([
             'titulo'               => 'required|string|max:200',
             'tipo'                 => 'required|in:lista_cotejo,rubrica,escala_estimacion',
+            'periodo_id'           => 'nullable|exists:periodos,id',
             'criterios'            => 'required|array|min:1',
             'criterios.*.nombre'   => 'required|string|max:200',
         ]);
@@ -414,6 +422,7 @@ class PlanClaseDocenteController extends Controller
             $instrumento = InstrumentoEvaluacion::create([
                 'asignacion_id'    => $asignacion->id,
                 'school_year_id'   => $schoolYear->id,
+                'periodo_id'       => $request->periodo_id ?: null,
                 'docente_id'       => $docente->id,
                 'titulo'           => $request->titulo,
                 'tipo'             => $request->tipo,
@@ -454,7 +463,7 @@ class PlanClaseDocenteController extends Controller
         });
 
         return redirect()->route('portal.docente.instrumentos.index', $asignacion)
-            ->with('success', 'Instrumento de evaluación creado correctamente.');
+            ->with('success', 'Instrumento de evaluaciÃ³n creado correctamente.');
     }
 
     public function instrumentosShow(Asignacion $asignacion, InstrumentoEvaluacion $instrumento)
@@ -494,7 +503,7 @@ class PlanClaseDocenteController extends Controller
             ->with('success', 'Evaluaciones guardadas correctamente.');
     }
 
-    // ── Instrumento de Evaluación PDF ────────────────────────────────────
+    // â”€â”€ Instrumento de EvaluaciÃ³n PDF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     public function instrumentosPdf(Asignacion $asignacion, InstrumentoEvaluacion $instrumento)
     {
         $docente = $this->getDocente();
@@ -518,7 +527,7 @@ class PlanClaseDocenteController extends Controller
         return $pdf->download("instrumento_{$slug}.pdf");
     }
 
-    // ── Private helpers ──────────────────────────────────────────────────
+    // â”€â”€ Private helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     private function guardarMomentos(PlanClase $plan, array $momentos): void
     {
         $orden = 0;
@@ -539,4 +548,100 @@ class PlanClaseDocenteController extends Controller
             ]);
         }
     }
+
+    // ══ PLAN DE EVALUACIÓN POR PERÍODO ══════════════════════════════════════
+
+    public function planEvaluacionIndex(Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $schoolYear = SchoolYear::actual();
+        $periodos   = Periodo::where('school_year_id', $schoolYear?->id)
+            ->where('tenant_id', tenant_id())
+            ->orderBy('numero')
+            ->get();
+
+        $planes = PlanEvaluacionPeriodo::where('asignacion_id', $asignacion->id)
+            ->whereIn('periodo_id', $periodos->pluck('id'))
+            ->get()
+            ->keyBy('periodo_id');
+
+        $instrumentosPorPeriodo = InstrumentoEvaluacion::with(['criterios'])
+            ->where('asignacion_id', $asignacion->id)
+            ->whereNotNull('periodo_id')
+            ->get()
+            ->groupBy('periodo_id');
+
+        $categorias = PlanEvaluacionPeriodo::$categorias;
+
+        return view('portal.docente.plan_evaluacion.index', compact(
+            'docente', 'asignacion', 'periodos', 'planes',
+            'instrumentosPorPeriodo', 'categorias', 'schoolYear'
+        ));
+    }
+
+    public function planEvaluacionGuardar(Request $request, Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $periodoId = $request->input('periodo_id');
+        $data = $request->validate([
+            'periodo_id'    => 'required|exists:periodos,id',
+            'tareas'        => 'required|integer|min:0|max:100',
+            'practicas'     => 'required|integer|min:0|max:100',
+            'participacion' => 'required|integer|min:0|max:100',
+            'proyecto'      => 'required|integer|min:0|max:100',
+            'examen'        => 'required|integer|min:0|max:100',
+            'observaciones' => 'nullable|string|max:1000',
+            'publicado'     => 'nullable|boolean',
+        ]);
+
+        $total = $data['tareas'] + $data['practicas'] + $data['participacion'] + $data['proyecto'] + $data['examen'];
+        if ($total !== 100) {
+            return back()->withErrors(['total' => "Los porcentajes deben sumar 100%. Actualmente suman {$total}%."]);
+        }
+
+        PlanEvaluacionPeriodo::updateOrCreate(
+            ['tenant_id' => tenant_id(), 'asignacion_id' => $asignacion->id, 'periodo_id' => $periodoId],
+            array_merge($data, ['tenant_id' => tenant_id(), 'publicado' => $request->boolean('publicado')])
+        );
+
+        return back()->with('success', 'Plan de evaluación guardado correctamente.');
+    }
+
+    public function planEvaluacionPdf(Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $schoolYear = SchoolYear::actual();
+        $periodos   = Periodo::where('school_year_id', $schoolYear?->id)
+            ->where('tenant_id', tenant_id())
+            ->orderBy('numero')
+            ->get();
+
+        $planes = PlanEvaluacionPeriodo::where('asignacion_id', $asignacion->id)
+            ->whereIn('periodo_id', $periodos->pluck('id'))
+            ->get()
+            ->keyBy('periodo_id');
+
+        $instrumentosPorPeriodo = InstrumentoEvaluacion::with(['criterios'])
+            ->where('asignacion_id', $asignacion->id)
+            ->whereNotNull('periodo_id')
+            ->get()
+            ->groupBy('periodo_id');
+
+        $categorias = PlanEvaluacionPeriodo::$categorias;
+
+        $pdf = Pdf::loadView('portal.docente.plan_evaluacion.pdf', compact(
+            'docente', 'asignacion', 'periodos', 'planes',
+            'instrumentosPorPeriodo', 'categorias', 'schoolYear'
+        ))->setPaper('letter', 'portrait');
+
+        $nombre = 'Plan_Evaluacion_' . str_replace(' ', '_', $asignacion->asignatura?->nombre ?? 'asignatura') . '.pdf';
+        return $pdf->download($nombre);
+    }
 }
+

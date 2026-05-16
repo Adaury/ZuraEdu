@@ -17,7 +17,7 @@ class InstrumentoEvaluacion extends Model
     protected $table = 'instrumentos_evaluacion';
 
     protected $fillable = [
-        'asignacion_id', 'school_year_id', 'docente_id',
+        'asignacion_id', 'school_year_id', 'periodo_id', 'docente_id',
         'titulo', 'tipo', 'competencia', 'descripcion',
         'indicadores_logro', 'observaciones', 'valoracion_global',
         'niveles_desempeno', 'publicado', 'creado_por',
@@ -45,6 +45,11 @@ class InstrumentoEvaluacion extends Model
     public function asignacion(): BelongsTo
     {
         return $this->belongsTo(Asignacion::class);
+    }
+
+    public function periodo(): BelongsTo
+    {
+        return $this->belongsTo(Periodo::class);
     }
 
     public function schoolYear(): BelongsTo

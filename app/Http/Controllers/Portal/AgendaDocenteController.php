@@ -7,6 +7,7 @@ use App\Traits\HasDocenteContext;
 use App\Models\Asignacion;
 use App\Models\Docente;
 use App\Models\EntregaTarea;
+use App\Models\Estudiante;
 use App\Models\Matricula;
 use App\Models\Notificacion;
 use App\Models\SchoolYear;
@@ -178,6 +179,12 @@ class AgendaDocenteController extends Controller
             'notas_docente' => 'nullable|string|max:1000',
         ]);
 
+        // Guardar feedback previo para detectar si cambió
+        $entregaPrevia = EntregaTarea::where('tarea_id', $tarea->id)
+            ->where('estudiante_id', $data['estudiante_id'])
+            ->first();
+        $feedbackPrevio = $entregaPrevia?->notas_docente;
+
         $entrega = EntregaTarea::updateOrCreate(
             [
                 'tarea_id'      => $tarea->id,
@@ -191,6 +198,12 @@ class AgendaDocenteController extends Controller
             ]
         );
 
+        // Notificar al estudiante si hay feedback nuevo o actualizado
+        $nuevoFeedback = $data['notas_docente'] ?? null;
+        if ($nuevoFeedback && $nuevoFeedback !== $feedbackPrevio) {
+            $this->notificarFeedback((int) $data['estudiante_id'], $tarea, $asignacion);
+        }
+
         if ($request->expectsJson()) {
             return response()->json(['ok' => true, 'entrega' => $entrega]);
         }
@@ -199,6 +212,25 @@ class AgendaDocenteController extends Controller
     }
 
     // ── Notificaciones ────────────────────────────────────────────────────
+
+    private function notificarFeedback(int $estudianteId, Tarea $tarea, Asignacion $asignacion): void
+    {
+        try {
+            $est = Estudiante::find($estudianteId);
+            if (!$est?->user_id) return;
+
+            $tipoLabel   = Tarea::TIPOS[$tarea->tipo] ?? 'Tarea';
+            $asignNombre = $asignacion->asignatura?->nombre ?? 'Materia';
+
+            Notificacion::enviarA(
+                [$est->user_id],
+                'general',
+                "Retroalimentación en: {$tarea->titulo}",
+                "Tu docente de {$asignNombre} dejó retroalimentación en tu {$tipoLabel}.",
+                ['tarea_id' => $tarea->id, 'asignacion_id' => $asignacion->id]
+            );
+        } catch (\Throwable) {}
+    }
 
     private function notificarEstudiantes(Asignacion $asignacion, Tarea $tarea): void
     {

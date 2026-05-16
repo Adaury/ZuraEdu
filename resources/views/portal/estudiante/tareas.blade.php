@@ -188,9 +188,20 @@
 
             {{-- Retroalimentación --}}
             @if($entrega?->notas_docente)
+            @php $fbNuevo = $entrega->updated_at && $entrega->updated_at->diffInHours(now()) <= 72; @endphp
             <div style="background:#f0fdf4;border-left:3px solid #10b981;border-radius:6px;padding:.45rem .7rem;margin-top:.55rem;font-size:.76rem;color:#065f46;">
-                <i class="bi bi-chat-left-text-fill me-1"></i>
-                <strong>Docente:</strong> {{ $entrega->notas_docente }}
+                <div style="display:flex;align-items:flex-start;gap:.4rem;">
+                    <i class="bi bi-chat-left-text-fill mt-1" style="flex-shrink:0;"></i>
+                    <div style="flex:1;">
+                        <div style="font-weight:700;margin-bottom:.2rem;display:flex;align-items:center;gap:.4rem;">
+                            Retroalimentación del docente
+                            @if($fbNuevo)
+                            <span style="background:#10b981;color:#fff;font-size:.62rem;padding:.1rem .4rem;border-radius:99px;font-weight:700;">NUEVO</span>
+                            @endif
+                        </div>
+                        <div>{{ $entrega->notas_docente }}</div>
+                    </div>
+                </div>
             </div>
             @endif
         </div>

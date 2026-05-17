@@ -141,6 +141,36 @@ class AsistenteIAController extends Controller
         return $this->stream($validated, $systemPrompt);
     }
 
+    // ── Panel Admin ──────────────────────────────────────────────────────
+    public function chatAdmin(Request $request)
+    {
+        $validated  = $this->validateChat($request);
+        $schoolYear = SchoolYear::actual();
+        $user       = Auth::user();
+        $sysName    = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $roles = $user->getRoleNames()->join(', ');
+
+        $systemPrompt =
+            "Eres ZuraAI, el asistente de gestión institucional de {$sysName}. " .
+            "Estás asistiendo a {$user->name} ({$roles})" .
+            ($schoolYear ? " — Año escolar {$schoolYear->nombre}" : '') . ".\n\n" .
+            "Puedes ayudar con:\n" .
+            "- Interpretar estadísticas, KPIs y reportes de rendimiento académico\n" .
+            "- Redactar circulares, comunicados oficiales y memorandos institucionales\n" .
+            "- Analizar datos de asistencia, calificaciones y matrícula\n" .
+            "- Sugerir estrategias de mejora basadas en indicadores educativos\n" .
+            "- Preparar informes para el MINERD, SIGERD y organismos reguladores\n" .
+            "- Orientar sobre normativas, reglamentos y currículo dominicano\n" .
+            "- Apoyar en planificación institucional, POA y planes de mejora\n" .
+            "- Redactar actas, resoluciones y documentos administrativos\n\n" .
+            "Responde siempre en español. Sé profesional, preciso y estructurado. " .
+            "Usa tablas o listas cuando organices información. " .
+            "Para documentos oficiales, usa un tono formal acorde a instituciones educativas dominicanas.";
+
+        return $this->stream($validated, $systemPrompt);
+    }
+
     // ── Lógica compartida ─────────────────────────────────────────────────
     private function validateChat(Request $request): array
     {

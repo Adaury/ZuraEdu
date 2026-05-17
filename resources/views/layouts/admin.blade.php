@@ -3816,5 +3816,174 @@ window.addEventListener('sge:dashboard-updated', function(e) {
 @endauth
 
 @include('partials.pwa-install-prompt')
+
+@auth
+@php
+    $__zuraAdmin = auth()->user()->hasAnyRole(['Administrador','Director','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo','SuperAdmin']);
+@endphp
+@if($__zuraAdmin)
+<style>
+#zura-fab{position:fixed;bottom:28px;right:28px;z-index:9999;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);border:none;color:#fff;font-size:24px;box-shadow:0 4px 20px rgba(79,70,229,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s}
+#zura-fab:hover{transform:scale(1.1)}
+#zura-panel{position:fixed;bottom:96px;right:28px;z-index:9998;width:400px;max-width:calc(100vw - 40px);background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.18);display:none;flex-direction:column;overflow:hidden;border:1px solid #e5e7eb}
+#zura-panel.open{display:flex}
+#zura-header{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;padding:14px 18px;display:flex;align-items:center;gap:10px}
+#zura-header .zura-avatar{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:18px}
+#zura-header .zura-info{flex:1}
+#zura-header .zura-info strong{display:block;font-size:.95rem}
+#zura-header .zura-info small{opacity:.85;font-size:.75rem}
+#zura-close{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;opacity:.8;line-height:1}
+#zura-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;max-height:380px;min-height:200px}
+.zmsg{max-width:85%;padding:9px 13px;border-radius:12px;font-size:.875rem;line-height:1.5;word-break:break-word}
+.zmsg.bot{background:#f3f4f6;color:#111;border-bottom-left-radius:4px;align-self:flex-start}
+.zmsg.usr{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border-bottom-right-radius:4px;align-self:flex-end}
+.zmsg h1,.zmsg h2,.zmsg h3{font-size:1em;font-weight:700;margin:6px 0 2px}
+.zmsg ul,.zmsg ol{padding-left:18px;margin:4px 0}
+.zmsg li{margin:2px 0}
+.zmsg code{background:rgba(0,0,0,.08);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:.82em}
+.zmsg pre code{display:block;padding:8px;white-space:pre-wrap}
+.zmsg strong{font-weight:700}
+#zura-chips{padding:8px 12px 4px;display:flex;flex-wrap:wrap;gap:6px}
+.zchip{background:#ede9fe;color:#5b21b6;border:none;border-radius:20px;padding:4px 12px;font-size:.78rem;cursor:pointer;transition:background .15s}
+.zchip:hover{background:#ddd6fe}
+#zura-footer{padding:10px 12px;border-top:1px solid #f3f4f6;display:flex;gap:8px;align-items:flex-end}
+#zura-input{flex:1;border:1px solid #e5e7eb;border-radius:10px;padding:8px 12px;font-size:.875rem;resize:none;outline:none;max-height:120px;line-height:1.4;font-family:inherit}
+#zura-input:focus{border-color:#7c3aed}
+#zura-send{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:10px;padding:8px 14px;cursor:pointer;font-size:18px;flex-shrink:0;transition:opacity .15s}
+#zura-send:disabled{opacity:.5;cursor:not-allowed}
+.ztyping{display:flex;gap:4px;padding:4px 0}
+.ztyping span{width:7px;height:7px;background:#9ca3af;border-radius:50%;animation:zdot 1.2s infinite}
+.ztyping span:nth-child(2){animation-delay:.2s}
+.ztyping span:nth-child(3){animation-delay:.4s}
+@keyframes zdot{0%,80%,100%{transform:scale(.7);opacity:.5}40%{transform:scale(1);opacity:1}}
+</style>
+
+<button id="zura-fab" title="ZuraAI — Asistente Institucional"><i class="bi bi-stars"></i></button>
+
+<div id="zura-panel">
+    <div id="zura-header">
+        <div class="zura-avatar"><i class="bi bi-stars"></i></div>
+        <div class="zura-info"><strong>ZuraAI</strong><small>Asistente Institucional</small></div>
+        <button id="zura-close" title="Cerrar">&times;</button>
+    </div>
+    <div id="zura-msgs"></div>
+    <div id="zura-chips">
+        <button class="zchip">Interpretar rendimiento académico</button>
+        <button class="zchip">Redactar circular oficial</button>
+        <button class="zchip">Analizar estadísticas del período</button>
+        <button class="zchip">Preparar informe SIGERD/MINERD</button>
+    </div>
+    <div id="zura-footer">
+        <textarea id="zura-input" rows="1" placeholder="Escribe tu consulta institucional…"></textarea>
+        <button id="zura-send"><i class="bi bi-send-fill"></i></button>
+    </div>
+</div>
+
+<script>
+(function(){
+    const fab    = document.getElementById('zura-fab');
+    const panel  = document.getElementById('zura-panel');
+    const close  = document.getElementById('zura-close');
+    const msgs   = document.getElementById('zura-msgs');
+    const input  = document.getElementById('zura-input');
+    const send   = document.getElementById('zura-send');
+    const chips  = document.querySelectorAll('.zchip');
+    const CHAT_URL = '{{ route("admin.asistente.chat") }}';
+    const CSRF     = '{{ csrf_token() }}';
+    let history    = [];
+    let streaming  = false;
+
+    const welcome = 'Hola, soy <strong>ZuraAI</strong>. Estoy aquí para asistirte en la gestión institucional: reportes, estadísticas, documentos oficiales y más. ¿En qué te ayudo hoy?';
+    addMsg('bot', welcome);
+
+    fab.addEventListener('click', () => { panel.classList.toggle('open'); if(panel.classList.contains('open')) input.focus(); });
+    close.addEventListener('click', () => panel.classList.remove('open'));
+
+    chips.forEach(c => c.addEventListener('click', () => { if(streaming) return; input.value = c.textContent.trim(); input.focus(); sendMsg(); }));
+
+    input.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMsg(); }});
+    input.addEventListener('input', () => { input.style.height='auto'; input.style.height=Math.min(input.scrollHeight,120)+'px'; });
+    send.addEventListener('click', sendMsg);
+
+    function addMsg(role, html){
+        const d = document.createElement('div');
+        d.className = 'zmsg ' + (role==='bot' ? 'bot' : 'usr');
+        d.innerHTML = html;
+        msgs.appendChild(d);
+        msgs.scrollTop = msgs.scrollHeight;
+        return d;
+    }
+
+    function renderMd(t){
+        return t
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            .replace(/```[\w]*\n?([\s\S]*?)```/g,'<pre><code>$1</code></pre>')
+            .replace(/`([^`]+)`/g,'<code>$1</code>')
+            .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+            .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+            .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+            .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+            .replace(/^\* (.+)$/gm,'<li>$1</li>')
+            .replace(/^- (.+)$/gm,'<li>$1</li>')
+            .replace(/^\d+\. (.+)$/gm,'<li>$1</li>')
+            .replace(/(<li>[\s\S]*?<\/li>)/g,'<ul>$1</ul>')
+            .replace(/\n/g,'<br>');
+    }
+
+    async function sendMsg(){
+        const text = input.value.trim();
+        if(!text || streaming) return;
+        input.value = ''; input.style.height = 'auto';
+        addMsg('usr', text.replace(/</g,'&lt;'));
+        streaming = true; send.disabled = true;
+
+        const typing = addMsg('bot','<div class="ztyping"><span></span><span></span><span></span></div>');
+
+        try {
+            const res = await fetch(CHAT_URL, {
+                method:'POST',
+                headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'text/event-stream'},
+                body: JSON.stringify({message: text, history})
+            });
+            if(!res.ok){ typing.innerHTML='<em>Error al conectar con ZuraAI.</em>'; return; }
+
+            const reader = res.body.getReader();
+            const dec    = new TextDecoder();
+            let buf = '', out = '';
+            typing.innerHTML = '';
+
+            while(true){
+                const {done, value} = await reader.read();
+                if(done) break;
+                buf += dec.decode(value, {stream:true});
+                const lines = buf.split('\n');
+                buf = lines.pop();
+                for(const line of lines){
+                    if(!line.startsWith('data:')) continue;
+                    try {
+                        const ev = JSON.parse(line.slice(5).trim());
+                        if(ev.type==='content_block_delta' && ev.delta?.type==='text_delta'){
+                            out += ev.delta.text;
+                            typing.innerHTML = renderMd(out);
+                            msgs.scrollTop = msgs.scrollHeight;
+                        }
+                        if(ev.type==='message_stop') break;
+                    } catch(e){}
+                }
+            }
+            if(out) history.push({role:'user',content:text},{role:'assistant',content:out});
+            if(history.length > 20) history = history.slice(-20);
+        } catch(e){
+            typing.innerHTML = '<em>Error de conexión. Intenta de nuevo.</em>';
+        } finally {
+            streaming = false; send.disabled = false; input.focus();
+        }
+    }
+})();
+</script>
+@endif
+@endauth
+
+@include('partials.pwa-install-prompt')
 </body>
 </html>

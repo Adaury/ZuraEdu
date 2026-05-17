@@ -669,6 +669,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.acc
     });
     require __DIR__ . '/admin/sigerd.php';
     require __DIR__ . '/admin/comunicaciones.php';
+
+    // ── ZuraAI ────────────────────────────────────────────────────────────
+    Route::post('asistente/chat', [\App\Http\Controllers\Portal\AsistenteIAController::class, 'chatAdmin'])->name('asistente.chat');
 });
 
 // ── Galería pública ───────────────────────────────────────────────────────

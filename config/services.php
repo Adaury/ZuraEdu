@@ -35,6 +35,11 @@ return [
         'key' => env('GEMINI_API_KEY'),
     ],
 
+    'anthropic' => [
+        'key'   => env('ANTHROPIC_API_KEY'),
+        'model' => env('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'),
+    ],
+
     'school' => [
         'name'   => env('SCHOOL_NAME',   'SGE PSAC'),
         'nivel'  => env('SCHOOL_NIVEL',  'Nivel Secundario'),

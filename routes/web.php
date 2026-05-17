@@ -564,6 +564,9 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::post('/ia/actividad',[PlanificacionAIController::class, 'generarActividad'])->name('ia.actividad');
         Route::post('/ia/mejorar',  [PlanificacionAIController::class, 'mejorarTexto'])->name('ia.mejorar');
     });
+
+    // ZuraAI — Asistente académico
+    Route::post('/asistente/chat', [\App\Http\Controllers\Portal\AsistenteIAController::class, 'chat'])->name('asistente.chat');
 });
 
 // ══════════════════════════════════════════════════════════════════════════

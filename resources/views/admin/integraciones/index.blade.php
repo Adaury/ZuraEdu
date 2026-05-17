@@ -69,10 +69,15 @@
                     <div class="d-flex align-items-center mb-3">
                         <i class="bi bi-whatsapp fs-2 me-3"></i>
                         <div><h5 class="mb-0">WhatsApp Business</h5><small>Notificaciones y alertas</small></div>
-                        <span class="badge bg-secondary ms-auto">Proximamente</span>
+                        @php $waActive = \App\Helpers\Setting::moduleEnabled('whatsapp'); @endphp
+                        <span class="badge {{ $waActive ? 'bg-warning text-dark' : 'bg-light text-dark' }} ms-auto">
+                            {{ $waActive ? 'Activo' : 'Disponible' }}
+                        </span>
                     </div>
-                    <p class="mb-3">Envia notificaciones, alertas de pagos, calificaciones y avisos a padres via WhatsApp.</p>
-                    <button class="btn btn-light btn-sm" disabled>Proximamente</button>
+                    <p class="mb-3">Envía notificaciones de notas, ausencias, pagos y avisos a representantes vía WhatsApp.</p>
+                    <a href="{{ route('admin.sistema.whatsapp') }}" class="btn btn-light btn-sm">
+                        Configurar <i class="bi bi-arrow-right"></i>
+                    </a>
                 </div>
             </div>
         </div>

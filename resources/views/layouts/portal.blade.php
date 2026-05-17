@@ -969,7 +969,8 @@ window._SGE_DEBUG     = {{ config('app.debug') ? 'true' : 'false' }};
 @auth
 @php
     $__zuraRole = auth()->user()->hasRole('Docente') ? 'docente'
-        : (auth()->user()->hasRole('Estudiante') ? 'estudiante' : null);
+        : (auth()->user()->hasRole('Estudiante')     ? 'estudiante'
+        : (auth()->user()->hasRole('Representante')  ? 'padre' : null));
 @endphp
 @if($__zuraRole)
 <style>
@@ -1145,11 +1146,16 @@ window._SGE_DEBUG     = {{ config('app.debug') ? 'true' : 'false' }};
         <button class="zura-suggestion">Generar 10 preguntas</button>
         <button class="zura-suggestion">Crear una rúbrica</button>
         <button class="zura-suggestion">Comunicado para padres</button>
-        @else
+        @elseif($__zuraRole === 'estudiante')
         <button class="zura-suggestion">Explícame este tema</button>
         <button class="zura-suggestion">Ayuda con mi tarea</button>
         <button class="zura-suggestion">Cómo estudiar mejor</button>
         <button class="zura-suggestion">Resumir un texto</button>
+        @else
+        <button class="zura-suggestion">Entender el boletín</button>
+        <button class="zura-suggestion">Apoyar en casa</button>
+        <button class="zura-suggestion">Hablar con el docente</button>
+        <button class="zura-suggestion">Hábitos de estudio</button>
         @endif
     </div>
 
@@ -1170,7 +1176,7 @@ window._SGE_DEBUG     = {{ config('app.debug') ? 'true' : 'false' }};
     const inputEl   = document.getElementById('zura-input');
     const sendBtn   = document.getElementById('zura-send');
     const suggsEl   = document.getElementById('zura-suggestions');
-    const CHAT_URL  = "{{ $__zuraRole === 'docente' ? route('portal.docente.asistente.chat') : route('portal.estudiante.asistente.chat') }}";
+    const CHAT_URL  = "{{ $__zuraRole === 'docente' ? route('portal.docente.asistente.chat') : ($__zuraRole === 'estudiante' ? route('portal.estudiante.asistente.chat') : route('portal.padre.asistente.chat')) }}";
     const CSRF      = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
     let history = [];   // [{role, content}]
@@ -1192,7 +1198,9 @@ window._SGE_DEBUG     = {{ config('app.debug') ? 'true' : 'false' }};
     function showWelcome() {
         const msg = ZURA_ROLE === 'docente'
             ? '¡Hola! Soy **ZuraAI**, tu asistente académico. Puedo ayudarte a planificar clases, generar evaluaciones, redactar observaciones y mucho más. ¿En qué te ayudo hoy?'
-            : '¡Hola! Soy **ZuraAI**, tu tutor académico personal. Puedo explicarte temas, ayudarte con tareas, prepararte para exámenes y mucho más. ¿Con qué empezamos?';
+            : ZURA_ROLE === 'estudiante'
+            ? '¡Hola! Soy **ZuraAI**, tu tutor académico personal. Puedo explicarte temas, ayudarte con tareas, prepararte para exámenes y mucho más. ¿Con qué empezamos?'
+            : '¡Hola! Soy **ZuraAI**, tu asistente de apoyo familiar. Puedo ayudarte a entender el desempeño de tu hijo/a, darte consejos para apoyarlo en casa y orientarte sobre la escuela. ¿En qué te ayudo?';
         appendMessage('assistant', msg);
     }
 

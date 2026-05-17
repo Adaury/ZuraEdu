@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Asignacion;
 use App\Models\Docente;
 use App\Models\Estudiante;
+use App\Models\Representante;
 use App\Models\SchoolYear;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -99,6 +100,43 @@ class AsistenteIAController extends Controller
             "Responde siempre en español. Adapta el lenguaje a un estudiante de nivel secundario. " .
             "Sé amigable, claro y usa ejemplos concretos. " .
             "Si el estudiante comete un error, corrígelo con amabilidad y explica por qué.";
+
+        return $this->stream($validated, $systemPrompt);
+    }
+
+    // ── Portal Padre ──────────────────────────────────────────────────────
+    public function chatPadre(Request $request)
+    {
+        $validated    = $this->validateChat($request);
+        $schoolYear   = SchoolYear::actual();
+        $user         = Auth::user();
+        $representante = Representante::where('user_id', $user->id)->first();
+        $sysName      = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $nombrePadre = $representante?->nombre_completo ?? $user->name;
+        $hijos       = '';
+
+        if ($representante) {
+            $hijos = $representante->estudiantes()
+                ->get()
+                ->map(fn($e) => $e->nombre_completo)
+                ->filter()->join(', ');
+        }
+
+        $systemPrompt =
+            "Eres ZuraAI, el asistente académico de {$sysName} para representantes y padres de familia. " .
+            "Estás asistiendo a {$nombrePadre}" .
+            ($hijos      ? ", representante de: {$hijos}"        : '') .
+            ($schoolYear ? " — Año escolar {$schoolYear->nombre}" : '') . ".\n\n" .
+            "Puedes ayudar con:\n" .
+            "- Entender las calificaciones, boletines e informes de su hijo/a\n" .
+            "- Sugerir cómo apoyar el aprendizaje y los estudios en casa\n" .
+            "- Orientar sobre hábitos de estudio y organización del tiempo\n" .
+            "- Explicar términos académicos y el sistema de evaluación\n" .
+            "- Preparar preguntas para reuniones con docentes o coordinación\n" .
+            "- Consejos para mejorar la comunicación familia-escuela\n\n" .
+            "Responde siempre en español. Sé empático, claro y práctico. " .
+            "Usa un lenguaje accesible para padres, evitando tecnicismos innecesarios.";
 
         return $this->stream($validated, $systemPrompt);
     }

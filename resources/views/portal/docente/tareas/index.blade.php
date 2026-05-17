@@ -85,6 +85,11 @@
             {{ $asignacion->grupo?->nombre_corto ?? $asignacion->grupo?->nombre ?? '' }}
         </p>
     </div>
+    <a href="{{ route('portal.docente.tareas.seguimiento', $asignacion) }}"
+       class="btn btn-sm d-flex align-items-center gap-1"
+       style="background:#dbeafe;color:#1d4ed8;border:1.5px solid #93c5fd;font-weight:700;">
+        <i class="bi bi-graph-up"></i>Seguimiento
+    </a>
     <a href="{{ route('portal.docente.tareas.create', $asignacion) }}"
        class="btn btn-primary btn-sm d-flex align-items-center gap-1">
         <i class="bi bi-plus-lg"></i>Nueva Tarea

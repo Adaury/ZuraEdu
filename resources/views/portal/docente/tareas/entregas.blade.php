@@ -147,6 +147,26 @@
 
 @push('scripts')
 <script>
+async function enviarRecordatorioGlobal() {
+    const btn = document.getElementById('btn-recordatorio-global');
+    if (!btn) return;
+    if (!confirm('¿Enviar recordatorio a todos los estudiantes que aún no han entregado?')) return;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Enviando...';
+    try {
+        const r = await fetch(
+            `/portal/docente/asignacion/{{ $asignacion->id }}/tareas/{{ $tarea->id }}/recordatorio`,
+            { method:'POST', headers:{ 'Content-Type':'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept':'application/json' }, body:'{}' }
+        );
+        const d = await r.json();
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> ' + (d.mensaje ?? 'Enviado');
+        btn.style.background = '#d1fae5'; btn.style.color = '#065f46'; btn.style.borderColor = '#6ee7b7';
+    } catch(e) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-bell-fill"></i> Recordatorio';
+    }
+}
+
 function calificarEntrega(estudianteId, tareaId, asignacionId) {
     return {
         estado:       '',
@@ -225,7 +245,7 @@ function calificarEntrega(estudianteId, tareaId, asignacionId) {
 
 {{-- Encabezado --}}
 <div class="d-flex align-items-start gap-2 mb-3 flex-wrap">
-    <a href="{{ route('portal.docente.tareas.index', $asignacion) }}"
+    <a href="{{ route('portal.docente.tareas.seguimiento', $asignacion) }}"
        class="btn btn-outline-secondary btn-sm mt-1" style="padding:.25rem .6rem;">
         <i class="bi bi-arrow-left"></i>
     </a>
@@ -243,6 +263,13 @@ function calificarEntrega(estudianteId, tareaId, asignacionId) {
             @endif
         </p>
     </div>
+    @php $nPendEntregas = $matriculas->count() - $entregas->whereIn('estado',['entregada','revisada'])->count(); @endphp
+    @if($nPendEntregas > 0)
+    <button id="btn-recordatorio-global" onclick="enviarRecordatorioGlobal()"
+        style="background:#fef3c7;color:#d97706;border:1.5px solid #fde68a;border-radius:8px;padding:.38rem .85rem;font-size:.78rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;flex-shrink:0;">
+        <i class="bi bi-bell-fill"></i>Recordatorio ({{ $nPendEntregas }})
+    </button>
+    @endif
 </div>
 
 {{-- Resumen KPIs --}}

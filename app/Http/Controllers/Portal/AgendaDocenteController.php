@@ -232,6 +232,104 @@ class AgendaDocenteController extends Controller
         } catch (\Throwable) {}
     }
 
+    // ── Seguimiento Global ────────────────────────────────────────────────
+
+    public function seguimiento(Asignacion $asignacion)
+    {
+        $asignacion  = $this->resolverAsignacion($asignacion->id);
+        $schoolYear  = SchoolYear::actual();
+
+        $tareas = Tarea::where('asignacion_id', $asignacion->id)
+            ->orderByDesc('fecha_limite')
+            ->get();
+
+        $totalEstudiantes = Matricula::where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->count();
+
+        // Conteo completo por tarea y estado
+        $entregasRaw = EntregaTarea::whereIn('tarea_id', $tareas->pluck('id'))
+            ->selectRaw('tarea_id, estado, count(*) as total')
+            ->groupBy('tarea_id', 'estado')
+            ->get()
+            ->groupBy('tarea_id');
+
+        $statsMap = [];
+        foreach ($tareas as $t) {
+            $g = $entregasRaw->get($t->id, collect());
+            $entregadas = $g->whereIn('estado', ['entregada', 'revisada'])->sum('total');
+            $revisadas  = $g->where('estado', 'revisada')->sum('total');
+            $statsMap[$t->id] = [
+                'entregadas'  => $entregadas,
+                'revisadas'   => $revisadas,
+                'pendientes'  => max(0, $totalEstudiantes - $entregadas),
+                'pct'         => $totalEstudiantes > 0 ? round($entregadas / $totalEstudiantes * 100) : 0,
+            ];
+        }
+
+        return view('portal.docente.tareas.seguimiento', compact(
+            'asignacion', 'tareas', 'statsMap', 'totalEstudiantes', 'schoolYear'
+        ));
+    }
+
+    // ── Recordatorio masivo a pendientes ──────────────────────────────────
+
+    public function recordatorio(Request $request, Asignacion $asignacion, Tarea $tarea)
+    {
+        $asignacion = $this->resolverAsignacion($asignacion->id);
+        abort_if($tarea->asignacion_id !== $asignacion->id, 404);
+
+        $schoolYear = SchoolYear::actual();
+
+        // Estudiantes del grupo
+        $matriculas = Matricula::with('estudiante')
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->get();
+
+        // IDs de estudiantes que ya entregaron
+        $entregados = EntregaTarea::where('tarea_id', $tarea->id)
+            ->whereIn('estado', ['entregada', 'revisada'])
+            ->pluck('estudiante_id')
+            ->toArray();
+
+        // Pendientes: no están en $entregados
+        $pendientes = $matriculas->filter(
+            fn($m) => $m->estudiante && !in_array($m->estudiante->id, $entregados)
+        );
+
+        $userIds = $pendientes
+            ->map(fn($m) => $m->estudiante?->user_id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        if (!empty($userIds)) {
+            $tipoLabel   = Tarea::TIPOS[$tarea->tipo] ?? 'Tarea';
+            $asignNombre = $asignacion->asignatura?->nombre ?? 'Materia';
+            $limite      = $tarea->fecha_limite->format('d/m/Y');
+
+            Notificacion::enviarA(
+                $userIds,
+                'general',
+                "Recordatorio: {$tarea->titulo}",
+                "{$asignNombre} — Debes entregar tu {$tipoLabel} antes del {$limite}.",
+                ['tarea_id' => $tarea->id, 'asignacion_id' => $asignacion->id]
+            );
+        }
+
+        return response()->json([
+            'ok'       => true,
+            'enviados' => count($userIds),
+            'mensaje'  => count($userIds)
+                ? 'Recordatorio enviado a ' . count($userIds) . ' estudiante(s).'
+                : 'No hay estudiantes pendientes.',
+        ]);
+    }
+
     private function notificarEstudiantes(Asignacion $asignacion, Tarea $tarea): void
     {
         $schoolYear = SchoolYear::actual();

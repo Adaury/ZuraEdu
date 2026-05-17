@@ -403,8 +403,10 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::get('/{tarea}/editar',      [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'edit'])->name('edit');
         Route::put('/{tarea}',             [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'update'])->name('update');
         Route::delete('/{tarea}',          [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'destroy'])->name('destroy');
+        Route::get('/seguimiento',          [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'seguimiento'])->name('seguimiento');
         Route::get('/{tarea}/entregas',    [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'entregas'])->name('entregas');
         Route::patch('/{tarea}/calificar', [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'calificar'])->name('calificar');
+        Route::post('/{tarea}/recordatorio',[\App\Http\Controllers\Portal\AgendaDocenteController::class, 'recordatorio'])->name('recordatorio');
     });
     Route::post('/notificaciones/leer-todas',  [PortalDocenteController::class, 'marcarTodasLeidas'])->name('notif.leer-todas');
     Route::get('/notificaciones',              [PortalDocenteController::class, 'notificaciones'])->name('notificaciones');

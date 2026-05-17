@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Portal;
 use App\Http\Controllers\Controller;
 use App\Models\Asignacion;
 use App\Models\Docente;
+use App\Models\Estudiante;
 use App\Models\SchoolYear;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,26 +13,14 @@ use Illuminate\Support\Facades\Session;
 
 class AsistenteIAController extends Controller
 {
+    // ── Portal Docente ────────────────────────────────────────────────────
     public function chat(Request $request)
     {
-        $validated = $request->validate([
-            'message'           => 'required|string|max:4000',
-            'history'           => 'nullable|array|max:20',
-            'history.*.role'    => 'required|in:user,assistant',
-            'history.*.content' => 'required|string|max:8000',
-        ]);
-
-        $apiKey = config('services.anthropic.key');
-        $model  = config('services.anthropic.model', 'claude-haiku-4-5-20251001');
-
-        if (empty($apiKey)) {
-            return response()->json(['error' => 'API key de Anthropic no configurada. Agrega ANTHROPIC_API_KEY en .env'], 503);
-        }
-
-        // Build docente context
+        $validated  = $this->validateChat($request);
+        $schoolYear = SchoolYear::actual();
         $user       = Auth::user();
         $docente    = Docente::where('user_id', $user->id)->first();
-        $schoolYear = SchoolYear::actual();
+        $sysName    = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
 
         $nombreDocente = $docente?->nombre_completo ?? $user->name;
         $materias      = '';
@@ -48,13 +37,11 @@ class AsistenteIAController extends Controller
             )->join(', ');
         }
 
-        $sysName = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
-
         $systemPrompt =
             "Eres ZuraAI, el asistente académico inteligente de {$sysName}. " .
             "Estás asistiendo a {$nombreDocente}, docente" .
-            ($materias      ? " de: {$materias}"              : '') .
-            ($schoolYear    ? " — Año escolar {$schoolYear->nombre}" : '') . ".\n\n" .
+            ($materias   ? " de: {$materias}"                   : '') .
+            ($schoolYear ? " — Año escolar {$schoolYear->nombre}" : '') . ".\n\n" .
             "Puedes ayudar con:\n" .
             "- Planificar clases, secuencias didácticas y unidades de aprendizaje\n" .
             "- Generar preguntas, evaluaciones, rúbricas y listas de cotejo\n" .
@@ -65,6 +52,77 @@ class AsistenteIAController extends Controller
             "Responde siempre en español. Sé práctico, concreto y estructurado. " .
             "Cuando generes evaluaciones o planificaciones usa listas o tablas.";
 
+        return $this->stream($validated, $systemPrompt);
+    }
+
+    // ── Portal Estudiante ─────────────────────────────────────────────────
+    public function chatEstudiante(Request $request)
+    {
+        $validated  = $this->validateChat($request);
+        $schoolYear = SchoolYear::actual();
+        $user       = Auth::user();
+        $estudiante = Estudiante::where('user_id', $user->id)->first();
+        $sysName    = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $nombreEstudiante = $estudiante?->nombre_completo ?? $user->name;
+        $grupo            = '';
+        $materias         = '';
+
+        if ($estudiante && $schoolYear) {
+            $matricula = $estudiante->matriculas()
+                ->with(['grupo', 'grupo.asignaciones.asignatura'])
+                ->where('estado', 'activa')
+                ->where('school_year_id', $schoolYear->id)
+                ->latest()->first();
+
+            if ($matricula) {
+                $grupo    = $matricula->grupo?->nombre_completo ?? '';
+                $materias = $matricula->grupo?->asignaciones
+                    ->map(fn($a) => $a->asignatura?->nombre)
+                    ->filter()->unique()->join(', ') ?? '';
+            }
+        }
+
+        $systemPrompt =
+            "Eres ZuraAI, el tutor académico inteligente de {$sysName}. " .
+            "Estás ayudando a {$nombreEstudiante}" .
+            ($grupo      ? ", estudiante de {$grupo}"            : '') .
+            ($schoolYear ? " — Año escolar {$schoolYear->nombre}" : '') .
+            ($materias   ? ". Sus materias: {$materias}"          : '') . ".\n\n" .
+            "Tu rol es ser un tutor paciente y motivador. Puedes ayudar con:\n" .
+            "- Explicar temas y conceptos de cualquier materia de forma clara\n" .
+            "- Resolver dudas de tareas, ejercicios y trabajos\n" .
+            "- Repasar contenidos para exámenes con ejemplos y resúmenes\n" .
+            "- Orientar cómo organizar el tiempo de estudio\n" .
+            "- Sugerir técnicas de aprendizaje (mapas conceptuales, flashcards, etc.)\n" .
+            "- Ayudar a redactar ensayos, reportes e informes académicos\n\n" .
+            "Responde siempre en español. Adapta el lenguaje a un estudiante de nivel secundario. " .
+            "Sé amigable, claro y usa ejemplos concretos. " .
+            "Si el estudiante comete un error, corrígelo con amabilidad y explica por qué.";
+
+        return $this->stream($validated, $systemPrompt);
+    }
+
+    // ── Lógica compartida ─────────────────────────────────────────────────
+    private function validateChat(Request $request): array
+    {
+        return $request->validate([
+            'message'           => 'required|string|max:4000',
+            'history'           => 'nullable|array|max:20',
+            'history.*.role'    => 'required|in:user,assistant',
+            'history.*.content' => 'required|string|max:8000',
+        ]);
+    }
+
+    private function stream(array $validated, string $systemPrompt)
+    {
+        $apiKey = config('services.anthropic.key');
+        $model  = config('services.anthropic.model', 'claude-haiku-4-5-20251001');
+
+        if (empty($apiKey)) {
+            return response()->json(['error' => 'API key de Anthropic no configurada. Agrega ANTHROPIC_API_KEY en .env'], 503);
+        }
+
         $messages = [];
         foreach (($validated['history'] ?? []) as $h) {
             if (isset($h['role'], $h['content'])) {
@@ -73,7 +131,6 @@ class AsistenteIAController extends Controller
         }
         $messages[] = ['role' => 'user', 'content' => $validated['message']];
 
-        // Release session lock before streaming
         Session::save();
 
         return response()->stream(function () use ($apiKey, $model, $systemPrompt, $messages) {

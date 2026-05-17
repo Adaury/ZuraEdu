@@ -1,5 +1,5 @@
 @extends('layouts.portal')
-@section('page-title', 'Historial de Notas — ' . ($asignacion->asignatura?->nombre ?? ''))
+@section('page-title', 'Comparativa de Rendimiento — ' . ($asignacion->asignatura?->nombre ?? ''))
 @section('portal-name', 'Portal Docente')
 
 @section('sidebar')
@@ -90,13 +90,18 @@
     <div style="flex:1;">
         <h1 style="font-size:1rem;font-weight:800;margin:0;">
             <i class="bi bi-activity" style="color:#1e3a8a;"></i>
-            Historial de Notas
+            Comparativa de Rendimiento
         </h1>
         <div style="font-size:.75rem;color:#64748b;margin-top:.15rem;">
             {{ $asignacion->asignatura?->nombre }} &mdash; {{ $asignacion->grupo?->nombre_completo ?? '—' }}
             @if($schoolYear) · {{ $schoolYear->nombre }} @endif
         </div>
     </div>
+    <a href="{{ route('portal.docente.historial-notas.pdf', $asignacion) }}"
+       target="_blank"
+       style="background:#dc2626;color:#fff;border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.35rem;flex-shrink:0;margin-top:.1rem;">
+        <i class="bi bi-file-earmark-pdf-fill"></i>PDF
+    </a>
 </div>
 
 {{-- KPIs: promedio del grupo por período + resumen de tendencias --}}
@@ -144,6 +149,80 @@
         <canvas id="chartHistorial"></canvas>
     </div>
 </div>
+
+{{-- Gráfica multi-línea: evolución por estudiante --}}
+@php $totalConNota = $filas->filter(fn($f) => !$f['sinNota'])->count(); @endphp
+@if($totalConNota > 0)
+<div class="prt-card" style="margin-bottom:1rem;">
+    <div class="prt-card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
+        <div style="display:flex;align-items:center;gap:.5rem;">
+            <i class="bi bi-people-fill" style="color:#6366f1;"></i>
+            <h3 style="margin:0;">Evolución individual — P1 → P{{ $periodos->count() }}</h3>
+        </div>
+        <span style="font-size:.7rem;color:#94a3b8;">{{ $totalConNota }} estudiante(s) con notas</span>
+    </div>
+    <div style="padding:.75rem 1rem;height:240px;position:relative;">
+        <canvas id="chartEstudiantes"></canvas>
+    </div>
+</div>
+@endif
+
+{{-- Top Mejoras / Top Descensos --}}
+@if($topMejoras->isNotEmpty() || $topDescensos->isNotEmpty())
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem;">
+
+    {{-- Top Mejoras --}}
+    <div class="prt-card" style="padding:0;overflow:hidden;">
+        <div style="background:linear-gradient(135deg,#dcfce7,#f0fdf4);padding:.65rem 1rem;border-bottom:1px solid #bbf7d0;display:flex;align-items:center;gap:.4rem;">
+            <i class="bi bi-arrow-up-circle-fill" style="color:#16a34a;font-size:.9rem;"></i>
+            <span style="font-size:.78rem;font-weight:800;color:#15803d;">Top Mejoras</span>
+        </div>
+        <div style="padding:.5rem 0;">
+        @foreach($topMejoras as $fila)
+        @if($fila['diff'] !== null && $fila['diff'] > 0)
+        <div style="display:flex;align-items:center;gap:.5rem;padding:.35rem 1rem;border-bottom:1px solid #f0fdf4;">
+            <span style="font-size:.75rem;font-weight:700;color:#1e293b;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                {{ $fila['matricula']->estudiante?->apellidos }}, {{ $fila['matricula']->estudiante?->nombres }}
+            </span>
+            <span style="background:#dcfce7;color:#15803d;border-radius:99px;font-size:.72rem;font-weight:800;padding:.12rem .45rem;flex-shrink:0;">
+                +{{ $fila['diff'] }} pts
+            </span>
+        </div>
+        @endif
+        @endforeach
+        @if($topMejoras->filter(fn($f) => $f['diff'] !== null && $f['diff'] > 0)->isEmpty())
+        <div style="text-align:center;padding:.75rem;font-size:.75rem;color:#94a3b8;">Sin mejoras registradas</div>
+        @endif
+        </div>
+    </div>
+
+    {{-- Top Descensos --}}
+    <div class="prt-card" style="padding:0;overflow:hidden;">
+        <div style="background:linear-gradient(135deg,#fee2e2,#fff5f5);padding:.65rem 1rem;border-bottom:1px solid #fecaca;display:flex;align-items:center;gap:.4rem;">
+            <i class="bi bi-arrow-down-circle-fill" style="color:#dc2626;font-size:.9rem;"></i>
+            <span style="font-size:.78rem;font-weight:800;color:#dc2626;">Top Descensos</span>
+        </div>
+        <div style="padding:.5rem 0;">
+        @foreach($topDescensos as $fila)
+        @if($fila['diff'] !== null && $fila['diff'] < 0)
+        <div style="display:flex;align-items:center;gap:.5rem;padding:.35rem 1rem;border-bottom:1px solid #fff5f5;">
+            <span style="font-size:.75rem;font-weight:700;color:#1e293b;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                {{ $fila['matricula']->estudiante?->apellidos }}, {{ $fila['matricula']->estudiante?->nombres }}
+            </span>
+            <span style="background:#fee2e2;color:#dc2626;border-radius:99px;font-size:.72rem;font-weight:800;padding:.12rem .45rem;flex-shrink:0;">
+                {{ $fila['diff'] }} pts
+            </span>
+        </div>
+        @endif
+        @endforeach
+        @if($topDescensos->filter(fn($f) => $f['diff'] !== null && $f['diff'] < 0)->isEmpty())
+        <div style="text-align:center;padding:.75rem;font-size:.75rem;color:#94a3b8;">Sin descensos registrados</div>
+        @endif
+        </div>
+    </div>
+
+</div>
+@endif
 @endif
 
 {{-- Filtros --}}
@@ -394,6 +473,53 @@
                     ctx.strokeStyle = 'rgba(239,68,68,.35)';
                     ctx.setLineDash([4, 4]);
                     ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }]
+        });
+    }
+
+    // ── Chart multi-línea por estudiante ──────────────────────────────
+    const ctxEst = document.getElementById('chartEstudiantes');
+    if (ctxEst) {
+        const datasetsEst = {!! $chartEstudiantesJson ?? '[]' !!};
+        const labelsEst   = {!! $chartLabels !!};
+        new Chart(ctxEst, {
+            type: 'line',
+            data: { labels: labelsEst, datasets: datasetsEst },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: datasetsEst.length <= 12,
+                        position: 'bottom',
+                        labels: { font: { size: 9 }, boxWidth: 10, padding: 6 }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: c => ' ' + c.dataset.label + ': ' + (c.parsed.y !== null ? c.parsed.y + ' pts' : '—')
+                        }
+                    }
+                },
+                scales: {
+                    y: { min: 0, max: 100, grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { size: 10 } } },
+                    x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                }
+            },
+            plugins: [{
+                id: 'refLineEst',
+                afterDraw(chart) {
+                    const { ctx, scales: { y, x } } = chart;
+                    const yPx = y.getPixelForValue(65);
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(x.left, yPx);
+                    ctx.lineTo(x.right, yPx);
+                    ctx.strokeStyle = 'rgba(239,68,68,.3)';
+                    ctx.setLineDash([4, 4]);
+                    ctx.lineWidth = 1;
                     ctx.stroke();
                     ctx.restore();
                 }

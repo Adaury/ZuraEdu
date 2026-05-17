@@ -91,6 +91,13 @@
         <i class="bi bi-bar-chart-fill"></i>Resultados ({{ $intentosCount }})
     </a>
     @endif
+    @if($quiz->preguntas->count() > 0)
+    <a href="{{ route('portal.docente.evaluaciones.examen-pdf', [$asignacion, $quiz]) }}"
+       target="_blank"
+       style="padding:.45rem 1rem;border:none;border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;background:#7c3aed;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;">
+        <i class="bi bi-printer-fill"></i>Examen PDF
+    </a>
+    @endif
     <form method="POST" action="{{ route('portal.docente.evaluaciones.toggle-publicado', [$asignacion, $quiz]) }}" style="margin:0;margin-left:auto;">
         @csrf @method('PATCH')
         <button type="submit"
@@ -145,6 +152,10 @@
                     </div>
                     @endif
                 </div>
+                <button onclick="guardarEnBanco({{ $p->id }}, this)" title="Guardar en banco"
+                    style="background:#ede9fe;color:#7c3aed;border:none;border-radius:7px;padding:.3rem .55rem;font-size:.8rem;cursor:pointer;flex-shrink:0;">
+                    <i class="bi bi-collection-fill"></i>
+                </button>
                 <button onclick="eliminarPregunta({{ $p->id }}, this)"
                     style="background:#fee2e2;color:#ef4444;border:none;border-radius:7px;padding:.3rem .55rem;font-size:.8rem;cursor:pointer;flex-shrink:0;">
                     <i class="bi bi-trash"></i>
@@ -467,6 +478,33 @@ async function eliminarPregunta(id, btn) {
                 </div>`;
         }
     }
+}
+
+// ── Guardar pregunta en banco ───────────────────────────────────────────────
+async function guardarEnBanco(id, btn) {
+    const url = '/portal/docente/banco-preguntas/desde-quiz/' + id;
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    try {
+        const r = await fetch(url, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: '{}'
+        });
+        const d = await r.json();
+        if (d.ok) {
+            btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+            btn.style.background = '#d1fae5';
+            btn.style.color = '#059669';
+            btn.title = 'Guardada en banco';
+        } else {
+            btn.disabled = false;
+            btn.title = d.mensaje ?? 'Error';
+            btn.innerHTML = orig;
+            btn.style.background = '#fef9c3';
+            btn.style.color = '#92400e';
+        }
+    } catch(e) { btn.disabled = false; btn.innerHTML = orig; }
 }
 
 // ── Banco de preguntas ──────────────────────────────────────────────────────

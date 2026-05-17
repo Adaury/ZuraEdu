@@ -198,6 +198,33 @@ class BancoPreguntasController extends Controller
         return response()->json($preguntas);
     }
 
+    // ── Guardar pregunta del quiz en el banco ────────────────────────────────
+    public function guardarDesdeQuiz(Request $request, EvaPregunta $pregunta)
+    {
+        $docente = $this->getDocente();
+        abort_if($pregunta->quiz->asignacion->docente_id !== $docente->id, 403);
+
+        $ya = BancoPregunta::where('docente_id', $docente->id)
+            ->where('enunciado', $pregunta->enunciado)
+            ->exists();
+
+        if ($ya) {
+            return response()->json(['ok' => false, 'mensaje' => 'Esta pregunta ya está en tu banco.']);
+        }
+
+        $bp = BancoPregunta::create([
+            'docente_id'     => $docente->id,
+            'asignatura_id'  => $pregunta->quiz->asignacion->asignatura_id ?? null,
+            'enunciado'      => $pregunta->enunciado,
+            'tipo'           => $pregunta->tipo,
+            'opciones'       => $pregunta->opciones,
+            'puntos_default' => $pregunta->puntos,
+            'explicacion'    => $pregunta->explicacion,
+        ]);
+
+        return response()->json(['ok' => true, 'id' => $bp->id, 'mensaje' => 'Guardada en el banco.']);
+    }
+
     // ── Importar selección al quiz ───────────────────────────────────────────
     public function importarAlQuiz(Request $request, EvaQuiz $quiz)
     {

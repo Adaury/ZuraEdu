@@ -18,6 +18,9 @@
     <a href="{{ route('admin.ejecutivo.index') }}" class="prt-sidebar-link {{ request()->routeIs('admin.ejecutivo*') ? 'active' : '' }}">
         <i class="bi bi-bar-chart-line-fill" style="color:#f59e0b;"></i>Dashboard Ejecutivo
     </a>
+    <a href="{{ route('admin.rubricas.index') }}" class="prt-sidebar-link {{ request()->routeIs('admin.rubricas*') ? 'active' : '' }}">
+        <i class="bi bi-grid-3x3-gap-fill"></i>Rúbricas
+    </a>
     @endif
     <div class="prt-sidebar-section mt-2">Cuenta</div>
     <form method="POST" action="{{ route('logout') }}">

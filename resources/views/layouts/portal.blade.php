@@ -688,9 +688,11 @@
 
     {{-- PWA --}}
     <link rel="manifest" href="/pwa/manifest.json">
-    @php($__pwaColor = app()->bound('tenant') ? (app('tenant')->color_primario ?? '#1d4ed8') : '#1d4ed8')
-    @php($__pwaTid   = tenant_id() ?? 0)
-    @php($__pwaName  = app()->bound('tenant') ? (app('tenant')->nombre_institucion ?? config('app.name')) : config('app.name'))
+    @php
+        $__pwaColor = app()->bound('tenant') ? (app('tenant')->color_primario ?? '#1d4ed8') : '#1d4ed8';
+        $__pwaTid   = tenant_id() ?? 0;
+        $__pwaName  = app()->bound('tenant') ? (app('tenant')->nombre_institucion ?? config('app.name')) : config('app.name');
+    @endphp
     <meta name="theme-color" content="{{ $__pwaColor }}">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -706,16 +708,7 @@
         }
     </script>
 </head>
-@php
-$portalRoleClass = '';
-if(auth()->check()) {
-    $u = auth()->user();
-    if($u->hasRole('Docente'))       $portalRoleClass = 'role-docente';
-    elseif($u->hasRole('Representante')) $portalRoleClass = 'role-padre';
-    elseif($u->hasRole('Estudiante'))    $portalRoleClass = 'role-estudiante';
-}
-@endphp
-<body class="{{ $portalRoleClass }}">
+<body class="{{ auth()->check() ? (auth()->user()->hasRole('Docente') ? 'role-docente' : (auth()->user()->hasRole('Representante') ? 'role-padre' : (auth()->user()->hasRole('Estudiante') ? 'role-estudiante' : ''))) : '' }}">
 
 {{-- ── Banner Modo Demo ──────────────────────────────────────────────── --}}
 @if(session('demo_mode'))

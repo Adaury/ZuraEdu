@@ -43,6 +43,11 @@
        style="background:#f1f5f9;color:#374151;border-radius:8px;padding:.4rem .85rem;font-size:.8rem;text-decoration:none;display:flex;align-items:center;gap:.4rem;flex-shrink:0;margin-top:.1rem;">
         <i class="bi bi-arrow-left"></i>Volver
     </a>
+    <a href="{{ route('portal.docente.estudiantes.ficha.pdf', [$asignacion, $matricula]) }}"
+       target="_blank"
+       style="background:#dc2626;color:#fff;border-radius:8px;padding:.4rem .85rem;font-size:.8rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.4rem;flex-shrink:0;margin-top:.1rem;margin-left:auto;">
+        <i class="bi bi-file-earmark-pdf-fill"></i>Reporte PDF
+    </a>
     <div style="flex:1;">
         <h1 style="font-size:1rem;font-weight:800;margin:0;">
             <i class="bi bi-person-vcard-fill" style="color:#1e3a8a;"></i>

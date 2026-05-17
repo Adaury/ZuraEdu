@@ -81,6 +81,11 @@ try {
    class="prt-sidebar-link {{ $ak === 'asistencia' ? 'active' : '' }}">
     <i class="bi bi-calendar-check-fill"></i>Asistencia
 </a>
+<a href="{{ route('portal.docente.asistencia.alertas', $asignacion) }}"
+   class="prt-sidebar-link {{ $ak === 'asistencia-alertas' ? 'active' : '' }}"
+   style="{{ $ak === 'asistencia-alertas' ? '' : 'color:#ef4444;' }}">
+    <i class="bi bi-bell-fill"></i>Alertas de Inasistencias
+</a>
 <a href="{{ route('portal.docente.calificaciones', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'calificaciones' ? 'active' : '' }}">
     <i class="bi bi-journal-check"></i>Calificaciones
@@ -105,13 +110,17 @@ try {
    class="prt-sidebar-link {{ $ak === 'acta-calificaciones' ? 'active' : '' }}">
     <i class="bi bi-file-earmark-spreadsheet-fill"></i>Acta de Calificaciones
 </a>
+<a href="{{ route('portal.docente.consolidado-periodo', $asignacion) }}"
+   class="prt-sidebar-link {{ $ak === 'consolidado-periodo' ? 'active' : '' }}">
+    <i class="bi bi-clipboard-data-fill"></i>Consolidado del Período
+</a>
 <a href="{{ route('portal.docente.rendimiento', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'rendimiento' ? 'active' : '' }}">
     <i class="bi bi-graph-up-arrow"></i>Rendimiento
 </a>
 <a href="{{ route('portal.docente.historial-notas', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'historial-notas' ? 'active' : '' }}">
-    <i class="bi bi-activity"></i>Historial de Notas
+    <i class="bi bi-activity"></i>Comparativa P1→P4
 </a>
 <a href="{{ route('portal.docente.comunicado', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'comunicado' ? 'active' : '' }}">
@@ -197,6 +206,9 @@ try {
 <div class="prt-sidebar-section mt-2">Dirección</div>
 <a href="{{ route('admin.ejecutivo.index') }}" class="prt-sidebar-link {{ request()->routeIs('admin.ejecutivo*') ? 'active' : '' }}">
     <i class="bi bi-bar-chart-line-fill" style="color:#f59e0b;"></i>Dashboard Ejecutivo
+</a>
+<a href="{{ route('admin.rubricas.index') }}" class="prt-sidebar-link {{ request()->routeIs('admin.rubricas*') ? 'active' : '' }}">
+    <i class="bi bi-grid-3x3-gap-fill"></i>Rúbricas
 </a>
 @endif
 

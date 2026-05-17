@@ -31,6 +31,10 @@
         <h1 style="font-size:1rem;font-weight:800;margin:0;">Asistencia — {{ $asignacion->asignatura?->nombre }}</h1>
         <div class="dm-text-muted" style="font-size:.75rem;color:#64748b;">{{ $asignacion->grupo?->nombre_completo ?? '—' }}</div>
     </div>
+    <a href="{{ route('portal.docente.asistencia.alertas', $asignacion) }}"
+       style="background:#dc2626;color:#fff;border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.4rem;white-space:nowrap;flex-shrink:0;">
+        <i class="bi bi-bell-fill"></i>Alertas
+    </a>
     <a href="{{ route('portal.docente.asistencia.estadisticas', $asignacion) }}"
        style="background:#7c3aed;color:#fff;border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.4rem;white-space:nowrap;flex-shrink:0;">
         <i class="bi bi-bar-chart-line-fill"></i>Estadísticas

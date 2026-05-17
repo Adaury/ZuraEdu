@@ -50,6 +50,14 @@
    class="prt-sidebar-link {{ $ak === 'plan-evaluacion' ? 'active' : '' }}">
     <i class="bi bi-bar-chart-steps"></i>Plan de Evaluación
 </a>
+<a href="{{ route('portal.estudiante.mis-recursos') }}"
+   class="prt-sidebar-link {{ $ak === 'mis-recursos' ? 'active' : '' }}">
+    <i class="bi bi-folder2-open"></i>Mis Recursos
+</a>
+<a href="{{ route('portal.estudiante.mis-rubricas') }}"
+   class="prt-sidebar-link {{ $ak === 'rubricas' ? 'active' : '' }}">
+    <i class="bi bi-grid-3x3-gap-fill"></i>Mis Rúbricas
+</a>
 <a href="{{ route('portal.estudiante.evaluaciones.index') }}"
    class="prt-sidebar-link {{ $ak === 'evaluaciones' ? 'active' : '' }}"
    style="{{ $ak === 'evaluaciones' ? '' : 'color:#6366f1;' }}">
@@ -178,6 +186,23 @@ try { $moduleTransport = \App\Helpers\Setting::get('transporte','0');        } c
 {{-- ── GESTIONES ── --}}
 <div class="prt-sidebar-section mt-2">Gestiones</div>
 
+<a href="{{ route('portal.estudiante.mensajes.index') }}"
+   class="prt-sidebar-link {{ $ak === 'mensajes' ? 'active' : '' }}">
+    <i class="bi bi-envelope-fill"></i>Mensajes
+    @php
+    try {
+        $__euMsg = auth()->id();
+        $msgNoLeidos = \Illuminate\Support\Facades\Cache::remember("t".(tenant_id()??0)."_user_{$__euMsg}_msg_unread", 120, function () use ($__euMsg) {
+            return \App\Models\MensajeDestinatario::where('destinatario_id', $__euMsg)
+                ->whereNull('leido_at')->where('eliminado', false)->count();
+        });
+    } catch(\Exception $e){ $msgNoLeidos = 0; }
+    @endphp
+    @if($msgNoLeidos > 0)
+    <span style="background:#2563eb;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $msgNoLeidos }}</span>
+    @endif
+</a>
+
 <a href="{{ route('portal.estudiante.solicitudes.index') }}"
    class="prt-sidebar-link {{ $ak === 'solicitudes' ? 'active' : '' }}">
     <i class="bi bi-send-fill"></i>Mis Solicitudes
@@ -216,6 +241,9 @@ try { $moduleTransport = \App\Helpers\Setting::get('transporte','0');        } c
 <div class="prt-sidebar-section mt-2">Dirección</div>
 <a href="{{ route('admin.ejecutivo.index') }}" class="prt-sidebar-link {{ request()->routeIs('admin.ejecutivo*') ? 'active' : '' }}">
     <i class="bi bi-bar-chart-line-fill" style="color:#f59e0b;"></i>Dashboard Ejecutivo
+</a>
+<a href="{{ route('admin.rubricas.index') }}" class="prt-sidebar-link {{ request()->routeIs('admin.rubricas*') ? 'active' : '' }}">
+    <i class="bi bi-grid-3x3-gap-fill"></i>Rúbricas
 </a>
 @endif
 

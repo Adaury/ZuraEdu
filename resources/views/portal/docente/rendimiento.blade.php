@@ -70,7 +70,7 @@
     </a>
     <a href="{{ route('portal.docente.historial-notas', $asignacion) }}"
        style="background:#eef2ff;color:#4f46e5;border-radius:8px;padding:.4rem .85rem;font-size:.8rem;text-decoration:none;display:flex;align-items:center;gap:.4rem;flex-shrink:0;margin-top:.1rem;">
-        <i class="bi bi-activity"></i>Historial de notas
+        <i class="bi bi-activity"></i>Comparativa P1→P4
     </a>
     <div style="flex:1;">
         <h1 style="font-size:1rem;font-weight:800;margin:0;">

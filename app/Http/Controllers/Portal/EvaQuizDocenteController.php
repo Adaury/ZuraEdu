@@ -10,7 +10,9 @@ use App\Models\EvaQuiz;
 use App\Models\Matricula;
 use App\Models\SchoolYear;
 use App\Traits\HasDocenteContext;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class EvaQuizDocenteController extends Controller
 {
@@ -270,8 +272,204 @@ class EvaQuizDocenteController extends Controller
             ];
         });
 
+        // Detectar si hay preguntas abiertas pendientes de revisión
+        $tieneAbiertas = $quiz->preguntas->where('tipo', 'abierta')->isNotEmpty();
+        $pendientesRevision = 0;
+        if ($tieneAbiertas) {
+            foreach ($mejores as $intento) {
+                foreach ($quiz->preguntas->where('tipo', 'abierta') as $p) {
+                    $resp = ($intento->respuestas ?? [])[$p->id] ?? null;
+                    if ($resp && ($resp['valor'] ?? '') !== '' && ($resp['puntos'] ?? 0) == 0) {
+                        $pendientesRevision++;
+                    }
+                }
+            }
+        }
+
         return view('portal.docente.evaluaciones.resultados', compact(
-            'asignacion', 'quiz', 'matriculas', 'mejores', 'stats', 'analisisPregunta', 'puntajeTotal'
+            'asignacion', 'quiz', 'matriculas', 'mejores', 'stats',
+            'analisisPregunta', 'puntajeTotal', 'pendientesRevision'
         ));
+    }
+
+    // ── Ver intento individual (docente) ─────────────────────────────────────
+    public function verIntento(Asignacion $asignacion, EvaQuiz $quiz, EvaIntento $intento)
+    {
+        $this->autorizar($asignacion);
+        abort_if($quiz->asignacion_id !== $asignacion->id || $intento->quiz_id !== $quiz->id, 404);
+        abort_if($intento->estado !== 'finalizado', 404);
+
+        $quiz->load('preguntas');
+        $intento->load('matricula.estudiante');
+
+        $pendientesRevision = 0;
+        foreach ($quiz->preguntas->where('tipo', 'abierta') as $p) {
+            $resp = ($intento->respuestas ?? [])[$p->id] ?? null;
+            if ($resp && ($resp['valor'] ?? '') !== '' && ($resp['puntos'] ?? 0) == 0) {
+                $pendientesRevision++;
+            }
+        }
+
+        return view('portal.docente.evaluaciones.intento', compact(
+            'asignacion', 'quiz', 'intento', 'pendientesRevision'
+        ));
+    }
+
+    // ── AJAX: calificar pregunta abierta ──────────────────────────────────────
+    public function calificarAbierta(Request $request, Asignacion $asignacion, EvaQuiz $quiz, EvaIntento $intento)
+    {
+        $this->autorizar($asignacion);
+        abort_if($quiz->asignacion_id !== $asignacion->id || $intento->quiz_id !== $quiz->id, 404);
+
+        $pregunta = EvaPregunta::where('quiz_id', $quiz->id)->findOrFail($request->input('pregunta_id'));
+
+        $request->validate([
+            'pregunta_id' => 'required|integer',
+            'puntos'      => "required|numeric|min:0|max:{$pregunta->puntos}",
+        ]);
+
+        $puntos = (float) $request->input('puntos');
+        $respuestas = $intento->respuestas ?? [];
+
+        if (! isset($respuestas[$pregunta->id])) {
+            $respuestas[$pregunta->id] = ['valor' => '', 'correcta' => false, 'puntos' => 0];
+        }
+        $respuestas[$pregunta->id]['puntos']   = $puntos;
+        $respuestas[$pregunta->id]['correcta'] = $puntos > 0;
+
+        $puntuacionTotal = collect($respuestas)->sum('puntos');
+
+        $intento->update([
+            'respuestas' => $respuestas,
+            'puntuacion' => $puntuacionTotal,
+        ]);
+
+        return response()->json([
+            'ok'         => true,
+            'puntuacion' => $puntuacionTotal,
+            'porcentaje' => $intento->porcentaje,
+        ]);
+    }
+
+    // ── Generar examen imprimible PDF ────────────────────────────────────────
+    public function examenPdf(Request $request, Asignacion $asignacion, EvaQuiz $quiz)
+    {
+        $this->autorizar($asignacion);
+        abort_if($quiz->asignacion_id !== $asignacion->id, 404);
+
+        $quiz->load('preguntas');
+        $preguntas = $quiz->preguntas->sortBy('orden')->values();
+
+        $versionA = $preguntas;
+        $versionB = $this->shuffleParaVersionB($preguntas);
+
+        $tenant = app()->bound('tenant') ? app('tenant') : null;
+
+        $claveA = $this->buildAnswerKey($versionA);
+        $claveB = $this->buildAnswerKey($versionB);
+
+        $pdf = Pdf::loadView('portal.docente.evaluaciones.examen_pdf', [
+            'asignacion' => $asignacion,
+            'quiz'       => $quiz,
+            'versionA'   => $versionA,
+            'versionB'   => $versionB,
+            'claveA'     => $claveA,
+            'claveB'     => $claveB,
+            'tenant'     => $tenant,
+        ])->setPaper('letter', 'portrait');
+
+        return $pdf->download('examen-' . Str::slug($quiz->titulo) . '.pdf');
+    }
+
+    private function shuffleParaVersionB($preguntas)
+    {
+        $shuffled = $preguntas->shuffle()->values();
+        return $shuffled->map(function ($p) {
+            if ($p->tipo === 'multiple' && $p->opciones) {
+                $clone          = clone $p;
+                $clone->opciones = collect($p->opciones)->shuffle()->values()->toArray();
+                return $clone;
+            }
+            return $p;
+        });
+    }
+
+    private function buildAnswerKey($preguntas): array
+    {
+        // Mismo orden que el examen: MC → VF → Abierta
+        $grouped = collect([
+            ...$preguntas->where('tipo', 'multiple')->values()->all(),
+            ...$preguntas->where('tipo', 'verdadero_falso')->values()->all(),
+            ...$preguntas->where('tipo', 'abierta')->values()->all(),
+        ]);
+
+        $key = [];
+        foreach ($grouped as $idx => $p) {
+            $num = $idx + 1;
+            if ($p->tipo === 'verdadero_falso') {
+                $correcta  = collect($p->opciones ?? [])->firstWhere('correcta', true);
+                $key[$num] = $correcta ? ($correcta['texto'] === 'Verdadero' ? 'V' : 'F') : '?';
+            } elseif ($p->tipo === 'multiple') {
+                $correctIdx = collect($p->opciones ?? [])->search(fn($o) => $o['correcta'] ?? false);
+                $key[$num]  = $correctIdx !== false ? chr(65 + $correctIdx) : '?';
+            } else {
+                $key[$num] = 'Desarrollo';
+            }
+        }
+        return $key;
+    }
+
+    // ── PDF de resultados ─────────────────────────────────────────────────────
+    public function resultadosPdf(Asignacion $asignacion, EvaQuiz $quiz)
+    {
+        $this->autorizar($asignacion);
+        abort_if($quiz->asignacion_id !== $asignacion->id, 404);
+
+        $quiz->load('preguntas');
+
+        $schoolYear = SchoolYear::actual();
+        $matriculas = Matricula::with('estudiante')
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->get();
+
+        $intentos = EvaIntento::where('quiz_id', $quiz->id)
+            ->where('estado', 'finalizado')
+            ->get();
+
+        $mejores = $intentos->groupBy('matricula_id')
+            ->map(fn($g) => $g->sortByDesc('puntuacion')->first());
+
+        $puntajeTotal = $quiz->puntaje_total;
+
+        $stats = [
+            'completaron'  => $mejores->count(),
+            'pendientes'   => $matriculas->count() - $mejores->count(),
+            'promedio'     => $mejores->count() ? round($mejores->avg('porcentaje'), 1) : null,
+            'aprobados'    => $mejores->filter(fn($i) => $i->porcentaje >= 60)->count(),
+            'puntajeTotal' => $puntajeTotal,
+        ];
+
+        $analisisPregunta = $quiz->preguntas->map(function ($p) use ($intentos) {
+            $total     = $intentos->count();
+            $correctas = 0;
+            foreach ($intentos as $intento) {
+                $resp = ($intento->respuestas ?? [])[$p->id] ?? null;
+                if ($resp && ($resp['correcta'] ?? false)) $correctas++;
+            }
+            return [
+                'pregunta'  => $p,
+                'total'     => $total,
+                'correctas' => $correctas,
+                'pct'       => $total > 0 ? round($correctas / $total * 100) : null,
+            ];
+        });
+
+        $pdf = Pdf::loadView('portal.docente.evaluaciones.resultados_pdf', compact(
+            'asignacion', 'quiz', 'matriculas', 'mejores', 'stats', 'analisisPregunta', 'puntajeTotal'
+        ))->setPaper('letter', 'landscape');
+
+        return $pdf->download('resultados-' . Str::slug($quiz->titulo) . '.pdf');
     }
 }

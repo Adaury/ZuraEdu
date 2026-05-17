@@ -35,7 +35,17 @@
         <i class="bi bi-arrow-left"></i>Evaluación
     </a>
     <span style="color:#cbd5e1;">›</span>
-    <h2 style="font-size:1rem;font-weight:800;margin:0;">Resultados: {{ $quiz->titulo }}</h2>
+    <h2 style="font-size:1rem;font-weight:800;margin:0;flex:1;">Resultados: {{ $quiz->titulo }}</h2>
+    @if($pendientesRevision > 0)
+    <span style="background:#f59e0b;color:#fff;border-radius:99px;font-size:.68rem;font-weight:700;padding:.2rem .6rem;display:flex;align-items:center;gap:.3rem;">
+        <i class="bi bi-pencil-fill"></i>{{ $pendientesRevision }} pendiente{{ $pendientesRevision > 1 ? 's' : '' }} de revisión
+    </span>
+    @endif
+    <a href="{{ route('portal.docente.evaluaciones.resultados.pdf', [$asignacion, $quiz]) }}"
+       target="_blank"
+       style="background:#dc2626;color:#fff;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.35rem;">
+        <i class="bi bi-file-earmark-pdf-fill"></i>PDF
+    </a>
 </div>
 
 {{-- KPIs --}}
@@ -98,17 +108,20 @@
         <table class="res-table" style="width:100%;border-collapse:collapse;">
             <thead>
                 <tr style="border-bottom:2px solid #e2e8f0;">
+                    <th>#</th>
                     <th>Estudiante</th>
                     <th>Puntaje</th>
                     <th>Porcentaje</th>
                     <th>Estado</th>
                     <th>Duración</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($matriculas as $m)
                 @php $intento = $mejores->get($m->id); @endphp
                 <tr style="border-bottom:1px solid #f1f5f9;">
+                    <td style="color:#94a3b8;font-size:.75rem;">{{ $loop->iteration }}</td>
                     <td>
                         <div style="font-weight:600;font-size:.82rem;">
                             {{ $m->estudiante?->nombre_completo ?? '—' }}
@@ -135,10 +148,29 @@
                         @else
                             <span class="badge-mini" style="background:#ef4444;">No aprobado</span>
                         @endif
+                        @php
+                            $tieneAbiertaPend = false;
+                            foreach($quiz->preguntas->where('tipo','abierta') as $_p) {
+                                $_r = ($intento->respuestas ?? [])[$_p->id] ?? null;
+                                if ($_r && ($_r['valor'] ?? '') !== '' && ($_r['puntos'] ?? 0) == 0) { $tieneAbiertaPend = true; break; }
+                            }
+                        @endphp
+                        @if($tieneAbiertaPend)
+                        <span class="badge-mini" style="background:#f59e0b;margin-left:.2rem;" title="Tiene preguntas abiertas sin calificar">
+                            <i class="bi bi-pencil-fill"></i>
+                        </span>
+                        @endif
                     </td>
                     <td style="color:#64748b;font-size:.75rem;">{{ $intento->duracion ?? '—' }}</td>
+                    <td>
+                        <a href="{{ route('portal.docente.evaluaciones.intento.ver', [$asignacion, $quiz, $intento]) }}"
+                           style="background:#6366f1;color:#fff;border-radius:5px;padding:.2rem .5rem;font-size:.7rem;font-weight:700;text-decoration:none;white-space:nowrap;">
+                            <i class="bi bi-eye-fill"></i> Ver
+                        </a>
+                    </td>
                     @else
                     <td colspan="4" style="color:#94a3b8;font-size:.75rem;font-style:italic;">Sin responder</td>
+                    <td></td>
                     @endif
                 </tr>
                 @endforeach

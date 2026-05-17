@@ -147,6 +147,49 @@
 
 @push('scripts')
 <script>
+async function ejecutarPasarNota() {
+    const btn = document.getElementById('btn-pasar-confirmar');
+    const msg = document.getElementById('pasar-msg');
+    if (!confirm('¿Confirmar que se guardarán estas notas en el libro de calificaciones? Esta acción sobreescribirá el campo seleccionado.')) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Guardando...';
+    msg.style.display = 'none';
+
+    const esTecnica = {{ $esTecnica ? 'true' : 'false' }};
+    const body = {};
+    if (esTecnica) {
+        body.periodo_id = document.getElementById('pasar-periodo-id')?.value;
+        body.campo      = document.getElementById('pasar-campo')?.value;
+    } else {
+        body.componente  = document.getElementById('pasar-componente')?.value;
+        body.periodo_num = document.getElementById('pasar-periodo-num')?.value;
+    }
+
+    try {
+        const r = await fetch(
+            '{{ route('portal.docente.tareas.entregas.pasar-notas', [$asignacion, $tarea]) }}',
+            { method:'POST', headers:{ 'Content-Type':'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept':'application/json' }, body: JSON.stringify(body) }
+        );
+        const d = await r.json();
+        msg.style.display = 'block';
+        if (d.ok) {
+            msg.style.color = '#059669'; msg.style.background = '#d1fae5'; msg.style.padding = '.4rem .7rem'; msg.style.borderRadius = '8px';
+            msg.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>' + d.mensaje;
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> Listo';
+            btn.style.background = '#059669';
+        } else {
+            msg.style.color = '#b91c1c'; msg.style.background = '#fee2e2'; msg.style.padding = '.4rem .7rem'; msg.style.borderRadius = '8px';
+            msg.textContent = d.mensaje ?? 'Error al guardar.';
+            btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg"></i> Confirmar';
+        }
+    } catch(e) {
+        msg.style.display = 'block'; msg.style.color = '#b91c1c';
+        msg.textContent = 'Error de conexión.';
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg"></i> Confirmar';
+    }
+}
+
 async function enviarRecordatorioGlobal() {
     const btn = document.getElementById('btn-recordatorio-global');
     if (!btn) return;
@@ -264,6 +307,24 @@ function calificarEntrega(estudianteId, tareaId, asignacionId) {
         </p>
     </div>
     @php $nPendEntregas = $matriculas->count() - $entregas->whereIn('estado',['entregada','revisada'])->count(); @endphp
+    {{-- Exportar PDF --}}
+    <a href="{{ route('portal.docente.tareas.entregas.pdf', [$asignacion, $tarea]) }}"
+       target="_blank"
+       style="background:#fee2e2;color:#b91c1c;border:1.5px solid #fca5a5;border-radius:8px;padding:.38rem .85rem;font-size:.78rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;flex-shrink:0;text-decoration:none;">
+        <i class="bi bi-file-earmark-pdf-fill"></i>PDF
+    </a>
+    {{-- Exportar CSV --}}
+    <a href="{{ route('portal.docente.tareas.entregas.csv', [$asignacion, $tarea]) }}"
+       style="background:#d1fae5;color:#065f46;border:1.5px solid #6ee7b7;border-radius:8px;padding:.38rem .85rem;font-size:.78rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;flex-shrink:0;text-decoration:none;">
+        <i class="bi bi-filetype-csv"></i>CSV
+    </a>
+    {{-- Pasar nota a calificaciones --}}
+    @if($tarea->puntos_valor)
+    <button onclick="document.getElementById('modal-pasar-nota').style.display='flex'"
+        style="background:#ede9fe;color:#6d28d9;border:1.5px solid #c4b5fd;border-radius:8px;padding:.38rem .85rem;font-size:.78rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;flex-shrink:0;">
+        <i class="bi bi-arrow-up-right-square-fill"></i>Pasar Nota
+    </button>
+    @endif
     @if($nPendEntregas > 0)
     <button id="btn-recordatorio-global" onclick="enviarRecordatorioGlobal()"
         style="background:#fef3c7;color:#d97706;border:1.5px solid #fde68a;border-radius:8px;padding:.38rem .85rem;font-size:.78rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;flex-shrink:0;">
@@ -271,6 +332,80 @@ function calificarEntrega(estudianteId, tareaId, asignacionId) {
     </button>
     @endif
 </div>
+
+{{-- Modal: Pasar nota a calificaciones --}}
+@if($tarea->puntos_valor)
+<div id="modal-pasar-nota" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;padding:1rem;">
+    <div style="background:#fff;border-radius:16px;padding:1.4rem 1.6rem;max-width:420px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.18);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+            <h3 style="font-size:.95rem;font-weight:800;margin:0;color:#1e293b;">
+                <i class="bi bi-arrow-up-right-square-fill me-2" style="color:#7c3aed;"></i>Pasar Nota a Calificaciones
+            </h3>
+            <button onclick="document.getElementById('modal-pasar-nota').style.display='none'"
+                style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#6b7280;">✕</button>
+        </div>
+        <p style="font-size:.75rem;color:#64748b;margin-bottom:1rem;">
+            La nota de cada estudiante (sobre <strong>{{ $tarea->puntos_valor }}</strong> puntos) se convertirá a escala de 100 antes de guardarse.
+            Solo se procesan los estudiantes con calificación asignada.
+        </p>
+
+        @if($esTecnica)
+        {{-- Técnica: período + campo --}}
+        <div style="margin-bottom:.8rem;">
+            <label style="font-size:.75rem;font-weight:700;color:#374151;display:block;margin-bottom:.3rem;">Período</label>
+            <select id="pasar-periodo-id" style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:.4rem .6rem;font-size:.82rem;">
+                @foreach($periodos as $per)
+                <option value="{{ $per->id }}">{{ $per->nombre ?? 'Período ' . $per->numero }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div style="margin-bottom:1rem;">
+            <label style="font-size:.75rem;font-weight:700;color:#374151;display:block;margin-bottom:.3rem;">Campo a actualizar</label>
+            <select id="pasar-campo" style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:.4rem .6rem;font-size:.82rem;">
+                <option value="tareas"        {{ $tarea->tipo === 'tarea'       ? 'selected' : '' }}>Tareas</option>
+                <option value="practicas"     {{ $tarea->tipo === 'actividad'   ? 'selected' : '' }}>Prácticas</option>
+                <option value="participacion"                                                      >Participación</option>
+                <option value="proyecto"      {{ $tarea->tipo === 'proyecto'    ? 'selected' : '' }}>Proyecto</option>
+                <option value="examen"        {{ $tarea->tipo === 'evaluacion'  ? 'selected' : '' }}>Examen</option>
+            </select>
+        </div>
+        @else
+        {{-- Académica: componente + número de período --}}
+        <div style="margin-bottom:.8rem;">
+            <label style="font-size:.75rem;font-weight:700;color:#374151;display:block;margin-bottom:.3rem;">Componente</label>
+            <select id="pasar-componente" style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:.4rem .6rem;font-size:.82rem;">
+                <option value="1">1 — Comunicativa</option>
+                <option value="2">2 — Pensamiento Lógico</option>
+                <option value="3">3 — Científica y Tecnológica</option>
+                <option value="4">4 — Ética y Ciudadana</option>
+            </select>
+        </div>
+        <div style="margin-bottom:1rem;">
+            <label style="font-size:.75rem;font-weight:700;color:#374151;display:block;margin-bottom:.3rem;">Período</label>
+            <select id="pasar-periodo-num" style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:.4rem .6rem;font-size:.82rem;">
+                <option value="1">Período 1</option>
+                <option value="2">Período 2</option>
+                <option value="3">Período 3</option>
+                <option value="4">Período 4</option>
+            </select>
+        </div>
+        @endif
+
+        <div id="pasar-msg" style="font-size:.77rem;margin-bottom:.7rem;display:none;"></div>
+
+        <div style="display:flex;gap:.6rem;justify-content:flex-end;">
+            <button onclick="document.getElementById('modal-pasar-nota').style.display='none'"
+                style="background:#f1f5f9;color:#374151;border:1.5px solid #e2e8f0;border-radius:8px;padding:.4rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer;">
+                Cancelar
+            </button>
+            <button id="btn-pasar-confirmar" onclick="ejecutarPasarNota()"
+                style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:.4rem 1.1rem;font-size:.8rem;font-weight:700;cursor:pointer;">
+                <i class="bi bi-check-lg"></i> Confirmar
+            </button>
+        </div>
+    </div>
+</div>
+@endif
 
 {{-- Resumen KPIs --}}
 @php

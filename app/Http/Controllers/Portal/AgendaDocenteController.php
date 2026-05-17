@@ -5,14 +5,19 @@ namespace App\Http\Controllers\Portal;
 use App\Http\Controllers\Controller;
 use App\Traits\HasDocenteContext;
 use App\Models\Asignacion;
+use App\Models\Calificacion;
+use App\Models\CalificacionAcademica;
 use App\Models\Docente;
 use App\Models\EntregaTarea;
 use App\Models\Estudiante;
 use App\Models\Matricula;
 use App\Models\Notificacion;
+use App\Models\Periodo;
 use App\Models\SchoolYear;
 use App\Models\Tarea;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class AgendaDocenteController extends Controller
 {
@@ -160,8 +165,11 @@ class AgendaDocenteController extends Controller
             ->get()
             ->keyBy('estudiante_id');
 
+        $esTecnica = ($asignacion->area ?? '') === 'tecnica';
+        $periodos  = Periodo::where('school_year_id', $schoolYear?->id)->orderBy('numero')->get();
+
         return view('portal.docente.tareas.entregas', compact(
-            'asignacion', 'tarea', 'matriculas', 'entregas'
+            'asignacion', 'tarea', 'matriculas', 'entregas', 'esTecnica', 'periodos'
         ));
     }
 
@@ -327,6 +335,146 @@ class AgendaDocenteController extends Controller
             'mensaje'  => count($userIds)
                 ? 'Recordatorio enviado a ' . count($userIds) . ' estudiante(s).'
                 : 'No hay estudiantes pendientes.',
+        ]);
+    }
+
+    // ── Entregas PDF ──────────────────────────────────────────────────────
+    public function entregasPdf(Asignacion $asignacion, Tarea $tarea)
+    {
+        $asignacion = $this->resolverAsignacion($asignacion->id);
+        abort_if($tarea->asignacion_id !== $asignacion->id, 404);
+
+        $schoolYear = SchoolYear::actual();
+        $matriculas = Matricula::with(['estudiante'])
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->orderBy('id')->get();
+
+        $entregas     = EntregaTarea::where('tarea_id', $tarea->id)->get()->keyBy('estudiante_id');
+        $nTotal       = $matriculas->count();
+        $nEntregadas  = $entregas->whereIn('estado', ['entregada', 'revisada'])->count();
+        $nRevisadas   = $entregas->where('estado', 'revisada')->count();
+        $nPendientes  = $nTotal - $nEntregadas;
+        $nConFeedback = $entregas->filter(fn($e) => !empty($e->notas_docente))->count();
+
+        $tenant = app()->bound('tenant') ? app('tenant') : null;
+
+        $pdf = Pdf::loadView('portal.docente.tareas.entregas_pdf', compact(
+            'asignacion', 'tarea', 'matriculas', 'entregas',
+            'nTotal', 'nEntregadas', 'nRevisadas', 'nPendientes', 'nConFeedback', 'tenant'
+        ))->setPaper('letter', 'portrait');
+
+        return $pdf->download('entregas_' . Str::slug($tarea->titulo) . '.pdf');
+    }
+
+    // ── Entregas CSV ──────────────────────────────────────────────────────
+    public function entregasCsv(Asignacion $asignacion, Tarea $tarea)
+    {
+        $asignacion = $this->resolverAsignacion($asignacion->id);
+        abort_if($tarea->asignacion_id !== $asignacion->id, 404);
+
+        $schoolYear = SchoolYear::actual();
+        $matriculas = Matricula::with(['estudiante'])
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->orderBy('id')->get();
+
+        $entregas = EntregaTarea::where('tarea_id', $tarea->id)->get()->keyBy('estudiante_id');
+        $puntos   = max(1, (int) ($tarea->puntos_valor ?? 100));
+        $filename = 'entregas_' . Str::slug($tarea->titulo) . '.csv';
+
+        return response()->streamDownload(function () use ($matriculas, $entregas, $puntos) {
+            $fh = fopen('php://output', 'w');
+            fputs($fh, "\xEF\xBB\xBF");
+            fputcsv($fh, ['#', 'Estudiante', 'Cédula', 'Estado', 'Nota', 'Sobre ' . $puntos, 'Fecha Entrega', 'Retroalimentación']);
+            $i = 1;
+            foreach ($matriculas as $m) {
+                $est     = $m->estudiante;
+                $entrega = $est ? ($entregas->get($est->id) ?? null) : null;
+                $nota    = $entrega?->calificacion;
+                fputcsv($fh, [
+                    $i++,
+                    $est?->nombre_completo ?? 'Sin nombre',
+                    $est?->cedula ?? '',
+                    $entrega?->estado ?? 'pendiente',
+                    $nota !== null ? number_format($nota, 2) : '',
+                    $puntos,
+                    $entrega?->fecha_entrega?->format('d/m/Y') ?? '',
+                    $entrega?->notas_docente ?? '',
+                ]);
+            }
+            fclose($fh);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    // ── Pasar nota a calificaciones ───────────────────────────────────────
+    public function pasarACalificaciones(Request $request, Asignacion $asignacion, Tarea $tarea)
+    {
+        $asignacion = $this->resolverAsignacion($asignacion->id);
+        abort_if($tarea->asignacion_id !== $asignacion->id, 404);
+
+        $esTecnica  = ($asignacion->area ?? '') === 'tecnica';
+        $schoolYear = SchoolYear::actual();
+
+        if ($esTecnica) {
+            $data = $request->validate([
+                'periodo_id' => 'required|integer|exists:periodos,id',
+                'campo'      => 'required|in:tareas,practicas,participacion,proyecto,examen',
+            ]);
+        } else {
+            $data = $request->validate([
+                'componente'  => 'required|integer|in:1,2,3,4',
+                'periodo_num' => 'required|integer|in:1,2,3,4',
+            ]);
+        }
+
+        $matriculas = Matricula::with('estudiante')
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->get();
+
+        $entregas = EntregaTarea::where('tarea_id', $tarea->id)
+            ->whereNotNull('calificacion')
+            ->get()->keyBy('estudiante_id');
+
+        $puntos       = max(1, (int) ($tarea->puntos_valor ?? 100));
+        $actualizados = 0;
+
+        foreach ($matriculas as $m) {
+            $est     = $m->estudiante;
+            $entrega = $est ? ($entregas->get($est->id) ?? null) : null;
+            if (!$entrega) continue;
+
+            $nota = max(0, min(100, round($entrega->calificacion / $puntos * 100, 2)));
+
+            if ($esTecnica) {
+                Calificacion::updateOrCreate(
+                    ['matricula_id' => $m->id, 'asignacion_id' => $asignacion->id, 'periodo_id' => $data['periodo_id']],
+                    [$data['campo'] => $nota]
+                );
+            } else {
+                $campo = "comp{$data['componente']}_p{$data['periodo_num']}";
+                $row   = CalificacionAcademica::firstOrNew([
+                    'matricula_id'   => $m->id,
+                    'asignacion_id'  => $asignacion->id,
+                    'school_year_id' => $schoolYear?->id,
+                ]);
+                $row->$campo = $nota;
+                $row->save();
+                if (method_exists($row, 'recalcularPromedios')) {
+                    $row->recalcularPromedios();
+                }
+            }
+            $actualizados++;
+        }
+
+        return response()->json([
+            'ok'          => true,
+            'actualizados'=> $actualizados,
+            'mensaje'     => "{$actualizados} calificación(es) guardada(s) correctamente.",
         ]);
     }
 

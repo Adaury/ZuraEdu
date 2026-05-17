@@ -311,6 +311,10 @@
             </span>
         </div>
     </div>
+    <a href="{{ route('portal.docente.consolidado-periodo', $asignacion) }}"
+       style="background:#0f766e;color:#fff;border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.4rem;white-space:nowrap;flex-shrink:0;">
+        <i class="bi bi-clipboard-data-fill"></i>Consolidado
+    </a>
     <a href="{{ route('portal.docente.acta-calificaciones', $asignacion) }}"
        style="background:#1e3a6e;color:#fff;border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.4rem;white-space:nowrap;flex-shrink:0;">
         <i class="bi bi-file-earmark-spreadsheet-fill"></i>Acta Oficial
@@ -872,9 +876,9 @@ $fmt = fn($v, $empty = '—') => $v !== null
             </span>
         </div>
 
-        {{-- Formulario importar --}}
+        {{-- Formulario importar con preview --}}
         <form method="POST"
-              action="{{ route('portal.docente.calificaciones.importar', $asignacion) }}"
+              action="{{ route('portal.docente.calificaciones.importar.preview', $asignacion) }}"
               enctype="multipart/form-data"
               style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;">
             @csrf
@@ -890,8 +894,8 @@ $fmt = fn($v, $empty = '—') => $v !== null
                        style="width:100%;font-size:.8rem;border:1.5px solid #fde68a;border-radius:8px;padding:.35rem .6rem;background:#fff;color:#374151;">
             </div>
             <button type="submit"
-                    style="background:#d97706;color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:.4rem;">
-                <i class="bi bi-upload"></i>Importar notas
+                    style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:.4rem;">
+                <i class="bi bi-eye-fill"></i>Vista previa
             </button>
         </form>
 

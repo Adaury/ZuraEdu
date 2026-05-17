@@ -2194,4 +2194,66 @@ class PortalEstudianteController extends Controller
             'estudiante', 'schoolYear', 'matricula', 'periodos', 'planesData', 'categorias'
         ));
     }
+
+    // ── Mis Rúbricas ─────────────────────────────────────────────────────
+    public function misRubricas()
+    {
+        $estudiante = $this->getEstudiante();
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()->first();
+
+        $aplicaciones = collect();
+
+        if ($matricula) {
+            $aplicaciones = \App\Models\RubricaAplicacion::with(['rubrica.asignatura', 'asignacion.docente'])
+                ->where('matricula_id', $matricula->id)
+                ->latest()
+                ->get();
+        }
+
+        return view('portal.estudiante.rubricas', compact(
+            'estudiante', 'schoolYear', 'matricula', 'aplicaciones'
+        ));
+    }
+
+    // ── Mis Recursos (agregado de todas las materias) ─────────────────────
+    public function misRecursos()
+    {
+        $estudiante = $this->getEstudiante();
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()->first();
+
+        $asignaciones = collect();
+
+        if ($matricula) {
+            $asgIds = Asignacion::where('grupo_id', $matricula->grupo_id)
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->pluck('id');
+
+            $recursos = RecursoMateria::with('asignacion.asignatura', 'asignacion.docente')
+                ->whereIn('asignacion_id', $asgIds)
+                ->where('publicado', true)
+                ->orderBy('orden')
+                ->orderByDesc('created_at')
+                ->get()
+                ->groupBy('asignacion_id');
+
+            $asignaciones = Asignacion::with(['asignatura', 'docente'])
+                ->whereIn('id', $recursos->keys())
+                ->get()
+                ->map(fn($a) => tap($a, fn($a) => $a->setRelation('recursos', $recursos->get($a->id, collect()))));
+        }
+
+        return view('portal.estudiante.mis_recursos', compact(
+            'estudiante', 'schoolYear', 'matricula', 'asignaciones'
+        ));
+    }
 }

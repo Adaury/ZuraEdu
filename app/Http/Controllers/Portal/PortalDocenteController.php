@@ -351,6 +351,106 @@ class PortalDocenteController extends Controller
         ));
     }
 
+    public function fichaEstudiantePdf(Asignacion $asignacion, Matricula $matricula)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+        if ($matricula->grupo_id !== $asignacion->grupo_id) abort(404);
+
+        $asignacion->load(['asignatura.resultadosAprendizaje', 'grupo.grado', 'grupo.seccion']);
+        $matricula->load(['estudiante.representantes']);
+        $schoolYear = SchoolYear::actual();
+        $esTecnica  = ($asignacion->area ?? '') === 'tecnica';
+        $tenant     = app()->bound('tenant') ? app('tenant') : null;
+
+        // Períodos
+        $periodos = $schoolYear
+            ? Periodo::where('school_year_id', $schoolYear->id)
+                ->where('tenant_id', tenant_id())
+                ->orderBy('numero')->get()
+            : collect();
+
+        // Notas
+        $notasPeriodo   = [];
+        $notaFinal      = null;
+        $calAcad        = null;
+        $calsMap        = collect();
+
+        if ($esTecnica) {
+            $ras   = $asignacion->asignatura->resultadosAprendizaje()->where('activo', true)->orderBy('numero')->get();
+            $cals  = Calificacion::where('asignacion_id', $asignacion->id)
+                ->where('matricula_id', $matricula->id)->get()->keyBy('periodo_id');
+            foreach ($periodos as $p) {
+                $cal = $cals->get($p->id);
+                $notasPeriodo[$p->numero] = ['final' => $cal?->nota_final, 'cal' => $cal, 'ras' => $ras];
+            }
+            $vals = collect($notasPeriodo)->pluck('final')->filter();
+            $notaFinal = $vals->count() ? round($vals->avg(), 1) : null;
+        } else {
+            $calAcad = CalificacionAcademica::where('asignacion_id', $asignacion->id)
+                ->where('matricula_id', $matricula->id)
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->first();
+            $comps = \App\Models\CalificacionAcademica::COMPETENCIAS ?? [
+                1 => 'Comunicativa',
+                2 => 'Pensamiento Lógico',
+                3 => 'Científica y Tecnológica',
+                4 => 'Ética y Ciudadana',
+            ];
+            foreach ($periodos as $p) {
+                $notasPeriodo[$p->numero] = [
+                    'final' => $calAcad?->{"comp1_p{$p->numero}"},
+                    'comps' => array_map(fn($ci) => $calAcad?->{"comp{$ci}_p{$p->numero}"}, array_keys($comps)),
+                ];
+            }
+            $notaFinal = $calAcad?->nota_final !== null ? round($calAcad->nota_final, 1) : null;
+        }
+
+        // Asistencia
+        $asistencias = Asistencia::where('asignacion_id', $asignacion->id)
+            ->where('matricula_id', $matricula->id)
+            ->orderBy('fecha')->get();
+
+        $asistResumen = [
+            'total'     => $asistencias->count(),
+            'presentes' => $asistencias->whereIn('estado', ['presente'])->count(),
+            'tardes'    => $asistencias->whereIn('estado', ['tarde', 'tardanza'])->count(),
+            'excusas'   => $asistencias->where('estado', 'excusa')->count(),
+            'ausentes'  => $asistencias->where('estado', 'ausente')->count(),
+        ];
+        $asistResumen['pct'] = $asistResumen['total'] > 0
+            ? round(($asistResumen['presentes'] + $asistResumen['tardes'] + $asistResumen['excusas']) / $asistResumen['total'] * 100, 1)
+            : null;
+
+        // Observaciones
+        $observaciones = Observacion::where('asignacion_id', $asignacion->id)
+            ->where('estudiante_id', $matricula->estudiante_id)
+            ->orderByDesc('created_at')->get();
+
+        // Instrumentos
+        $instrumentos = \App\Models\InstrumentoEvaluacion::where('asignacion_id', $asignacion->id)
+            ->with(['criterios', 'evaluaciones' => fn($q) => $q->where('matricula_id', $matricula->id)])
+            ->orderBy('created_at')->get();
+
+        // Conducta
+        $conducta = null;
+        try {
+            $conducta = \App\Models\ConductaRegistro::where('asignacion_id', $asignacion->id)
+                ->where('matricula_id', $matricula->id)
+                ->latest()->first();
+        } catch (\Exception $e) {}
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('portal.docente.ficha_estudiante_pdf', compact(
+            'docente', 'asignacion', 'matricula', 'schoolYear', 'esTecnica',
+            'periodos', 'notasPeriodo', 'notaFinal', 'calAcad',
+            'asistencias', 'asistResumen', 'observaciones', 'instrumentos',
+            'conducta', 'tenant'
+        ))->setPaper('letter', 'portrait');
+
+        $slug = \Illuminate\Support\Str::slug($matricula->estudiante?->nombre_completo ?? 'estudiante');
+        return $pdf->download("progreso-{$slug}.pdf");
+    }
+
     public function estudiantesPdf(Asignacion $asignacion)
     {
         $docente = $this->getDocente();
@@ -2070,14 +2170,492 @@ class PortalDocenteController extends Controller
         $chartLabels = json_encode($periodos->map(fn($p) => $p->nombre)->values()->all());
         $chartData   = json_encode($periodos->map(fn($p) => $promediosPeriodo[$p->numero])->values()->all());
 
+        // Datos multi-línea (un dataset por estudiante)
+        $coloresPaleta = ['#6366f1','#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316','#84cc16'];
+        $chartEstudiantes = $filas->filter(fn($f) => !$f['sinNota'])->values()->map(function ($f, $i) use ($periodos, $coloresPaleta) {
+            $color = $coloresPaleta[$i % count($coloresPaleta)];
+            return [
+                'label'           => ($f['matricula']->estudiante?->apellidos ?? '') . ', ' . ($f['matricula']->estudiante?->nombres ?? ''),
+                'data'            => $periodos->map(fn($p) => $f['notasPeriodo'][$p->numero] ?? null)->values()->all(),
+                'borderColor'     => $color,
+                'backgroundColor' => 'transparent',
+                'borderWidth'     => 1.5,
+                'pointRadius'     => 3,
+                'tension'         => 0.3,
+                'spanGaps'        => true,
+            ];
+        })->values()->all();
+        $chartEstudiantesJson = json_encode($chartEstudiantes);
+
+        // Top mejoras / top descensos
+        $conDiff     = $filas->filter(fn($f) => $f['diff'] !== null)->sortByDesc('diff');
+        $topMejoras  = $conDiff->take(5)->values();
+        $topDescensos = $conDiff->sortBy('diff')->take(5)->values();
+
         $asignacion->load(['asignatura', 'grupo.grado', 'grupo.seccion']);
 
         return view('portal.docente.historial_notas', compact(
             'docente', 'asignacion', 'schoolYear', 'periodos',
             'filas', 'promediosPeriodo', 'promedioFinal',
             'enRiesgoCount', 'mejorandoCount', 'declinandoCount',
-            'chartLabels', 'chartData', 'esTecnica'
+            'chartLabels', 'chartData', 'chartEstudiantesJson',
+            'topMejoras', 'topDescensos', 'esTecnica'
         ));
+    }
+
+    // ── Alertas de Inasistencias ─────────────────────────────────────────
+    public function alertasAsistencia(Request $request, Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $schoolYear = SchoolYear::actual();
+        $umbral     = max(1, min(20, (int) $request->get('umbral', 3)));
+
+        $matriculas = Matricula::with(['estudiante.representantes'])
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->orderBy('numero_orden')
+            ->get();
+
+        $matIds = $matriculas->pluck('id');
+
+        // Totales por estudiante
+        $totales = Asistencia::where('asignacion_id', $asignacion->id)
+            ->whereIn('matricula_id', $matIds)
+            ->selectRaw('matricula_id,
+                COUNT(*) as total,
+                SUM(estado = "ausente") as ausentes,
+                SUM(estado IN ("tarde","tardanza")) as tardanzas')
+            ->groupBy('matricula_id')
+            ->get()->keyBy('matricula_id');
+
+        // Ausencias por semana (últimas 8 semanas)
+        $ultimasSemanas = Asistencia::where('asignacion_id', $asignacion->id)
+            ->whereIn('matricula_id', $matIds)
+            ->selectRaw('YEARWEEK(fecha, 1) as semana')
+            ->distinct()->orderBy('semana')
+            ->pluck('semana')->slice(-8)->values();
+
+        $porSemana = Asistencia::where('asignacion_id', $asignacion->id)
+            ->whereIn('matricula_id', $matIds)
+            ->where('estado', 'ausente')
+            ->selectRaw('matricula_id, YEARWEEK(fecha, 1) as semana, COUNT(*) as cnt')
+            ->groupBy('matricula_id', 'semana')
+            ->get()->groupBy('matricula_id');
+
+        $filas = $matriculas->map(function ($mat) use ($totales, $porSemana, $ultimasSemanas, $umbral) {
+            $t         = $totales->get($mat->id);
+            $total     = (int) ($t?->total ?? 0);
+            $ausentes  = (int) ($t?->ausentes ?? 0);
+            $tardanzas = (int) ($t?->tardanzas ?? 0);
+            $pctAsist  = $total > 0 ? round((($total - $ausentes) / $total) * 100) : null;
+
+            $semanasEst = $porSemana->get($mat->id, collect())->keyBy('semana');
+            $sparkData  = $ultimasSemanas->map(fn($s) => (int) ($semanasEst->get($s)?->cnt ?? 0))->values()->all();
+
+            $enAlerta = $ausentes >= $umbral;
+            $critico  = $ausentes >= ($umbral * 2) || ($pctAsist !== null && $pctAsist < 70);
+
+            $repUserIds = $mat->estudiante?->representantes
+                ?->filter(fn($r) => $r->user_id)
+                ->pluck('user_id')->unique()->values()->all() ?? [];
+
+            return [
+                'matricula'  => $mat,
+                'total'      => $total,
+                'ausentes'   => $ausentes,
+                'tardanzas'  => $tardanzas,
+                'pctAsist'   => $pctAsist,
+                'sparkData'  => $sparkData,
+                'enAlerta'   => $enAlerta,
+                'critico'    => $critico,
+                'repUserIds' => $repUserIds,
+            ];
+        })->sortByDesc('ausentes')->values();
+
+        $nEnAlerta = $filas->where('enAlerta', true)->count();
+        $nCriticos = $filas->where('critico', true)->count();
+        $conAsist  = $filas->filter(fn($f) => $f['pctAsist'] !== null);
+        $promAsist = $conAsist->count() ? round($conAsist->avg(fn($f) => $f['pctAsist'])) : null;
+
+        $asignacion->load(['asignatura', 'grupo.grado', 'grupo.seccion']);
+
+        return view('portal.docente.alertas_asistencia', compact(
+            'docente', 'asignacion', 'schoolYear',
+            'filas', 'umbral', 'ultimasSemanas',
+            'nEnAlerta', 'nCriticos', 'promAsist'
+        ));
+    }
+
+    public function alertasAsistenciaNotificar(Request $request, Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $request->validate(['matricula_ids' => 'required|array', 'matricula_ids.*' => 'integer']);
+
+        $asignNombre = $asignacion->asignatura?->nombre ?? 'Materia';
+
+        $matriculas = Matricula::with(['estudiante.representantes'])
+            ->whereIn('id', $request->matricula_ids)
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->get();
+
+        $totales = Asistencia::where('asignacion_id', $asignacion->id)
+            ->whereIn('matricula_id', $matriculas->pluck('id'))
+            ->selectRaw('matricula_id, SUM(estado = "ausente") as ausentes')
+            ->groupBy('matricula_id')
+            ->get()->keyBy('matricula_id');
+
+        $enviados = 0;
+        foreach ($matriculas as $mat) {
+            $ausentes = (int) ($totales->get($mat->id)?->ausentes ?? 0);
+            $userIds  = $mat->estudiante?->representantes
+                ?->filter(fn($r) => $r->user_id)
+                ->pluck('user_id')->unique()->values()->all() ?? [];
+
+            if (!empty($userIds)) {
+                $nombre = trim(($mat->estudiante?->nombres ?? '') . ' ' . ($mat->estudiante?->apellidos ?? ''));
+                Notificacion::enviarA(
+                    $userIds,
+                    'general',
+                    "Alerta de Asistencia — {$nombre}",
+                    "{$nombre} tiene {$ausentes} inasistencia(s) en {$asignNombre}. Le pedimos comunicarse con la institución.",
+                    ['asignacion_id' => $asignacion->id, 'matricula_id' => $mat->id]
+                );
+                $enviados++;
+            }
+        }
+
+        return response()->json([
+            'ok'      => true,
+            'enviados' => $enviados,
+            'mensaje' => $enviados > 0
+                ? "Alerta enviada a {$enviados} representante(s)."
+                : 'No se encontraron representantes con cuenta registrada.',
+        ]);
+    }
+
+    // ── Consolidado del Período ──────────────────────────────────────────
+    public function consolidadoPeriodo(Request $request, Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $schoolYear = SchoolYear::actual();
+        $esTecnica  = ($asignacion->area ?? '') === 'tecnica';
+
+        $periodos = $schoolYear
+            ? Periodo::where('school_year_id', $schoolYear->id)
+                ->where('tenant_id', tenant_id())
+                ->orderBy('numero')->get()
+            : collect();
+
+        // Período seleccionado (default: el actual o el primero)
+        $periodoActual = $periodos->firstWhere('activo', true) ?? $periodos->first();
+        $periodoNum    = (int) $request->get('periodo', $periodoActual?->numero ?? 1);
+        $periodo       = $periodos->firstWhere('numero', $periodoNum) ?? $periodoActual;
+
+        $matriculas = Matricula::with('estudiante')
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->orderBy('numero_orden')
+            ->get();
+
+        $matIds = $matriculas->pluck('id');
+
+        // Componentes según tipo de área
+        if ($esTecnica) {
+            $cals = Calificacion::whereIn('matricula_id', $matIds)
+                ->where('asignacion_id', $asignacion->id)
+                ->when($periodo, fn($q) => $q->where('periodo_id', $periodo->id))
+                ->get()->keyBy('matricula_id');
+            $componentes = ['tareas', 'practicas', 'participacion', 'proyecto', 'examen'];
+        } else {
+            $cals = CalificacionAcademica::whereIn('matricula_id', $matIds)
+                ->where('asignacion_id', $asignacion->id)
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->get()->keyBy('matricula_id');
+            $componentes = ["comp1_p{$periodoNum}", "comp2_p{$periodoNum}", "comp3_p{$periodoNum}", "comp4_p{$periodoNum}"];
+        }
+
+        $totalComp = count($componentes);
+
+        $filas = $matriculas->map(function ($mat) use ($cals, $esTecnica, $periodoNum, $componentes, $totalComp) {
+            $cal     = $cals->get($mat->id);
+            $notas   = [];
+            $llenas  = 0;
+
+            foreach ($componentes as $campo) {
+                $v = $cal?->$campo;
+                $notas[$campo] = $v !== null ? round($v, 1) : null;
+                if ($v !== null) $llenas++;
+            }
+
+            if ($esTecnica) {
+                $notaPeriodo = $cal?->nota_final !== null ? round($cal->nota_final, 1) : null;
+            } else {
+                // Promedio de los avg_compX_pN (si existen), si no, promedio de los compX_pN
+                $avgCampos = ["avg_comp1_p{$periodoNum}", "avg_comp2_p{$periodoNum}", "avg_comp3_p{$periodoNum}", "avg_comp4_p{$periodoNum}"];
+                $avgVals   = collect($avgCampos)->map(fn($c) => $cal?->$c)->filter()->values();
+                $rawVals   = collect($notas)->filter()->values();
+                if ($avgVals->count() > 0) {
+                    $notaPeriodo = round($avgVals->avg(), 1);
+                } elseif ($rawVals->count() > 0) {
+                    $notaPeriodo = round($rawVals->avg(), 1);
+                } else {
+                    $notaPeriodo = null;
+                }
+            }
+
+            $estado = 'vacio';
+            if ($llenas === $totalComp) {
+                $estado = 'completo';
+            } elseif ($llenas > 0) {
+                $estado = 'parcial';
+            }
+
+            return [
+                'matricula'   => $mat,
+                'notas'       => $notas,
+                'notaPeriodo' => $notaPeriodo,
+                'llenas'      => $llenas,
+                'totalComp'   => $totalComp,
+                'estado'      => $estado,
+            ];
+        });
+
+        // Stats
+        $totEstudiantes = $filas->count();
+        $nCompletos  = $filas->where('estado', 'completo')->count();
+        $nParciales  = $filas->where('estado', 'parcial')->count();
+        $nVacios     = $filas->where('estado', 'vacio')->count();
+        $pctIngreso  = $totEstudiantes > 0 ? round(($filas->sum('llenas') / ($totEstudiantes * $totalComp)) * 100) : 0;
+        $conNota     = $filas->filter(fn($f) => $f['notaPeriodo'] !== null);
+        $promedioGrupo = $conNota->count() ? round($conNota->avg(fn($f) => $f['notaPeriodo']), 1) : null;
+
+        $asignacion->load(['asignatura', 'grupo.grado', 'grupo.seccion']);
+        $etiquetasComp = $this->etiquetasComponentes($componentes, $esTecnica, $periodoNum);
+
+        return view('portal.docente.consolidado_periodo', compact(
+            'docente', 'asignacion', 'schoolYear', 'periodos', 'periodo', 'periodoNum',
+            'filas', 'componentes', 'etiquetasComp', 'esTecnica',
+            'totEstudiantes', 'nCompletos', 'nParciales', 'nVacios', 'pctIngreso', 'promedioGrupo'
+        ));
+    }
+
+    public function consolidadoPeriodoPdf(Request $request, Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $schoolYear = SchoolYear::actual();
+        $esTecnica  = ($asignacion->area ?? '') === 'tecnica';
+
+        $periodos = $schoolYear
+            ? Periodo::where('school_year_id', $schoolYear->id)
+                ->where('tenant_id', tenant_id())
+                ->orderBy('numero')->get()
+            : collect();
+
+        $periodoActual = $periodos->firstWhere('activo', true) ?? $periodos->first();
+        $periodoNum    = (int) $request->get('periodo', $periodoActual?->numero ?? 1);
+        $periodo       = $periodos->firstWhere('numero', $periodoNum) ?? $periodoActual;
+
+        $matriculas = Matricula::with('estudiante')
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->orderBy('numero_orden')
+            ->get();
+
+        $matIds = $matriculas->pluck('id');
+
+        if ($esTecnica) {
+            $cals = Calificacion::whereIn('matricula_id', $matIds)
+                ->where('asignacion_id', $asignacion->id)
+                ->when($periodo, fn($q) => $q->where('periodo_id', $periodo->id))
+                ->get()->keyBy('matricula_id');
+            $componentes = ['tareas', 'practicas', 'participacion', 'proyecto', 'examen'];
+        } else {
+            $cals = CalificacionAcademica::whereIn('matricula_id', $matIds)
+                ->where('asignacion_id', $asignacion->id)
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->get()->keyBy('matricula_id');
+            $componentes = ["comp1_p{$periodoNum}", "comp2_p{$periodoNum}", "comp3_p{$periodoNum}", "comp4_p{$periodoNum}"];
+        }
+
+        $totalComp = count($componentes);
+
+        $filas = $matriculas->map(function ($mat) use ($cals, $esTecnica, $periodoNum, $componentes, $totalComp) {
+            $cal    = $cals->get($mat->id);
+            $notas  = [];
+            $llenas = 0;
+            foreach ($componentes as $campo) {
+                $v = $cal?->$campo;
+                $notas[$campo] = $v !== null ? round($v, 1) : null;
+                if ($v !== null) $llenas++;
+            }
+            if ($esTecnica) {
+                $notaPeriodo = $cal?->nota_final !== null ? round($cal->nota_final, 1) : null;
+            } else {
+                $avgCampos = ["avg_comp1_p{$periodoNum}", "avg_comp2_p{$periodoNum}", "avg_comp3_p{$periodoNum}", "avg_comp4_p{$periodoNum}"];
+                $avgVals   = collect($avgCampos)->map(fn($c) => $cal?->$c)->filter()->values();
+                $rawVals   = collect($notas)->filter()->values();
+                $notaPeriodo = $avgVals->count() > 0 ? round($avgVals->avg(), 1)
+                    : ($rawVals->count() > 0 ? round($rawVals->avg(), 1) : null);
+            }
+            $estado = $llenas === $totalComp ? 'completo' : ($llenas > 0 ? 'parcial' : 'vacio');
+            return compact('mat', 'notas', 'notaPeriodo', 'llenas', 'totalComp', 'estado') + ['matricula' => $mat];
+        });
+
+        $totEstudiantes = $filas->count();
+        $nCompletos  = $filas->where('estado', 'completo')->count();
+        $nParciales  = $filas->where('estado', 'parcial')->count();
+        $nVacios     = $filas->where('estado', 'vacio')->count();
+        $pctIngreso  = $totEstudiantes > 0 ? round(($filas->sum('llenas') / ($totEstudiantes * $totalComp)) * 100) : 0;
+        $conNota     = $filas->filter(fn($f) => $f['notaPeriodo'] !== null);
+        $promedioGrupo = $conNota->count() ? round($conNota->avg(fn($f) => $f['notaPeriodo']), 1) : null;
+
+        $asignacion->load(['asignatura', 'grupo.grado', 'grupo.seccion']);
+        $etiquetasComp = $this->etiquetasComponentes($componentes, $esTecnica, $periodoNum);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('portal.docente.consolidado_periodo_pdf', compact(
+            'docente', 'asignacion', 'schoolYear', 'periodos', 'periodo', 'periodoNum',
+            'filas', 'componentes', 'etiquetasComp', 'esTecnica',
+            'totEstudiantes', 'nCompletos', 'nParciales', 'nVacios', 'pctIngreso', 'promedioGrupo'
+        ))->setPaper('letter', 'landscape');
+
+        $nombre = 'consolidado-p' . $periodoNum . '-' . ($asignacion->asignatura?->nombre ?? 'clase') . '.pdf';
+        return $pdf->download($nombre);
+    }
+
+    private function etiquetasComponentes(array $componentes, bool $esTecnica, int $periodoNum): array
+    {
+        if ($esTecnica) {
+            $map = [
+                'tareas'        => 'Tareas',
+                'practicas'     => 'Prácticas',
+                'participacion' => 'Participación',
+                'proyecto'      => 'Proyecto',
+                'examen'        => 'Examen',
+            ];
+            return array_map(fn($c) => $map[$c] ?? $c, $componentes);
+        }
+        return ["Comp. 1", "Comp. 2", "Comp. 3", "Comp. 4"];
+    }
+
+    // ── Historial de Notas — PDF ─────────────────────────────────────────
+    public function historialNotasPdf(Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $schoolYear = SchoolYear::actual();
+        $esTecnica  = ($asignacion->area ?? '') === 'tecnica';
+
+        $periodos = $schoolYear
+            ? Periodo::where('school_year_id', $schoolYear->id)
+                ->where('tenant_id', tenant_id())
+                ->orderBy('numero')->get()
+            : collect();
+
+        $matriculas = Matricula::with('estudiante')
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->orderBy('numero_orden')
+            ->get();
+
+        $matIds = $matriculas->pluck('id');
+
+        if ($esTecnica) {
+            $cals = Calificacion::whereIn('matricula_id', $matIds)
+                ->where('asignacion_id', $asignacion->id)
+                ->get()->groupBy('matricula_id');
+        } else {
+            $cals = CalificacionAcademica::whereIn('matricula_id', $matIds)
+                ->where('asignacion_id', $asignacion->id)
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->get()->keyBy('matricula_id');
+        }
+
+        $filas = $matriculas->map(function ($mat) use ($cals, $esTecnica, $periodos) {
+            $notasPeriodo = [];
+            $notaFinal    = null;
+
+            if ($esTecnica) {
+                $calsMat = $cals->get($mat->id, collect());
+                foreach ($periodos as $p) {
+                    $c = $calsMat->firstWhere('periodo_id', $p->id);
+                    $notasPeriodo[$p->numero] = $c?->nota_final !== null ? round($c->nota_final, 1) : null;
+                }
+                $vals = collect($notasPeriodo)->filter();
+                $notaFinal = $vals->count() ? round($vals->avg(), 1) : null;
+            } else {
+                $cal = $cals->get($mat->id);
+                $notaFinal = $cal?->nota_final !== null ? round($cal->nota_final, 1) : null;
+                foreach ($periodos as $p) {
+                    $n = $p->numero;
+                    $v = $cal?->{"comp1_p{$n}"};
+                    $notasPeriodo[$n] = $v !== null ? round($v, 1) : null;
+                }
+            }
+
+            $conNota = collect($notasPeriodo)->filter(fn($v) => $v !== null);
+            $tendencia = 'neutral';
+            $diff      = null;
+            if ($conNota->count() >= 2) {
+                $primero = $conNota->first();
+                $ultimo  = $conNota->last();
+                $diff    = round($ultimo - $primero, 1);
+                $tendencia = $diff >= 3 ? 'up' : ($diff <= -3 ? 'down' : 'neutral');
+            }
+
+            $enRiesgo = $conNota->filter(fn($v) => $v < 65)->isNotEmpty();
+
+            return [
+                'matricula'    => $mat,
+                'notasPeriodo' => $notasPeriodo,
+                'notaFinal'    => $notaFinal,
+                'tendencia'    => $tendencia,
+                'diff'         => $diff,
+                'enRiesgo'     => $enRiesgo,
+                'sinNota'      => $conNota->isEmpty(),
+            ];
+        });
+
+        $promediosPeriodo = [];
+        foreach ($periodos as $p) {
+            $vals = $filas->pluck("notasPeriodo.{$p->numero}")->filter();
+            $promediosPeriodo[$p->numero] = $vals->count() ? round($vals->avg(), 1) : null;
+        }
+
+        $conNotaFinal   = $filas->filter(fn($f) => $f['notaFinal'] !== null);
+        $promedioFinal  = $conNotaFinal->count() ? round($conNotaFinal->avg(fn($f) => $f['notaFinal']), 1) : null;
+        $enRiesgoCount  = $filas->where('enRiesgo', true)->count();
+        $mejorandoCount = $filas->where('tendencia', 'up')->count();
+        $declinandoCount = $filas->where('tendencia', 'down')->count();
+
+        // Top mejoras y top descensos
+        $conDiff    = $filas->filter(fn($f) => $f['diff'] !== null)->sortByDesc('diff');
+        $topMejoras = $conDiff->take(5)->values();
+        $topDescensos = $conDiff->sortBy('diff')->take(5)->values();
+
+        $asignacion->load(['asignatura', 'grupo.grado', 'grupo.seccion']);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('portal.docente.historial_notas_pdf', compact(
+            'docente', 'asignacion', 'schoolYear', 'periodos',
+            'filas', 'promediosPeriodo', 'promedioFinal',
+            'enRiesgoCount', 'mejorandoCount', 'declinandoCount',
+            'topMejoras', 'topDescensos', 'esTecnica'
+        ))->setPaper('legal', 'landscape');
+
+        $filename = 'historial-notas-' . ($asignacion->asignatura?->nombre ?? 'clase') . '.pdf';
+        return $pdf->download($filename);
     }
 
     // ── Comunicado al grupo ──────────────────────────────────────────────
@@ -2962,6 +3540,239 @@ class PortalDocenteController extends Controller
 
         $slug = Str::slug($asignacion->asignatura?->nombre ?? 'notas');
         return $this->generarCsvResponse($headers, $rows, "plantilla_calificaciones_{$slug}");
+    }
+
+    // ── Preview importación de calificaciones ────────────────────────────
+    public function previewImportarCalificaciones(Request $request, Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $request->validate([
+            'archivo'    => 'required|file|mimes:csv,txt,xlsx,xls|max:5120',
+            'periodo_id' => 'nullable|exists:periodos,id',
+        ]);
+
+        $asignacion->load(['asignatura.resultadosAprendizaje', 'grupo']);
+        $schoolYear = SchoolYear::actual();
+        $esTecnica  = $asignacion->area === 'tecnica';
+        $periodoId  = $request->periodo_id ?: null;
+
+        $rows = $this->leerArchivoImport($request->file('archivo'));
+
+        $matPorNum    = Matricula::where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->with('estudiante')->get()->keyBy('numero_matricula');
+        $matPorCedula = $matPorNum->groupBy(fn($m) => $m->estudiante?->cedula ?? '');
+
+        $numRA  = 3;
+        $pesosRA = [];
+
+        if ($esTecnica) {
+            $ras   = $asignacion->asignatura->resultadosAprendizaje()->where('activo', true)->orderBy('numero')->get();
+            $numRA = $ras->count() ?: ($asignacion->asignatura->num_ra ?? 3);
+            $pesosPersonalizados = $asignacion->pesos_ra ?? [];
+            foreach ($ras as $ra) $pesosRA[$ra->numero] = $pesosPersonalizados[$ra->numero] ?? $ra->peso ?? round(100 / $numRA, 4);
+            if (empty($pesosRA)) for ($i = 1; $i <= $numRA; $i++) $pesosRA[$i] = $pesosPersonalizados[$i] ?? round(100 / $numRA, 4);
+        }
+
+        $filas = [];
+
+        foreach ($rows as $idx => $row) {
+            $linea = $idx + 2;
+            $mat   = $matPorNum->get(trim($row['numero_matricula'] ?? ''))
+                  ?? $matPorCedula->get(trim($row['cedula'] ?? ''))?->first();
+
+            if (! $mat) {
+                $filas[] = [
+                    'linea'     => $linea,
+                    'nombre'    => trim(($row['nombres'] ?? '') . ' ' . ($row['apellidos'] ?? '')) ?: '—',
+                    'numMat'    => $row['numero_matricula'] ?? '',
+                    'cedula'    => $row['cedula'] ?? '',
+                    'matId'     => null,
+                    'notas'     => [],
+                    'notaFinal' => null,
+                    'pId'       => null,
+                    'status'    => 'error',
+                    'errores'   => ['Estudiante no encontrado en este grupo.'],
+                    'tieneNota' => false,
+                ];
+                continue;
+            }
+
+            $errores = [];
+            $notas   = [];
+            $pId     = null;
+            $notaFinal = null;
+
+            if ($esTecnica) {
+                $pNum = (int) trim($row['periodo'] ?? 1);
+                $pId  = $periodoId ?: $this->getPeriodos($schoolYear)->where('numero', $pNum)->first()?->id;
+                if (! $pId) $errores[] = "Período {$pNum} no encontrado.";
+
+                $suma = 0.0; $hayNota = false;
+                for ($i = 1; $i <= $numRA; $i++) {
+                    $v = $this->parseNota($row["ra{$i}"] ?? '');
+                    $notas["ra{$i}"] = $v;
+                    if ($v !== null) {
+                        if ($v < 0 || $v > 100) $errores[] = "RA{$i} fuera de rango (0-100).";
+                        $pMax = $pesosRA[$i] ?? round(100 / $numRA, 4);
+                        $suma += min($v, $pMax);
+                        $hayNota = true;
+                    }
+                }
+                if (! $hayNota) $errores[] = 'Sin notas válidas.';
+                $notaFinal = $hayNota ? round($suma, 2) : null;
+
+                $tieneNota = $pId ? Calificacion::where([
+                    'matricula_id' => $mat->id,
+                    'asignacion_id' => $asignacion->id,
+                    'periodo_id'   => $pId,
+                ])->whereNotNull('nota_final')->exists() : false;
+            } else {
+                $p1 = $this->parseNota($row['p1'] ?? '');
+                $p2 = $this->parseNota($row['p2'] ?? '');
+                $p3 = $this->parseNota($row['p3'] ?? '');
+                $p4 = $this->parseNota($row['p4'] ?? '');
+                $notas = ['p1' => $p1, 'p2' => $p2, 'p3' => $p3, 'p4' => $p4];
+
+                $filled = array_filter([$p1, $p2, $p3, $p4], fn($v) => $v !== null);
+                if (empty($filled)) $errores[] = 'Sin notas válidas.';
+                foreach ($notas as $k => $v) {
+                    if ($v !== null && ($v < 0 || $v > 100)) $errores[] = "{$k} fuera de rango (0-100).";
+                }
+                $notaFinal = !empty($filled) ? round(array_sum($filled) / count($filled), 2) : null;
+
+                $tieneNota = CalificacionAcademica::where([
+                    'matricula_id'  => $mat->id,
+                    'asignacion_id' => $asignacion->id,
+                    'school_year_id' => $schoolYear?->id,
+                ])->whereNotNull('nota_final')->exists();
+            }
+
+            $filas[] = [
+                'linea'     => $linea,
+                'nombre'    => $mat->estudiante?->nombre_completo ?? '—',
+                'numMat'    => $mat->numero_matricula ?? '',
+                'cedula'    => $mat->estudiante?->cedula ?? '',
+                'matId'     => $mat->id,
+                'notas'     => $notas,
+                'notaFinal' => $notaFinal,
+                'pId'       => $pId,
+                'status'    => $errores ? 'error' : ($tieneNota ? 'advertencia' : 'ok'),
+                'errores'   => $errores,
+                'tieneNota' => $tieneNota,
+            ];
+        }
+
+        session(["import_cal_{$asignacion->id}" => [
+            'asignacion_id' => $asignacion->id,
+            'periodo_id'    => $periodoId,
+            'esTecnica'     => $esTecnica,
+            'filas'         => $filas,
+            'numRA'         => $numRA,
+            'pesosRA'       => $pesosRA,
+            'schoolYearId'  => $schoolYear?->id,
+        ]]);
+
+        $columnas = $esTecnica
+            ? array_map(fn($i) => "ra{$i}", range(1, $numRA))
+            : ['p1', 'p2', 'p3', 'p4'];
+
+        $totales = [
+            'ok'          => collect($filas)->where('status', 'ok')->count(),
+            'advertencia' => collect($filas)->where('status', 'advertencia')->count(),
+            'error'       => collect($filas)->where('status', 'error')->count(),
+            'total'       => count($filas),
+        ];
+
+        return view('portal.docente.importar_calificaciones_preview', compact(
+            'asignacion', 'filas', 'totales', 'esTecnica', 'columnas', 'periodoId'
+        ));
+    }
+
+    // ── Confirmar importación de calificaciones ──────────────────────────
+    public function confirmarImportarCalificaciones(Request $request, Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $data = session("import_cal_{$asignacion->id}");
+        if (! $data || $data['asignacion_id'] !== $asignacion->id) {
+            return redirect()->route('portal.docente.calificaciones', $asignacion)
+                ->with('error', 'Sesión de importación expirada. Sube el archivo nuevamente.');
+        }
+
+        $schoolYear = SchoolYear::actual();
+        $esTecnica  = $data['esTecnica'];
+        $filas      = $data['filas'];
+        $pesosRA    = $data['pesosRA'] ?? [];
+        $numRA      = $data['numRA'] ?? 3;
+        $periodoId  = $data['periodo_id'];
+
+        $importados = 0;
+        $omitidos   = 0;
+
+        foreach ($filas as $fila) {
+            if ($fila['status'] === 'error' || ! $fila['matId']) {
+                $omitidos++;
+                continue;
+            }
+
+            $notas = $fila['notas'];
+
+            if ($esTecnica) {
+                $pId = $fila['pId'];
+                if (! $pId) { $omitidos++; continue; }
+
+                $dbData = ['modificado_por' => auth()->id()];
+                $suma = 0.0; $hayNota = false;
+                for ($i = 1; $i <= $numRA; $i++) {
+                    $v = $notas["ra{$i}"] ?? null;
+                    $dbData["ra{$i}"] = $v;
+                    if ($v !== null) {
+                        $pMax = $pesosRA[$i] ?? round(100 / $numRA, 4);
+                        $suma += min($v, $pMax);
+                        $hayNota = true;
+                    }
+                }
+                $dbData['nota_final'] = $hayNota ? round($suma, 2) : null;
+                $dbData['publicado']  = true;
+
+                Calificacion::updateOrCreate(
+                    ['matricula_id' => $fila['matId'], 'asignacion_id' => $asignacion->id, 'periodo_id' => $pId],
+                    $dbData
+                );
+            } else {
+                ['p1' => $p1, 'p2' => $p2, 'p3' => $p3, 'p4' => $p4] = $notas + ['p1'=>null,'p2'=>null,'p3'=>null,'p4'=>null];
+                $filled = array_filter([$p1, $p2, $p3, $p4], fn($v) => $v !== null);
+                if (empty($filled)) { $omitidos++; continue; }
+                $nf = round(array_sum($filled) / count($filled), 2);
+
+                CalificacionAcademica::updateOrCreate(
+                    ['matricula_id' => $fila['matId'], 'asignacion_id' => $asignacion->id, 'school_year_id' => $schoolYear?->id],
+                    [
+                        'comp1_p1' => $p1, 'comp2_p1' => $p1, 'comp3_p1' => $p1, 'comp4_p1' => $p1,
+                        'comp1_p2' => $p2, 'comp2_p2' => $p2, 'comp3_p2' => $p2, 'comp4_p2' => $p2,
+                        'comp1_p3' => $p3, 'comp2_p3' => $p3, 'comp3_p3' => $p3, 'comp4_p3' => $p3,
+                        'comp1_p4' => $p4, 'comp2_p4' => $p4, 'comp3_p4' => $p4, 'comp4_p4' => $p4,
+                        'nota_final' => $nf, 'situacion' => $nf >= 70 ? 'A' : 'R',
+                        'publicado'  => true,
+                        'modificado_por' => auth()->id(),
+                    ]
+                );
+            }
+            $importados++;
+        }
+
+        session()->forget("import_cal_{$asignacion->id}");
+        Cache::forget('t' . (tenant_id() ?? 0) . "_portal_docente_{$docente->id}_asignaciones_{$schoolYear?->id}");
+
+        $msg = "Se importaron {$importados} nota(s).";
+        if ($omitidos) $msg .= " {$omitidos} fila(s) omitida(s).";
+        $url = route('portal.docente.calificaciones', $asignacion) . ($periodoId ? "?periodo_id={$periodoId}" : '');
+        return redirect($url)->with('success', $msg);
     }
 
     // ── Importar CSV: Calificaciones ─────────────────────────────────────

@@ -53,6 +53,18 @@
    class="prt-sidebar-link {{ $ak === 'plan-evaluacion' ? 'active' : '' }}">
     <i class="bi bi-bar-chart-steps"></i>Plan de Evaluación
 </a>
+<a href="{{ route('portal.padre.hijo.tareas', $estudiante) }}"
+   class="prt-sidebar-link {{ $ak === 'tareas' ? 'active' : '' }}">
+    <i class="bi bi-check2-square"></i>Tareas
+</a>
+<a href="{{ route('portal.padre.hijo.rubricas', $estudiante) }}"
+   class="prt-sidebar-link {{ $ak === 'rubricas' ? 'active' : '' }}">
+    <i class="bi bi-grid-3x3-gap-fill"></i>Rúbricas
+</a>
+<a href="{{ route('portal.padre.hijo.conducta', $estudiante) }}"
+   class="prt-sidebar-link {{ $ak === 'conducta' ? 'active' : '' }}">
+    <i class="bi bi-stars"></i>Conducta
+</a>
 <a href="{{ route('portal.padre.hijo.documentos', $estudiante) }}"
    class="prt-sidebar-link {{ $ak === 'documentos' ? 'active' : '' }}">
     <i class="bi bi-folder2-open"></i>Documentos
@@ -145,6 +157,9 @@ try { $moduleTransport = \App\Helpers\Setting::get('transporte','0'); } catch(\E
 <div class="prt-sidebar-section mt-2">Dirección</div>
 <a href="{{ route('admin.ejecutivo.index') }}" class="prt-sidebar-link {{ request()->routeIs('admin.ejecutivo*') ? 'active' : '' }}">
     <i class="bi bi-bar-chart-line-fill" style="color:#f59e0b;"></i>Dashboard Ejecutivo
+</a>
+<a href="{{ route('admin.rubricas.index') }}" class="prt-sidebar-link {{ request()->routeIs('admin.rubricas*') ? 'active' : '' }}">
+    <i class="bi bi-grid-3x3-gap-fill"></i>Rúbricas
 </a>
 @endif
 

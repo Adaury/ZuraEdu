@@ -2070,6 +2070,11 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('admin.rubricas.index') }}" class="{{ request()->routeIs('admin.rubricas*') ? 'active' : '' }}">
+                        <i class="bi bi-grid-3x3-gap-fill"></i>Rúbricas
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.competencias.index') }}" class="{{ request()->routeIs('admin.competencias*') ? 'active' : '' }}">
                         <i class="bi bi-diagram-3"></i>Competencias / IL
                     </a>

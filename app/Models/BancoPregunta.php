@@ -20,6 +20,7 @@ class BancoPregunta extends Model
     protected $casts = [
         'opciones'       => 'array',
         'puntos_default' => 'float',
+        'usos'           => 'integer',
     ];
 
     public function docente(): BelongsTo

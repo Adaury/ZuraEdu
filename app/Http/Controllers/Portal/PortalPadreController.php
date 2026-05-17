@@ -1972,4 +1972,110 @@ class PortalPadreController extends Controller
             'estudiante', 'schoolYear', 'matricula', 'periodos', 'planesData', 'categorias'
         ));
     }
+
+    // ── Rúbricas del hijo ────────────────────────────────────────────────
+    public function rubricasHijo(Estudiante $estudiante)
+    {
+        $representante = $this->getRepresentante();
+        if (! $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists()) abort(403);
+
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()->first();
+
+        $aplicaciones = collect();
+        if ($matricula) {
+            $aplicaciones = \App\Models\RubricaAplicacion::with(['rubrica.asignatura', 'asignacion.docente'])
+                ->where('matricula_id', $matricula->id)
+                ->latest()
+                ->get();
+        }
+
+        return view('portal.padre.rubricas_hijo', compact(
+            'estudiante', 'schoolYear', 'matricula', 'aplicaciones'
+        ));
+    }
+
+    // ── Tareas del hijo ──────────────────────────────────────────────────
+    public function tareasHijo(Estudiante $estudiante)
+    {
+        $representante = $this->getRepresentante();
+        if (! $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists()) abort(403);
+
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()->first();
+
+        $tareasPorMateria = collect();
+
+        if ($matricula) {
+            $asignaciones = Asignacion::with('asignatura', 'docente')
+                ->where('grupo_id', $matricula->grupo_id)
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->get();
+
+            $asgIds = $asignaciones->pluck('id');
+
+            $entregas = \App\Models\EntregaTarea::where('estudiante_id', $estudiante->id)
+                ->whereHas('tarea', fn($q) => $q->whereIn('asignacion_id', $asgIds))
+                ->get()->keyBy('tarea_id');
+
+            $tareas = \App\Models\Tarea::with('asignacion.asignatura')
+                ->whereIn('asignacion_id', $asgIds)
+                ->where('activo', true)
+                ->orderByDesc('fecha_limite')
+                ->get();
+
+            $tareasPorMateria = $tareas->groupBy('asignacion_id')->map(fn($ts, $asgId) => [
+                'asignacion' => $asignaciones->firstWhere('id', $asgId),
+                'tareas'     => $ts,
+                'entregas'   => $entregas,
+            ]);
+        }
+
+        return view('portal.padre.tareas_hijo', compact(
+            'estudiante', 'schoolYear', 'matricula', 'tareasPorMateria'
+        ));
+    }
+
+    // ── Conducta del hijo ────────────────────────────────────────────────
+    public function conductaHijo(Estudiante $estudiante)
+    {
+        $representante = $this->getRepresentante();
+        if (! $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists()) abort(403);
+
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()->first();
+
+        $registros  = collect();
+        $periodos   = collect();
+
+        if ($matricula) {
+            $periodos = Periodo::where('school_year_id', $schoolYear?->id)
+                ->where('tenant_id', tenant_id())
+                ->orderBy('numero')->get();
+
+            $registros = \App\Models\ConductaRegistro::with(['asignacion.asignatura', 'asignacion.docente', 'periodo'])
+                ->where('matricula_id', $matricula->id)
+                ->get()
+                ->groupBy('periodo_id');
+        }
+
+        $indicadores = \App\Models\ConductaRegistro::INDICADORES;
+        $escala      = \App\Models\ConductaRegistro::ESCALA;
+
+        return view('portal.padre.conducta_hijo', compact(
+            'estudiante', 'schoolYear', 'matricula', 'periodos', 'registros', 'indicadores', 'escala'
+        ));
+    }
 }

@@ -19,7 +19,7 @@ class MensajesPortalController extends Controller
     private function portalActual(): string
     {
         $segment = request()->segment(2); // portal/docente -> segment(2) = docente
-        return in_array($segment, ['padre', 'docente']) ? $segment : 'docente';
+        return in_array($segment, ['padre', 'docente', 'estudiante']) ? $segment : 'docente';
     }
 
     // ── Bandeja ───────────────────────────────────────────────────────────

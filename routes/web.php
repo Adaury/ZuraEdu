@@ -206,6 +206,13 @@ Route::prefix('portal/estudiante')->name('portal.estudiante.')->middleware(['aut
         Route::post('/{quiz}/iniciar',           [\App\Http\Controllers\Portal\EvaQuizEstudianteController::class, 'iniciar'])->name('iniciar');
     });
 
+    Route::get('/mis-rubricas',   [PortalEstudianteController::class, 'misRubricas'])->name('mis-rubricas');
+    Route::get('/mis-recursos',   [PortalEstudianteController::class, 'misRecursos'])->name('mis-recursos');
+    // ── Mensajería Interna (Estudiante) ───────────────────────────────────────
+    Route::get('/mensajes',           [\App\Http\Controllers\Portal\MensajesPortalController::class, 'index'])->name('mensajes.index');
+    Route::get('/mensajes/redactar',  [\App\Http\Controllers\Portal\MensajesPortalController::class, 'create'])->name('mensajes.create');
+    Route::post('/mensajes',          [\App\Http\Controllers\Portal\MensajesPortalController::class, 'store'])->name('mensajes.store');
+    Route::get('/mensajes/{mensaje}', [\App\Http\Controllers\Portal\MensajesPortalController::class, 'show'])->name('mensajes.show');
     Route::get('/calendario',     [PortalEstudianteController::class, 'calendario'])->name('calendario');
     Route::get('/calendario/api', [PortalEstudianteController::class, 'calendarioApi'])->name('calendario.api');
     Route::prefix('classroom')->name('classroom.')->group(function () {
@@ -272,6 +279,9 @@ Route::prefix('portal/padre')->name('portal.padre.')->middleware(['auth', 'activ
     Route::get('/hijo/{estudiante}/proyectos',  [PortalPadreController::class, 'proyectosHijo'])->name('hijo.proyectos');
     Route::get('/hijo/{estudiante}/plan-evaluacion', [PortalPadreController::class, 'planEvaluacionHijo'])->name('hijo.plan-evaluacion');
     Route::post('/hijo/{estudiante}/pagos/{pago}/pagar-online', [PortalPadreController::class, 'iniciarPagoHijo'])->name('hijo.pagos.pagar-online');
+    Route::get('/hijo/{estudiante}/rubricas',  [PortalPadreController::class, 'rubricasHijo'])->name('hijo.rubricas');
+    Route::get('/hijo/{estudiante}/tareas',    [PortalPadreController::class, 'tareasHijo'])->name('hijo.tareas');
+    Route::get('/hijo/{estudiante}/conducta',  [PortalPadreController::class, 'conductaHijo'])->name('hijo.conducta');
 
     Route::get('/calendario',     [PortalPadreController::class, 'calendario'])->name('calendario');
     Route::get('/calendario/api', [PortalPadreController::class, 'calendarioApi'])->name('calendario.api');
@@ -301,6 +311,8 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::get('/asignacion/{asignacion}/asistencia',             [PortalDocenteController::class, 'asistencia'])->name('asistencia');
     Route::post('/asignacion/{asignacion}/asistencia',            [PortalDocenteController::class, 'guardarAsistencia'])->name('asistencia.guardar');
     Route::get('/asignacion/{asignacion}/asistencia/estadisticas', [PortalDocenteController::class, 'estadisticasAsistencia'])->name('asistencia.estadisticas');
+    Route::get('/asignacion/{asignacion}/asistencia/alertas',     [PortalDocenteController::class, 'alertasAsistencia'])->name('asistencia.alertas');
+    Route::post('/asignacion/{asignacion}/asistencia/alertas/notificar', [PortalDocenteController::class, 'alertasAsistenciaNotificar'])->name('asistencia.alertas.notificar');
     Route::get('/asignacion/{asignacion}/asistencia/plantilla',   [PortalDocenteController::class, 'descargarPlantillaAsistencia'])->name('asistencia.plantilla');
     Route::get('/asignacion/{asignacion}/asistencia/pdf',         [PortalDocenteController::class, 'exportarAsistenciaPdf'])->name('asistencia.pdf');
     Route::get('/asignacion/{asignacion}/asistencia/excel',       [PortalDocenteController::class, 'exportarAsistenciaExcel'])->name('asistencia.excel');
@@ -313,13 +325,16 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::post('/asistencia/qr/{qrToken}/cerrar',                         [\App\Http\Controllers\AsistenciaQrController::class, 'cerrar'])->name('asistencia.qr.cerrar');
     Route::get('/asignacion/{asignacion}/estudiantes/excel',      [PortalDocenteController::class, 'estudiantesExcel'])->name('estudiantes.excel');
     Route::get('/asignacion/{asignacion}/estudiantes',            [PortalDocenteController::class, 'estudiantes'])->name('estudiantes');
-    Route::get('/asignacion/{asignacion}/estudiantes/{matricula}/ficha', [PortalDocenteController::class, 'fichaEstudiante'])->name('estudiantes.ficha');
+    Route::get('/asignacion/{asignacion}/estudiantes/{matricula}/ficha',     [PortalDocenteController::class, 'fichaEstudiante'])->name('estudiantes.ficha');
+    Route::get('/asignacion/{asignacion}/estudiantes/{matricula}/ficha/pdf', [PortalDocenteController::class, 'fichaEstudiantePdf'])->name('estudiantes.ficha.pdf');
     Route::get('/asignacion/{asignacion}/calificaciones',                 [PortalDocenteController::class, 'calificaciones'])->name('calificaciones');
     Route::post('/asignacion/{asignacion}/calificaciones',                [PortalDocenteController::class, 'guardarCalificaciones'])->name('calificaciones.guardar');
     Route::get('/asignacion/{asignacion}/calificaciones/plantilla',       [PortalDocenteController::class, 'descargarPlantillaCalificaciones'])->name('calificaciones.plantilla');
     Route::get('/asignacion/{asignacion}/calificaciones/exportar-pdf',   [PortalDocenteController::class, 'exportarCalificacionesPdf'])->name('calificaciones.exportar-pdf');
     Route::get('/asignacion/{asignacion}/calificaciones/exportar-excel', [PortalDocenteController::class, 'exportarCalificacionesExcel'])->name('calificaciones.exportar-excel');
-    Route::post('/asignacion/{asignacion}/calificaciones/importar',       [PortalDocenteController::class, 'importarCalificaciones'])->name('calificaciones.importar');
+    Route::post('/asignacion/{asignacion}/calificaciones/importar',          [PortalDocenteController::class, 'importarCalificaciones'])->name('calificaciones.importar');
+    Route::post('/asignacion/{asignacion}/calificaciones/importar/preview',  [PortalDocenteController::class, 'previewImportarCalificaciones'])->name('calificaciones.importar.preview');
+    Route::post('/asignacion/{asignacion}/calificaciones/importar/confirmar',[PortalDocenteController::class, 'confirmarImportarCalificaciones'])->name('calificaciones.importar.confirmar');
     Route::patch('/asignacion/{asignacion}/calificaciones/acad/celda',   [PortalDocenteController::class, 'guardarCeldaAcad'])->name('calificaciones.acad.celda');
     Route::post('/asignacion/{asignacion}/pesos-ra',                      [PortalDocenteController::class, 'guardarPesosRa'])->name('pesos-ra.guardar');
     Route::get('/asignacion/{asignacion}/estudiantes/pdf',        [PortalDocenteController::class, 'estudiantesPdf'])->name('estudiantes.pdf');
@@ -329,12 +344,15 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::post('/asignacion/{asignacion}/observaciones',         [PortalDocenteController::class, 'guardarObservacion'])->name('observaciones.guardar');
     Route::get('/asignacion/{asignacion}/rendimiento',            [PortalDocenteController::class, 'rendimientoGrupo'])->name('rendimiento');
     Route::get('/asignacion/{asignacion}/historial-notas',        [PortalDocenteController::class, 'historialNotas'])->name('historial-notas');
+    Route::get('/asignacion/{asignacion}/historial-notas/pdf',   [PortalDocenteController::class, 'historialNotasPdf'])->name('historial-notas.pdf');
     Route::get('/asignacion/{asignacion}/comunicado',             [PortalDocenteController::class, 'comunicadoGrupo'])->name('comunicado');
     Route::post('/asignacion/{asignacion}/comunicado',            [PortalDocenteController::class, 'comunicadoGrupoEnviar'])->name('comunicado.enviar');
     Route::get('/asignacion/{asignacion}/boletines',              [PortalDocenteController::class, 'boletines'])->name('boletines');
     Route::get('/asignacion/{asignacion}/boletines/zip',          [PortalDocenteController::class, 'boletinesZip'])->name('boletines.zip');
     Route::get('/asignacion/{asignacion}/acta-pdf',               [PortalDocenteController::class, 'actaPdf'])->name('acta.pdf');
     Route::get('/asignacion/{asignacion}/acta-calificaciones',    [PortalDocenteController::class, 'actaCalificaciones'])->name('acta-calificaciones');
+    Route::get('/asignacion/{asignacion}/consolidado-periodo',    [PortalDocenteController::class, 'consolidadoPeriodo'])->name('consolidado-periodo');
+    Route::get('/asignacion/{asignacion}/consolidado-periodo/pdf',[PortalDocenteController::class, 'consolidadoPeriodoPdf'])->name('consolidado-periodo.pdf');
     // Conducta
     Route::prefix('/asignacion/{asignacion}/conducta')->name('conducta.')->group(function () {
         Route::get('/',         [\App\Http\Controllers\Portal\ConductaDocenteController::class, 'index'])->name('index');
@@ -407,6 +425,9 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::get('/{tarea}/entregas',    [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'entregas'])->name('entregas');
         Route::patch('/{tarea}/calificar', [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'calificar'])->name('calificar');
         Route::post('/{tarea}/recordatorio',[\App\Http\Controllers\Portal\AgendaDocenteController::class, 'recordatorio'])->name('recordatorio');
+        Route::get('/{tarea}/entregas/pdf',          [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'entregasPdf'])->name('entregas.pdf');
+        Route::get('/{tarea}/entregas/csv',          [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'entregasCsv'])->name('entregas.csv');
+        Route::post('/{tarea}/entregas/pasar-notas', [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'pasarACalificaciones'])->name('entregas.pasar-notas');
     });
     Route::post('/notificaciones/leer-todas',  [PortalDocenteController::class, 'marcarTodasLeidas'])->name('notif.leer-todas');
     Route::get('/notificaciones',              [PortalDocenteController::class, 'notificaciones'])->name('notificaciones');
@@ -471,6 +492,8 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::get('/{rubrica}/aplicar',         [\App\Http\Controllers\Portal\RubricaDocenteController::class, 'aplicar'])->name('aplicar');
         Route::post('/{rubrica}/guardar',        [\App\Http\Controllers\Portal\RubricaDocenteController::class, 'guardarAplicacion'])->name('guardar');
         Route::get('/{rubrica}/resultados',      [\App\Http\Controllers\Portal\RubricaDocenteController::class, 'resultados'])->name('resultados');
+        Route::get('/{rubrica}/resultados/pdf',  [\App\Http\Controllers\Portal\RubricaDocenteController::class, 'resultadosPdf'])->name('resultados.pdf');
+        Route::post('/{rubrica}/pasar-notas',    [\App\Http\Controllers\Portal\RubricaDocenteController::class, 'pasarACalificaciones'])->name('pasar-notas');
     });
 
     // Diario de Clase
@@ -480,16 +503,6 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::put('/{diarioClase}',             [\App\Http\Controllers\Portal\DiarioClaseController::class, 'update'])->name('update');
         Route::delete('/{diarioClase}',          [\App\Http\Controllers\Portal\DiarioClaseController::class, 'destroy'])->name('destroy');
         Route::get('/pdf',                       [\App\Http\Controllers\Portal\DiarioClaseController::class, 'pdf'])->name('pdf');
-    });
-
-    // Banco de Preguntas
-    Route::prefix('banco-preguntas')->name('banco-preguntas.')->group(function () {
-        Route::get('/',                          [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'index'])->name('index');
-        Route::post('/',                         [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'store'])->name('store');
-        Route::put('/{bancoPregunta}',           [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'update'])->name('update');
-        Route::delete('/{bancoPregunta}',        [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'destroy'])->name('destroy');
-        Route::get('/listar',                    [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'listar'])->name('listar');
-        Route::post('/importar/{quiz}',          [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'importarAlQuiz'])->name('importar');
     });
 
     // Evaluaciones Online
@@ -503,6 +516,10 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::post('/{quiz}/preguntas',            [\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'storePregunta'])->name('preguntas.store');
         Route::delete('/{quiz}/preguntas/{pregunta}',[\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'destroyPregunta'])->name('preguntas.destroy');
         Route::get('/{quiz}/resultados',            [\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'resultados'])->name('resultados');
+        Route::get('/{quiz}/resultados/pdf',        [\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'resultadosPdf'])->name('resultados.pdf');
+        Route::get('/{quiz}/examen-pdf',            [\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'examenPdf'])->name('examen-pdf');
+        Route::get('/{quiz}/intentos/{intento}',    [\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'verIntento'])->name('intento.ver');
+        Route::post('/{quiz}/intentos/{intento}/calificar', [\App\Http\Controllers\Portal\EvaQuizDocenteController::class, 'calificarAbierta'])->name('intento.calificar');
     });
 
     // Planificación Anual por Unidades (todas las áreas)
@@ -517,6 +534,17 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::delete('/{plan}/unidades/{unidad}',         [\App\Http\Controllers\Portal\PlanifAnualController::class, 'destroyUnidad'])->name('unidades.destroy');
         Route::patch('/{plan}/unidades/{unidad}/mover',    [\App\Http\Controllers\Portal\PlanifAnualController::class, 'moverUnidad'])->name('unidades.mover');
         Route::get('/{plan}/pdf',                          [\App\Http\Controllers\Portal\PlanifAnualController::class, 'pdf'])->name('pdf');
+    });
+
+    // Banco de Preguntas
+    Route::prefix('/banco-preguntas')->name('banco-preguntas.')->group(function () {
+        Route::get('/',                      [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'index'])->name('index');
+        Route::post('/',                     [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'store'])->name('store');
+        Route::get('/listar',                [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'listar'])->name('listar');
+        Route::post('/importar/{quiz}',      [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'importarAlQuiz'])->name('importar');
+        Route::post('/desde-quiz/{pregunta}',[\App\Http\Controllers\Portal\BancoPreguntasController::class, 'guardarDesdeQuiz'])->name('desde-quiz');
+        Route::put('/{bancoPregunta}',       [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'update'])->name('update');
+        Route::delete('/{bancoPregunta}',    [\App\Http\Controllers\Portal\BancoPreguntasController::class, 'destroy'])->name('destroy');
     });
 
     // Planificaciones (Área Técnica)
@@ -571,6 +599,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.acc
     require __DIR__ . '/admin/avisos_emergencia.php';
     require __DIR__ . '/admin/soporte.php';
     require __DIR__ . '/admin/recursos.php';
+    require __DIR__ . '/admin/rubricas.php';
     require __DIR__ . '/admin/solicitudes.php';
 
     // ── Plan Pro: módulos intermedios ─────────────────────────────────────────

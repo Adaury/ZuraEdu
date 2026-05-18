@@ -54,6 +54,12 @@
    class="prt-sidebar-link {{ $ak === 'rubricas' ? 'active' : '' }}">
     <i class="bi bi-grid-3x3-gap-fill"></i>Mis Rúbricas
 </a>
+<a href="{{ route('portal.estudiante.tutor-ia') }}"
+   class="prt-sidebar-link {{ $ak === 'tutor-ia' ? 'active' : '' }}"
+   style="{{ $ak === 'tutor-ia' ? '' : 'color:#0ea5e9;' }}">
+    <i class="bi bi-robot"></i>Tutor IA
+    <span style="background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;border-radius:99px;font-size:.58rem;padding:.1rem .38rem;font-weight:800;margin-left:auto;letter-spacing:.3px;">IA</span>
+</a>
 <a href="{{ route('portal.estudiante.evaluaciones.index') }}"
    class="prt-sidebar-link {{ $ak === 'evaluaciones' ? 'active' : '' }}"
    style="{{ $ak === 'evaluaciones' ? '' : 'color:#6366f1;' }}">

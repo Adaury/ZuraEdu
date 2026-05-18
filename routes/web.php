@@ -231,7 +231,8 @@ Route::prefix('portal/estudiante')->name('portal.estudiante.')->middleware(['aut
         Route::get('/{claseVirtual}/material/{material}/quiz/{intento}/resultado', [\App\Http\Controllers\Portal\QuizEstudianteController::class, 'resultado'])->name('quiz.resultado');
     });
 
-    // ZuraAI — Asistente académico estudiante
+    // Tutor IA — Asistente académico estudiante
+    Route::get('/tutor-ia',        fn() => view('portal.estudiante.tutor_ia'))->name('tutor-ia');
     Route::post('/asistente/chat', [\App\Http\Controllers\Portal\AsistenteIAController::class, 'chatEstudiante'])->name('asistente.chat');
 });
 

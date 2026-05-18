@@ -79,7 +79,7 @@
 @endif
 
 {{-- Page header --}}
-<div class="page-header">
+<div class="page-header p-slide-up">
     <div>
         <h1><i class="bi bi-person-badge me-2" style="color:var(--secondary);"></i>Docentes</h1>
         <p class="text-muted mb-0" style="font-size:.85rem;">
@@ -104,7 +104,7 @@
 </div>
 
 {{-- Search bar --}}
-<div class="card border-0 shadow-sm mb-4" style="border-radius:12px;">
+<div class="card border-0 shadow-sm mb-4 p-slide-up p-delay-1" style="border-radius:12px;">
     <div class="card-body py-3">
         <form method="GET" action="{{ route('admin.docentes.index') }}" class="search-form">
             <div class="input-group">
@@ -135,7 +135,7 @@
 </div>
 
 {{-- Table card --}}
-<div class="card border-0 shadow-sm" style="border-radius:12px;overflow:hidden;">
+<div class="card border-0 shadow-sm p-slide-up p-delay-2" style="border-radius:12px;overflow:hidden;">
     @if($docentes->isEmpty())
         <div class="empty-state">
             <i class="bi bi-person-badge"></i>

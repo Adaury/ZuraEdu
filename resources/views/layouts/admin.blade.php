@@ -1883,6 +1883,163 @@
             box-shadow: 0 -2px 0 #6366f1 inset !important;
         }
 
+        /* ── Page header gradient text ────────────────────────── */
+        .page-header h1,
+        .page-header .h4,
+        h1[style*="color:var(--primary)"],
+        .h4[style*="color:var(--primary)"] {
+            background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%) !important;
+            -webkit-background-clip: text !important;
+            background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            font-weight: 800 !important;
+            letter-spacing: -.02em !important;
+        }
+        .page-header h1 i, .page-header .h4 i,
+        h1[style*="color:var(--primary)"] i,
+        .h4[style*="color:var(--primary)"] i {
+            -webkit-text-fill-color: initial !important;
+            background: none !important;
+        }
+        [data-theme="dark"] .page-header h1,
+        [data-theme="dark"] .page-header .h4,
+        [data-theme="dark"] h1[style*="color:var(--primary)"],
+        [data-theme="dark"] .h4[style*="color:var(--primary)"] {
+            background: linear-gradient(135deg, #a5b4fc 0%, #c4b5fd 100%) !important;
+            -webkit-background-clip: text !important;
+            background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+        }
+
+        /* ── Filter bar glass ─────────────────────────────────── */
+        .filter-bar {
+            background: rgba(255,255,255,.80) !important;
+            backdrop-filter: blur(14px) saturate(160%) !important;
+            -webkit-backdrop-filter: blur(14px) saturate(160%) !important;
+            border: 1px solid rgba(255,255,255,.65) !important;
+            border-radius: 16px !important;
+            box-shadow: 0 2px 16px rgba(0,0,0,.05), 0 1px 0 rgba(255,255,255,.9) inset !important;
+        }
+        [data-theme="dark"] .filter-bar {
+            background: rgba(15,23,42,.75) !important;
+            border-color: rgba(99,102,241,.14) !important;
+            box-shadow: 0 2px 16px rgba(0,0,0,.2) !important;
+        }
+
+        /* ── Table card premium ───────────────────────────────── */
+        .table-card {
+            background: rgba(255,255,255,.88) !important;
+            backdrop-filter: blur(16px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+            border: 1px solid rgba(255,255,255,.72) !important;
+            border-radius: 16px !important;
+            box-shadow: 0 4px 24px rgba(0,0,0,.06), 0 1px 0 rgba(255,255,255,.9) inset !important;
+            overflow: hidden;
+        }
+        [data-theme="dark"] .table-card {
+            background: rgba(15,23,42,.75) !important;
+            border-color: rgba(99,102,241,.14) !important;
+        }
+        .table-card thead th {
+            background: rgba(99,102,241,.06) !important;
+            border-bottom: 1px solid rgba(99,102,241,.12) !important;
+            font-size: .78rem !important;
+            font-weight: 700 !important;
+            letter-spacing: .04em !important;
+            text-transform: uppercase !important;
+            color: rgba(0,0,0,.45) !important;
+        }
+        [data-theme="dark"] .table-card thead th {
+            background: rgba(99,102,241,.08) !important;
+            color: rgba(255,255,255,.4) !important;
+        }
+        .table-card tbody tr {
+            transition: background 150ms ease !important;
+        }
+        .table-card tbody tr:hover {
+            background: rgba(99,102,241,.04) !important;
+        }
+        [data-theme="dark"] .table-card tbody tr:hover {
+            background: rgba(99,102,241,.08) !important;
+        }
+
+        /* ── Grupo cards glassmorphism ────────────────────────── */
+        .grupo-card {
+            background: rgba(255,255,255,.85) !important;
+            backdrop-filter: blur(14px) saturate(170%) !important;
+            -webkit-backdrop-filter: blur(14px) saturate(170%) !important;
+            border: 1px solid rgba(255,255,255,.7) !important;
+            border-radius: 20px !important;
+            box-shadow: 0 4px 24px rgba(0,0,0,.07), 0 1px 0 rgba(255,255,255,.9) inset !important;
+            transition: all 280ms cubic-bezier(.34,1.56,.64,1) !important;
+        }
+        .grupo-card:hover {
+            transform: translateY(-7px) scale(1.02) !important;
+            box-shadow: 0 20px 48px rgba(99,102,241,.18), 0 1px 0 rgba(255,255,255,.9) inset !important;
+            border-color: rgba(99,102,241,.35) !important;
+        }
+        [data-theme="dark"] .grupo-card {
+            background: rgba(15,23,42,.76) !important;
+            border-color: rgba(99,102,241,.14) !important;
+        }
+        [data-theme="dark"] .grupo-card:hover {
+            background: rgba(30,27,75,.88) !important;
+            border-color: rgba(99,102,241,.45) !important;
+            box-shadow: 0 20px 48px rgba(99,102,241,.22) !important;
+        }
+
+        /* ── Section titles (grado-section-title) ─────────────── */
+        .grado-section-title {
+            font-weight: 800 !important;
+            letter-spacing: -.01em !important;
+            font-size: 1rem !important;
+        }
+
+        /* ── Badge pill premium ───────────────────────────────── */
+        .badge {
+            font-weight: 600 !important;
+            letter-spacing: .02em !important;
+        }
+
+        /* ── Table premium (global tables inside cards) ───────── */
+        .card .table thead th {
+            background: rgba(99,102,241,.05) !important;
+            font-size: .77rem !important;
+            font-weight: 700 !important;
+            letter-spacing: .04em !important;
+            text-transform: uppercase !important;
+            color: rgba(0,0,0,.42) !important;
+            border-bottom: 1px solid rgba(99,102,241,.1) !important;
+        }
+        [data-theme="dark"] .card .table thead th {
+            background: rgba(99,102,241,.08) !important;
+            color: rgba(255,255,255,.38) !important;
+        }
+        .card .table tbody tr { transition: background 140ms ease !important; }
+        .card .table tbody tr:hover { background: rgba(99,102,241,.03) !important; }
+        [data-theme="dark"] .card .table tbody tr:hover { background: rgba(99,102,241,.07) !important; }
+
+        /* ── Card footer glass ────────────────────────────────── */
+        .card-footer.bg-white {
+            background: rgba(255,255,255,.55) !important;
+            backdrop-filter: blur(8px) !important;
+            border-top: 1px solid rgba(0,0,0,.06) !important;
+        }
+        [data-theme="dark"] .card-footer.bg-white {
+            background: rgba(15,23,42,.5) !important;
+            border-top-color: rgba(99,102,241,.12) !important;
+        }
+
+        /* ── Avatar initials ring ─────────────────────────────── */
+        .avatar-initials {
+            box-shadow: 0 2px 8px rgba(99,102,241,.25), 0 0 0 2px rgba(255,255,255,.8) !important;
+            transition: transform 200ms, box-shadow 200ms !important;
+        }
+        tr:hover .avatar-initials {
+            transform: scale(1.08) !important;
+            box-shadow: 0 4px 12px rgba(99,102,241,.35), 0 0 0 2px rgba(255,255,255,.9) !important;
+        }
+
         /* ── Entrance animations ──────────────────────────────── */
         @keyframes premiumSlideUp {
             from { opacity: 0; transform: translateY(18px); }

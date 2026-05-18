@@ -58,7 +58,7 @@
 @endpush
 
 @section('content')
-<div class="page-header">
+<div class="page-header p-slide-up">
     <h1><i class="bi bi-cash-coin me-2" style="color:var(--primary)"></i>Pagos y Colegiaturas</h1>
     <div class="d-flex gap-2 flex-wrap">
         <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalGenerar">
@@ -202,7 +202,7 @@ new Chart(document.getElementById('chartCobros'), {
 {{-- Filtros --}}
 <form method="GET" action="{{ route('admin.pagos.index') }}">
 @if(request('estado'))<input type="hidden" name="estado" value="{{ request('estado') }}">@endif
-<div class="filter-bar">
+<div class="filter-bar p-slide-up p-delay-1">
     <div>
         <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Grupo</label>
         <select name="grupo_id">
@@ -235,7 +235,7 @@ new Chart(document.getElementById('chartCobros'), {
 </form>
 
 {{-- Tabla --}}
-<div class="table-card">
+<div class="table-card p-slide-up p-delay-2">
     <table class="table table-hover mb-0">
         <thead>
             <tr>

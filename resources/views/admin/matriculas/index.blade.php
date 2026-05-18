@@ -181,7 +181,7 @@
 @endunless
 
 {{-- Page Header --}}
-<div class="d-flex align-items-center justify-content-between mb-3">
+<div class="d-flex align-items-center justify-content-between mb-3 p-slide-up">
     <div>
         <h1 class="h4 fw-bold mb-0" style="color:var(--primary);">
             <i class="bi bi-card-list me-2"></i>Matrículas
@@ -248,7 +248,7 @@
 @endif
 
 {{-- Filters --}}
-<div class="filter-bar">
+<div class="filter-bar p-slide-up p-delay-1">
     <form method="GET" action="{{ route('admin.matriculas.index') }}" class="row g-2 align-items-end">
         <div class="col-12 col-sm-5 col-md-4">
             <label class="form-label mb-1 filter-label">
@@ -313,7 +313,7 @@
 </div>
 
 {{-- Table --}}
-<div class="table-card">
+<div class="table-card p-slide-up p-delay-2">
     @if($matriculas->isEmpty())
         @if($schoolYear && !request()->hasAny(['search','grupo_id','estado']) && ($totalGruposAnio === 0 || $totalEstudiantesActivos === 0))
         {{-- ── Panel de pasos de configuración ── --}}

@@ -133,7 +133,7 @@
 @endif
 
 {{-- Page header --}}
-<div class="page-header">
+<div class="page-header p-slide-up">
     <div>
         <h1><i class="bi bi-people-fill me-2" style="color:var(--secondary);"></i>Usuarios del Sistema</h1>
         <p class="text-muted mb-0" style="font-size:.85rem;">
@@ -172,7 +172,7 @@
 </div>
 
 {{-- Filter bar --}}
-<div class="card border-0 shadow-sm mb-4" style="border-radius:12px;border:1px solid #e5e7eb !important;">
+<div class="card border-0 shadow-sm mb-4 p-slide-up p-delay-1" style="border-radius:12px;border:1px solid #e5e7eb !important;">
     <div class="card-body py-3">
         <form method="GET" action="{{ route('admin.usuarios.index') }}">
             <div class="filter-bar">
@@ -218,7 +218,7 @@
 </div>
 
 {{-- Table card --}}
-<div class="card border-0 shadow-sm" style="border-radius:12px;border:1px solid #e5e7eb !important;overflow:hidden;">
+<div class="card border-0 shadow-sm p-slide-up p-delay-2" style="border-radius:12px;border:1px solid #e5e7eb !important;overflow:hidden;">
     @if($usuarios->isEmpty())
         <div class="empty-state">
             <i class="bi bi-people"></i>

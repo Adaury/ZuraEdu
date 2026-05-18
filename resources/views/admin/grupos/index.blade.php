@@ -106,7 +106,7 @@
 @section('content')
 
 {{-- Page Header --}}
-<div class="d-flex align-items-center justify-content-between mb-4">
+<div class="d-flex align-items-center justify-content-between mb-4 p-slide-up">
     <div>
         <h1 class="h4 fw-bold mb-0" style="color:var(--primary);">
             <i class="bi bi-grid-3x3-gap me-2"></i>Grupos / Cursos
@@ -170,7 +170,7 @@
     @foreach($gruposPorGrado as $gradoId => $gruposDelGrado)
         @php $grado = $gruposDelGrado->first()->grado; @endphp
 
-        <div class="mb-4">
+        <div class="mb-4 p-slide-up p-delay-1">
             <div class="grado-section-title">
                 <span class="grado-badge">{{ $grado->nivel }}°</span>
                 {{ $grado->nombre }}

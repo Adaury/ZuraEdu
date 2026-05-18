@@ -159,7 +159,7 @@
 @endif
 
 {{-- Page header --}}
-<div class="page-header">
+<div class="page-header p-slide-up">
     <div>
         <h1><i class="bi bi-people-fill me-2" style="color:var(--secondary);"></i>Estudiantes
             @isset($contexto)
@@ -215,7 +215,7 @@
 @endif
 
 {{-- ══ FILTROS ══ --}}
-<div class="card border-0 shadow-sm mb-3" style="border-radius:12px;">
+<div class="card border-0 shadow-sm mb-3 p-slide-up p-delay-1" style="border-radius:12px;">
     <div class="card-body py-3 px-4">
         <form method="GET" action="{{ route('admin.estudiantes.index') }}" id="filterForm">
             {{-- Preservar ciclo/area si están activos --}}
@@ -341,7 +341,7 @@
 @endif
 
 {{-- Table card --}}
-<div class="card border-0 shadow-sm" style="border-radius:12px;overflow:hidden;">
+<div class="card border-0 shadow-sm p-slide-up p-delay-2" style="border-radius:12px;overflow:hidden;">
     @if($estudiantes->isEmpty())
         <div class="empty-state-enhanced">
             <div class="empty-illustration"><i class="bi bi-people"></i></div>

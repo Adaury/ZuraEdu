@@ -44,18 +44,166 @@
             background-clip: text;
         }
         .hero-glow {
-            background: radial-gradient(ellipse at 70% 50%, rgba(37,99,235,.18) 0%, transparent 65%),
-                        radial-gradient(ellipse at 30% 80%, rgba(34,197,94,.1) 0%, transparent 50%);
+            background:
+                radial-gradient(ellipse at 75% 40%, rgba(37,99,235,.22) 0%, transparent 55%),
+                radial-gradient(ellipse at 20% 80%, rgba(34,197,94,.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 10%, rgba(139,92,246,.12) 0%, transparent 45%),
+                #0f172a;
         }
-        .card-hover { transition: transform .25s ease, box-shadow .25s ease; }
-        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,.1); }
+        .card-hover {
+            transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .3s ease,
+                        border-color .3s ease, background .3s ease;
+        }
+        .card-hover:hover { transform: translateY(-6px) scale(1.01); box-shadow: 0 24px 48px rgba(0,0,0,.12); }
         .btn-primary-hover { transition: all .2s ease; }
-        .btn-primary-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(37,99,235,.4); }
+        .btn-primary-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(37,99,235,.5); }
         .btn-success-hover { transition: all .2s ease; }
-        .btn-success-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(34,197,94,.4); }
+        .btn-success-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(34,197,94,.5); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .nav-blur { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        .nav-blur { backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%); }
+
+        /* ── Animated hero orbs ─────────────────────────────── */
+        @keyframes orbDrift {
+            0%   { transform: translate(0px, 0px) scale(1); }
+            100% { transform: translate(18px, -22px) scale(1.12); }
+        }
+        @keyframes orbDrift2 {
+            0%   { transform: translate(0px, 0px) scale(1); }
+            100% { transform: translate(-14px, 16px) scale(1.08); }
+        }
+        @keyframes orbDrift3 {
+            0%   { transform: translate(0px, 0px) scale(1); }
+            100% { transform: translate(10px, 12px) scale(1.06); }
+        }
+        .hero-orb { position: absolute; border-radius: 50%; pointer-events: none; filter: blur(72px); }
+        .hero-orb-1 { width: 420px; height: 420px; background: rgba(37,99,235,.22);
+                      top: -80px; right: 10%; animation: orbDrift 9s ease-in-out infinite alternate; }
+        .hero-orb-2 { width: 300px; height: 300px; background: rgba(34,197,94,.12);
+                      bottom: 0; left: 5%; animation: orbDrift2 11s ease-in-out infinite alternate; }
+        .hero-orb-3 { width: 220px; height: 220px; background: rgba(139,92,246,.16);
+                      top: 20%; left: 30%; animation: orbDrift3 7s ease-in-out infinite alternate; }
+        .hero-orb-4 { width: 180px; height: 180px; background: rgba(6,182,212,.12);
+                      bottom: 15%; right: 25%; animation: orbDrift 13s ease-in-out infinite alternate-reverse; }
+
+        /* ── Hero dot grid overlay ──────────────────────────── */
+        .hero-dots {
+            position: absolute; inset: 0; pointer-events: none;
+            background-image: radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px);
+            background-size: 32px 32px;
+            mask-image: radial-gradient(ellipse at 50% 50%, black 30%, transparent 75%);
+            -webkit-mask-image: radial-gradient(ellipse at 50% 50%, black 30%, transparent 75%);
+        }
+
+        /* ── Mockup glow border ─────────────────────────────── */
+        .mockup-glow {
+            box-shadow: 0 0 0 1px rgba(99,102,241,.3), 0 32px 80px rgba(0,0,0,.6),
+                        0 0 80px rgba(37,99,235,.15);
+        }
+
+        /* ── Glass benefit cards ────────────────────────────── */
+        .benefit-card {
+            background: rgba(255,255,255,.85) !important;
+            backdrop-filter: blur(12px) saturate(160%);
+            -webkit-backdrop-filter: blur(12px) saturate(160%);
+            border: 1px solid rgba(255,255,255,.75) !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,.06), 0 1px 0 rgba(255,255,255,.9) inset;
+        }
+        .benefit-card:hover {
+            border-color: rgba(99,102,241,.25) !important;
+            box-shadow: 0 16px 40px rgba(99,102,241,.12), 0 1px 0 rgba(255,255,255,.9) inset !important;
+        }
+
+        /* ── Glass module cards ─────────────────────────────── */
+        .module-card {
+            background: rgba(255,255,255,.88) !important;
+            backdrop-filter: blur(14px) saturate(170%);
+            -webkit-backdrop-filter: blur(14px) saturate(170%);
+            border: 1px solid rgba(255,255,255,.8) !important;
+            box-shadow: 0 4px 24px rgba(0,0,0,.06), 0 1px 0 rgba(255,255,255,.9) inset;
+        }
+        .module-card:hover {
+            border-color: rgba(99,102,241,.3) !important;
+            box-shadow: 0 20px 48px rgba(99,102,241,.14), 0 1px 0 rgba(255,255,255,.9) inset !important;
+        }
+
+        /* ── Stats gradient numbers ──────────────────────────── */
+        .stat-num-landing {
+            background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* ── Section bg mesh ─────────────────────────────────── */
+        .section-mesh-light {
+            background:
+                radial-gradient(ellipse at 85% 10%, rgba(99,102,241,.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 5% 90%, rgba(139,92,246,.04) 0%, transparent 50%),
+                #fff;
+        }
+        .section-mesh-slate {
+            background:
+                radial-gradient(ellipse at 90% 0%, rgba(99,102,241,.07) 0%, transparent 55%),
+                radial-gradient(ellipse at 0% 100%, rgba(34,197,94,.04) 0%, transparent 50%),
+                #f8fafc;
+        }
+
+        /* ── Pro plan glow ───────────────────────────────────── */
+        .plan-pro-glow {
+            box-shadow: 0 0 0 2px #2563eb, 0 24px 60px rgba(37,99,235,.35),
+                        0 0 80px rgba(37,99,235,.15);
+        }
+
+        /* ── Scroll reveal ───────────────────────────────────── */
+        .reveal {
+            opacity: 0;
+            transform: translateY(28px);
+            transition: opacity 550ms cubic-bezier(.4,0,.2,1),
+                        transform 550ms cubic-bezier(.4,0,.2,1);
+        }
+        .reveal.in { opacity: 1; transform: translateY(0); }
+        .reveal-delay-1 { transition-delay: 80ms; }
+        .reveal-delay-2 { transition-delay: 160ms; }
+        .reveal-delay-3 { transition-delay: 240ms; }
+        .reveal-delay-4 { transition-delay: 320ms; }
+        .reveal-delay-5 { transition-delay: 400ms; }
+        .reveal-delay-6 { transition-delay: 480ms; }
+
+        /* ── Section heading gradient ─────────────────────────── */
+        .heading-gradient {
+            background: linear-gradient(135deg, #1e293b 0%, #4f46e5 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* ── CTA gradient title ──────────────────────────────── */
+        .cta-gradient {
+            background: linear-gradient(135deg, #34d399, #10b981, #06b6d4);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* ── Navbar premium ──────────────────────────────────── */
+        #navbar {
+            background: rgba(255,255,255,.88) !important;
+            box-shadow: 0 1px 0 rgba(0,0,0,.06) !important;
+        }
+
+        /* ── Pricing card hover polish ───────────────────────── */
+        .pricing-card-free:hover, .pricing-card-premium:hover {
+            border-color: rgba(99,102,241,.3) !important;
+            box-shadow: 0 20px 48px rgba(99,102,241,.1) !important;
+        }
+
+        /* ── Hero float animation ─────────────────────────────── */
+        @keyframes float {
+            0%   { transform: translateY(0); }
+            100% { transform: translateY(-10px); }
+        }
+        .animate-float { animation: float 4s ease-in-out infinite alternate; }
     </style>
 </head>
 <body class="font-sans bg-white text-slate-900 antialiased">
@@ -100,10 +248,13 @@
 ═══════════════════════════════════════════════ --}}
 <section class="bg-dark hero-glow min-h-[90vh] flex items-center overflow-hidden relative">
 
-    {{-- Partículas decorativas --}}
+    {{-- Orbs animados --}}
     <div class="absolute inset-0 overflow-hidden pointer-events-none">
-        <div class="absolute top-16 left-1/4 w-72 h-72 bg-blue-600/10 rounded-full blur-3xl"></div>
-        <div class="absolute bottom-16 right-1/4 w-64 h-64 bg-emerald-500/8 rounded-full blur-3xl"></div>
+        <div class="hero-orb hero-orb-1"></div>
+        <div class="hero-orb hero-orb-2"></div>
+        <div class="hero-orb hero-orb-3"></div>
+        <div class="hero-orb hero-orb-4"></div>
+        <div class="hero-dots"></div>
     </div>
 
     <div class="max-w-6xl mx-auto px-4 sm:px-6 py-20 lg:py-24 w-full">
@@ -163,7 +314,7 @@
             <div class="hidden lg:block">
                 <div class="animate-float">
                     {{-- Ventana del navegador simulada --}}
-                    <div class="bg-slate-800 rounded-2xl shadow-2xl shadow-black/50 border border-slate-700/50 overflow-hidden">
+                    <div class="bg-slate-800 rounded-2xl overflow-hidden mockup-glow border border-slate-700/50">
                         {{-- Barra de título --}}
                         <div class="bg-slate-900 px-4 py-3 flex items-center gap-3 border-b border-slate-700/50">
                             <div class="flex gap-1.5">
@@ -229,11 +380,11 @@
      STATS BAR
 ═══════════════════════════════════════════════ --}}
 <div class="bg-slate-900 border-y border-slate-800">
-    <div class="max-w-4xl mx-auto px-4 py-8 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+    <div class="max-w-4xl mx-auto px-4 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
         @foreach([['500+','Instituciones'],['25k+','Estudiantes'],['99%','Disponibilidad'],['24/7','Soporte']] as [$n,$d])
-        <div>
-            <div class="text-2xl font-black text-white">{{ $n }}</div>
-            <div class="text-xs text-slate-500 mt-1">{{ $d }}</div>
+        <div class="reveal">
+            <div class="text-3xl font-black stat-num-landing mb-1">{{ $n }}</div>
+            <div class="text-xs text-slate-500 uppercase tracking-widest font-semibold">{{ $d }}</div>
         </div>
         @endforeach
     </div>
@@ -243,16 +394,16 @@
 {{-- ═══════════════════════════════════════════════
      2. BENEFICIOS
 ═══════════════════════════════════════════════ --}}
-<section class="py-20 bg-white" id="beneficios">
+<section class="py-20 section-mesh-light relative" id="beneficios">
     <div class="max-w-6xl mx-auto px-4 sm:px-6">
 
         {{-- Header --}}
-        <div class="text-center mb-14">
+        <div class="text-center mb-14 reveal">
             <span class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wider border border-blue-100 mb-4">
                 <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z" clip-rule="evenodd"/></svg>
                 Beneficios
             </span>
-            <h2 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-4">Todo lo que necesita tu institución</h2>
+            <h2 class="text-3xl sm:text-4xl font-black tracking-tight mb-4 heading-gradient">Todo lo que necesita tu institución</h2>
             <p class="text-slate-500 text-base max-w-xl mx-auto leading-relaxed">Una plataforma integral que simplifica la gestión y mejora la comunicación entre todos los actores del proceso educativo.</p>
         </div>
 
@@ -260,23 +411,23 @@
         <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             @php
             $benefits = [
-                ['bg-blue-50','text-blue-600','M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z','border-blue-100','Gestión académica completa','Notas, asistencia, boletines PDF y análisis de rendimiento en tiempo real desde cualquier dispositivo.'],
-                ['bg-violet-50','text-violet-600','M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z','border-violet-100','Registro por competencias','Sistema de evaluación basado en indicadores de logro y competencias. Compatible con currículo MINERD y estándares internacionales.'],
-                ['bg-cyan-50','text-cyan-600','M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3','border-cyan-100','Aula virtual integrada','ZuraClass incluye tareas, quizzes, rúbricas y recursos. Todo el entorno de aprendizaje en tu propia plataforma.'],
-                ['bg-amber-50','text-amber-600','M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z','border-amber-100','Portal para padres','Notas, asistencia y comunicados en tiempo real. Los representantes siempre informados desde su celular.'],
-                ['bg-emerald-50','text-emerald-600','M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0','border-emerald-100','Notificaciones automáticas','Alertas de ausencia, bajo rendimiento y pagos enviadas automáticamente. Sin trabajo manual extra.'],
-                ['bg-red-50','text-red-600','M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z','border-red-100','Público y privado','Adaptado para centros educativos públicos y privados. Configurable para el currículo de cada institución.'],
+                ['bg-blue-50','text-blue-600','M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z','Gestión académica completa','Notas, asistencia, boletines PDF y análisis de rendimiento en tiempo real desde cualquier dispositivo.'],
+                ['bg-violet-50','text-violet-600','M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z','Registro por competencias','Sistema de evaluación basado en indicadores de logro y competencias. Compatible con currículo MINERD y estándares internacionales.'],
+                ['bg-cyan-50','text-cyan-600','M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3','Aula virtual integrada','ZuraClass incluye tareas, quizzes, rúbricas y recursos. Todo el entorno de aprendizaje en tu propia plataforma.'],
+                ['bg-amber-50','text-amber-600','M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z','Portal para padres','Notas, asistencia y comunicados en tiempo real. Los representantes siempre informados desde su celular.'],
+                ['bg-emerald-50','text-emerald-600','M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0','Notificaciones automáticas','Alertas de ausencia, bajo rendimiento y pagos enviadas automáticamente. Sin trabajo manual extra.'],
+                ['bg-red-50','text-red-600','M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z','Público y privado','Adaptado para centros educativos públicos y privados. Configurable para el currículo de cada institución.'],
             ];
             @endphp
 
-            @foreach($benefits as [$iconBg,$iconColor,$iconPath,$borderColor,$title,$desc])
-            <div class="group bg-white rounded-2xl p-6 border border-slate-200 card-hover {{ $borderColor }}">
+            @foreach($benefits as $i => [$iconBg,$iconColor,$iconPath,$title,$desc])
+            <div class="group benefit-card rounded-2xl p-6 card-hover reveal reveal-delay-{{ ($i % 3) + 1 }}">
                 <div class="w-12 h-12 rounded-xl {{ $iconBg }} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                     <svg class="w-6 h-6 {{ $iconColor }}" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconPath }}"/>
                     </svg>
                 </div>
-                <h3 class="text-base font-800 font-extrabold text-slate-900 mb-2">{{ $title }}</h3>
+                <h3 class="text-base font-extrabold text-slate-900 mb-2">{{ $title }}</h3>
                 <p class="text-sm text-slate-500 leading-relaxed">{{ $desc }}</p>
             </div>
             @endforeach
@@ -288,15 +439,15 @@
 {{-- ═══════════════════════════════════════════════
      3. MÓDULOS
 ═══════════════════════════════════════════════ --}}
-<section class="py-20 bg-slate-50" id="modulos">
+<section class="py-20 section-mesh-slate relative" id="modulos">
     <div class="max-w-6xl mx-auto px-4 sm:px-6">
 
-        <div class="text-center mb-14">
+        <div class="text-center mb-14 reveal">
             <span class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold uppercase tracking-wider border border-emerald-100 mb-4">
                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>
                 Módulos del sistema
             </span>
-            <h2 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-4">Un sistema para cada necesidad</h2>
+            <h2 class="text-3xl sm:text-4xl font-black tracking-tight mb-4 heading-gradient">Un sistema para cada necesidad</h2>
             <p class="text-slate-500 text-base max-w-xl mx-auto leading-relaxed">Activa los módulos que necesitas. Cada institución es única y ZuraEdu se adapta.</p>
         </div>
 
@@ -310,11 +461,11 @@
             ];
             @endphp
 
-            @foreach($modules as [$from,$to,$iconPath,$title,$plan,$desc,$features])
-            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden card-hover group">
+            @foreach($modules as $i => [$from,$to,$iconPath,$title,$plan,$desc,$features])
+            <div class="module-card rounded-2xl overflow-hidden card-hover group reveal reveal-delay-{{ ($i % 2) + 1 }}">
                 <div class="p-6">
                     <div class="flex items-start gap-4 mb-4">
-                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br {{ $from }} {{ $to }} flex items-center justify-center shrink-0 shadow-md">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br {{ $from }} {{ $to }} flex items-center justify-center shrink-0 shadow-md group-hover:scale-110 transition-transform duration-300">
                             <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconPath }}"/>
                             </svg>
@@ -510,22 +661,22 @@
 {{-- ═══════════════════════════════════════════════
      5. PLANES
 ═══════════════════════════════════════════════ --}}
-<section class="py-20 bg-slate-50" id="planes">
+<section class="py-20 section-mesh-light" id="planes">
     <div class="max-w-5xl mx-auto px-4 sm:px-6">
 
-        <div class="text-center mb-14">
+        <div class="text-center mb-14 reveal">
             <span class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-amber-50 text-amber-700 text-xs font-bold uppercase tracking-wider border border-amber-100 mb-4">
                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z"/></svg>
                 Planes y precios
             </span>
-            <h2 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-4">Empieza gratis, escala cuando quieras</h2>
+            <h2 class="text-3xl sm:text-4xl font-black tracking-tight mb-4 heading-gradient">Empieza gratis, escala cuando quieras</h2>
             <p class="text-slate-500 text-base max-w-xl mx-auto">Sin contratos largos. Cancela o cambia de plan en cualquier momento.</p>
         </div>
 
         <div class="grid md:grid-cols-3 gap-6 items-start">
 
             {{-- Gratis --}}
-            <div class="bg-white rounded-2xl border-2 border-slate-200 p-7 card-hover">
+            <div class="bg-white rounded-2xl border-2 border-slate-200 p-7 card-hover pricing-card-free reveal reveal-delay-1">
                 <div class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Gratuito</div>
                 <div class="flex items-end gap-1 mb-1">
                     <span class="text-4xl font-black text-slate-900">$0</span>
@@ -553,7 +704,7 @@
             </div>
 
             {{-- Pro (destacado) --}}
-            <div class="bg-dark rounded-2xl border-2 border-blue-600 p-7 shadow-xl shadow-blue-900/30 relative -mt-2 mb-2 card-hover">
+            <div class="bg-dark rounded-2xl border-2 border-blue-600 p-7 relative -mt-2 mb-2 card-hover plan-pro-glow reveal reveal-delay-2">
                 <div class="absolute -top-4 left-1/2 -translate-x-1/2">
                     <span class="bg-gradient-to-r from-blue-600 to-blue-500 text-white text-xs font-black px-5 py-1.5 rounded-full shadow-lg shadow-blue-800/50 whitespace-nowrap">
                         ⭐ Más popular
@@ -580,7 +731,7 @@
             </div>
 
             {{-- Básico --}}
-            <div class="bg-white rounded-2xl border-2 border-slate-200 p-7 card-hover">
+            <div class="bg-white rounded-2xl border-2 border-slate-200 p-7 card-hover pricing-card-premium reveal reveal-delay-3">
                 <div class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Premium</div>
                 <div class="flex items-end gap-1 mb-1">
                     <span class="text-4xl font-black text-slate-900">$79</span>
@@ -629,7 +780,7 @@
 
         <h2 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight mb-5">
             Crea tu escuela en<br>
-            <span class="gradient-text">menos de 2 minutos</span>
+            <span class="cta-gradient">menos de 2 minutos</span>
         </h2>
 
         <p class="text-slate-400 text-base sm:text-lg leading-relaxed mb-10 max-w-xl mx-auto">
@@ -790,6 +941,17 @@ function closeDemoOnBg(e) {
     if (e.target === document.getElementById('demoModal')) closeDemoModal();
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDemoModal(); });
+
+// ── Scroll reveal (IntersectionObserver) ─────────────
+const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('in');
+            revealObserver.unobserve(entry.target);
+        }
+    });
+}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 
 // ── Preview tabs ──────────────────────────────────────
 function switchTab(id) {

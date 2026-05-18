@@ -42,10 +42,6 @@
    class="prt-sidebar-link {{ $ak === 'tareas' ? 'active' : '' }}">
     <i class="bi bi-check2-square"></i>Mis Tareas
 </a>
-<a href="{{ route('portal.estudiante.planificaciones') }}"
-   class="prt-sidebar-link {{ $ak === 'planificaciones' ? 'active' : '' }}">
-    <i class="bi bi-journal-bookmark-fill"></i>Planificaciones
-</a>
 <a href="{{ route('portal.estudiante.plan-evaluacion') }}"
    class="prt-sidebar-link {{ $ak === 'plan-evaluacion' ? 'active' : '' }}">
     <i class="bi bi-bar-chart-steps"></i>Plan de Evaluación
@@ -185,6 +181,33 @@ try { $moduleTransport = \App\Helpers\Setting::get('transporte','0');        } c
 
 {{-- ── GESTIONES ── --}}
 <div class="prt-sidebar-section mt-2">Gestiones</div>
+@if(auth()->user()->hasAnyRole(['Docente','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo','Director','Administrador']))
+<a href="{{ route('portal.docente.comint.index') }}"
+   class="prt-sidebar-link {{ $ak === 'comint' ? 'active' : '' }}">
+    <i class="bi bi-envelope-paper-fill"></i>Comunicados Internos
+    @php
+    try {
+        $__uidCiEst = auth()->id();
+        $comintUnreadEst = \Illuminate\Support\Facades\Cache::remember('t'.(tenant_id()??0).'_user_'.$__uidCiEst.'_comint_unread', 120, function () use ($__uidCiEst) {
+            $user = auth()->user();
+            if (!$user) return 0;
+            $tipos = ['todos'];
+            if ($user->hasRole('Docente')) $tipos[] = 'docentes';
+            if ($user->hasAnyRole(['Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo','Director','Administrador'])) {
+                $tipos[] = 'coordinadores'; $tipos[] = 'docentes';
+            }
+            return \App\Models\Comunicado::internos()->publicados()
+                ->whereIn('tipo_destinatarios', $tipos)
+                ->whereDoesntHave('lecturas', fn($q) => $q->where('user_id', $__uidCiEst))
+                ->count();
+        });
+    } catch(\Exception $e){ $comintUnreadEst = 0; }
+    @endphp
+    @if($comintUnreadEst > 0)
+    <span class="comint-badge-sb" style="background:#ef4444;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $comintUnreadEst }}</span>
+    @endif
+</a>
+@endif
 
 <a href="{{ route('portal.estudiante.mensajes.index') }}"
    class="prt-sidebar-link {{ $ak === 'mensajes' ? 'active' : '' }}">

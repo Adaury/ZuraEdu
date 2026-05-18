@@ -42,10 +42,12 @@ class ComunicadoController extends Controller
             'tipo_destinatarios'=> 'required|in:todos,docentes,coordinadores,grupo',
             'grupo_id'          => 'nullable|required_if:tipo_destinatarios,grupo|exists:grupos,id',
             'published_at'      => 'nullable|date',
+            'es_interno'        => 'boolean',
         ]);
 
         $data['autor_id']    = auth()->id();
-        $data['grupo_id']    = $data['tipo_destinatarios'] === 'grupo' ? ($data['grupo_id'] ?? null) : null;
+        $data['es_interno']  = $request->boolean('es_interno');
+        $data['grupo_id']    = (!$data['es_interno'] && $data['tipo_destinatarios'] === 'grupo') ? ($data['grupo_id'] ?? null) : null;
         $data['published_at']= $data['published_at'] ?? now();
 
         $comunicado = Comunicado::create($data);
@@ -76,11 +78,13 @@ class ComunicadoController extends Controller
             'grupo_id'          => 'nullable|required_if:tipo_destinatarios,grupo|exists:grupos,id',
             'published_at'      => 'nullable|date',
             'activo'            => 'boolean',
+            'es_interno'        => 'boolean',
         ]);
 
         $eraInactivo = !$comunicado->activo;
-        $data['grupo_id'] = $data['tipo_destinatarios'] === 'grupo' ? ($data['grupo_id'] ?? null) : null;
-        $data['activo']   = $request->boolean('activo', true);
+        $data['es_interno'] = $request->boolean('es_interno');
+        $data['grupo_id']   = (!$data['es_interno'] && $data['tipo_destinatarios'] === 'grupo') ? ($data['grupo_id'] ?? null) : null;
+        $data['activo']     = $request->boolean('activo', true);
 
         $comunicado->update($data);
 

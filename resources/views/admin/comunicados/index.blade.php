@@ -45,10 +45,17 @@
                 <tbody>
                 @forelse($comunicados as $c)
                 <tr>
-                    <td class="ps-3 fw-semibold">{{ $c->titulo }}</td>
+                    <td class="ps-3 fw-semibold">
+                        {{ $c->titulo }}
+                        @if($c->es_interno)
+                        <span class="badge ms-1" style="background:#4338ca;color:#fff;font-size:.62rem;vertical-align:middle;">
+                            <i class="bi bi-shield-lock-fill me-1"></i>INTERNO
+                        </span>
+                        @endif
+                    </td>
                     <td>
                         @php
-                            $labels = ['todos'=>'Todos','docentes'=>'Docentes','coordinadores'=>'Coordinadores','grupo'=>'Grupo específico'];
+                            $labels = ['todos'=>'Todo el personal','docentes'=>'Docentes','coordinadores'=>'Coordinadores','grupo'=>'Grupo específico'];
                             $colors = ['todos'=>'#1d4ed8','docentes'=>'#047857','coordinadores'=>'#7c3aed','grupo'=>'#b45309'];
                             $tipo   = $c->tipo_destinatarios;
                         @endphp

@@ -13,12 +13,13 @@ class Comunicado extends Model
 
     protected $fillable = [
         'titulo', 'cuerpo', 'autor_id', 'tipo_destinatarios',
-        'grupo_id', 'published_at', 'activo',
+        'grupo_id', 'published_at', 'activo', 'es_interno',
     ];
 
     protected $casts = [
         'published_at' => 'datetime',
         'activo'       => 'boolean',
+        'es_interno'   => 'boolean',
     ];
 
     public function autor()
@@ -29,6 +30,43 @@ class Comunicado extends Model
     public function grupo()
     {
         return $this->belongsTo(Grupo::class);
+    }
+
+    public function lecturas()
+    {
+        return $this->hasMany(ComunicadoLectura::class);
+    }
+
+    public function fueLeídoPor(int $userId): bool
+    {
+        return $this->lecturas()->where('user_id', $userId)->exists();
+    }
+
+    public function marcarLeido(int $userId): void
+    {
+        $this->lecturas()->firstOrCreate(
+            ['user_id' => $userId],
+            ['leido_at' => now(), 'tenant_id' => tenant_id() ?? 0]
+        );
+    }
+
+    public function scopeInternos(Builder $q): Builder
+    {
+        return $q->where('es_interno', true);
+    }
+
+    public function scopeParaStaff(Builder $q, \App\Models\User $user): Builder
+    {
+        $tipos = ['todos'];
+
+        if ($user->hasRole('Docente'))                                                    $tipos[] = 'docentes';
+        if ($user->hasAnyRole(['Coordinador Académico','Coordinador Primer Ciclo',
+                               'Coordinador Segundo Ciclo','Director','Administrador'])) {
+            $tipos[] = 'coordinadores';
+            $tipos[] = 'docentes';
+        }
+
+        return $q->whereIn('tipo_destinatarios', $tipos);
     }
 
     public function scopePublicados(Builder $q): Builder

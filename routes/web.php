@@ -160,9 +160,6 @@ Route::prefix('portal/estudiante')->name('portal.estudiante.')->middleware(['aut
     Route::get('/comunicados/pdf',   [PortalEstudianteController::class, 'comunicadosPdf'])->name('comunicados.pdf');
     Route::get('/comunicados/excel', [PortalEstudianteController::class, 'comunicadosExcel'])->name('comunicados.excel');
     Route::get('/comunicados',       [PortalEstudianteController::class, 'comunicados'])->name('comunicados');
-    Route::get('/planificaciones/pdf',   [PortalEstudianteController::class, 'planificacionesPdf'])->name('planificaciones.pdf');
-    Route::get('/planificaciones/excel', [PortalEstudianteController::class, 'planificacionesExcel'])->name('planificaciones.excel');
-    Route::get('/planificaciones',       [PortalEstudianteController::class, 'planificaciones'])->name('planificaciones');
     Route::get('/logros',                [PortalEstudianteController::class, 'logros'])->name('logros');
     Route::get('/tareas',                [PortalEstudianteController::class, 'tareas'])->name('tareas');
     Route::get('/mis-documentos',        [PortalEstudianteController::class, 'misDocumentos'])->name('mis-documentos');
@@ -442,6 +439,9 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::get('/mensajes/redactar',  [\App\Http\Controllers\Portal\MensajesPortalController::class, 'create'])->name('mensajes.create');
     Route::post('/mensajes',          [\App\Http\Controllers\Portal\MensajesPortalController::class, 'store'])->name('mensajes.store');
     Route::get('/mensajes/{mensaje}', [\App\Http\Controllers\Portal\MensajesPortalController::class, 'show'])->name('mensajes.show');
+    // ── Comunicados Internos (lectura docente) ────────────────────────────────
+    Route::get('/comint',                    [PortalDocenteController::class, 'comintIndex'])->name('comint.index');
+    Route::post('/comint/{comunicado}/leer', [PortalDocenteController::class, 'comintMarcarLeido'])->name('comint.leer');
     // ── Solicitudes del Docente ───────────────────────────────────────────────
     Route::prefix('solicitudes')->name('solicitudes.')->group(function () {
         Route::get('/',            [\App\Http\Controllers\Portal\SolicitudesDocenteController::class, 'index'])->name('index');
@@ -697,6 +697,7 @@ Route::post('/webhook/stripe', [\App\Http\Controllers\WebhookStripeController::c
 Route::prefix('admin/tenant-chat')->name('admin.tenant-chat.')->middleware(['auth', 'activo'])->group(function () {
     Route::get('/',       [\App\Http\Controllers\Admin\TenantChatController::class, 'index'])->name('index');
     Route::post('/',      [\App\Http\Controllers\Admin\TenantChatController::class, 'store'])->name('store');
+    Route::delete('/clear', [\App\Http\Controllers\Admin\TenantChatController::class, 'clear'])->name('clear');
 });
 
 // ── Chat de Soporte Público ───────────────────────────────────────────────

@@ -31,6 +31,30 @@
         @php try { $__uid = auth()->id(); $msgDoc = \Illuminate\Support\Facades\Cache::remember("user_{$__uid}_msg_unread", 60, fn() => \App\Models\MensajeDestinatario::where('destinatario_id',$__uid)->whereNull('leido_at')->where('eliminado',false)->count()); } catch(\Exception $e){ $msgDoc=0; } @endphp
         @if($msgDoc > 0)<span style="background:#dc2626;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $msgDoc }}</span>@endif
     </a>
+    <a href="{{ route('portal.docente.comint.index') }}" class="prt-sidebar-link">
+        <i class="bi bi-envelope-paper-fill"></i>Comunicados Internos
+        @php
+        try {
+            $__uidCi = auth()->id();
+            $comintUnreadDb = \Illuminate\Support\Facades\Cache::remember('t'.(tenant_id()??0).'_user_'.$__uidCi.'_comint_unread', 120, function () use ($__uidCi) {
+                $user = auth()->user();
+                if (!$user) return 0;
+                $tipos = ['todos'];
+                if ($user->hasRole('Docente')) $tipos[] = 'docentes';
+                if ($user->hasAnyRole(['Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo','Director','Administrador'])) {
+                    $tipos[] = 'coordinadores'; $tipos[] = 'docentes';
+                }
+                return \App\Models\Comunicado::internos()->publicados()
+                    ->whereIn('tipo_destinatarios', $tipos)
+                    ->whereDoesntHave('lecturas', fn($q) => $q->where('user_id', $__uidCi))
+                    ->count();
+            });
+        } catch(\Exception $e){ $comintUnreadDb = 0; }
+        @endphp
+        @if($comintUnreadDb > 0)
+        <span class="comint-badge-sb" style="background:#ef4444;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $comintUnreadDb }}</span>
+        @endif
+    </a>
     @if($suplencias->isNotEmpty())
     <a href="#suplencias" class="prt-sidebar-link">
         <i class="bi bi-person-fill-exclamation" style="color:#d97706;"></i>Suplencias

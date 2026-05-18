@@ -49,15 +49,31 @@
         <div class="card border-0 shadow-sm">
             <div class="card-body">
                 <h6 class="fw-bold mb-3" style="color:var(--primary);">Destinatarios</h6>
+
+                {{-- Toggle Comunicado Interno --}}
+                <div class="mb-3 p-3 rounded-3" style="background:#f0f4ff;border:1px solid #c7d2fe;">
+                    <div class="form-check form-switch mb-0">
+                        <input type="hidden" name="es_interno" value="0">
+                        <input type="checkbox" name="es_interno" value="1" id="chkInterno"
+                               class="form-check-input"
+                               {{ old('es_interno', $comunicado->es_interno ?? false) ? 'checked' : '' }}
+                               onchange="toggleInterno(this.checked)">
+                        <label class="form-check-label fw-semibold" for="chkInterno" style="font-size:.83rem;color:#4338ca;">
+                            <i class="bi bi-shield-lock-fill me-1"></i>Comunicado Interno
+                        </label>
+                    </div>
+                    <p class="mb-0 mt-1" style="font-size:.74rem;color:#6366f1;">Solo visible al personal docente y administrativo. No llega a estudiantes ni representantes.</p>
+                </div>
+
                 <div class="mb-3">
                     <label class="form-label fw-semibold" style="font-size:.83rem;">Enviar a <span class="text-danger">*</span></label>
                     <select name="tipo_destinatarios" id="tipoDestinatarios"
                             class="form-select form-select-sm @error('tipo_destinatarios') is-invalid @enderror"
                             onchange="toggleGrupo(this.value)">
-                        <option value="todos"         {{ old('tipo_destinatarios', $comunicado->tipo_destinatarios ?? '') === 'todos'         ? 'selected' : '' }}>Todos</option>
+                        <option value="todos"         {{ old('tipo_destinatarios', $comunicado->tipo_destinatarios ?? '') === 'todos'         ? 'selected' : '' }}>Todo el personal</option>
                         <option value="docentes"      {{ old('tipo_destinatarios', $comunicado->tipo_destinatarios ?? '') === 'docentes'      ? 'selected' : '' }}>Docentes</option>
                         <option value="coordinadores" {{ old('tipo_destinatarios', $comunicado->tipo_destinatarios ?? '') === 'coordinadores' ? 'selected' : '' }}>Coordinadores y Directivos</option>
-                        <option value="grupo"         {{ old('tipo_destinatarios', $comunicado->tipo_destinatarios ?? '') === 'grupo'         ? 'selected' : '' }}>Grupo específico</option>
+                        <option value="grupo" id="optGrupo" {{ old('tipo_destinatarios', $comunicado->tipo_destinatarios ?? '') === 'grupo'   ? 'selected' : '' }}>Grupo específico</option>
                     </select>
                     @error('tipo_destinatarios')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
@@ -84,7 +100,21 @@
 
 <script>
 function toggleGrupo(val) {
-    document.getElementById('grupoField').style.display = val === 'grupo' ? '' : 'none';
+    const isInterno = document.getElementById('chkInterno').checked;
+    document.getElementById('grupoField').style.display = (!isInterno && val === 'grupo') ? '' : 'none';
 }
+function toggleInterno(checked) {
+    const opt = document.getElementById('optGrupo');
+    const sel = document.getElementById('tipoDestinatarios');
+    if (checked) {
+        opt.disabled = true;
+        if (sel.value === 'grupo') sel.value = 'todos';
+        document.getElementById('grupoField').style.display = 'none';
+    } else {
+        opt.disabled = false;
+    }
+    toggleGrupo(sel.value);
+}
+toggleInterno(document.getElementById('chkInterno').checked);
 toggleGrupo(document.getElementById('tipoDestinatarios').value);
 </script>

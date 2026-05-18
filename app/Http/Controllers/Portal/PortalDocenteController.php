@@ -12,6 +12,7 @@ use App\Models\Asistencia;
 use App\Models\CalificacionAcademica;
 use App\Models\Calificacion;
 use App\Models\Comunicado;
+use App\Models\ComunicadoLectura;
 use App\Models\Docente;
 use App\Models\FranjaHoraria;
 use App\Models\Horario;
@@ -4612,5 +4613,34 @@ class PortalDocenteController extends Controller
             'chartLabels', 'chartData',
             'diasSemana', 'ausenciaPorDia'
         ));
+    }
+
+    // ── Comunicados Internos (portal docente) ─────────────────────────────
+    public function comintIndex()
+    {
+        $user = auth()->user();
+
+        $comunicados = Comunicado::internos()
+            ->publicados()
+            ->paraStaff($user)
+            ->with(['autor', 'lecturas' => fn($q) => $q->where('user_id', $user->id)])
+            ->latest('published_at')
+            ->paginate(20);
+
+        return view('portal.docente.comint_index', compact('comunicados'));
+    }
+
+    public function comintMarcarLeido(Comunicado $comunicado)
+    {
+        abort_unless($comunicado->es_interno && $comunicado->es_publicado, 403);
+
+        $comunicado->marcarLeido(auth()->id());
+
+        Cache::forget('t' . (tenant_id() ?? 0) . '_user_' . auth()->id() . '_comint_unread');
+
+        if (request()->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
+        return back()->with('success', 'Comunicado marcado como leído.');
     }
 }

@@ -178,6 +178,32 @@ try {
 {{-- ── GESTIONES ── --}}
 <div class="prt-sidebar-section mt-2">Gestiones</div>
 
+<a href="{{ route('portal.docente.comint.index') }}"
+   class="prt-sidebar-link {{ $ak === 'comint' ? 'active' : '' }}">
+    <i class="bi bi-envelope-paper-fill"></i>Comunicados Internos
+    @php
+    try {
+        $__uid = auth()->id();
+        $comintUnread = \Illuminate\Support\Facades\Cache::remember('t'.(tenant_id()??0).'_user_'.$__uid.'_comint_unread', 120, function () use ($__uid) {
+            $user = auth()->user();
+            if (!$user) return 0;
+            $tipos = ['todos'];
+            if ($user->hasRole('Docente')) $tipos[] = 'docentes';
+            if ($user->hasAnyRole(['Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo','Director','Administrador'])) {
+                $tipos[] = 'coordinadores'; $tipos[] = 'docentes';
+            }
+            return \App\Models\Comunicado::internos()->publicados()
+                ->whereIn('tipo_destinatarios', $tipos)
+                ->whereDoesntHave('lecturas', fn($q) => $q->where('user_id', $__uid))
+                ->count();
+        });
+    } catch(\Exception $e){ $comintUnread = 0; }
+    @endphp
+    @if($comintUnread > 0)
+    <span class="comint-badge-sb" style="background:#ef4444;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $comintUnread }}</span>
+    @endif
+</a>
+
 <a href="{{ route('portal.docente.solicitudes.index') }}"
    class="prt-sidebar-link {{ $ak === 'solicitudes' ? 'active' : '' }}">
     <i class="bi bi-send-fill"></i>Mis Solicitudes

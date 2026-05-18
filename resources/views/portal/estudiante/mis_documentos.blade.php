@@ -338,61 +338,6 @@
     </div>
 </div>
 
-{{-- ── PLANIFICACIONES ─────────────────────────────────────────────────────── --}}
-<div class="mb-4">
-    <h6 class="fw-bold mb-3" style="color:#1e3a6e;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;">
-        <i class="bi bi-journal-text me-2" style="color:#f97316;"></i>Planificaciones
-    </h6>
-
-    <div class="row g-3">
-        <div class="col-12 col-sm-6 col-lg-4">
-            <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #f97316!important;">
-                <div class="card-body d-flex flex-column">
-                    <div class="d-flex align-items-start gap-3 mb-3">
-                        <div style="width:48px;height:48px;background:linear-gradient(135deg,#f97316,#ea580c);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="bi bi-journal-richtext" style="font-size:1.3rem;color:#fff;"></i>
-                        </div>
-                        <div>
-                            <div class="fw-bold" style="color:#1e3a6e;font-size:.95rem;">Planificaciones PDF</div>
-                            <div class="text-muted" style="font-size:.8rem;">Módulos publicados</div>
-                        </div>
-                    </div>
-                    <p class="text-muted mb-3" style="font-size:.8rem;flex:1;">
-                        Descarga en PDF las planificaciones de módulos publicadas por tus docentes.
-                    </p>
-                    <a href="{{ route('portal.estudiante.planificaciones.pdf') }}"
-                       target="_blank"
-                       class="btn btn-sm btn-danger w-100 mt-auto">
-                        <i class="bi bi-file-earmark-pdf me-1"></i>Descargar PDF
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-sm-6 col-lg-4">
-            <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #fb923c!important;">
-                <div class="card-body d-flex flex-column">
-                    <div class="d-flex align-items-start gap-3 mb-3">
-                        <div style="width:48px;height:48px;background:linear-gradient(135deg,#fb923c,#f97316);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="bi bi-grid-3x3-gap-fill" style="font-size:1.3rem;color:#fff;"></i>
-                        </div>
-                        <div>
-                            <div class="fw-bold" style="color:#1e3a6e;font-size:.95rem;">Planificaciones Excel</div>
-                            <div class="text-muted" style="font-size:.8rem;">Hoja de cálculo</div>
-                        </div>
-                    </div>
-                    <p class="text-muted mb-3" style="font-size:.8rem;flex:1;">
-                        Exporta el listado de planificaciones en formato Excel con todos los módulos y actividades.
-                    </p>
-                    <a href="{{ route('portal.estudiante.planificaciones.excel') }}"
-                       class="btn btn-sm btn-outline-warning w-100 mt-auto">
-                        <i class="bi bi-file-earmark-excel me-1"></i>Descargar Excel
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 {{-- ── OBSERVACIONES ───────────────────────────────────────────────────────── --}}
 <div class="mb-2">

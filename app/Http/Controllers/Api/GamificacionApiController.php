@@ -12,6 +12,58 @@ use Illuminate\Http\Request;
 
 class GamificacionApiController extends Controller
 {
+    /** GET /api/v1/gamificacion/hijo/{estudiante} */
+    public function hijoPuntos(Request $request, \App\Models\Estudiante $estudiante)
+    {
+        $user = $request->user();
+        $rep  = \App\Models\Representante::where('user_id', $user->id)->first();
+
+        if (! $rep || ! $rep->estudiantes()->where('estudiante_id', $estudiante->id)->exists()) {
+            return response()->json(['error' => 'No tienes acceso a este estudiante.'], 403);
+        }
+
+        $sy       = SchoolYear::actual();
+        $matricula = $estudiante->matriculas()
+            ->where('estado', 'activa')
+            ->when($sy, fn($q) => $q->where('school_year_id', $sy->id))
+            ->latest()->first();
+
+        if (! $matricula) {
+            return response()->json(['totalPuntos' => 0, 'insignias' => [], 'historial' => [], 'puntosCategoria' => [], 'ranking' => [], 'miPosicion' => null]);
+        }
+
+        $totalPuntos = PuntoEstudiante::where('matricula_id', $matricula->id)->sum('puntos');
+
+        $historial = PuntoEstudiante::where('matricula_id', $matricula->id)
+            ->orderByDesc('fecha')->orderByDesc('id')->limit(20)->get()
+            ->map(fn($p) => ['concepto' => $p->concepto, 'categoria' => $p->categoria, 'puntos' => $p->puntos, 'fecha' => $p->fecha]);
+
+        $puntosCategoria = PuntoEstudiante::where('matricula_id', $matricula->id)
+            ->selectRaw('categoria, SUM(puntos) as total')->groupBy('categoria')->get()
+            ->map(fn($r) => ['categoria' => $r->categoria, 'total' => (int) $r->total]);
+
+        $obtenidas = InsigniaEstudiante::where('matricula_id', $matricula->id)->get()->keyBy('tipo');
+        $insignias = collect(InsigniaEstudiante::TIPOS)->map(function ($info, $tipo) use ($obtenidas) {
+            $item = $obtenidas->get($tipo);
+            return ['tipo' => $tipo, 'label' => $info['label'] ?? $tipo, 'obtenida' => (bool) $item, 'fecha_obtencion' => $item?->fecha_obtencion?->toDateString()];
+        })->values();
+
+        $grupoIds = Matricula::where('grupo_id', $matricula->grupo_id)->where('estado', 'activa')->with('estudiante')->get();
+        $rankingRaw = PuntoEstudiante::whereIn('matricula_id', $grupoIds->pluck('id'))
+            ->selectRaw('matricula_id, SUM(puntos) as total')->groupBy('matricula_id')->orderByDesc('total')->get();
+
+        $miPosicion = null;
+        $ranking = $rankingRaw->take(10)->map(function ($r, $idx) use ($grupoIds, $matricula, &$miPosicion) {
+            if ($r->matricula_id === $matricula->id) $miPosicion = $idx + 1;
+            $mat = $grupoIds->firstWhere('id', $r->matricula_id);
+            return ['posicion' => $idx + 1, 'nombre' => $mat?->estudiante?->nombre_completo ?? '—', 'total' => (int) $r->total, 'es_hijo' => $r->matricula_id === $matricula->id];
+        })->values();
+
+        if ($miPosicion === null && (int) $totalPuntos === 0) $miPosicion = $rankingRaw->count() + 1;
+
+        return response()->json(['totalPuntos' => (int) $totalPuntos, 'insignias' => $insignias, 'historial' => $historial, 'puntosCategoria' => $puntosCategoria, 'ranking' => $ranking, 'miPosicion' => $miPosicion, 'totalEnGrupo' => $grupoIds->count()]);
+    }
+
     /** GET /api/v1/gamificacion/mis-puntos */
     public function misPuntos(Request $request)
     {

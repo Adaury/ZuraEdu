@@ -75,7 +75,7 @@
 </a>
 <a href="{{ route('portal.padre.hijo.logros', $estudiante) }}"
    class="prt-sidebar-link {{ $ak === 'logros' ? 'active' : '' }}">
-    <i class="bi bi-trophy-fill"></i>Reconocimientos
+    <i class="bi bi-controller"></i>Logros y Puntos
 </a>
 <a href="{{ route('portal.padre.hijo.proyectos', $estudiante) }}"
    class="prt-sidebar-link {{ $ak === 'proyectos' ? 'active' : '' }}">

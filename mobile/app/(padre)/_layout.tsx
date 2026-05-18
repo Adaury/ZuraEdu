@@ -27,6 +27,7 @@ export default function PadreLayout() {
       <Tabs.Screen name="horario"     options={{ title: 'Horario',    tabBarIcon: ({ color, size }) => <Ionicons name="time"             size={size} color={color} />, href: null }} />
       <Tabs.Screen name="mensajes"    options={{ title: 'Mensajes',   tabBarIcon: ({ color, size }) => <Ionicons name="mail"             size={size} color={color} />, href: null }} />
       <Tabs.Screen name="comunicados" options={{ title: 'Noticias',   tabBarIcon: ({ color, size }) => <Ionicons name="megaphone"        size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="mis-puntos"  options={{ title: 'Logros',     tabBarIcon: ({ color, size }) => <Ionicons name="trophy"           size={size} color={color} />, href: null }} />
     </Tabs>
   )
 }

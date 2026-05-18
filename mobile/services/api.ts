@@ -120,7 +120,8 @@ export const riesgoApi = {
 
 // ── Gamificación ─────────────────────────────────────────────────────────────
 export const gamificacionApi = {
-  misPuntos: () => api.get('/gamificacion/mis-puntos'),
+  misPuntos:              () => api.get('/gamificacion/mis-puntos'),
+  hijo: (id: number)      => api.get(`/gamificacion/hijo/${id}`),
 }
 
 // ── Tutor IA ──────────────────────────────────────────────────────────────────

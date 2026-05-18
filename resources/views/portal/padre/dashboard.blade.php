@@ -62,9 +62,11 @@
 
     @forelse($hijos as $hijo)
     @php
-        $matricula  = $hijo->_matricula;
-        $promedio   = $hijo->_promedio;
-        $alertas    = $hijo->_alertas;
+        $matricula     = $hijo->_matricula;
+        $promedio      = $hijo->_promedio;
+        $alertas       = $hijo->_alertas;
+        $hijosPuntos   = $hijo->_puntos;
+        $hijosInsignia = $hijo->_insignias;
         $promedioColor = $promedio === null ? '#6b7280' : ($promedio >= 80 ? '#15803d' : ($promedio >= 60 ? '#d97706' : '#dc2626'));
     @endphp
     <a href="{{ route('portal.padre.hijo', $hijo) }}" class="prt-card hijo-card" style="margin-bottom:1rem;display:block;text-decoration:none;cursor:pointer;transition:box-shadow .2s,transform .15s;" onmouseover="this.style.boxShadow='0 6px 20px rgba(0,0,0,.1)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='';this.style.transform=''">
@@ -96,6 +98,26 @@
             @endif
             <div style="color:#94a3b8;flex-shrink:0;"><i class="bi bi-chevron-right"></i></div>
         </div>
+
+        {{-- Gamificación mini --}}
+        @if(!empty($gamificacionActiva) && $hijosPuntos !== null)
+        <div style="padding:.5rem 1rem;border-top:1px solid #f1f5f9;display:flex;gap:.65rem;align-items:center;">
+            <div style="display:flex;align-items:center;gap:.3rem;background:#eef2ff;border-radius:8px;padding:.3rem .6rem;">
+                <i class="bi bi-star-fill" style="color:#6366f1;font-size:.75rem;"></i>
+                <span style="font-size:.78rem;font-weight:800;color:#4338ca;">{{ number_format($hijosPuntos) }} pts</span>
+            </div>
+            @if($hijosInsignia > 0)
+            <div style="display:flex;align-items:center;gap:.3rem;background:#fef9c3;border-radius:8px;padding:.3rem .6rem;">
+                <i class="bi bi-award-fill" style="color:#b45309;font-size:.75rem;"></i>
+                <span style="font-size:.78rem;font-weight:800;color:#92400e;">{{ $hijosInsignia }} insignia{{ $hijosInsignia != 1 ? 's' : '' }}</span>
+            </div>
+            @endif
+            <a href="{{ route('portal.padre.hijo.logros', $hijo) }}" onclick="event.stopPropagation();"
+               style="margin-left:auto;font-size:.72rem;color:#6366f1;font-weight:700;text-decoration:none;">
+                Ver logros →
+            </a>
+        </div>
+        @endif
 
         {{-- Acciones rápidas --}}
         <div style="padding:.6rem 1rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">

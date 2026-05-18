@@ -15,6 +15,7 @@ const QUICK_LINKS = [
   { label: 'Pagos',      icon: 'card',             route: '/(padre)/pagos',      color: Colors.green  },
   { label: 'Mensajes',   icon: 'mail',             route: '/(padre)/mensajes',   color: Colors.indigo },
   { label: 'Noticias',   icon: 'megaphone',        route: '/(padre)/comunicados',color: Colors.purple },
+  { label: 'Logros',     icon: 'trophy',           route: '/(padre)/mis-puntos', color: '#6366f1'     },
 ] as const
 
 export default function PadreDashboard() {

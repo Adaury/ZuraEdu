@@ -94,7 +94,22 @@ class PortalPadreController extends Controller
                 ->keyBy('matricula_id')
             : collect();
 
-        $hijos = $hijosBase->map(function ($estudiante) use ($califsPorMatricula, $califsAcadPorMatricula, $asistenciaStats) {
+        // Gamificación bulk (1 query) — solo si el módulo está activo
+        $gamificacionActiva  = tenant_can('gamificacion');
+        $puntosPorMatriculaDash = collect();
+        $insigniasPorMatriculaDash = collect();
+        if ($gamificacionActiva && $matriculaIds->isNotEmpty()) {
+            $puntosPorMatriculaDash = PuntoEstudiante::whereIn('matricula_id', $matriculaIds)
+                ->selectRaw('matricula_id, SUM(puntos) as total')
+                ->groupBy('matricula_id')
+                ->pluck('total', 'matricula_id');
+            $insigniasPorMatriculaDash = InsigniaEstudiante::whereIn('matricula_id', $matriculaIds)
+                ->selectRaw('matricula_id, COUNT(*) as total')
+                ->groupBy('matricula_id')
+                ->pluck('total', 'matricula_id');
+        }
+
+        $hijos = $hijosBase->map(function ($estudiante) use ($califsPorMatricula, $califsAcadPorMatricula, $asistenciaStats, $gamificacionActiva, $puntosPorMatriculaDash, $insigniasPorMatriculaDash) {
             $matricula       = $estudiante->matriculas->first();
             $promedioGeneral = null;
             $alertas         = [];
@@ -124,6 +139,8 @@ class PortalPadreController extends Controller
             $estudiante->_matricula = $matricula;
             $estudiante->_promedio  = $promedioGeneral;
             $estudiante->_alertas   = $alertas;
+            $estudiante->_puntos    = $gamificacionActiva && $matricula ? (int) ($puntosPorMatriculaDash->get($matricula->id, 0)) : null;
+            $estudiante->_insignias = $gamificacionActiva && $matricula ? (int) ($insigniasPorMatriculaDash->get($matricula->id, 0)) : null;
 
             return $estudiante;
         });
@@ -153,7 +170,7 @@ class PortalPadreController extends Controller
         return view('portal.padre.dashboard', compact(
             'representante', 'hijos', 'schoolYear',
             'notificaciones', 'totalNoLeidas', 'comunicados',
-            'eventosCalendario'
+            'eventosCalendario', 'gamificacionActiva'
         ));
     }
 
@@ -1804,7 +1821,7 @@ class PortalPadreController extends Controller
         ));
     }
 
-    // ── Reconocimientos del hijo ──────────────────────────────────────────
+    // ── Logros, Puntos y Reconocimientos del hijo ────────────────────────
     public function logrosHijo(Estudiante $estudiante)
     {
         $representante = $this->getRepresentante();
@@ -1814,10 +1831,64 @@ class PortalPadreController extends Controller
 
         $reconocimientos = Reconocimiento::with('tipo')
             ->where('estudiante_id', $estudiante->id)
-            ->latest('fecha')
-            ->get();
+            ->latest('fecha')->get();
 
-        return view('portal.padre.logros_hijo', compact('estudiante', 'reconocimientos'));
+        $gamificacionActiva = tenant_can('gamificacion');
+        $schoolYear         = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()->first();
+
+        $totalPuntos      = 0;
+        $insigniasObtenidas = collect();
+        $historial        = collect();
+        $puntosCategoria  = [];
+        $ranking          = collect();
+        $miPosicion       = null;
+
+        if ($gamificacionActiva && $matricula) {
+            $totalPuntos       = PuntoEstudiante::where('matricula_id', $matricula->id)->sum('puntos');
+            $insigniasObtenidas = InsigniaEstudiante::where('matricula_id', $matricula->id)->get()->keyBy('tipo');
+            $historial         = PuntoEstudiante::where('matricula_id', $matricula->id)
+                ->orderByDesc('fecha')->orderByDesc('id')->limit(50)->get();
+            $puntosCategoria   = PuntoEstudiante::where('matricula_id', $matricula->id)
+                ->selectRaw('categoria, SUM(puntos) as total')
+                ->groupBy('categoria')->pluck('total', 'categoria')->toArray();
+
+            $grupoMats = Matricula::where('grupo_id', $matricula->grupo_id)
+                ->where('estado', 'activa')
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->with('estudiante')->get();
+
+            $rankingRaw = PuntoEstudiante::whereIn('matricula_id', $grupoMats->pluck('id'))
+                ->selectRaw('matricula_id, SUM(puntos) as total')
+                ->groupBy('matricula_id')->orderByDesc('total')->get();
+
+            foreach ($rankingRaw as $idx => $r) {
+                if ($r->matricula_id === $matricula->id) { $miPosicion = $idx + 1; break; }
+            }
+            if ($miPosicion === null && (int) $totalPuntos === 0) {
+                $miPosicion = $rankingRaw->count() + 1;
+            }
+
+            $ranking = $rankingRaw->take(10)->map(function ($r, $idx) use ($grupoMats, $matricula) {
+                $mat = $grupoMats->firstWhere('id', $r->matricula_id);
+                return [
+                    'matricula_id' => $r->matricula_id,
+                    'nombre'       => $mat?->estudiante?->nombre_completo ?? '—',
+                    'total'        => (int) $r->total,
+                    'es_hijo'      => $r->matricula_id === $matricula->id,
+                ];
+            })->values();
+        }
+
+        return view('portal.padre.logros_hijo', compact(
+            'estudiante', 'reconocimientos',
+            'gamificacionActiva', 'matricula', 'schoolYear',
+            'totalPuntos', 'insigniasObtenidas', 'historial', 'puntosCategoria', 'ranking', 'miPosicion'
+        ));
     }
 
     // ── Proyectos del hijo ────────────────────────────────────────────────

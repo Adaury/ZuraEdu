@@ -44,6 +44,11 @@
                     <span style="font-size:.69rem;color:rgba(255,255,255,.8);">En línea — respondemos rápido</span>
                 </div>
             </div>
+            <button onclick="scNueva()" title="Nueva conversación"
+                    style="background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:8px;padding:0 10px;height:30px;display:flex;align-items:center;gap:5px;font-size:.72rem;font-weight:600;cursor:pointer;flex-shrink:0;white-space:nowrap;transition:background .15s;"
+                    onmouseenter="this.style.background='rgba(255,255,255,.35)'" onmouseleave="this.style.background='rgba(255,255,255,.22)'">
+                <i class="bi bi-plus-circle" style="font-size:.85rem;"></i> Nueva
+            </button>
             <button onclick="scToggle()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:1.1rem;padding:.2rem;" title="Cerrar"><i class="bi bi-x-lg"></i></button>
         </div>
 
@@ -102,7 +107,7 @@
     const _REVERB_HOST  = '{{ config('reverb.servers.reverb.host', 'localhost') }}';
     const _REVERB_PORT  = {{ config('reverb.servers.reverb.port', 8080) }};
 
-    let _token   = localStorage.getItem('sc_token') ?? null;
+    let _token   = null; // No persistir entre recargas
     let _open    = false;
     let _echoSub = null;
     let _newMsgs = 0;
@@ -149,7 +154,6 @@
             if (!res.ok) throw new Error(data.message ?? 'Error');
 
             _token = data.token;
-            localStorage.setItem('sc_token', _token);
 
             document.getElementById('sc-form-inicio').style.display = 'none';
             document.getElementById('sc-form-msg').style.display = 'flex';
@@ -196,8 +200,6 @@
             hora: now(),
             user_name: 'Soporte',
         });
-        // Limpiar token para forzar nueva sesión en próxima visita
-        localStorage.removeItem('sc_token');
         _token = null;
     }
 
@@ -323,11 +325,26 @@
     }
 
     function resetSession() {
-        localStorage.removeItem('sc_token');
         _token = null;
         document.getElementById('sc-form-inicio').style.display = 'block';
         document.getElementById('sc-form-msg').style.display = 'none';
     }
+
+    window.scNueva = function () {
+        _token = null;
+        if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
+        _renderedMsgIds = new Set();
+        _newMsgs = 0;
+        // Limpiar mensajes y restaurar bienvenida
+        const body = document.getElementById('sc-body');
+        body.innerHTML = '<div><div class="sc-label">Soporte</div><div class="sc-bubble admin">{{ $chatBienvenida }}</div></div>';
+        document.getElementById('sc-form-inicio').style.display = 'block';
+        document.getElementById('sc-form-msg').style.display = 'none';
+        document.getElementById('sc-nombre').value = '';
+        document.getElementById('sc-email').value = '';
+        document.getElementById('sc-primer-msg').value = '';
+        setTimeout(() => document.getElementById('sc-nombre')?.focus(), 80);
+    };
 
     // ── Enter para enviar ─────────────────────────────────────────────────
     document.addEventListener('keydown', function (e) {
@@ -335,12 +352,6 @@
         if (document.activeElement?.id === 'sc-primer-msg') scStart();
         if (document.activeElement?.id === 'sc-msg-input')  scSend();
     });
-
-    // ── Si ya hay token previo, ajustar UI ────────────────────────────────
-    if (_token) {
-        document.getElementById('sc-form-inicio').style.display = 'none';
-        document.getElementById('sc-form-msg').style.display = 'flex';
-    }
 
     // ── Inicializar Echo para canal público ───────────────────────────────
     document.addEventListener('DOMContentLoaded', function () {

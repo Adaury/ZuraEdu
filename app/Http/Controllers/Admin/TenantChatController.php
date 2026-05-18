@@ -24,6 +24,12 @@ class TenantChatController extends Controller
         return response()->json($mensajes);
     }
 
+    public function clear(Request $request)
+    {
+        TenantChatMessage::where('tenant_id', tenant_id() ?? 0)->delete();
+        return response()->json(['ok' => true]);
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([

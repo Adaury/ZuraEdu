@@ -224,7 +224,7 @@ class AsistenteIAController extends Controller
 
             try {
                 $response = $client->post(
-                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:streamGenerateContent?alt=sse&key={$apiKey}",
+                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key={$apiKey}",
                     [
                         'json' => [
                             'systemInstruction' => ['parts' => [['text' => $systemPrompt]]],
@@ -271,9 +271,12 @@ class AsistenteIAController extends Controller
                 }
             } catch (\GuzzleHttp\Exception\ClientException $e) {
                 $status = $e->getResponse()->getStatusCode();
-                $msg = $status === 400
-                    ? 'Error en la solicitud a Gemini. Verifica la API key en .env (GEMINI_API_KEY).'
-                    : 'Error al conectar con ZuraAI (código ' . $status . '). Intenta de nuevo.';
+                $msg = match($status) {
+                    400 => 'Error en la solicitud. Verifica que la GEMINI_API_KEY en .env sea válida.',
+                    401, 403 => 'API key inválida o sin permisos. Revisa GEMINI_API_KEY en .env.',
+                    429 => 'ZuraAI recibió demasiadas solicitudes. Espera unos segundos e intenta de nuevo.',
+                    default => 'Error al conectar con ZuraAI (código ' . $status . '). Intenta de nuevo.',
+                };
                 $err = json_encode(['type' => 'error', 'error' => ['message' => $msg]]);
                 echo "data: {$err}\n\n";
                 if (ob_get_level() > 0) ob_flush();

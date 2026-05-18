@@ -284,6 +284,8 @@
     [data-theme="dark"] .prt-quick-card:hover { background: #263248; }
     [data-theme="dark"] .prt-quick-card i { background: rgba(255,255,255,.08); }
     [data-theme="dark"] .prt-quick-card span { color: #e2e8f0; }
+    /* Compensa topbar fija al saltar a anclas */
+    html { scroll-padding-top: 70px; scroll-behavior: smooth; }
     * { box-sizing: border-box; }
     body {
         font-family: 'Inter', 'Segoe UI', sans-serif;
@@ -880,6 +882,24 @@ document.getElementById('btnBell')?.addEventListener('click', function(e) {
     e.preventDefault();
     document.getElementById('notificaciones')?.scrollIntoView({ behavior: 'smooth' });
 });
+
+// ── Bottom nav: scroll suave con offset correcto ──────────────────────
+document.querySelectorAll('.prt-bottom-nav a[href^="#"]').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+        const hash = this.getAttribute('href');
+        const target = document.querySelector(hash);
+        if (!target) return;
+        e.preventDefault();
+        // Quitar active de todos, marcar el clickeado
+        document.querySelectorAll('.prt-bottom-nav .prt-nav-item').forEach(function(a) {
+            a.classList.remove('active');
+        });
+        this.classList.add('active');
+        // Scroll con offset para topbar (56px) + margen extra (10px)
+        const y = target.getBoundingClientRect().top + window.scrollY - 70;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+    });
+});
 </script>
 @stack('scripts')
 
@@ -1193,9 +1213,18 @@ window._SGE_DEBUG     = {{ config('app.debug') ? 'true' : 'false' }};
 
     // ── Toggle panel ──────────────────────────────────────────────────────
     btn.addEventListener('click', () => {
+        const wasOpen = panel.classList.contains('open');
         panel.classList.toggle('open');
-        if (panel.classList.contains('open')) {
-            if (messagesEl.children.length === 0) showWelcome();
+        if (!wasOpen) {
+            // Siempre inicia limpio al abrir
+            history = [];
+            streaming = false;
+            messagesEl.innerHTML = '';
+            suggsEl.style.display = '';
+            sendBtn.disabled = false;
+            inputEl.value = '';
+            inputEl.style.height = 'auto';
+            showWelcome();
             inputEl.focus();
         }
     });

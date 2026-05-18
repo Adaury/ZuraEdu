@@ -3477,6 +3477,9 @@ if (auth()->check()) {
                     <div style="font-weight:700;color:#fff;font-size:.88rem;line-height:1.2;">Chat del Personal</div>
                     <div id="chat-online-count" style="font-size:.72rem;color:rgba(255,255,255,.7);">conectando...</div>
                 </div>
+                <button onclick="clearTenantChat()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:7px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:.78rem;cursor:pointer;opacity:.8;flex-shrink:0;" title="Limpiar chat">
+                    <i class="bi bi-trash3"></i>
+                </button>
                 <button onclick="toggleTenantChat()" style="background:none;border:none;color:#fff;opacity:.7;cursor:pointer;font-size:1.1rem;padding:.2rem;" title="Cerrar">
                     <i class="bi bi-x-lg"></i>
                 </button>
@@ -3484,9 +3487,6 @@ if (auth()->check()) {
             {{-- Mensajes --}}
             <div id="tenant-chat-messages"
                  style="flex:1;overflow-y:auto;padding:.75rem;display:flex;flex-direction:column;gap:.5rem;background:#f8fafc;min-height:200px;max-height:320px;">
-                <div class="text-center text-muted small py-3" id="chat-loading-msg">
-                    <div class="spinner-border spinner-border-sm me-1"></div> Cargando...
-                </div>
             </div>
             {{-- Input --}}
             <div style="padding:.6rem .75rem;border-top:1px solid #e2e8f0;background:#fff;">
@@ -3523,15 +3523,35 @@ if (auth()->check()) {
     function toggleTenantChat() {
         const panel = document.getElementById('tenant-chat-panel');
         const isOpen = panel.style.display !== 'none';
-        panel.style.display = isOpen ? 'none' : 'flex';
-        panel.style.flexDirection = 'column';
+
         if (!isOpen) {
-            // Limpiar badge al abrir
+            // Abrir siempre limpio
+            const box = document.getElementById('tenant-chat-messages');
+            if (box) box.innerHTML = '';
+            _chatLoaded = true;
+            panel.style.display = 'flex';
+            panel.style.flexDirection = 'column';
             const badge = document.getElementById('tenant-chat-badge');
             if (badge) { badge.style.display = 'none'; badge.dataset.count = '0'; }
-            if (!_chatLoaded) loadChatHistory();
             setTimeout(() => document.getElementById('tenant-chat-input')?.focus(), 100);
+        } else {
+            panel.style.display = 'none';
         }
+    }
+
+    function clearTenantChat() {
+        if (!confirm('¿Eliminar todos los mensajes del chat?')) return;
+        fetch('{{ route('admin.tenant-chat.clear') }}', {
+            method:  'DELETE',
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': _CHAT_CSRF },
+        })
+        .then(r => r.json())
+        .then(() => {
+            const box = document.getElementById('tenant-chat-messages');
+            if (box) box.innerHTML = '<div class="text-center text-muted small py-3">Chat limpiado.</div>';
+            _chatLoaded = true;
+        })
+        .catch(() => {});
     }
 
     function loadChatHistory() {
@@ -3885,9 +3905,7 @@ if (auth()->check()) {
         </div>
     </div>
 
-    <div id="chat-messages">
-        <div class="chat-msg bot">¡Hola! Soy <strong>Zura</strong>, el asistente de <strong>{{ $systemSettings['system_name'] ?? config('app.name') }}</strong>. Puedo ayudarte con el sistema: asistencia, calificaciones, matrículas, boletines y más. ¿En qué te ayudo?</div>
-    </div>
+    <div id="chat-messages"></div>
 
     {{-- Sugerencias rápidas --}}
     <div id="chat-suggestions" style="padding:.55rem .75rem;border-top:1px solid #e5e7eb;background:#f8faff;display:flex;gap:.4rem;flex-wrap:wrap;">
@@ -3920,10 +3938,23 @@ if (auth()->check()) {
     let isTyping    = false;
     let chatHistory = [];
 
+    const WELCOME_MSG = '¡Hola! Soy <strong>Zura</strong>, el asistente de <strong>{{ $systemSettings['system_name'] ?? config('app.name') }}</strong>. Puedo ayudarte con el sistema: asistencia, calificaciones, matrículas, boletines y más. ¿En qué te ayudo?';
+
+    function resetChat() {
+        chatHistory = [];
+        isTyping    = false;
+        document.getElementById('chat-messages').innerHTML = '<div class="chat-msg bot">' + WELCOME_MSG + '</div>';
+        document.getElementById('chat-suggestions').style.display = 'flex';
+        document.getElementById('chat-send').disabled = false;
+        const inp = document.getElementById('chat-input');
+        if (inp) { inp.value = ''; inp.style.height = 'auto'; }
+    }
+
     window.toggleChat = function() {
         chatOpen = !chatOpen;
         document.getElementById('chat-window').classList.toggle('open', chatOpen);
         if (chatOpen) {
+            resetChat();
             setTimeout(() => document.getElementById('chat-input').focus(), 250);
         }
     };
@@ -4038,10 +4069,7 @@ if (auth()->check()) {
     };
 
     window.clearChat = function() {
-        const msgs = document.getElementById('chat-messages');
-        msgs.innerHTML = '<div class="chat-msg bot">Conversación reiniciada. ¿En qué te ayudo?</div>';
-        chatHistory = [];
-        document.getElementById('chat-suggestions').style.display = 'flex';
+        resetChat();
     };
 
     window.useSuggestion = function(btn) {

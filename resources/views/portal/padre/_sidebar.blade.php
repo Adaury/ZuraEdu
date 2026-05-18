@@ -109,6 +109,15 @@ try { $moduleTransport = \App\Helpers\Setting::get('transporte','0'); } catch(\E
 @endif
 @endif
 
+{{-- ── TUTOR IA ── --}}
+<div class="prt-sidebar-section mt-2">Asistente IA</div>
+<a href="{{ route('portal.padre.tutor-ia') }}"
+   class="prt-sidebar-link {{ $ak === 'tutor-ia' ? 'active' : '' }}"
+   style="{{ $ak === 'tutor-ia' ? '' : 'color:#8b5cf6;' }}">
+    <i class="bi bi-robot"></i>Tutor IA
+    <span style="background:linear-gradient(135deg,#8b5cf6,#6366f1);color:#fff;border-radius:99px;font-size:.58rem;padding:.1rem .38rem;font-weight:800;margin-left:auto;letter-spacing:.3px;">IA</span>
+</a>
+
 {{-- ── SOLICITUDES ── --}}
 <div class="prt-sidebar-section mt-2">Gestiones</div>
 <a href="{{ route('portal.padre.solicitudes.index') }}"

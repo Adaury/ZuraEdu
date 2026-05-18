@@ -298,7 +298,8 @@ Route::prefix('portal/padre')->name('portal.padre.')->middleware(['auth', 'activ
     Route::post('/mensajes',          [\App\Http\Controllers\Portal\MensajesPortalController::class, 'store'])->name('mensajes.store');
     Route::get('/mensajes/{mensaje}', [\App\Http\Controllers\Portal\MensajesPortalController::class, 'show'])->name('mensajes.show');
 
-    // ZuraAI — Asistente académico padre
+    // Tutor IA — Asistente académico representante
+    Route::get('/tutor-ia',        fn() => view('portal.padre.tutor_ia'))->name('tutor-ia');
     Route::post('/asistente/chat', [\App\Http\Controllers\Portal\AsistenteIAController::class, 'chatPadre'])->name('asistente.chat');
 });
 

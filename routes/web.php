@@ -285,6 +285,7 @@ Route::prefix('portal/padre')->name('portal.padre.')->middleware(['auth', 'activ
     Route::get('/hijo/{estudiante}/rubricas',  [PortalPadreController::class, 'rubricasHijo'])->name('hijo.rubricas');
     Route::get('/hijo/{estudiante}/tareas',    [PortalPadreController::class, 'tareasHijo'])->name('hijo.tareas');
     Route::get('/hijo/{estudiante}/conducta',  [PortalPadreController::class, 'conductaHijo'])->name('hijo.conducta');
+    Route::get('/hijo/{estudiante}/riesgo',    [PortalPadreController::class, 'riesgoHijo'])->name('hijo.riesgo');
 
     Route::get('/calendario',     [PortalPadreController::class, 'calendario'])->name('calendario');
     Route::get('/calendario/api', [PortalPadreController::class, 'calendarioApi'])->name('calendario.api');

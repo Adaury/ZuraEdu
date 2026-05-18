@@ -2078,4 +2078,30 @@ class PortalPadreController extends Controller
             'estudiante', 'schoolYear', 'matricula', 'periodos', 'registros', 'indicadores', 'escala'
         ));
     }
+
+    // ── Risk Score del hijo ──────────────────────────────────────────────
+    public function riesgoHijo(\App\Models\Estudiante $estudiante)
+    {
+        $rep = $this->getRepresentante();
+        abort_unless(
+            $rep->estudiantes()->where('estudiantes.id', $estudiante->id)->exists(),
+            403, 'No tienes acceso a este estudiante.'
+        );
+
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->with(['grupo.grado', 'grupo.seccion'])
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()->first();
+
+        $score = $schoolYear
+            ? \App\Models\AcademicRiskScore::where('estudiante_id', $estudiante->id)
+                ->where('school_year_id', $schoolYear->id)
+                ->first()
+            : null;
+
+        return view('portal.padre.hijo_riesgo', compact('estudiante', 'schoolYear', 'matricula', 'score'));
+    }
 }

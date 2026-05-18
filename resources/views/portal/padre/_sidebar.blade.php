@@ -1,6 +1,6 @@
 {{--
     Sidebar Portal Padre/Representante
-    activeKey: dashboard | hijo | boletin | horario | asistencia | observaciones |
+    activeKey: dashboard | hijo | boletin | horario | asistencia | riesgo | observaciones |
                classroom | planificaciones | documentos | logros | proyectos |
                cafeteria | transporte | comunicados | encuestas | mensajes
 --}}
@@ -36,6 +36,10 @@
 <a href="{{ route('portal.padre.hijo.asistencia', $estudiante) }}"
    class="prt-sidebar-link {{ $ak === 'asistencia' ? 'active' : '' }}">
     <i class="bi bi-clipboard-check"></i>Asistencia
+</a>
+<a href="{{ route('portal.padre.hijo.riesgo', $estudiante) }}"
+   class="prt-sidebar-link {{ $ak === 'riesgo' ? 'active' : '' }}">
+    <i class="bi bi-shield-fill-check" style="{{ $ak === 'riesgo' ? '' : 'color:#f59e0b;' }}"></i>Situación Académica
 </a>
 <a href="{{ route('portal.padre.hijo.observaciones', $estudiante) }}"
    class="prt-sidebar-link {{ $ak === 'observaciones' ? 'active' : '' }}">

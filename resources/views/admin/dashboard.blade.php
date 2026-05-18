@@ -49,34 +49,58 @@
     $nombreUsuario = Auth::user()->name ?? 'Usuario';
     $primerNombre  = explode(' ', $nombreUsuario)[0];
 @endphp
-<div class="mb-4" style="background:#3B82F6;border-radius:16px;padding:28px 32px;position:relative;overflow:hidden;box-shadow:0 4px 24px rgba(59,130,246,.35);">
-    {{-- círculos decorativos --}}
-    <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:rgba(255,255,255,.08);border-radius:50%;"></div>
-    <div style="position:absolute;bottom:-50px;right:120px;width:130px;height:130px;background:rgba(255,255,255,.06);border-radius:50%;"></div>
-    <div style="position:absolute;top:50%;right:32px;transform:translateY(-50%);opacity:.08;">
-        <i class="bi bi-mortarboard-fill" style="font-size:6rem;color:#fff;"></i>
-    </div>
+{{-- ══════════════════════════════════════════════
+     WELCOME — Premium Gradient Mesh
+══════════════════════════════════════════════ --}}
+<div class="zd-welcome mb-4 p-slide-up">
+    {{-- Orbs animados --}}
+    <div class="zd-orb zd-orb-1"></div>
+    <div class="zd-orb zd-orb-2"></div>
+    <div class="zd-orb zd-orb-3"></div>
+    {{-- Grid de puntos --}}
+    <div class="zd-dots"></div>
 
-    <div style="position:relative;z-index:1;">
-        <div style="font-size:1.75rem;font-weight:800;color:#fff;letter-spacing:-.02em;line-height:1.2;">
-            Bienvenido {{ $primerNombre }}
+    <div style="position:relative;z-index:2;">
+        <div style="display:flex;align-items:center;gap:.65rem;margin-bottom:.55rem;">
+            <span class="zd-saludo-chip">{{ $saludo }}</span>
+            @if($schoolYear)
+            <span class="zd-year-chip">
+                <i class="bi bi-calendar2-check me-1"></i>{{ $schoolYear->nombre }}
+                <span class="zd-year-dot"></span>ACTIVO
+            </span>
+            @endif
         </div>
-        <div style="font-size:.9rem;color:rgba(255,255,255,.8);margin-top:6px;">
-            {{ $saludo }} &mdash;
+
+        <h1 style="font-size:clamp(1.6rem,3vw,2.25rem);font-weight:800;color:#fff;letter-spacing:-.03em;line-height:1.15;margin-bottom:.35rem;">
+            Hola, {{ $primerNombre }} 👋
+        </h1>
+
+        <p style="font-size:.92rem;color:rgba(255,255,255,.72);margin-bottom:1.15rem;max-width:560px;line-height:1.55;">
             @php
                 $roles = ['Administrador'=>'Administrador del Sistema','Director'=>'Director','Coordinador'=>'Coordinador Académico','Docente'=>'Docente'];
                 $rolActual = collect($roles)->first(fn($v,$k) => Auth::user()->hasRole($k)) ?? 'Usuario';
             @endphp
-            {{ $rolActual }}
-            @if($schoolYear)
-            &nbsp;&bull;&nbsp; Año Escolar <strong>{{ $schoolYear->nombre }}</strong>
-            <span style="background:rgba(255,255,255,.2);color:#fff;font-size:.7rem;border-radius:20px;padding:.2rem .65rem;margin-left:6px;font-weight:700;">ACTIVO</span>
+            {{ $rolActual }} &mdash; todo listo para gestionar hoy.
+        </p>
+
+        <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
+            <div class="zd-meta-chip">
+                <i class="bi bi-calendar3" style="opacity:.7;"></i>
+                {{ now()->isoFormat('dddd, D [de] MMMM') }}
+            </div>
+            <div class="zd-meta-chip">
+                <i class="bi bi-clock" style="opacity:.7;"></i>
+                <span id="zura-clock">{{ now()->format('H:i') }}</span>
+            </div>
+            @if(!empty($totalEstudiantes))
+            <div class="zd-meta-chip">
+                <i class="bi bi-people" style="opacity:.7;"></i>
+                {{ $totalEstudiantes }} estudiantes activos
+            </div>
             @endif
-        </div>
-        <div style="font-size:.78rem;color:rgba(255,255,255,.65);margin-top:8px;">
-            <i class="bi bi-calendar3 me-1"></i>{{ now()->isoFormat('dddd, D [de] MMMM [de] YYYY') }}
-            &nbsp;&bull;&nbsp;
-            <i class="bi bi-clock me-1"></i><span id="zura-clock">{{ now()->format('H:i') }}</span>
+            <a href="{{ route('admin.asistente.index') }}" class="zd-ai-btn">
+                <i class="bi bi-stars me-1"></i>Abrir ZuraAI
+            </a>
         </div>
     </div>
 </div>
@@ -88,22 +112,20 @@
 {{-- ── Stats y módulos admin (ocultos para Docentes) ──────────── --}}
 @unless($isDocente)
 {{-- ── Header de estadísticas con botón actualizar ─────────── --}}
-<div class="d-flex align-items-center justify-content-between mb-3">
+<div class="d-flex align-items-center justify-content-between mb-3 p-slide-up p-delay-1">
     <div>
-        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#64748b;">RESUMEN DEL SISTEMA</div>
-        <div id="stats-updated-at" style="font-size:.73rem;color:#94a3b8;">
-            Actualizado: {{ now()->format('d/m/Y H:i:s') }}
-        </div>
+        <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;background:linear-gradient(135deg,var(--primary),#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">RESUMEN DEL SISTEMA</div>
+        <div id="stats-updated-at" style="font-size:.72rem;color:#94a3b8;">Actualizado: {{ now()->format('d/m/Y H:i:s') }}</div>
     </div>
     <button id="btnRefreshStats" class="btn btn-sm d-flex align-items-center gap-2"
-            style="background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;color:#374151;font-size:.8rem;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.04);">
+            style="background:rgba(255,255,255,.82);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.6);border-radius:10px;color:#374151;font-size:.8rem;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,.06);transition:all 200ms;">
         <i class="bi bi-arrow-clockwise" id="refreshIcon"></i> Actualizar
     </button>
 </div>
 
 {{-- Tarjetas de estadísticas --}}
 <div class="row g-4 mb-4" id="statsRow">
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-sm-6 col-xl-3 p-slide-up p-delay-2">
         <a href="{{ route('admin.estudiantes.index') }}" class="text-decoration-none d-block">
             <div class="stat-card" style="--c:#0d6efd;cursor:pointer;">
                 <div class="stat-icon"><i class="bi bi-people-fill"></i></div>
@@ -117,7 +139,7 @@
             </div>
         </a>
     </div>
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-sm-6 col-xl-3 p-slide-up p-delay-3">
         <a href="{{ route('admin.docentes.index') }}" class="text-decoration-none d-block">
             <div class="stat-card" style="--c:#198754;cursor:pointer;">
                 <div class="stat-icon"><i class="bi bi-person-badge-fill"></i></div>
@@ -131,7 +153,7 @@
             </div>
         </a>
     </div>
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-sm-6 col-xl-3 p-slide-up p-delay-4">
         <a href="{{ route('admin.grupos.index') }}" class="text-decoration-none d-block">
             <div class="stat-card" style="--c:#fd7e14;cursor:pointer;">
                 <div class="stat-icon"><i class="bi bi-grid-3x3-gap-fill"></i></div>
@@ -145,7 +167,7 @@
             </div>
         </a>
     </div>
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-sm-6 col-xl-3 p-slide-up p-delay-5">
         <a href="{{ route('admin.asignaturas.index') }}" class="text-decoration-none d-block">
             <div class="stat-card" style="--c:#6f42c1;cursor:pointer;">
                 <div class="stat-icon"><i class="bi bi-book-fill"></i></div>
@@ -1244,16 +1266,154 @@
 
 @push('styles')
 <style>
-/* ── Stat Cards ─────────────────────────────────────────────── */
-.stat-card {
-    background: linear-gradient(135deg, var(--c) 0%, color-mix(in srgb, var(--c) 75%, #000) 100%);
+/* ══════════════════════════════════════════════════════════════
+   ZURA DASHBOARD — Premium Visual System
+══════════════════════════════════════════════════════════════ */
+
+/* ── Welcome hero ───────────────────────────────────────────── */
+.zd-welcome {
+    position: relative;
+    background: linear-gradient(135deg, #1a0533 0%, #1e1b4b 30%, #0d1b3e 65%, #0a1628 100%);
     border-radius: 20px;
-    padding: 22px 20px;
+    padding: 32px 36px;
+    overflow: hidden;
+    box-shadow:
+        0 0 0 1px rgba(99,102,241,.25),
+        0 8px 40px rgba(0,0,0,.35),
+        0 0 80px rgba(99,102,241,.12) inset;
+}
+.zd-welcome::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse at 85% 10%, rgba(139,92,246,.35) 0%, transparent 50%),
+        radial-gradient(ellipse at 15% 80%, rgba(59,130,246,.28) 0%, transparent 55%),
+        radial-gradient(ellipse at 50% 50%, rgba(99,102,241,.15) 0%, transparent 70%);
+    pointer-events: none;
+}
+.zd-dots {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,.06) 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events: none;
+    mask-image: radial-gradient(ellipse at 50% 50%, black 40%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 50%, black 40%, transparent 80%);
+}
+.zd-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(48px);
+    pointer-events: none;
+    animation: zdOrb 8s ease-in-out infinite alternate;
+}
+.zd-orb-1 {
+    width: 220px; height: 220px;
+    background: rgba(99,102,241,.45);
+    top: -80px; right: 60px;
+    animation-delay: 0s;
+}
+.zd-orb-2 {
+    width: 160px; height: 160px;
+    background: rgba(139,92,246,.35);
+    bottom: -60px; right: 280px;
+    animation-delay: -3s;
+}
+.zd-orb-3 {
+    width: 100px; height: 100px;
+    background: rgba(59,130,246,.3);
+    top: 20px; left: 40%;
+    animation-delay: -5s;
+}
+@@keyframes zdOrb {
+    from { transform: translate(0,0) scale(1); }
+    to   { transform: translate(12px,-12px) scale(1.08); }
+}
+.zd-saludo-chip {
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.18);
+    color: rgba(255,255,255,.82);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: .22rem .7rem;
+    border-radius: 99px;
+    backdrop-filter: blur(8px);
+}
+.zd-year-chip {
+    background: rgba(99,102,241,.25);
+    border: 1px solid rgba(99,102,241,.4);
+    color: #a5b4fc;
+    font-size: .72rem;
+    font-weight: 700;
+    padding: .22rem .75rem;
+    border-radius: 99px;
     display: flex;
     align-items: center;
-    gap: 16px;
-    box-shadow: 0 4px 24px color-mix(in srgb, var(--c) 35%, transparent);
-    transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s;
+    gap: .35rem;
+    backdrop-filter: blur(8px);
+}
+.zd-year-dot {
+    width: 6px; height: 6px;
+    background: #4ade80;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 6px #4ade80;
+    animation: zdPulse 2s ease infinite;
+}
+@@keyframes zdPulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: .6; transform: scale(1.3); }
+}
+.zd-meta-chip {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.12);
+    color: rgba(255,255,255,.7);
+    font-size: .78rem;
+    padding: .3rem .8rem;
+    border-radius: 99px;
+    backdrop-filter: blur(8px);
+    transition: all 200ms;
+}
+.zd-meta-chip:hover { background: rgba(255,255,255,.14); color: #fff; }
+.zd-ai-btn {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    font-size: .8rem;
+    font-weight: 700;
+    padding: .38rem 1rem;
+    border-radius: 99px;
+    text-decoration: none;
+    box-shadow: 0 4px 16px rgba(99,102,241,.45), 0 0 0 1px rgba(255,255,255,.12);
+    transition: all 220ms cubic-bezier(.34,1.56,.64,1);
+}
+.zd-ai-btn:hover {
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 8px 28px rgba(99,102,241,.6), 0 0 0 1px rgba(255,255,255,.2);
+    color: #fff;
+}
+
+/* ── Stat Cards premium ─────────────────────────────────────── */
+.stat-card {
+    background: linear-gradient(135deg, var(--c) 0%, color-mix(in srgb, var(--c) 72%, #000) 100%);
+    border-radius: 20px;
+    padding: 24px 22px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    box-shadow:
+        0 6px 28px color-mix(in srgb, var(--c) 38%, transparent),
+        0 1px 0 rgba(255,255,255,.15) inset,
+        0 0 0 1px rgba(255,255,255,.08) inset;
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .3s;
     color: #fff;
     position: relative;
     overflow: hidden;
@@ -1261,77 +1421,97 @@
 .stat-card::before {
     content: '';
     position: absolute;
-    top: -20px; right: -20px;
-    width: 90px; height: 90px;
-    background: rgba(255,255,255,.12);
+    top: -30px; right: -30px;
+    width: 110px; height: 110px;
+    background: rgba(255,255,255,.1);
     border-radius: 50%;
+    transition: transform .4s;
 }
 .stat-card::after {
     content: '';
     position: absolute;
-    bottom: -30px; right: 10px;
-    width: 120px; height: 120px;
-    background: rgba(255,255,255,.07);
+    bottom: -40px; right: 5px;
+    width: 140px; height: 140px;
+    background: rgba(255,255,255,.06);
     border-radius: 50%;
 }
-.stat-card:hover { transform: translateY(-6px); box-shadow: 0 12px 36px color-mix(in srgb, var(--c) 45%, transparent); }
-.stat-icon {
-    width: 54px; height: 54px;
-    background: rgba(255,255,255,.22);
-    border-radius: 14px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.55rem; flex-shrink: 0;
-    position: relative; z-index: 1;
+.stat-card:hover {
+    transform: translateY(-8px) scale(1.01);
+    box-shadow:
+        0 18px 48px color-mix(in srgb, var(--c) 50%, transparent),
+        0 1px 0 rgba(255,255,255,.2) inset;
 }
+.stat-card:hover::before { transform: scale(1.3) translate(5px,-5px); }
+.stat-icon {
+    width: 56px; height: 56px;
+    background: rgba(255,255,255,.2);
+    backdrop-filter: blur(8px);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem; flex-shrink: 0;
+    position: relative; z-index: 1;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15), 0 1px 0 rgba(255,255,255,.2) inset;
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+.stat-card:hover .stat-icon { transform: scale(1.12) rotate(-4deg); }
 .stat-body { position: relative; z-index: 1; }
-.stat-num  { font-size: 2.1rem; font-weight: 800; color: #fff; line-height: 1; }
-.stat-label{ font-size: .82rem; color: rgba(255,255,255,.82); font-weight: 500; margin-top: 5px; letter-spacing: .02em; }
+.stat-num  { font-size: 2.3rem; font-weight: 900; color: #fff; line-height: 1; letter-spacing: -.03em; }
+.stat-label{ font-size: .8rem; color: rgba(255,255,255,.78); font-weight: 600; margin-top: 5px; letter-spacing: .02em; text-transform: uppercase; }
 
-/* ── Quick Actions ──────────────────────────────────────────── */
+/* ── Quick Actions premium ──────────────────────────────────── */
 .quick-action {
     display: flex; flex-direction: column; align-items: center; gap: 10px;
     padding: 20px 12px;
-    background: #fff; border-radius: 16px;
+    background: rgba(255,255,255,.82);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
     text-decoration: none; color: #1e293b;
-    border: 1.5px solid #e2e8f0;
-    transition: all .22s cubic-bezier(.34,1.56,.64,1);
+    border: 1px solid rgba(255,255,255,.65);
+    transition: all .25s cubic-bezier(.34,1.56,.64,1);
     text-align: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    box-shadow: 0 2px 16px rgba(0,0,0,.05), 0 1px 0 rgba(255,255,255,.8) inset;
 }
 .quick-action:hover {
     border-color: var(--primary);
-    background: #eff6ff;
+    background: rgba(239,246,255,.95);
     color: var(--primary);
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(29,78,216,.15);
+    transform: translateY(-6px) scale(1.04);
+    box-shadow: 0 14px 36px rgba(29,78,216,.18), 0 1px 0 rgba(255,255,255,.8) inset;
 }
-.quick-action i  { font-size: 1.7rem; color: var(--primary); }
-.quick-action span { font-size: .82rem; font-weight: 600; }
+.quick-action i  { font-size: 1.7rem; color: var(--primary); transition: transform .25s; }
+.quick-action:hover i { transform: scale(1.15) rotate(-5deg); }
+.quick-action span { font-size: .82rem; font-weight: 700; }
 
-/* ── Module Cards ───────────────────────────────────────────── */
+/* ── Module Cards premium ───────────────────────────────────── */
 .modulo-card {
     display: flex; align-items: center; gap: 14px;
     padding: 16px 18px;
-    background: #fff; border-radius: 16px;
+    background: rgba(255,255,255,.82);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
     text-decoration: none; color: #1e293b;
-    border: 1.5px solid #e8edf5;
-    transition: all .22s cubic-bezier(.34,1.56,.64,1);
-    box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    border: 1px solid rgba(255,255,255,.65);
+    transition: all .25s cubic-bezier(.34,1.56,.64,1);
+    box-shadow: 0 2px 14px rgba(0,0,0,.05), 0 1px 0 rgba(255,255,255,.8) inset;
 }
 .modulo-card:hover {
     border-color: var(--mc);
-    background: #fff;
+    background: rgba(255,255,255,.95);
     color: #1e293b;
-    transform: translateY(-4px);
-    box-shadow: 0 8px 28px color-mix(in srgb, var(--mc) 20%, transparent);
+    transform: translateY(-5px) scale(1.01);
+    box-shadow: 0 12px 32px color-mix(in srgb, var(--mc) 22%, transparent), 0 1px 0 rgba(255,255,255,.9) inset;
 }
 .modulo-icon {
     width: 44px; height: 44px; flex-shrink: 0;
-    background: color-mix(in srgb, var(--mc) 12%, white);
+    background: color-mix(in srgb, var(--mc) 14%, rgba(255,255,255,.5));
+    backdrop-filter: blur(8px);
     border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
     color: var(--mc); font-size: 1.25rem;
+    transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--mc) 20%, transparent);
 }
+.modulo-card:hover .modulo-icon { transform: scale(1.1) rotate(-4deg); }
 .modulo-title { font-weight: 700; font-size: .9rem; }
 .modulo-desc  { font-size: .77rem; color: #64748b; margin-top: 2px; }
 
@@ -1424,31 +1604,53 @@
 }
 
 /* ── Stagger fade-in for stat cards ────────────────────────── */
-@keyframes cardFadeUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
 .stat-card {
-    animation: cardFadeUp .45s cubic-bezier(.34,1.56,.64,1) both;
+    animation: premiumSlideUp .48s cubic-bezier(.34,1.56,.64,1) both;
 }
-.stat-card:nth-child(1) { animation-delay: .05s; }
-.stat-card:nth-child(2) { animation-delay: .12s; }
-.stat-card:nth-child(3) { animation-delay: .19s; }
-.stat-card:nth-child(4) { animation-delay: .26s; }
+.stat-card:nth-child(1) { animation-delay: .06s; }
+.stat-card:nth-child(2) { animation-delay: .13s; }
+.stat-card:nth-child(3) { animation-delay: .20s; }
+.stat-card:nth-child(4) { animation-delay: .27s; }
 
-[data-theme="dark"] .quick-action { background: #1e293b; border-color: #334155; color: #e2e8f0; }
-[data-theme="dark"] .quick-action:hover { background: #1e3a5f; border-color: var(--primary); color: #93c5fd; }
-[data-theme="dark"] .quick-action i { color: #93c5fd; }
-[data-theme="dark"] .modulo-card { background: #1e293b; border-color: #334155; color: #e2e8f0; }
-[data-theme="dark"] .modulo-card:hover { background: #1e293b; color: #e2e8f0; }
-[data-theme="dark"] .modulo-icon { background: #162032; }
+/* ── Dark mode ──────────────────────────────────────────────── */
+[data-theme="dark"] .zd-welcome {
+    background: linear-gradient(135deg, #0d0520 0%, #0f0d2e 35%, #080f1f 65%, #050a14 100%);
+    box-shadow:
+        0 0 0 1px rgba(99,102,241,.2),
+        0 8px 40px rgba(0,0,0,.5),
+        0 0 100px rgba(99,102,241,.08) inset;
+}
+[data-theme="dark"] .quick-action {
+    background: rgba(15,23,42,.8) !important;
+    border-color: rgba(99,102,241,.18) !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] .quick-action:hover {
+    background: rgba(30,27,75,.9) !important;
+    border-color: var(--primary) !important;
+    color: #a5b4fc !important;
+    box-shadow: 0 14px 36px rgba(99,102,241,.22) !important;
+}
+[data-theme="dark"] .quick-action i { color: #818cf8; }
+[data-theme="dark"] .quick-action:hover i { color: #a5b4fc; }
+[data-theme="dark"] .modulo-card {
+    background: rgba(15,23,42,.8) !important;
+    border-color: rgba(99,102,241,.14) !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] .modulo-card:hover {
+    background: rgba(30,27,75,.92) !important;
+    border-color: var(--mc, #6366f1) !important;
+    color: #f1f5f9 !important;
+}
+[data-theme="dark"] .modulo-icon { background: rgba(99,102,241,.12); }
 [data-theme="dark"] .modulo-desc { color: #64748b; }
-[data-theme="dark"] .import-tab-btn { background: #1e293b; border-color: #334155; color: #94a3b8; }
-[data-theme="dark"] .import-tab-btn:hover { background: #162032; border-color: var(--primary); color: #93c5fd; }
-[data-theme="dark"] .import-step-card { background: #1e293b; border-color: #334155; }
+[data-theme="dark"] .import-tab-btn { background: rgba(15,23,42,.8); border-color: rgba(99,102,241,.15); color: #94a3b8; }
+[data-theme="dark"] .import-tab-btn:hover { background: rgba(30,27,75,.85); border-color: var(--primary); color: #a5b4fc; }
+[data-theme="dark"] .import-step-card { background: rgba(15,23,42,.8); border-color: rgba(99,102,241,.12); }
 [data-theme="dark"] .import-step-title { color: #e2e8f0; }
 [data-theme="dark"] .import-step-desc { color: #94a3b8; }
-[data-theme="dark"] .field-tag { background: #334155; color: #94a3b8; }
+[data-theme="dark"] .field-tag { background: #1e293b; color: #94a3b8; }
 [data-theme="dark"] .field-tag.required { background: #0c1f3f; color: #93c5fd; }
 </style>
 @endpush

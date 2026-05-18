@@ -2444,6 +2444,11 @@ if (auth()->check()) {
                         <i class="bi bi-plug-fill"></i>Integraciones
                     </a>
                 </li>
+                <li>
+                    <a href="{{ route('admin.asistente.index') }}" class="{{ request()->routeIs('admin.asistente*') ? 'active' : '' }}">
+                        <i class="bi bi-stars"></i>ZuraAI
+                    </a>
+                </li>
             </ul>
             @endif
 
@@ -3821,7 +3826,7 @@ window.addEventListener('sge:dashboard-updated', function(e) {
 @php
     $__zuraAdmin = auth()->user()->hasAnyRole(['Administrador','Director','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo','SuperAdmin']);
 @endphp
-@if($__zuraAdmin)
+@if(false) {{-- widget removido; ZuraAI disponible en /admin/asistente --}}
 <style>
 #zura-fab{position:fixed;bottom:28px;right:28px;z-index:9999;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);border:none;color:#fff;font-size:24px;box-shadow:0 4px 20px rgba(79,70,229,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s}
 #zura-fab:hover{transform:scale(1.1)}
@@ -3983,7 +3988,5 @@ window.addEventListener('sge:dashboard-updated', function(e) {
 </script>
 @endif
 @endauth
-
-@include('partials.pwa-install-prompt')
 </body>
 </html>

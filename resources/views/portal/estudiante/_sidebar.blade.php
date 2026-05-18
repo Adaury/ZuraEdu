@@ -1,6 +1,6 @@
 {{--
     Sidebar Portal Estudiante
-    activeKey: dashboard | boletin | horario | asistencia | observaciones |
+    activeKey: dashboard | boletin | horario | asistencia | mi-riesgo | observaciones |
                comunicados | encuestas | classroom | tareas | eventos |
                mis-documentos | mensajes | mis-prestamos | mis-puntos |
                solicitudes | historial | constancia
@@ -25,6 +25,10 @@
 <a href="{{ route('portal.estudiante.asistencia') }}"
    class="prt-sidebar-link {{ $ak === 'asistencia' ? 'active' : '' }}">
     <i class="bi bi-clipboard-check"></i>Mi Asistencia
+</a>
+<a href="{{ route('portal.estudiante.mi-riesgo') }}"
+   class="prt-sidebar-link {{ $ak === 'mi-riesgo' ? 'active' : '' }}">
+    <i class="bi bi-shield-fill-check" style="{{ $ak === 'mi-riesgo' ? '' : 'color:#f59e0b;' }}"></i>Mi Situación
 </a>
 <a href="{{ route('portal.estudiante.observaciones') }}"
    class="prt-sidebar-link {{ $ak === 'observaciones' ? 'active' : '' }}">

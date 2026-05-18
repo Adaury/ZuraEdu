@@ -234,6 +234,8 @@ Route::prefix('portal/estudiante')->name('portal.estudiante.')->middleware(['aut
     // Tutor IA — Asistente académico estudiante
     Route::get('/tutor-ia',        fn() => view('portal.estudiante.tutor_ia'))->name('tutor-ia');
     Route::post('/asistente/chat', [\App\Http\Controllers\Portal\AsistenteIAController::class, 'chatEstudiante'])->name('asistente.chat');
+    // Mi Risk Score
+    Route::get('/mi-riesgo', [PortalEstudianteController::class, 'miRiesgo'])->name('mi-riesgo');
 });
 
 // ── Portal Padre / Representante ──────────────────────────────────────────

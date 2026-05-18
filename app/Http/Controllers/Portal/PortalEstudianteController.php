@@ -2107,4 +2107,25 @@ class PortalEstudianteController extends Controller
             'estudiante', 'schoolYear', 'matricula', 'asignaciones'
         ));
     }
+
+    // ── Mi Risk Score ────────────────────────────────────────────────────
+    public function miRiesgo()
+    {
+        $estudiante = $this->getEstudiante();
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->with(['grupo.grado', 'grupo.seccion'])
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()->first();
+
+        $score = $schoolYear
+            ? \App\Models\AcademicRiskScore::where('estudiante_id', $estudiante->id)
+                ->where('school_year_id', $schoolYear->id)
+                ->first()
+            : null;
+
+        return view('portal.estudiante.mi_riesgo', compact('estudiante', 'schoolYear', 'matricula', 'score'));
+    }
 }

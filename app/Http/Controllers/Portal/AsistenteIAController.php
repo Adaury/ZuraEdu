@@ -199,57 +199,80 @@ class AsistenteIAController extends Controller
 
     private function stream(array $validated, string $systemPrompt)
     {
-        $apiKey = config('services.anthropic.key');
-        $model  = config('services.anthropic.model', 'claude-haiku-4-5-20251001');
+        $apiKey = config('services.gemini.key');
 
         if (empty($apiKey)) {
-            return response()->json(['error' => 'API key de Anthropic no configurada. Agrega ANTHROPIC_API_KEY en .env'], 503);
+            return response()->json(['error' => 'API key de Gemini no configurada. Agrega GEMINI_API_KEY en .env'], 503);
         }
 
-        $messages = [];
+        // Gemini usa 'model' en lugar de 'assistant'
+        $contents = [];
         foreach (($validated['history'] ?? []) as $h) {
             if (isset($h['role'], $h['content'])) {
-                $messages[] = ['role' => $h['role'], 'content' => (string) $h['content']];
+                $contents[] = [
+                    'role'  => $h['role'] === 'assistant' ? 'model' : 'user',
+                    'parts' => [['text' => (string) $h['content']]],
+                ];
             }
         }
-        $messages[] = ['role' => 'user', 'content' => $validated['message']];
+        $contents[] = ['role' => 'user', 'parts' => [['text' => $validated['message']]]];
 
         Session::save();
 
-        return response()->stream(function () use ($apiKey, $model, $systemPrompt, $messages) {
+        return response()->stream(function () use ($apiKey, $systemPrompt, $contents) {
             $client = new \GuzzleHttp\Client(['timeout' => 90, 'connect_timeout' => 10]);
 
             try {
-                $response = $client->post('https://api.anthropic.com/v1/messages', [
-                    'headers' => [
-                        'x-api-key'         => $apiKey,
-                        'anthropic-version' => '2023-06-01',
-                        'content-type'      => 'application/json',
-                        'accept'            => 'text/event-stream',
-                    ],
-                    'json' => [
-                        'model'      => $model,
-                        'max_tokens' => 2048,
-                        'stream'     => true,
-                        'system'     => $systemPrompt,
-                        'messages'   => $messages,
-                    ],
-                    'stream' => true,
-                ]);
+                $response = $client->post(
+                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key={$apiKey}",
+                    [
+                        'json' => [
+                            'systemInstruction' => ['parts' => [['text' => $systemPrompt]]],
+                            'contents'          => $contents,
+                            'generationConfig'  => [
+                                'temperature'     => 0.7,
+                                'maxOutputTokens' => 2048,
+                            ],
+                        ],
+                        'stream' => true,
+                    ]
+                );
 
                 $body = $response->getBody();
+                $buf  = '';
+
                 while (!$body->eof()) {
                     $chunk = $body->read(512);
-                    if ($chunk !== '') {
-                        echo $chunk;
+                    if ($chunk === '') continue;
+                    $buf .= $chunk;
+
+                    // Procesa líneas SSE completas
+                    while (($pos = strpos($buf, "\n")) !== false) {
+                        $line = substr($buf, 0, $pos);
+                        $buf  = substr($buf, $pos + 1);
+
+                        if (!str_starts_with($line, 'data: ')) continue;
+                        $raw = trim(substr($line, 6));
+                        if ($raw === '' || $raw === '[DONE]') continue;
+
+                        $evt  = json_decode($raw, true);
+                        $text = $evt['candidates'][0]['content']['parts'][0]['text'] ?? null;
+                        if ($text === null) continue;
+
+                        // Re-emite en formato Anthropic SSE (el frontend ya lo maneja)
+                        $out = json_encode([
+                            'type'  => 'content_block_delta',
+                            'delta' => ['type' => 'text_delta', 'text' => $text],
+                        ]);
+                        echo "data: {$out}\n\n";
                         if (ob_get_level() > 0) ob_flush();
                         flush();
                     }
                 }
             } catch (\GuzzleHttp\Exception\ClientException $e) {
                 $status = $e->getResponse()->getStatusCode();
-                $msg = $status === 401
-                    ? 'Error de autenticación con ZuraAI. La API key de Anthropic puede estar revocada o incorrecta. Configura ANTHROPIC_API_KEY en .env.'
+                $msg = $status === 400
+                    ? 'Error en la solicitud a Gemini. Verifica la API key en .env (GEMINI_API_KEY).'
                     : 'Error al conectar con ZuraAI (código ' . $status . '). Intenta de nuevo.';
                 $err = json_encode(['type' => 'error', 'error' => ['message' => $msg]]);
                 echo "data: {$err}\n\n";

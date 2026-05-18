@@ -612,6 +612,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.acc
     require __DIR__ . '/admin/recursos.php';
     require __DIR__ . '/admin/rubricas.php';
     require __DIR__ . '/admin/solicitudes.php';
+    require __DIR__ . '/admin/riesgo.php';
 
     // ── Plan Pro: módulos intermedios ─────────────────────────────────────────
     Route::middleware('tenant.feature:horarios')->group(function () {

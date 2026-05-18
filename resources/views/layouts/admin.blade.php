@@ -2375,6 +2375,11 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('admin.riesgo.index') }}" class="{{ request()->routeIs('admin.riesgo*') ? 'active' : '' }}">
+                        <i class="bi bi-shield-exclamation" style="color:#ef4444;font-size:.75rem;"></i>Risk Score
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.malla.matriz') }}" class="{{ request()->routeIs('admin.malla.matriz') ? 'active' : '' }}">
                         <i class="bi bi-grid-3x3"></i>Matriz Curricular
                     </a>

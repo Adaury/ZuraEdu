@@ -17,12 +17,13 @@ export default function PadreLayout() {
         headerTitleStyle:        { fontWeight: '800', fontSize: 17 },
       }}
     >
-      <Tabs.Screen name="index"       options={{ title: 'Inicio',     tabBarIcon: ({ color, size }) => <Ionicons name="home"         size={size} color={color} /> }} />
-      <Tabs.Screen name="notas"       options={{ title: 'Notas',      tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart"    size={size} color={color} /> }} />
-      <Tabs.Screen name="asistencia"  options={{ title: 'Asistencia', tabBarIcon: ({ color, size }) => <Ionicons name="calendar"     size={size} color={color} /> }} />
-      <Tabs.Screen name="pagos"       options={{ title: 'Pagos',      tabBarIcon: ({ color, size }) => <Ionicons name="card"         size={size} color={color} /> }} />
-      <Tabs.Screen name="tutor"       options={{ title: 'Asistente',  tabBarIcon: ({ color, size }) => <Ionicons name="sparkles"     size={size} color={color} /> }} />
-      <Tabs.Screen name="comunicados" options={{ title: 'Noticias',   tabBarIcon: ({ color, size }) => <Ionicons name="megaphone"    size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="index"       options={{ title: 'Inicio',     tabBarIcon: ({ color, size }) => <Ionicons name="home"             size={size} color={color} /> }} />
+      <Tabs.Screen name="notas"       options={{ title: 'Notas',      tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart"        size={size} color={color} /> }} />
+      <Tabs.Screen name="asistencia"  options={{ title: 'Asistencia', tabBarIcon: ({ color, size }) => <Ionicons name="calendar"         size={size} color={color} /> }} />
+      <Tabs.Screen name="riesgo"      options={{ title: 'Situación',  tabBarIcon: ({ color, size }) => <Ionicons name="shield-checkmark" size={size} color={color} /> }} />
+      <Tabs.Screen name="tutor"       options={{ title: 'Asistente',  tabBarIcon: ({ color, size }) => <Ionicons name="sparkles"         size={size} color={color} /> }} />
+      <Tabs.Screen name="pagos"       options={{ title: 'Pagos',      tabBarIcon: ({ color, size }) => <Ionicons name="card"             size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="comunicados" options={{ title: 'Noticias',   tabBarIcon: ({ color, size }) => <Ionicons name="megaphone"        size={size} color={color} />, href: null }} />
     </Tabs>
   )
 }

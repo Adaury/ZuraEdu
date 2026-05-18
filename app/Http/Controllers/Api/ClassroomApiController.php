@@ -164,14 +164,21 @@ class ClassroomApiController extends Controller
             return $docente && $clase->asignacion?->docente_id === $docente->id;
         }
 
-        if (in_array($role, ['Estudiante', 'Representante'])) {
-            $grupoId = null;
-            if ($role === 'Estudiante') {
-                $est     = Estudiante::where('user_id', $user->id)->first();
-                $mat     = $est?->matriculas()->where('estado','activa')->when($sy, fn($q) => $q->where('school_year_id', $sy->id))->latest()->first();
-                $grupoId = $mat?->grupo_id;
-            }
-            return $grupoId && $clase->asignacion?->grupo_id === $grupoId;
+        if ($role === 'Estudiante') {
+            $est     = Estudiante::where('user_id', $user->id)->first();
+            $mat     = $est?->matriculas()->where('estado','activa')->when($sy, fn($q) => $q->where('school_year_id', $sy->id))->latest()->first();
+            return $mat && $clase->asignacion?->grupo_id === $mat->grupo_id;
+        }
+
+        if ($role === 'Representante') {
+            $rep = Representante::where('user_id', $user->id)->first();
+            if (! $rep) return false;
+            $grupoIds = $rep->estudiantes()->get()->flatMap(function ($est) use ($sy) {
+                return $est->matriculas()->where('estado','activa')
+                    ->when($sy, fn($q) => $q->where('school_year_id', $sy->id))
+                    ->pluck('grupo_id');
+            })->unique()->values()->all();
+            return in_array($clase->asignacion?->grupo_id, $grupoIds);
         }
 
         if (in_array($role, ['Administrador', 'Director'])) {

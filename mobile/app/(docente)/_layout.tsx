@@ -17,11 +17,15 @@ export default function DocenteLayout() {
         headerTitleStyle:        { fontWeight: '800', fontSize: 17 },
       }}
     >
-      <Tabs.Screen name="index"      options={{ title: 'Inicio',    tabBarIcon: ({ color, size }) => <Ionicons name="home"              size={size} color={color} /> }} />
-      <Tabs.Screen name="grupos"     options={{ title: 'Mis Grupos',tabBarIcon: ({ color, size }) => <Ionicons name="people"            size={size} color={color} /> }} />
-      <Tabs.Screen name="asistencia" options={{ title: 'Asistencia',tabBarIcon: ({ color, size }) => <Ionicons name="calendar-number"  size={size} color={color} /> }} />
-      <Tabs.Screen name="qr"         options={{ title: 'QR Scan',   tabBarIcon: ({ color, size }) => <Ionicons name="qr-code"          size={size} color={color} /> }} />
-      <Tabs.Screen name="comunicados"options={{ title: 'Comint',    tabBarIcon: ({ color, size }) => <Ionicons name="mail"             size={size} color={color} /> }} />
+      <Tabs.Screen name="index"          options={{ title: 'Inicio',     tabBarIcon: ({ color, size }) => <Ionicons name="home"            size={size} color={color} /> }} />
+      <Tabs.Screen name="classroom"      options={{ title: 'Mis Aulas',  tabBarIcon: ({ color, size }) => <Ionicons name="easel"           size={size} color={color} /> }} />
+      <Tabs.Screen name="grupos"         options={{ title: 'Mis Grupos', tabBarIcon: ({ color, size }) => <Ionicons name="people"          size={size} color={color} /> }} />
+      <Tabs.Screen name="asistencia"     options={{ title: 'Asistencia', tabBarIcon: ({ color, size }) => <Ionicons name="calendar-number" size={size} color={color} /> }} />
+      <Tabs.Screen name="qr"             options={{ title: 'QR Scan',    tabBarIcon: ({ color, size }) => <Ionicons name="qr-code"         size={size} color={color} /> }} />
+      <Tabs.Screen name="calificaciones" options={{ title: 'Notas',      tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart"       size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="horario"        options={{ title: 'Horario',    tabBarIcon: ({ color, size }) => <Ionicons name="time"            size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="mensajes"       options={{ title: 'Mensajes',   tabBarIcon: ({ color, size }) => <Ionicons name="mail-outline"    size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="comunicados"    options={{ title: 'Comint',     tabBarIcon: ({ color, size }) => <Ionicons name="mail"            size={size} color={color} />, href: null }} />
     </Tabs>
   )
 }

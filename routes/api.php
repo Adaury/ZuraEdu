@@ -109,11 +109,20 @@ Route::prefix('v1')->group(function () {
             Route::get('{claseVirtual}/materiales',  [ClassroomApiController::class, 'materiales'])->name('materiales');
         });
 
-        // Docente — gestión de grupos y asistencia
+        // Docente — gestión de grupos, asistencia y calificaciones
         Route::prefix('docente')->name('api.docente.')->group(function () {
-            Route::get('grupos',               [DocenteApiController::class, 'grupos'])->name('grupos');
-            Route::get('asistencia/{id}',      [DocenteApiController::class, 'consultarAsistencia'])->name('asistencia.consultar');
-            Route::post('asistencia',          [DocenteApiController::class, 'registrarAsistencia'])->name('asistencia.registrar');
+            Route::get('grupos',                        [DocenteApiController::class, 'grupos'])->name('grupos');
+            Route::get('asistencia/{id}',               [DocenteApiController::class, 'consultarAsistencia'])->name('asistencia.consultar');
+            Route::post('asistencia',                   [DocenteApiController::class, 'registrarAsistencia'])->name('asistencia.registrar');
+            Route::get('calificaciones/{asignacion}',   [DocenteApiController::class, 'calificaciones'])->name('calificaciones');
+        });
+
+        // Mensajería interna
+        Route::prefix('mensajes')->name('api.mensajes.')->group(function () {
+            Route::get('/',               [\App\Http\Controllers\Api\MensajesApiController::class, 'index'])->name('index');
+            Route::get('destinatarios',   [\App\Http\Controllers\Api\MensajesApiController::class, 'destinatarios'])->name('destinatarios');
+            Route::get('{id}',            [\App\Http\Controllers\Api\MensajesApiController::class, 'show'])->name('show');
+            Route::post('/',              [\App\Http\Controllers\Api\MensajesApiController::class, 'store'])->name('store');
         });
 
         // Academic Risk Score

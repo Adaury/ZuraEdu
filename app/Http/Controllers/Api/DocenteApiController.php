@@ -10,6 +10,8 @@ use App\Models\Matricula;
 use App\Models\SchoolYear;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\ClaseVirtual;
+use App\Models\MaterialClase;
 
 class DocenteApiController extends Controller
 {
@@ -153,6 +155,54 @@ class DocenteApiController extends Controller
             'fecha'         => $fecha,
             'registrado'    => $registros->isNotEmpty(),
             'alumnos'       => $lista,
+        ]);
+    }
+
+    /** GET /api/v1/docente/calificaciones/{asignacion}
+     * Notas de todos los estudiantes del grupo para la asignación del docente.
+     */
+    public function calificaciones(Request $request, int $asignacionId)
+    {
+        $docente = $this->docenteOFail($request);
+        if (! $docente instanceof Docente) return $docente;
+
+        $asignacion = Asignacion::with(['asignatura', 'grupo.grado', 'grupo.seccion'])
+            ->where('id', $asignacionId)
+            ->where('docente_id', $docente->id)
+            ->where('activo', true)
+            ->first();
+
+        if (! $asignacion) return response()->json(['message' => 'No autorizado.'], 403);
+
+        $sy = SchoolYear::actual();
+
+        $matriculas = Matricula::where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($sy, fn($q) => $q->where('school_year_id', $sy->id))
+            ->with([
+                'estudiante',
+                'calificaciones' => fn($q) => $q->where('asignacion_id', $asignacionId)->with('periodo'),
+            ])
+            ->get()
+            ->map(fn($m) => [
+                'matricula_id' => $m->id,
+                'nombre'       => $m->estudiante
+                    ? "{$m->estudiante->apellidos}, {$m->estudiante->nombres}"
+                    : '—',
+                'notas'        => $m->calificaciones->map(fn($c) => [
+                    'periodo'    => $c->periodo?->nombre ?? "P{$c->periodo_id}",
+                    'nota_final' => $c->nota_final,
+                    'indicador'  => $c->indicador,
+                ])->sortBy('periodo')->values(),
+            ])
+            ->sortBy('nombre')->values();
+
+        return response()->json([
+            'asignacion_id' => $asignacion->id,
+            'asignatura'    => $asignacion->asignatura?->nombre,
+            'color'         => $asignacion->asignatura?->color ?? '#64748b',
+            'grupo'         => $asignacion->grupo?->nombre_completo,
+            'estudiantes'   => $matriculas,
         ]);
     }
 

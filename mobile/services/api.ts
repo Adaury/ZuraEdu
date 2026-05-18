@@ -100,6 +100,16 @@ export const docenteApi = {
   grupos:                          () => api.get('/docente/grupos'),
   consultarAsistencia: (id: number)=> api.get(`/docente/asistencia/${id}`),
   registrarAsistencia: (data: any) => api.post('/docente/asistencia', data),
+  calificaciones: (asignacionId: number) => api.get(`/docente/calificaciones/${asignacionId}`),
+}
+
+// ── Mensajes ─────────────────────────────────────────────────────────────────
+export const mensajesApi = {
+  index:          () => api.get('/mensajes'),
+  destinatarios:  () => api.get('/mensajes/destinatarios'),
+  show:     (id: number)  => api.get(`/mensajes/${id}`),
+  store:    (data: { asunto: string; cuerpo: string; destinatario_ids: number[] }) =>
+    api.post('/mensajes', data),
 }
 
 // ── Risk Score ────────────────────────────────────────────────────────────────

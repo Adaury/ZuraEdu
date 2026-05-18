@@ -72,7 +72,7 @@ class ClassroomApiController extends Controller
                     ->where('activo', true)->get()
                     ->map(fn($c) => $this->mapClase($c));
 
-                return ['estudiante' => "{$est->nombres} {$est->apellidos}", 'clases' => $clases];
+                return ['estudiante_id' => $est->id, 'estudiante' => "{$est->nombres} {$est->apellidos}", 'clases' => $clases];
             });
 
             return response()->json(['role' => 'padre', 'hijos' => $data]);
@@ -90,9 +90,10 @@ class ClassroomApiController extends Controller
             return response()->json(['message' => 'Acceso no autorizado.'], 403);
         }
 
+        $esDocente  = $user->hasRole('Docente');
         $materiales = MaterialClase::with('archivos')
             ->where('clase_virtual_id', $claseVirtual->id)
-            ->where('publicado', true)
+            ->when(! $esDocente, fn($q) => $q->where('publicado', true))
             ->orderByDesc('created_at')
             ->get();
 
@@ -117,6 +118,7 @@ class ClassroomApiController extends Controller
             'url_externo'  => $m->url_externo,
             'fecha_limite' => $m->fecha_limite?->toIso8601String(),
             'puntos'       => $m->puntos,
+            'publicado'    => $m->publicado,
             'es_tarea'     => $m->esTarea(),
             'vencido'      => $m->estaVencido(),
             'archivos'     => $m->archivos->map(fn($a) => [

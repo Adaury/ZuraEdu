@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useRouter } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../context/AuthContext'
@@ -8,8 +9,17 @@ import { dashboardApi } from '../../services/api'
 import { KpiCard } from '../../components/ui/Card'
 import { Colors } from '../../constants/Colors'
 
+const QUICK_LINKS = [
+  { label: 'Horario',    icon: 'time',             route: '/(padre)/horario',    color: Colors.blue   },
+  { label: 'Situación',  icon: 'shield-checkmark', route: '/(padre)/riesgo',     color: Colors.amber  },
+  { label: 'Pagos',      icon: 'card',             route: '/(padre)/pagos',      color: Colors.green  },
+  { label: 'Mensajes',   icon: 'mail',             route: '/(padre)/mensajes',   color: Colors.indigo },
+  { label: 'Noticias',   icon: 'megaphone',        route: '/(padre)/comunicados',color: Colors.purple },
+] as const
+
 export default function PadreDashboard() {
   const { user, logout } = useAuth()
+  const router = useRouter()
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['dashboard'],
     queryFn:  () => dashboardApi.index().then(r => r.data),
@@ -64,6 +74,21 @@ export default function PadreDashboard() {
           </>
         )}
 
+        {/* Acceso rápido */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Acceso Rápido</Text>
+          <View style={styles.quickGrid}>
+            {QUICK_LINKS.map(({ label, icon, route, color }) => (
+              <TouchableOpacity key={label} style={styles.quickItem} onPress={() => router.push(route as any)}>
+                <View style={[styles.quickIcon, { backgroundColor: color + '18' }]}>
+                  <Ionicons name={icon as any} size={22} color={color} />
+                </View>
+                <Text style={styles.quickLbl}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {/* Notificaciones */}
         {d.notificaciones?.length > 0 && (
           <View style={styles.section}>
@@ -101,6 +126,10 @@ const styles = StyleSheet.create({
   kpiRow:         { flexDirection: 'row', gap: 10 },
   sectionTitle:   { fontSize: 15, fontWeight: '800', color: Colors.text },
   section:        { backgroundColor: '#fff', borderRadius: 16, padding: 14, gap: 10, shadowColor: '#000', shadowOpacity: .04, shadowRadius: 6, elevation: 2 },
+  quickGrid:      { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  quickItem:      { alignItems: 'center', gap: 6, width: '18%', minWidth: 58 },
+  quickIcon:      { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  quickLbl:       { fontSize: 10, fontWeight: '700', color: Colors.muted, textAlign: 'center' },
   notifItem:      { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   notifTitle:     { fontSize: 13, fontWeight: '700', color: Colors.text },
   notifBody:      { fontSize: 12, color: Colors.muted },

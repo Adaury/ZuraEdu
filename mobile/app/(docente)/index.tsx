@@ -79,17 +79,25 @@ export default function DocenteDashboard() {
         </View>
 
         {/* Acceso rápido */}
-        <View style={styles.quickRow}>
-          {[
-            { label: 'Asistencia',  icon: 'calendar-number', route: '/(docente)/asistencia', color: Colors.blue },
-            { label: 'QR Scan',     icon: 'qr-code',         route: '/(docente)/qr',         color: Colors.amber },
-            { label: 'Comunicados', icon: 'mail',            route: '/(docente)/comunicados', color: Colors.purple },
-          ].map(({ label, icon, route, color }) => (
-            <TouchableOpacity key={label} style={[styles.quickBtn, { borderColor: color + '40' }]} onPress={() => router.push(route as any)}>
-              <Ionicons name={icon as any} size={22} color={color} />
-              <Text style={[styles.quickLbl, { color }]}>{label}</Text>
-            </TouchableOpacity>
-          ))}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Acceso Rápido</Text>
+          <View style={styles.quickGrid}>
+            {[
+              { label: 'Asistencia',     icon: 'calendar-number', route: '/(docente)/asistencia',     color: Colors.blue   },
+              { label: 'QR Scan',        icon: 'qr-code',         route: '/(docente)/qr',             color: Colors.amber  },
+              { label: 'Calificaciones', icon: 'bar-chart',       route: '/(docente)/calificaciones', color: Colors.green  },
+              { label: 'Horario',        icon: 'time',            route: '/(docente)/horario',        color: Colors.indigo },
+              { label: 'Mensajes',       icon: 'mail',            route: '/(docente)/mensajes',       color: Colors.purple },
+              { label: 'Comunicados',    icon: 'megaphone',       route: '/(docente)/comunicados',    color: Colors.red    },
+            ].map(({ label, icon, route, color }) => (
+              <TouchableOpacity key={label} style={styles.quickItem} onPress={() => router.push(route as any)}>
+                <View style={[styles.quickIcon, { backgroundColor: color + '18' }]}>
+                  <Ionicons name={icon as any} size={22} color={color} />
+                </View>
+                <Text style={styles.quickLbl}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -112,7 +120,8 @@ const styles = StyleSheet.create({
   grupoNombre:  { fontSize: 14, fontWeight: '700', color: Colors.text },
   grupoSub:     { fontSize: 12, color: Colors.muted },
   empty:        { textAlign: 'center', color: Colors.muted, paddingVertical: 12 },
-  quickRow:     { flexDirection: 'row', gap: 10 },
-  quickBtn:     { flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 14, alignItems: 'center', gap: 6, borderWidth: 1.5, shadowColor: '#000', shadowOpacity: .04, shadowRadius: 5, elevation: 2 },
-  quickLbl:     { fontSize: 11, fontWeight: '700' },
+  quickGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  quickItem:    { alignItems: 'center', gap: 6, width: '28%', minWidth: 72 },
+  quickIcon:    { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  quickLbl:     { fontSize: 10, fontWeight: '700', color: Colors.muted, textAlign: 'center' },
 })

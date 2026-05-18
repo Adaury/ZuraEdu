@@ -21,7 +21,8 @@ export default function PadreLayout() {
       <Tabs.Screen name="notas"       options={{ title: 'Notas',      tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart"    size={size} color={color} /> }} />
       <Tabs.Screen name="asistencia"  options={{ title: 'Asistencia', tabBarIcon: ({ color, size }) => <Ionicons name="calendar"     size={size} color={color} /> }} />
       <Tabs.Screen name="pagos"       options={{ title: 'Pagos',      tabBarIcon: ({ color, size }) => <Ionicons name="card"         size={size} color={color} /> }} />
-      <Tabs.Screen name="comunicados" options={{ title: 'Noticias',   tabBarIcon: ({ color, size }) => <Ionicons name="megaphone"    size={size} color={color} /> }} />
+      <Tabs.Screen name="tutor"       options={{ title: 'Asistente',  tabBarIcon: ({ color, size }) => <Ionicons name="sparkles"     size={size} color={color} /> }} />
+      <Tabs.Screen name="comunicados" options={{ title: 'Noticias',   tabBarIcon: ({ color, size }) => <Ionicons name="megaphone"    size={size} color={color} />, href: null }} />
     </Tabs>
   )
 }

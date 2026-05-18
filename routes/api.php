@@ -42,6 +42,7 @@ Route::prefix('v1')->group(function () {
             'pagos'        => ['GET /pagos', 'GET /pagos/hijo/{id}'],
             'classroom'    => ['GET /classroom', 'GET /classroom/{id}/materiales'],
             'docente'      => ['GET /docente/grupos', 'GET /docente/asistencia/{id}', 'POST /docente/asistencia'],
+            'tutor_ia'     => ['POST /ai/chat'],
         ],
     ]))->name('api.v1.index');
 
@@ -114,5 +115,10 @@ Route::prefix('v1')->group(function () {
             Route::get('asistencia/{id}',      [DocenteApiController::class, 'consultarAsistencia'])->name('asistencia.consultar');
             Route::post('asistencia',          [DocenteApiController::class, 'registrarAsistencia'])->name('asistencia.registrar');
         });
+
+        // Tutor IA — chat académico (Estudiante, Representante, Docente)
+        Route::post('ai/chat', [\App\Http\Controllers\Api\TutorIaApiController::class, 'chat'])
+             ->middleware('throttle:30,1')
+             ->name('api.ai.chat');
     });
 });

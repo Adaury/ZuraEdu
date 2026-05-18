@@ -101,3 +101,9 @@ export const docenteApi = {
   consultarAsistencia: (id: number)=> api.get(`/docente/asistencia/${id}`),
   registrarAsistencia: (data: any) => api.post('/docente/asistencia', data),
 }
+
+// ── Tutor IA ──────────────────────────────────────────────────────────────────
+export const tutorApi = {
+  chat: (message: string, history: { role: 'user' | 'assistant'; content: string }[] = []) =>
+    api.post('/ai/chat', { message, history }),
+}

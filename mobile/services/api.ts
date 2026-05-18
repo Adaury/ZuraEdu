@@ -102,6 +102,12 @@ export const docenteApi = {
   registrarAsistencia: (data: any) => api.post('/docente/asistencia', data),
 }
 
+// ── Risk Score ────────────────────────────────────────────────────────────────
+export const riesgoApi = {
+  miScore:              () => api.get('/riesgo/mi-score'),
+  hijo: (id: number)   => api.get(`/riesgo/hijo/${id}`),
+}
+
 // ── Tutor IA ──────────────────────────────────────────────────────────────────
 export const tutorApi = {
   chat: (message: string, history: { role: 'user' | 'assistant'; content: string }[] = []) =>

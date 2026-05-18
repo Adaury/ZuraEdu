@@ -116,6 +116,12 @@ Route::prefix('v1')->group(function () {
             Route::post('asistencia',          [DocenteApiController::class, 'registrarAsistencia'])->name('asistencia.registrar');
         });
 
+        // Academic Risk Score
+        Route::prefix('riesgo')->name('api.riesgo.')->group(function () {
+            Route::get('mi-score',           [\App\Http\Controllers\Api\RiesgoApiController::class, 'miScore'])->name('mi-score');
+            Route::get('hijo/{estudiante}',  [\App\Http\Controllers\Api\RiesgoApiController::class, 'hijoScore'])->name('hijo');
+        });
+
         // Tutor IA — chat académico (Estudiante, Representante, Docente)
         Route::post('ai/chat', [\App\Http\Controllers\Api\TutorIaApiController::class, 'chat'])
              ->middleware('throttle:30,1')

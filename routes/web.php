@@ -406,6 +406,7 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::delete('/{claseVirtual}/archivo/{archivo}', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'eliminarArchivo'])->name('eliminar_archivo');
         Route::post('/{claseVirtual}/sincronizar-notas', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'sincronizarNotas'])->name('sincronizar_notas');
         Route::post('/{claseVirtual}/generar-codigo', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'generarCodigo'])->name('generar_codigo');
+        Route::post('/{claseVirtual}/duplicar', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'duplicar'])->name('duplicar');
         // Meeting (Jitsi)
         Route::post('/{claseVirtual}/meeting/iniciar',  [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'iniciarMeeting'])->name('meeting.iniciar');
         Route::post('/{claseVirtual}/meeting/terminar', [\App\Http\Controllers\Portal\ClassroomDocenteController::class, 'terminarMeeting'])->name('meeting.terminar');

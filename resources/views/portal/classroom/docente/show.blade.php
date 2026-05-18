@@ -51,6 +51,12 @@ $asig  = $claseVirtual->asignacion;
                     <li>
                         <button class="dropdown-item" onclick="generarCodigo()"><i class="bi bi-qr-code me-2 text-info"></i>Generar código</button>
                     </li>
+                    <li><hr class="dropdown-divider my-1"></li>
+                    <li>
+                        <button class="dropdown-item" onclick="abrirModalDuplicarShow()">
+                            <i class="bi bi-copy me-2" style="color:#3b82f6;"></i>Duplicar a otro grupo
+                        </button>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -857,4 +863,69 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 <style>@keyframes presencePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(1.3)} }</style>
 @endpush
+
+{{-- ── Modal Duplicar (show) ── --}}
+@php
+$docente    = auth()->user()->docente ?? null;
+$schoolYear = \App\Models\SchoolYear::actual();
+$asignacionesDoc = ($docente && $schoolYear)
+    ? \App\Models\Asignacion::with(['asignatura','grupo.grado','grupo.seccion'])
+        ->where('docente_id', $docente->id)
+        ->where('school_year_id', $schoolYear->id)
+        ->where('activo', true)
+        ->get()
+    : collect();
+@endphp
+
+<div class="modal fade" id="modalDuplicarShow" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius:16px;overflow:hidden;">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-800">
+                    <i class="bi bi-copy me-2" style="color:#3b82f6;"></i>Duplicar Aula Virtual
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ route('portal.docente.classroom.duplicar', $claseVirtual) }}">
+                @csrf
+                <div class="modal-body pt-3">
+                    <p class="text-muted small mb-3">
+                        Se copiará esta aula con todos sus materiales (despublicados) hacia la asignación que elijas.
+                        Los archivos adjuntos, entregas y mensajes <strong>no</strong> se copian.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-700 small">Nombre del aula nueva</label>
+                        <input type="text" name="nombre" class="form-control form-control-sm"
+                               value="{{ $claseVirtual->nombre }}" required maxlength="255">
+                        <div class="form-text">Puedes cambiar el nombre para identificar el grupo destino.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-700 small">Grupo / Asignación destino</label>
+                        <select name="asignacion_id" class="form-select form-select-sm" required>
+                            <option value="">— Selecciona un grupo —</option>
+                            @foreach($asignacionesDoc as $asig)
+                            <option value="{{ $asig->id }}" {{ $asig->id === $claseVirtual->asignacion_id ? 'disabled' : '' }}>
+                                {{ $asig->asignatura?->nombre }} — {{ $asig->grupo?->nombre_completo ?? $asig->grupo?->nombre }}
+                                {{ $asig->id === $claseVirtual->asignacion_id ? '(actual)' : '' }}
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-sm btn-primary fw-700">
+                        <i class="bi bi-copy me-1"></i> Crear copia
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirModalDuplicarShow() {
+    new bootstrap.Modal(document.getElementById('modalDuplicarShow')).show();
+}
+</script>
 @endsection

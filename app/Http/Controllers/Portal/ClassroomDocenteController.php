@@ -644,6 +644,60 @@ class ClassroomDocenteController extends Controller
         return response()->json(['status' => 'idle']);
     }
 
+    // ── Duplicar aula a otra asignación ──────────────────────────────────
+
+    public function duplicar(Request $request, ClaseVirtual $claseVirtual)
+    {
+        $docente    = $this->getDocente();
+        $schoolYear = SchoolYear::actual();
+        $claseVirtual->load(['asignacion.asignatura', 'asignacion.grupo', 'materiales.archivos', 'recursos']);
+        $this->autorizarClase($claseVirtual, $docente);
+
+        $request->validate([
+            'nombre'        => 'required|string|max:255',
+            'asignacion_id' => 'required|integer',
+        ]);
+
+        // Verificar que la asignación destino pertenece al mismo docente
+        $asignacionDestino = \App\Models\Asignacion::where('id', $request->asignacion_id)
+            ->where('docente_id', $docente->id)
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->firstOrFail();
+
+        // Crear la nueva clase virtual
+        $nueva = ClaseVirtual::create([
+            'tenant_id'          => tenant_id() ?? 0,
+            'asignacion_id'      => $asignacionDestino->id,
+            'nombre'             => $request->nombre,
+            'descripcion'        => $claseVirtual->descripcion,
+            'portada_color'      => $claseVirtual->portada_color,
+            'activo'             => true,
+            'permite_comentarios'=> $claseVirtual->permite_comentarios,
+        ]);
+
+        // Copiar materiales (sin entregas ni archivos adjuntos de estudiantes)
+        foreach ($claseVirtual->materiales as $material) {
+            $nuevoMaterial = $material->replicate(['clase_virtual_id']);
+            $nuevoMaterial->clase_virtual_id = $nueva->id;
+            $nuevoMaterial->tenant_id        = tenant_id() ?? 0;
+            $nuevoMaterial->publicado        = false; // inicia despublicado
+            $nuevoMaterial->save();
+        }
+
+        // Copiar recursos
+        foreach ($claseVirtual->recursos as $recurso) {
+            $nuevoRecurso = $recurso->replicate(['clase_virtual_id']);
+            $nuevoRecurso->clase_virtual_id = $nueva->id;
+            $nuevoRecurso->tenant_id        = tenant_id() ?? 0;
+            $nuevoRecurso->save();
+        }
+
+        $grupo = $asignacionDestino->load('grupo.grado', 'grupo.seccion')->grupo;
+        return redirect()
+            ->route('portal.docente.classroom.show', $nueva)
+            ->with('success', "Aula duplicada para {$grupo?->nombre_completo}. Los materiales están despublicados; revísalos antes de publicar.");
+    }
+
     // ── Chat: mensajes fijados del aula ───────────────────────────────────
 
     public function mensajesFijados(ClaseVirtual $claseVirtual)

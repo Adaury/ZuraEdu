@@ -10,6 +10,9 @@ use App\Models\CalificacionAcademica;
 use App\Models\Docente;
 use App\Models\Estudiante;
 use App\Models\Grupo;
+use App\Models\InsigniaEstudiante;
+use App\Models\Matricula;
+use App\Models\PuntoEstudiante;
 use App\Models\Representante;
 use App\Models\SchoolYear;
 use Illuminate\Http\Request;
@@ -86,13 +89,49 @@ class DashboardApiController extends Controller
             $asistencia = $total > 0 ? round($pres / $total * 100, 1) : null;
         }
 
+        $totalMaterias = $matricula
+            ? Asignacion::where('grupo_id', $matricula->grupo_id)
+                ->when($sy, fn($q) => $q->where('school_year_id', $sy->id))
+                ->where('activo', true)->count()
+            : null;
+
+        // Gamificación
+        $gamif = null;
+        $tieneGamif = !app()->bound('tenant') || (app()->bound('tenant') && app('tenant')?->can('gamificacion'));
+        if ($tieneGamif && $matricula) {
+            $totalPuntos    = PuntoEstudiante::where('matricula_id', $matricula->id)->sum('puntos');
+            $insigniasCount = InsigniaEstudiante::where('matricula_id', $matricula->id)->count();
+
+            $grupoIds = Matricula::where('grupo_id', $matricula->grupo_id)->where('estado', 'activa')->pluck('id');
+            $ranking  = PuntoEstudiante::whereIn('matricula_id', $grupoIds)
+                ->selectRaw('matricula_id, SUM(puntos) as total')
+                ->groupBy('matricula_id')->orderByDesc('total')->get();
+
+            $posicion = null;
+            foreach ($ranking as $idx => $r) {
+                if ($r->matricula_id === $matricula->id) { $posicion = $idx + 1; break; }
+            }
+            if ($posicion === null && (int) $totalPuntos === 0) {
+                $posicion = $ranking->count() + 1;
+            }
+
+            $gamif = [
+                'puntos'       => (int) $totalPuntos,
+                'insignias'    => $insigniasCount,
+                'posicion'     => $posicion,
+                'total_grupo'  => $grupoIds->count(),
+            ];
+        }
+
         return response()->json([
-            'role'        => 'estudiante',
-            'nombre'      => $estudiante ? "{$estudiante->apellidos}, {$estudiante->nombres}" : $user->name,
-            'grupo'       => $matricula?->grupo?->nombre_completo,
-            'school_year' => $sy?->nombre,
-            'promedio'    => $promedio,
-            'asistencia'  => $asistencia,
+            'role'          => 'estudiante',
+            'nombre'        => $estudiante ? "{$estudiante->apellidos}, {$estudiante->nombres}" : $user->name,
+            'grupo'         => $matricula?->grupo?->nombre_completo,
+            'school_year'   => $sy?->nombre,
+            'promedio'      => $promedio,
+            'pct_asistencia'=> $asistencia,
+            'total_materias'=> $totalMaterias,
+            'gamificacion'  => $gamif,
         ]);
     }
 

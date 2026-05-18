@@ -533,6 +533,75 @@ document.getElementById('modalComunicado').addEventListener('click', function(e)
 </div>
 @endif
 
+{{-- ── Gamificación: resumen ─────────────────────────────────────────── --}}
+@if(!empty($tieneGamificacion) && !empty($gamifData))
+<div class="prt-card" id="mis-puntos-preview" style="margin-top:.75rem;">
+    <div class="prt-card-header">
+        <i class="bi bi-controller" style="color:#6366f1;font-size:1rem;"></i>
+        <h3>Mis Puntos</h3>
+        <a href="{{ route('portal.estudiante.mis-puntos') }}"
+           style="margin-left:auto;font-size:.75rem;font-weight:700;color:#6366f1;text-decoration:none;display:flex;align-items:center;gap:.3rem;">
+            Ver todo <i class="bi bi-arrow-right"></i>
+        </a>
+    </div>
+    <div class="prt-card-body">
+        {{-- Stats --}}
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:.9rem;">
+            <div style="text-align:center;background:linear-gradient(135deg,#6366f1,#818cf8);border-radius:12px;padding:.75rem .5rem;color:#fff;">
+                <div style="font-size:1.5rem;font-weight:900;line-height:1;">{{ number_format($gamifData['totalPuntos']) }}</div>
+                <div style="font-size:.65rem;opacity:.85;margin-top:.15rem;">Puntos</div>
+            </div>
+            <div style="text-align:center;background:linear-gradient(135deg,#f59e0b,#fbbf24);border-radius:12px;padding:.75rem .5rem;color:#fff;">
+                <div style="font-size:1.5rem;font-weight:900;line-height:1;">{{ $gamifData['posicion'] ? '#'.$gamifData['posicion'] : 'N/A' }}</div>
+                <div style="font-size:.65rem;opacity:.85;margin-top:.15rem;">Posición</div>
+            </div>
+            <div style="text-align:center;background:linear-gradient(135deg,#d97706,#f59e0b);border-radius:12px;padding:.75rem .5rem;color:#fff;">
+                <div style="font-size:1.5rem;font-weight:900;line-height:1;">{{ $gamifData['insignias'] }}</div>
+                <div style="font-size:.65rem;opacity:.85;margin-top:.15rem;">Insignias</div>
+            </div>
+        </div>
+
+        {{-- Últimos puntos --}}
+        @if($gamifData['ultimos']->isNotEmpty())
+        <div style="border-top:1px solid var(--prt-border);padding-top:.75rem;">
+            <div style="font-size:.7rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;">Últimos obtenidos</div>
+            @foreach($gamifData['ultimos'] as $p)
+            @php
+                $catInfo = \App\Models\PuntoEstudiante::CATEGORIAS[$p->categoria] ?? ['label'=>ucfirst($p->categoria),'icon'=>'bi-star','color'=>'blue'];
+                $bgBadge  = ['blue'=>'#dbeafe','green'=>'#d1fae5','purple'=>'#ede9fe','orange'=>'#fef3c7'][$catInfo['color']] ?? '#f3f4f6';
+                $txtBadge = ['blue'=>'#1d4ed8','green'=>'#065f46','purple'=>'#5b21b6','orange'=>'#92400e'][$catInfo['color']] ?? '#374151';
+            @endphp
+            <div style="display:flex;align-items:center;gap:.65rem;padding:.4rem 0;border-bottom:1px solid var(--prt-border);">
+                <span class="badge rounded-pill" style="background:{{ $bgBadge }};color:{{ $txtBadge }};font-size:.68rem;padding:.25rem .55rem;">
+                    <i class="bi {{ $catInfo['icon'] }} me-1"></i>{{ $catInfo['label'] }}
+                </span>
+                <span style="flex:1;font-size:.8rem;color:var(--prt-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $p->concepto }}</span>
+                <span style="font-weight:800;color:#6366f1;font-size:.84rem;white-space:nowrap;">+{{ $p->puntos }}</span>
+            </div>
+            @endforeach
+        </div>
+        @else
+        <div style="text-align:center;padding:.75rem;color:#9ca3af;font-size:.8rem;">
+            <i class="bi bi-star" style="font-size:1.5rem;display:block;margin-bottom:.35rem;opacity:.4;"></i>
+            Los puntos se generan según tu desempeño. ¡Sigue adelante!
+        </div>
+        @endif
+
+        {{-- Link a logros --}}
+        <div style="margin-top:.75rem;display:flex;gap:.5rem;">
+            <a href="{{ route('portal.estudiante.logros') }}"
+               style="flex:1;text-align:center;background:#fef9c3;color:#92400e;border-radius:8px;padding:.45rem;font-size:.75rem;font-weight:700;text-decoration:none;border:1.5px solid #fde68a;">
+                <i class="bi bi-trophy-fill me-1"></i>Ver Logros
+            </a>
+            <a href="{{ route('portal.estudiante.mis-puntos') }}"
+               style="flex:1;text-align:center;background:#eef2ff;color:#4338ca;border-radius:8px;padding:.45rem;font-size:.75rem;font-weight:700;text-decoration:none;border:1.5px solid #c7d2fe;">
+                <i class="bi bi-bar-chart-fill me-1"></i>Ranking
+            </a>
+        </div>
+    </div>
+</div>
+@endif
+
 @endsection
 
 @push('scripts')

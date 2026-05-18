@@ -136,8 +136,13 @@
 </a>
 
 {{-- ── GAMIFICACIÓN ── --}}
+@php
+try {
+    $moduleGamif = !app()->bound('tenant') || auth()->user()?->hasRole('super_admin') || (app()->bound('tenant') && app('tenant')?->can('gamificacion'));
+} catch(\Exception $e) { $moduleGamif = false; }
+@endphp
+@if($moduleGamif)
 <div class="prt-sidebar-section mt-2">Logros</div>
-
 <a href="{{ route('portal.estudiante.logros') }}"
    class="prt-sidebar-link {{ $ak === 'logros' ? 'active' : '' }}">
     <i class="bi bi-trophy-fill"></i>Mis Logros
@@ -146,6 +151,7 @@
    class="prt-sidebar-link {{ $ak === 'mis-puntos' ? 'active' : '' }}">
     <i class="bi bi-controller"></i>Mis Puntos
 </a>
+@endif
 
 {{-- ── PAGOS / CAFETERÍA / TRANSPORTE ── --}}
 @php

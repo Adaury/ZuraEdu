@@ -118,6 +118,11 @@ export const riesgoApi = {
   hijo: (id: number)   => api.get(`/riesgo/hijo/${id}`),
 }
 
+// ── Gamificación ─────────────────────────────────────────────────────────────
+export const gamificacionApi = {
+  misPuntos: () => api.get('/gamificacion/mis-puntos'),
+}
+
 // ── Tutor IA ──────────────────────────────────────────────────────────────────
 export const tutorApi = {
   chat: (message: string, history: { role: 'user' | 'assistant'; content: string }[] = []) =>

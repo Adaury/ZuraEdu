@@ -15,6 +15,7 @@ const QUICK_LINKS = [
   { label: 'Mis Pagos',  icon: 'card',             route: '/(estudiante)/pagos',        color: Colors.green  },
   { label: 'Mensajes',   icon: 'mail',             route: '/(estudiante)/mensajes',     color: Colors.indigo },
   { label: 'Noticias',   icon: 'megaphone',        route: '/(estudiante)/comunicados',  color: Colors.purple },
+  { label: 'Mis Puntos', icon: 'trophy',           route: '/(estudiante)/mis-puntos',   color: '#6366f1'     },
 ] as const
 
 export default function EstudianteDashboard() {
@@ -71,6 +72,32 @@ export default function EstudianteDashboard() {
               </View>
             ))}
           </View>
+        )}
+
+        {/* Gamificación */}
+        {d.gamificacion && (
+          <TouchableOpacity style={styles.section} onPress={() => router.push('/(estudiante)/mis-puntos' as any)}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={styles.sectionTitle}>🎮 Mis Puntos</Text>
+              <Text style={{ fontSize: 11, color: Colors.blue, fontWeight: '700' }}>Ver todo →</Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={[styles.gamifStat, { backgroundColor: '#eef2ff' }]}>
+                <Text style={[styles.gamifVal, { color: '#4338ca' }]}>{d.gamificacion.puntos}</Text>
+                <Text style={styles.gamifLbl}>Puntos</Text>
+              </View>
+              <View style={[styles.gamifStat, { backgroundColor: '#fef9c3' }]}>
+                <Text style={[styles.gamifVal, { color: '#b45309' }]}>
+                  {d.gamificacion.posicion ? `#${d.gamificacion.posicion}` : 'N/A'}
+                </Text>
+                <Text style={styles.gamifLbl}>Posición</Text>
+              </View>
+              <View style={[styles.gamifStat, { backgroundColor: '#fef3c7' }]}>
+                <Text style={[styles.gamifVal, { color: '#d97706' }]}>{d.gamificacion.insignias}</Text>
+                <Text style={styles.gamifLbl}>Insignias</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
         )}
 
         {/* Acceso rápido */}
@@ -135,4 +162,7 @@ const styles = StyleSheet.create({
   notifTitulo:  { fontSize: 13, fontWeight: '700', color: Colors.text },
   notifCuerpo:  { fontSize: 12, color: Colors.muted },
   unreadDot:    { width: 8, height: 8, borderRadius: 99, backgroundColor: Colors.blue, marginTop: 4 },
+  gamifStat:    { flex: 1, borderRadius: 12, padding: 10, alignItems: 'center' },
+  gamifVal:     { fontSize: 18, fontWeight: '900', lineHeight: 22 },
+  gamifLbl:     { fontSize: 10, fontWeight: '600', color: Colors.muted, marginTop: 2 },
 })

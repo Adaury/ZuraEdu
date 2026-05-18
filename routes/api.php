@@ -125,6 +125,9 @@ Route::prefix('v1')->group(function () {
             Route::post('/',              [\App\Http\Controllers\Api\MensajesApiController::class, 'store'])->name('store');
         });
 
+        // Gamificación
+        Route::get('gamificacion/mis-puntos', [\App\Http\Controllers\Api\GamificacionApiController::class, 'misPuntos'])->name('api.gamificacion.mis-puntos');
+
         // Academic Risk Score
         Route::prefix('riesgo')->name('api.riesgo.')->group(function () {
             Route::get('mi-score',           [\App\Http\Controllers\Api\RiesgoApiController::class, 'miScore'])->name('mi-score');

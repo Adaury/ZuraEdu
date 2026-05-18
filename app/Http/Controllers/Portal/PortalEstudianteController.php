@@ -196,12 +196,57 @@ class PortalEstudianteController extends Controller
             ];
         }
 
+        // Gamificación — solo si el tenant tiene el módulo activo
+        $tieneGamificacion = !app()->bound('tenant')
+            || auth()->user()?->hasRole('super_admin')
+            || (app()->bound('tenant') && app('tenant')?->can('gamificacion'));
+
+        $gamifData = null;
+        if ($tieneGamificacion && $matricula) {
+            $totalPuntos    = PuntoEstudiante::where('matricula_id', $matricula->id)->sum('puntos');
+            $insigniasCount = InsigniaEstudiante::where('matricula_id', $matricula->id)->count();
+
+            $grupoMatriculas = Matricula::where('grupo_id', $matricula->grupo_id)
+                ->where('estado', 'activa')
+                ->pluck('id');
+
+            $rankingGrupo = PuntoEstudiante::whereIn('matricula_id', $grupoMatriculas)
+                ->selectRaw('matricula_id, SUM(puntos) as total')
+                ->groupBy('matricula_id')
+                ->orderByDesc('total')
+                ->get();
+
+            $miPosicion = null;
+            foreach ($rankingGrupo as $idx => $r) {
+                if ($r->matricula_id === $matricula->id) {
+                    $miPosicion = $idx + 1;
+                    break;
+                }
+            }
+            if ($miPosicion === null && (int) $totalPuntos === 0) {
+                $miPosicion = $rankingGrupo->count() + 1;
+            }
+
+            $ultimosPuntos = PuntoEstudiante::where('matricula_id', $matricula->id)
+                ->orderByDesc('fecha')->orderByDesc('id')
+                ->limit(3)->get();
+
+            $gamifData = [
+                'totalPuntos'  => (int) $totalPuntos,
+                'insignias'    => $insigniasCount,
+                'posicion'     => $miPosicion,
+                'totalEnGrupo' => $grupoMatriculas->count(),
+                'ultimos'      => $ultimosPuntos,
+            ];
+        }
+
         return view('portal.estudiante.dashboard', compact(
             'estudiante', 'schoolYear', 'matricula', 'periodos',
             'calificaciones', 'calificacionesAcademicas', 'promedioGeneral',
             'resumenAsistencia', 'gridHorario', 'franjasHorario', 'horarioActivo', 'diasConfig',
             'comunicados', 'notificaciones', 'totalNoLeidas', 'observaciones',
-            'asignaciones', 'eventosCalendario', 'zuraClasesData'
+            'asignaciones', 'eventosCalendario', 'zuraClasesData',
+            'tieneGamificacion', 'gamifData'
         ));
     }
 

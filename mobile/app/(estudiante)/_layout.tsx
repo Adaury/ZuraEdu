@@ -27,6 +27,7 @@ export default function EstudianteLayout() {
       <Tabs.Screen name="pagos"        options={{ title: 'Pagos',      tabBarIcon: ({ color, size }) => <Ionicons name="card"             size={size} color={color} />, href: null }} />
       <Tabs.Screen name="mensajes"     options={{ title: 'Mensajes',   tabBarIcon: ({ color, size }) => <Ionicons name="mail"             size={size} color={color} />, href: null }} />
       <Tabs.Screen name="comunicados"  options={{ title: 'Noticias',   tabBarIcon: ({ color, size }) => <Ionicons name="megaphone"        size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="mis-puntos"  options={{ title: 'Mis Puntos', tabBarIcon: ({ color, size }) => <Ionicons name="trophy"           size={size} color={color} />, href: null }} />
     </Tabs>
   )
 }

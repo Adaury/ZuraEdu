@@ -14,6 +14,12 @@
     <a href="{{ route('portal.docente.mis-estadisticas') }}" class="prt-sidebar-link">
         <i class="bi bi-bar-chart-fill"></i>Mis Estadísticas
     </a>
+    @php try { $__gamifDoc = !app()->bound('tenant') || (app()->bound('tenant') && app('tenant')?->can('gamificacion')); } catch(\Exception $e){ $__gamifDoc = false; } @endphp
+    @if($__gamifDoc)
+    <a href="{{ route('portal.docente.gamificacion') }}" class="prt-sidebar-link {{ request()->routeIs('portal.docente.gamificacion*') ? 'active' : '' }}">
+        <i class="bi bi-trophy-fill" style="color:#f59e0b;"></i>Gamificación
+    </a>
+    @endif
     <a href="{{ route('portal.docente.classroom.index') }}" class="prt-sidebar-link {{ request()->routeIs('portal.docente.classroom*') ? 'active' : '' }}">
         <i class="bi bi-easel2-fill" style="color:#3B82F6;"></i>Classroom
     </a>

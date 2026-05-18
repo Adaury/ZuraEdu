@@ -82,13 +82,14 @@ export default function DocenteDashboard() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Acceso Rápido</Text>
           <View style={styles.quickGrid}>
-            {[
+            [
               { label: 'Asistencia',     icon: 'calendar-number', route: '/(docente)/asistencia',     color: Colors.blue   },
               { label: 'QR Scan',        icon: 'qr-code',         route: '/(docente)/qr',             color: Colors.amber  },
               { label: 'Calificaciones', icon: 'bar-chart',       route: '/(docente)/calificaciones', color: Colors.green  },
               { label: 'Horario',        icon: 'time',            route: '/(docente)/horario',        color: Colors.indigo },
               { label: 'Mensajes',       icon: 'mail',            route: '/(docente)/mensajes',       color: Colors.purple },
               { label: 'Comunicados',    icon: 'megaphone',       route: '/(docente)/comunicados',    color: Colors.red    },
+              { label: 'Gamificación',   icon: 'trophy',          route: '/(docente)/gamificacion',   color: '#f59e0b'     },
             ].map(({ label, icon, route, color }) => (
               <TouchableOpacity key={label} style={styles.quickItem} onPress={() => router.push(route as any)}>
                 <View style={[styles.quickIcon, { backgroundColor: color + '18' }]}>

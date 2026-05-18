@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Asignacion;
+use App\Models\Docente;
 use App\Models\Estudiante;
 use App\Models\InsigniaEstudiante;
 use App\Models\Matricula;
@@ -62,6 +64,119 @@ class GamificacionApiController extends Controller
         if ($miPosicion === null && (int) $totalPuntos === 0) $miPosicion = $rankingRaw->count() + 1;
 
         return response()->json(['totalPuntos' => (int) $totalPuntos, 'insignias' => $insignias, 'historial' => $historial, 'puntosCategoria' => $puntosCategoria, 'ranking' => $ranking, 'miPosicion' => $miPosicion, 'totalEnGrupo' => $grupoIds->count()]);
+    }
+
+    /** GET /api/v1/gamificacion/grupo/{asignacion} — ranking para docente */
+    public function grupoPuntos(Request $request, Asignacion $asignacion)
+    {
+        $user    = $request->user();
+        $docente = Docente::where('user_id', $user->id)->first();
+
+        if (! $docente || $asignacion->docente_id !== $docente->id) {
+            return response()->json(['error' => 'No tienes acceso a esta asignación.'], 403);
+        }
+
+        $sy  = SchoolYear::actual();
+        $syId = $sy?->id ?? 0;
+
+        $matriculas = Matricula::with('estudiante')
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($sy, fn($q) => $q->where('school_year_id', $syId))
+            ->get();
+
+        $mids = $matriculas->pluck('id');
+
+        $puntosMap = PuntoEstudiante::whereIn('matricula_id', $mids)
+            ->selectRaw('matricula_id, SUM(puntos) as total')
+            ->groupBy('matricula_id')
+            ->get()->keyBy('matricula_id');
+
+        $insigniasMap = InsigniaEstudiante::whereIn('matricula_id', $mids)
+            ->selectRaw('matricula_id, COUNT(*) as cnt')
+            ->groupBy('matricula_id')
+            ->get()->keyBy('matricula_id');
+
+        $ranking = $matriculas->map(function ($m) use ($puntosMap, $insigniasMap) {
+            return [
+                'matricula_id' => $m->id,
+                'nombre'       => $m->estudiante?->nombre_completo ?? '—',
+                'puntos'       => (int) ($puntosMap->get($m->id)?->total ?? 0),
+                'insignias'    => (int) ($insigniasMap->get($m->id)?->cnt ?? 0),
+            ];
+        })->sortByDesc('puntos')->values()
+          ->map(fn($item, $idx) => array_merge($item, ['posicion' => $idx + 1]));
+
+        $asignacion->load(['asignatura', 'grupo.grado', 'grupo.seccion']);
+
+        return response()->json([
+            'asignacion' => [
+                'id'         => $asignacion->id,
+                'asignatura' => $asignacion->asignatura?->nombre,
+                'grupo'      => $asignacion->grupo?->nombre_completo,
+            ],
+            'ranking'       => $ranking,
+            'totalGrupo'    => $matriculas->count(),
+            'totalPuntos'   => $puntosMap->sum('total'),
+            'totalInsignias'=> $insigniasMap->sum('cnt'),
+        ]);
+    }
+
+    /** POST /api/v1/gamificacion/grupo/{asignacion}/asignar — docente asigna puntos */
+    public function asignarPuntos(Request $request, Asignacion $asignacion)
+    {
+        $user    = $request->user();
+        $docente = Docente::where('user_id', $user->id)->first();
+
+        if (! $docente || $asignacion->docente_id !== $docente->id) {
+            return response()->json(['error' => 'No tienes acceso a esta asignación.'], 403);
+        }
+
+        $request->validate([
+            'matricula_id' => 'required|integer|exists:matriculas,id',
+            'concepto'     => 'required|string|max:150',
+            'categoria'    => 'required|in:' . implode(',', array_keys(PuntoEstudiante::CATEGORIAS)),
+            'puntos'       => 'required|integer|min:1|max:500',
+            'fecha'        => 'required|date',
+        ]);
+
+        $sy   = SchoolYear::actual();
+        $syId = $sy?->id ?? 0;
+
+        $matricula = Matricula::where('id', $request->matricula_id)
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($sy, fn($q) => $q->where('school_year_id', $syId))
+            ->first();
+
+        if (! $matricula) {
+            return response()->json(['error' => 'El estudiante no pertenece a este grupo.'], 422);
+        }
+
+        $punto = PuntoEstudiante::create([
+            'matricula_id' => $matricula->id,
+            'concepto'     => $request->concepto,
+            'categoria'    => $request->categoria,
+            'puntos'       => $request->puntos,
+            'fecha'        => $request->fecha,
+        ]);
+
+        // Verificar insignias acumuladas (100/500 pts)
+        $total = PuntoEstudiante::where('matricula_id', $matricula->id)->sum('puntos');
+        if ($total >= 100) {
+            InsigniaEstudiante::firstOrCreate(
+                ['matricula_id' => $matricula->id, 'tipo' => 'cien_puntos'],
+                ['fecha_obtencion' => today()]
+            );
+        }
+        if ($total >= 500) {
+            InsigniaEstudiante::firstOrCreate(
+                ['matricula_id' => $matricula->id, 'tipo' => 'quinientos_puntos'],
+                ['fecha_obtencion' => today()]
+            );
+        }
+
+        return response()->json(['ok' => true, 'punto' => $punto, 'totalPuntos' => (int) $total], 201);
     }
 
     /** GET /api/v1/gamificacion/mis-puntos */

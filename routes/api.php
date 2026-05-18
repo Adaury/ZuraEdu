@@ -126,8 +126,10 @@ Route::prefix('v1')->group(function () {
         });
 
         // Gamificación
-        Route::get('gamificacion/mis-puntos',           [\App\Http\Controllers\Api\GamificacionApiController::class, 'misPuntos'])->name('api.gamificacion.mis-puntos');
-        Route::get('gamificacion/hijo/{estudiante}',    [\App\Http\Controllers\Api\GamificacionApiController::class, 'hijoPuntos'])->name('api.gamificacion.hijo');
+        Route::get('gamificacion/mis-puntos',                       [\App\Http\Controllers\Api\GamificacionApiController::class, 'misPuntos'])->name('api.gamificacion.mis-puntos');
+        Route::get('gamificacion/hijo/{estudiante}',                [\App\Http\Controllers\Api\GamificacionApiController::class, 'hijoPuntos'])->name('api.gamificacion.hijo');
+        Route::get('gamificacion/grupo/{asignacion}',               [\App\Http\Controllers\Api\GamificacionApiController::class, 'grupoPuntos'])->name('api.gamificacion.grupo');
+        Route::post('gamificacion/grupo/{asignacion}/asignar',      [\App\Http\Controllers\Api\GamificacionApiController::class, 'asignarPuntos'])->name('api.gamificacion.asignar');
 
         // Academic Risk Score
         Route::prefix('riesgo')->name('api.riesgo.')->group(function () {

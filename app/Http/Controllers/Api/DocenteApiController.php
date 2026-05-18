@@ -30,27 +30,37 @@ class DocenteApiController extends Controller
             ->where('activo', true)
             ->when($sy, fn($q) => $q->where('school_year_id', $sy->id))
             ->get()
-            ->map(fn($a) => [
-                'asignacion_id' => $a->id,
-                'asignatura'    => $a->asignatura?->nombre,
-                'color'         => $a->asignatura?->color ?? '#64748b',
-                'grupo'         => $a->grupo?->nombre_completo,
-                'grupo_id'      => $a->grupo_id,
-                'alumnos'       => Matricula::where('grupo_id', $a->grupo_id)
+            ->map(function ($a) use ($sy) {
+                $alumnos = Matricula::where('grupo_id', $a->grupo_id)
                     ->where('estado', 'activa')
                     ->when($sy, fn($q) => $q->where('school_year_id', $sy->id))
                     ->with('estudiante')
                     ->get()
                     ->map(fn($m) => [
                         'matricula_id' => $m->id,
+                        'id'           => $m->id,
                         'nombre'       => $m->estudiante
                             ? "{$m->estudiante->apellidos}, {$m->estudiante->nombres}"
                             : '—',
                     ])
-                    ->sortBy('nombre')->values(),
-            ]);
+                    ->sortBy('nombre')->values();
+
+                return [
+                    'id'               => $a->id,
+                    'asignacion_id'    => $a->id,
+                    'asignatura'       => $a->asignatura?->nombre,
+                    'color'            => $a->asignatura?->color ?? '#64748b',
+                    'grupo'            => $a->grupo?->nombre_completo,
+                    'grado'            => $a->grupo?->grado?->nombre,
+                    'seccion'          => $a->grupo?->seccion?->nombre,
+                    'grupo_id'         => $a->grupo_id,
+                    'total_estudiantes'=> $alumnos->count(),
+                    'alumnos'          => $alumnos,
+                ];
+            });
 
         return response()->json([
+            'data'         => $asignaciones,
             'docente'      => "{$docente->apellidos}, {$docente->nombres}",
             'school_year'  => $sy?->nombre,
             'asignaciones' => $asignaciones,

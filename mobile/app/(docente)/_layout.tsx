@@ -26,6 +26,7 @@ export default function DocenteLayout() {
       <Tabs.Screen name="horario"        options={{ title: 'Horario',    tabBarIcon: ({ color, size }) => <Ionicons name="time"            size={size} color={color} />, href: null }} />
       <Tabs.Screen name="mensajes"       options={{ title: 'Mensajes',   tabBarIcon: ({ color, size }) => <Ionicons name="mail-outline"    size={size} color={color} />, href: null }} />
       <Tabs.Screen name="comunicados"    options={{ title: 'Comint',     tabBarIcon: ({ color, size }) => <Ionicons name="mail"            size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="gamificacion"  options={{ title: 'Gamificación', tabBarIcon: ({ color, size }) => <Ionicons name="trophy"          size={size} color={color} />, href: null }} />
     </Tabs>
   )
 }

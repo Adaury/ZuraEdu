@@ -23,6 +23,8 @@ use App\Models\Observacion;
 use App\Models\Periodo;
 use App\Models\RecursoMateria;
 use App\Models\SchoolYear;
+use App\Models\InsigniaEstudiante;
+use App\Models\PuntoEstudiante;
 use App\Models\Suplencia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -345,10 +347,31 @@ class PortalDocenteController extends Controller
             ->orderBy('created_at')
             ->get();
 
+        // Gamificación — si el feature está activo
+        $tieneGamif    = false;
+        $gamifPuntos   = 0;
+        $gamifInsignias = collect();
+        $gamifHistorial = collect();
+        $gamifCategoria = collect();
+        try {
+            $tieneGamif = !app()->bound('tenant') || app('tenant')?->can('gamificacion');
+        } catch (\Exception $e) {}
+
+        if ($tieneGamif) {
+            $gamifPuntos    = PuntoEstudiante::where('matricula_id', $matricula->id)->sum('puntos');
+            $gamifInsignias = InsigniaEstudiante::where('matricula_id', $matricula->id)->get();
+            $gamifHistorial = PuntoEstudiante::where('matricula_id', $matricula->id)
+                ->orderByDesc('fecha')->orderByDesc('id')->limit(10)->get();
+            $gamifCategoria = PuntoEstudiante::where('matricula_id', $matricula->id)
+                ->selectRaw('categoria, SUM(puntos) as total')->groupBy('categoria')
+                ->orderByDesc('total')->get();
+        }
+
         return view('portal.docente.ficha_estudiante', compact(
             'docente', 'asignacion', 'matricula', 'schoolYear', 'esTecnica',
             'periodos', 'notasPeriodo', 'notaFinal',
-            'asistencias', 'asistResumen', 'observaciones', 'instrumentos'
+            'asistencias', 'asistResumen', 'observaciones', 'instrumentos',
+            'tieneGamif', 'gamifPuntos', 'gamifInsignias', 'gamifHistorial', 'gamifCategoria'
         ));
     }
 
@@ -4642,5 +4665,124 @@ class PortalDocenteController extends Controller
             return response()->json(['ok' => true]);
         }
         return back()->with('success', 'Comunicado marcado como leído.');
+    }
+
+    // ── Gamificación — ranking del grupo ────────────────────────────────────
+    public function gamificacion(Request $request)
+    {
+        $docente    = $this->getDocente();
+        $schoolYear = SchoolYear::actual();
+        $syId       = $schoolYear?->id ?? 0;
+        $tid        = tenant_id() ?? 0;
+
+        $asignaciones = Cache::remember(
+            "t{$tid}_portal_docente_{$docente->id}_asignaciones_{$syId}", 300,
+            fn() => Asignacion::with(['grupo.grado', 'grupo.seccion', 'asignatura'])
+                ->where('docente_id', $docente->id)
+                ->where('activo', true)
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $syId))
+                ->get()
+        );
+
+        // Grupo seleccionado (primer grupo por defecto)
+        $asignacionId = $request->integer('asignacion_id', $asignaciones->first()?->id ?? 0);
+        $asignacionSel = $asignaciones->firstWhere('id', $asignacionId) ?? $asignaciones->first();
+
+        $ranking   = collect();
+        $matriculas = collect();
+
+        if ($asignacionSel) {
+            $matriculas = Matricula::with('estudiante')
+                ->where('grupo_id', $asignacionSel->grupo_id)
+                ->where('estado', 'activa')
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $syId))
+                ->get();
+
+            $mids = $matriculas->pluck('id');
+
+            $puntosMap   = PuntoEstudiante::whereIn('matricula_id', $mids)
+                ->selectRaw('matricula_id, SUM(puntos) as total')
+                ->groupBy('matricula_id')
+                ->get()->keyBy('matricula_id');
+
+            $insigniasMap = InsigniaEstudiante::whereIn('matricula_id', $mids)
+                ->selectRaw('matricula_id, COUNT(*) as cnt')
+                ->groupBy('matricula_id')
+                ->get()->keyBy('matricula_id');
+
+            $ranking = $matriculas->map(function ($m) use ($puntosMap, $insigniasMap) {
+                $m->_puntos   = (int) ($puntosMap->get($m->id)?->total ?? 0);
+                $m->_insignias = (int) ($insigniasMap->get($m->id)?->cnt ?? 0);
+                return $m;
+            })->sortByDesc('_puntos')->values();
+        }
+
+        $categorias = PuntoEstudiante::CATEGORIAS;
+
+        return view('portal.docente.gamificacion', compact(
+            'docente', 'asignaciones', 'asignacionSel',
+            'ranking', 'matriculas', 'schoolYear', 'categorias'
+        ));
+    }
+
+    // ── Gamificación — asignar puntos ────────────────────────────────────────
+    public function asignarPuntosPortal(Request $request)
+    {
+        $docente = $this->getDocente();
+
+        $request->validate([
+            'matricula_id' => 'required|integer|exists:matriculas,id',
+            'concepto'     => 'required|string|max:150',
+            'categoria'    => 'required|in:' . implode(',', array_keys(PuntoEstudiante::CATEGORIAS)),
+            'puntos'       => 'required|integer|min:1|max:500',
+            'fecha'        => 'required|date',
+        ]);
+
+        // Verificar que la matrícula pertenece a un grupo del docente
+        $schoolYear = SchoolYear::actual();
+        $syId       = $schoolYear?->id ?? 0;
+
+        $grupoIds = Asignacion::where('docente_id', $docente->id)
+            ->where('activo', true)
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $syId))
+            ->pluck('grupo_id');
+
+        $matricula = Matricula::where('id', $request->matricula_id)
+            ->whereIn('grupo_id', $grupoIds)
+            ->first();
+
+        if (! $matricula) {
+            return back()->with('error', 'No tienes acceso a este estudiante.')->withInput();
+        }
+
+        PuntoEstudiante::create([
+            'matricula_id' => $matricula->id,
+            'concepto'     => $request->concepto,
+            'categoria'    => $request->categoria,
+            'puntos'       => $request->puntos,
+            'fecha'        => $request->fecha,
+        ]);
+
+        $this->gamifVerificarInsigniasAcumulado($matricula->id);
+
+        return back()->with('success', 'Puntos asignados correctamente.');
+    }
+
+    private function gamifVerificarInsigniasAcumulado(int $matriculaId): void
+    {
+        $total = PuntoEstudiante::where('matricula_id', $matriculaId)->sum('puntos');
+
+        if ($total >= 100) {
+            InsigniaEstudiante::firstOrCreate(
+                ['matricula_id' => $matriculaId, 'tipo' => 'cien_puntos'],
+                ['fecha_obtencion' => today()]
+            );
+        }
+        if ($total >= 500) {
+            InsigniaEstudiante::firstOrCreate(
+                ['matricula_id' => $matriculaId, 'tipo' => 'quinientos_puntos'],
+                ['fecha_obtencion' => today()]
+            );
+        }
     }
 }

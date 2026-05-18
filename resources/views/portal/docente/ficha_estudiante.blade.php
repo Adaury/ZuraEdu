@@ -268,6 +268,81 @@
 </div>
 @endif
 
+{{-- Gamificación --}}
+@if(!empty($tieneGamif))
+@php
+$catInfo = [
+    'academico'     => ['label' => 'Académico',     'color' => '#2563eb'],
+    'asistencia'    => ['label' => 'Asistencia',    'color' => '#059669'],
+    'conducta'      => ['label' => 'Conducta',      'color' => '#8b5cf6'],
+    'participacion' => ['label' => 'Participación', 'color' => '#f59e0b'],
+    'extra'         => ['label' => 'Extra',         'color' => '#64748b'],
+];
+@endphp
+<div class="prt-card" style="margin-bottom:1rem;">
+    <div class="prt-card-header">
+        <i class="bi bi-trophy-fill" style="color:#f59e0b;"></i>
+        <h3>Gamificación</h3>
+        <div style="margin-left:auto;display:flex;gap:.5rem;align-items:center;">
+            <span style="background:#eef2ff;color:#4338ca;border-radius:99px;font-size:.72rem;font-weight:800;padding:.15rem .55rem;">{{ number_format($gamifPuntos) }} pts</span>
+            @if($gamifInsignias->isNotEmpty())
+            <span style="background:#fef9c3;color:#92400e;border-radius:99px;font-size:.7rem;font-weight:700;padding:.12rem .48rem;">⭐ {{ $gamifInsignias->count() }} insignia(s)</span>
+            @endif
+        </div>
+    </div>
+    <div style="padding:.75rem 1rem;">
+        @if((int)$gamifPuntos === 0 && $gamifInsignias->isEmpty())
+        <p style="font-size:.8rem;color:#94a3b8;text-align:center;padding:.5rem 0;">Sin puntos ni insignias registrados aún.</p>
+        @else
+        {{-- Insignias obtenidas --}}
+        @if($gamifInsignias->isNotEmpty())
+        <div style="display:flex;flex-wrap:wrap;gap:.45rem;margin-bottom:.75rem;">
+            @foreach($gamifInsignias as $ins)
+            <span style="background:#fef9c3;color:#92400e;border-radius:99px;font-size:.7rem;font-weight:700;padding:.18rem .6rem;">
+                ⭐ {{ \App\Models\InsigniaEstudiante::TIPOS[$ins->tipo]['label'] ?? $ins->tipo }}
+            </span>
+            @endforeach
+        </div>
+        @endif
+        {{-- Desglose por categoría --}}
+        @if($gamifCategoria->isNotEmpty())
+        @foreach($gamifCategoria as $cat)
+        @php $ci = $catInfo[$cat->categoria] ?? ['label' => $cat->categoria, 'color' => '#64748b']; @endphp
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem;font-size:.8rem;">
+            <span style="background:{{ $ci['color'] }}18;color:{{ $ci['color'] }};border-radius:99px;padding:.1rem .45rem;font-size:.7rem;font-weight:700;min-width:75px;text-align:center;">{{ $ci['label'] }}</span>
+            <div style="flex:1;height:7px;background:#f1f5f9;border-radius:99px;overflow:hidden;">
+                <div style="width:{{ min(100, round($cat->total / max(1,$gamifPuntos) * 100)) }}%;height:100%;background:{{ $ci['color'] }};border-radius:99px;"></div>
+            </div>
+            <span style="font-weight:800;color:{{ $ci['color'] }};min-width:38px;text-align:right;">{{ $cat->total }} pts</span>
+        </div>
+        @endforeach
+        @endif
+        {{-- Últimos 10 puntos --}}
+        @if($gamifHistorial->isNotEmpty())
+        <div style="margin-top:.65rem;border-top:1px solid #f1f5f9;padding-top:.65rem;">
+            <div style="font-size:.72rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.35rem;">Últimas asignaciones</div>
+            @foreach($gamifHistorial as $p)
+            @php $ci = $catInfo[$p->categoria] ?? ['label' => $p->categoria, 'color' => '#64748b']; @endphp
+            <div style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;border-bottom:1px solid #f8fafc;font-size:.78rem;">
+                <span style="background:{{ $ci['color'] }}18;color:{{ $ci['color'] }};border-radius:5px;padding:.08rem .38rem;font-size:.67rem;font-weight:700;flex-shrink:0;">{{ $ci['label'] }}</span>
+                <span style="flex:1;color:#374151;font-weight:500;" title="{{ $p->concepto }}">{{ \Illuminate\Support\Str::limit($p->concepto, 40) }}</span>
+                <span style="font-size:.72rem;color:#94a3b8;flex-shrink:0;">{{ \Carbon\Carbon::parse($p->fecha)->format('d/m') }}</span>
+                <span style="font-weight:800;color:{{ $ci['color'] }};flex-shrink:0;">+{{ $p->puntos }}</span>
+            </div>
+            @endforeach
+        </div>
+        @endif
+        @endif
+    </div>
+    <div style="padding:.5rem 1rem;border-top:1px solid #f1f5f9;">
+        <a href="{{ route('portal.docente.gamificacion', ['asignacion_id' => $asignacion->id]) }}"
+           style="font-size:.75rem;color:#4338ca;font-weight:700;text-decoration:none;">
+            <i class="bi bi-trophy me-1"></i>Ver ranking del grupo →
+        </a>
+    </div>
+</div>
+@endif
+
 {{-- Observaciones --}}
 <div class="prt-card">
     <div class="prt-card-header">

@@ -41,6 +41,13 @@ $ak  = $activeKey ?? '';
    class="prt-sidebar-link {{ $ak === 'mis-estadisticas' ? 'active' : '' }}">
     <i class="bi bi-bar-chart-fill"></i>Estadísticas
 </a>
+@php try { $__gamifSb = !app()->bound('tenant') || (app()->bound('tenant') && app('tenant')?->can('gamificacion')); } catch(\Exception $e){ $__gamifSb = false; } @endphp
+@if($__gamifSb)
+<a href="{{ route('portal.docente.gamificacion') }}"
+   class="prt-sidebar-link {{ $ak === 'gamificacion' ? 'active' : '' }}">
+    <i class="bi bi-trophy-fill" style="color:#f59e0b;"></i>Gamificación
+</a>
+@endif
 <a href="{{ route('portal.docente.rubricas.index') }}"
    class="prt-sidebar-link {{ $ak === 'rubricas' ? 'active' : '' }}"
    style="{{ $ak === 'rubricas' ? '' : 'color:#ec4899;' }}">

@@ -224,7 +224,7 @@ class AsistenteIAController extends Controller
 
             try {
                 $response = $client->post(
-                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key={$apiKey}",
+                    "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key={$apiKey}",
                     [
                         'json' => [
                             'systemInstruction' => ['parts' => [['text' => $systemPrompt]]],

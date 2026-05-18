@@ -5,8 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Asistencia;
 use App\Models\CalificacionAcademica;
+use App\Models\CasoSeguimiento;
 use App\Models\Estudiante;
+use App\Models\FaltaDisciplinaria;
+use App\Models\FichaSalud;
+use App\Models\IncidenteMedico;
 use App\Models\Observacion;
+use App\Models\Pago;
+use App\Models\Reconocimiento;
 use App\Models\SchoolYear;
 
 class PerfilEstudianteController extends Controller
@@ -83,7 +89,7 @@ class PerfilEstudianteController extends Controller
             ];
         }
 
-        // Observaciones del año actual (todas, no solo públicas)
+        // Observaciones del año actual (todas)
         $observaciones = Observacion::with(['docente', 'asignacion.asignatura'])
             ->where('estudiante_id', $estudiante->id)
             ->when($matriculaActual, fn($q) => $q->whereHas('asignacion',
@@ -92,7 +98,7 @@ class PerfilEstudianteController extends Controller
             ->latest()
             ->get();
 
-        // Historial académico completo (todos los años)
+        // Historial académico completo
         $matIds       = $estudiante->matriculas->pluck('id');
         $califsPorMat = CalificacionAcademica::with('asignacion.asignatura')
             ->whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
@@ -107,10 +113,45 @@ class PerfilEstudianteController extends Controller
             ];
         })->filter(fn($h) => $h['schoolYear'] !== null);
 
+        // ── Expediente completo ───────────────────────────────────────────
+        // Representantes
+        $representantes = $estudiante->representantes()
+            ->withPivot('parentesco', 'es_principal')
+            ->orderByPivot('es_principal', 'desc')
+            ->get();
+
+        // Conducta / Disciplina
+        $faltasDisciplinarias = FaltaDisciplinaria::where('estudiante_id', $estudiante->id)
+            ->latest('fecha')
+            ->get();
+
+        // Salud
+        $fichaSalud      = FichaSalud::where('estudiante_id', $estudiante->id)->first();
+        $incidentesMedicos = IncidenteMedico::where('estudiante_id', $estudiante->id)
+            ->latest('fecha')->get();
+
+        // Casos de seguimiento
+        $casosSeguimiento = CasoSeguimiento::with(['responsable', 'intervenciones'])
+            ->where('estudiante_id', $estudiante->id)
+            ->latest('fecha_apertura')->get();
+
+        // Reconocimientos
+        $reconocimientos = Reconocimiento::with('emitidoPor')
+            ->where('estudiante_id', $estudiante->id)
+            ->latest('fecha')->get();
+
+        // Pagos de la matrícula actual
+        $pagos = $matriculaActual
+            ? Pago::where('matricula_id', $matriculaActual->id)->orderBy('fecha_vencimiento')->get()
+            : collect();
+
         return view('admin.perfiles.estudiante', compact(
             'estudiante', 'schoolYear', 'matriculaActual',
             'calificaciones', 'promedio', 'estado', 'historialAnios',
-            'resumenAsistencia', 'observaciones'
+            'resumenAsistencia', 'observaciones',
+            'representantes', 'faltasDisciplinarias',
+            'fichaSalud', 'incidentesMedicos',
+            'casosSeguimiento', 'reconocimientos', 'pagos'
         ));
     }
 

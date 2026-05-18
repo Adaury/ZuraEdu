@@ -150,7 +150,7 @@
 
     {{-- Columna central --}}
     <div class="col-lg-9">
-        <ul class="nav nav-tabs mb-3">
+        <ul class="nav nav-tabs mb-3 flex-wrap">
             <li class="nav-item">
                 <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-calif">
                     <i class="bi bi-journal-check me-1"></i>Calificaciones
@@ -169,6 +169,43 @@
                     <i class="bi bi-chat-square-text me-1"></i>Observaciones
                     @if($observaciones->isNotEmpty())
                     <span class="badge text-bg-secondary ms-1" style="font-size:.65rem;">{{ $observaciones->count() }}</span>
+                    @endif
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-representantes">
+                    <i class="bi bi-people me-1"></i>Representantes
+                    @if($representantes->isNotEmpty())
+                    <span class="badge text-bg-secondary ms-1" style="font-size:.65rem;">{{ $representantes->count() }}</span>
+                    @endif
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-conducta">
+                    <i class="bi bi-shield-exclamation me-1"></i>Conducta
+                    @if($faltasDisciplinarias->isNotEmpty())
+                    <span class="badge text-bg-warning ms-1" style="font-size:.65rem;">{{ $faltasDisciplinarias->count() }}</span>
+                    @endif
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-salud">
+                    <i class="bi bi-heart-pulse me-1"></i>Salud
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-seguimiento">
+                    <i class="bi bi-diagram-3 me-1"></i>Seguimiento
+                    @if($casosSeguimiento->whereIn('estado',['abierto','en_seguimiento'])->isNotEmpty())
+                    <span class="badge text-bg-info ms-1" style="font-size:.65rem;">{{ $casosSeguimiento->whereIn('estado',['abierto','en_seguimiento'])->count() }}</span>
+                    @endif
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-reconocimientos">
+                    <i class="bi bi-trophy me-1"></i>Reconocimientos
+                    @if($reconocimientos->isNotEmpty())
+                    <span class="badge ms-1" style="font-size:.65rem;background:#7c3aed;color:#fff;">{{ $reconocimientos->count() }}</span>
                     @endif
                 </button>
             </li>
@@ -422,6 +459,316 @@
                 </div>
             </div>
             @endif
+
+            {{-- Representantes --}}
+            <div class="tab-pane fade" id="tab-representantes">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-0">
+                        @if($representantes->isEmpty())
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-people" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>
+                            Sin representantes registrados.
+                        </div>
+                        @else
+                        @foreach($representantes as $rep)
+                        <div class="d-flex align-items-start gap-3 p-3 border-bottom">
+                            <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;font-weight:800;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                {{ strtoupper(substr($rep->nombre_completo, 0, 1)) }}
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                    <span class="fw-semibold" style="font-size:.9rem;">
+                                        {{ $rep->nombre_completo }}
+                                    </span>
+                                    @if($rep->pivot->es_principal)
+                                    <span class="badge text-bg-primary" style="font-size:.68rem;">Principal</span>
+                                    @endif
+                                    @if($rep->pivot->parentesco)
+                                    <span class="badge text-bg-light text-secondary" style="font-size:.68rem;">{{ $rep->pivot->parentesco }}</span>
+                                    @endif
+                                </div>
+                                <div class="d-flex flex-wrap gap-3" style="font-size:.8rem;color:#6b7280;">
+                                    @if($rep->email)
+                                    <span><i class="bi bi-envelope me-1"></i>{{ $rep->email }}</span>
+                                    @endif
+                                    @if($rep->telefono)
+                                    <span><i class="bi bi-telephone me-1"></i>{{ $rep->telefono }}</span>
+                                    @endif
+                                    @if($rep->cedula)
+                                    <span><i class="bi bi-person-badge me-1"></i>{{ $rep->cedula }}</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            {{-- Conducta / Disciplina --}}
+            <div class="tab-pane fade" id="tab-conducta">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-0">
+                        @if($faltasDisciplinarias->isEmpty())
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-shield-check" style="font-size:2rem;display:block;margin-bottom:.5rem;color:#22c55e;"></i>
+                            Sin faltas disciplinarias registradas.
+                        </div>
+                        @else
+                        @php
+                            $pendientes = $faltasDisciplinarias->where('resuelto', false)->count();
+                            $resueltas  = $faltasDisciplinarias->where('resuelto', true)->count();
+                        @endphp
+                        <div class="d-flex gap-3 p-3 border-bottom" style="background:#f8fafc;">
+                            <span style="font-size:.82rem;"><i class="bi bi-exclamation-circle text-warning me-1"></i><strong>{{ $faltasDisciplinarias->count() }}</strong> total</span>
+                            <span style="font-size:.82rem;"><i class="bi bi-hourglass text-danger me-1"></i><strong>{{ $pendientes }}</strong> pendientes</span>
+                            <span style="font-size:.82rem;"><i class="bi bi-check-circle text-success me-1"></i><strong>{{ $resueltas }}</strong> resueltas</span>
+                        </div>
+                        @foreach($faltasDisciplinarias as $falta)
+                        @php $ti = $falta->tipo_info; @endphp
+                        <div class="d-flex gap-3 p-3 border-bottom align-items-start">
+                            <div style="width:36px;height:36px;border-radius:9px;background:{{ $ti['bg'] }};color:{{ $ti['color'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="bi {{ $ti['icon'] }}"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                                    <span class="badge" style="background:{{ $ti['bg'] }};color:{{ $ti['color'] }};font-size:.72rem;font-weight:700;">{{ $ti['label'] }}</span>
+                                    @if($falta->resuelto)
+                                    <span class="badge text-bg-success" style="font-size:.68rem;"><i class="bi bi-check-circle me-1"></i>Resuelta</span>
+                                    @else
+                                    <span class="badge text-bg-warning" style="font-size:.68rem;">Pendiente</span>
+                                    @endif
+                                    <span class="ms-auto text-muted" style="font-size:.72rem;">{{ $falta->fecha?->format('d/m/Y') }}</span>
+                                </div>
+                                <div style="font-size:.84rem;color:#374151;">{{ $falta->descripcion }}</div>
+                                @if($falta->notas_resolucion)
+                                <div class="mt-1 text-muted" style="font-size:.78rem;"><i class="bi bi-chat-right-text me-1"></i>{{ $falta->notas_resolucion }}</div>
+                                @endif
+                                @if($falta->docente?->nombre_completo)
+                                <div class="text-muted mt-1" style="font-size:.72rem;"><i class="bi bi-person me-1"></i>{{ $falta->docente->nombre_completo }}</div>
+                                @endif
+                            </div>
+                        </div>
+                        @endforeach
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            {{-- Salud --}}
+            <div class="tab-pane fade" id="tab-salud">
+                <div class="row g-3">
+                    {{-- Ficha de salud --}}
+                    <div class="col-md-5">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header border-0 py-2 px-3" style="background:#f0fdf4;">
+                                <strong style="font-size:.85rem;color:#166534;"><i class="bi bi-clipboard2-pulse me-1"></i>Ficha de Salud</strong>
+                            </div>
+                            <div class="card-body">
+                                @if($fichaSalud)
+                                <div class="row g-2" style="font-size:.84rem;">
+                                    <div class="col-6">
+                                        <div class="info-label">Tipo de Sangre</div>
+                                        <div class="info-value fw-bold" style="color:#dc2626;">{{ $fichaSalud->tipo_sangre ?? '—' }}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="info-label">Seguro Médico</div>
+                                        <div class="info-value">{{ $fichaSalud->seguro_medico ?? '—' }}</div>
+                                    </div>
+                                    @if($fichaSalud->num_seguro)
+                                    <div class="col-12">
+                                        <div class="info-label">N° Seguro</div>
+                                        <div class="info-value">{{ $fichaSalud->num_seguro }}</div>
+                                    </div>
+                                    @endif
+                                    @if($fichaSalud->alergias)
+                                    <div class="col-12">
+                                        <div class="info-label">Alergias</div>
+                                        <div class="info-value">{{ $fichaSalud->alergias }}</div>
+                                    </div>
+                                    @endif
+                                    @if($fichaSalud->condiciones_medicas)
+                                    <div class="col-12">
+                                        <div class="info-label">Condiciones Médicas</div>
+                                        <div class="info-value">{{ $fichaSalud->condiciones_medicas }}</div>
+                                    </div>
+                                    @endif
+                                    @if($fichaSalud->medicamentos)
+                                    <div class="col-12">
+                                        <div class="info-label">Medicamentos</div>
+                                        <div class="info-value">{{ $fichaSalud->medicamentos }}</div>
+                                    </div>
+                                    @endif
+                                    @if($fichaSalud->contacto_emergencia)
+                                    <div class="col-12 mt-1 pt-2 border-top">
+                                        <div class="info-label">Contacto Emergencia</div>
+                                        <div class="info-value">{{ $fichaSalud->contacto_emergencia }}</div>
+                                        @if($fichaSalud->telefono_emergencia)
+                                        <div class="info-value"><i class="bi bi-telephone me-1 text-muted"></i>{{ $fichaSalud->telefono_emergencia }}</div>
+                                        @endif
+                                    </div>
+                                    @endif
+                                </div>
+                                @else
+                                <div class="text-center text-muted py-3">
+                                    <i class="bi bi-clipboard2 d-block mb-1" style="font-size:1.75rem;"></i>
+                                    Sin ficha de salud registrada.
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    {{-- Incidentes médicos --}}
+                    <div class="col-md-7">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header border-0 py-2 px-3 d-flex justify-content-between align-items-center" style="background:#fff7ed;">
+                                <strong style="font-size:.85rem;color:#9a3412;"><i class="bi bi-bandaid me-1"></i>Incidentes Médicos</strong>
+                                @if($incidentesMedicos->isNotEmpty())
+                                <span class="badge text-bg-warning" style="font-size:.7rem;">{{ $incidentesMedicos->count() }}</span>
+                                @endif
+                            </div>
+                            <div class="card-body p-0">
+                                @if($incidentesMedicos->isEmpty())
+                                <div class="text-center text-muted py-3">
+                                    <i class="bi bi-check-circle d-block mb-1" style="font-size:1.75rem;color:#22c55e;"></i>
+                                    Sin incidentes registrados.
+                                </div>
+                                @else
+                                @foreach($incidentesMedicos as $inc)
+                                @php $ti = $inc->tipo_info; @endphp
+                                <div class="d-flex gap-3 p-3 border-bottom align-items-start">
+                                    <div style="width:34px;height:34px;border-radius:8px;background:{{ $ti['bg'] }};color:{{ $ti['color'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="bi {{ $ti['icon'] }}"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                            <span class="badge" style="background:{{ $ti['bg'] }};color:{{ $ti['color'] }};font-size:.7rem;">{{ $ti['label'] }}</span>
+                                            <span class="ms-auto text-muted" style="font-size:.72rem;">{{ $inc->fecha?->format('d/m/Y') }}</span>
+                                        </div>
+                                        <div style="font-size:.83rem;color:#374151;">{{ $inc->descripcion }}</div>
+                                        @if($inc->accion_tomada)
+                                        <div class="text-muted mt-1" style="font-size:.76rem;"><i class="bi bi-arrow-right-circle me-1"></i>{{ $inc->accion_tomada }}</div>
+                                        @endif
+                                        @if($inc->remitido_a)
+                                        <div class="text-muted" style="font-size:.76rem;"><i class="bi bi-hospital me-1"></i>Remitido a: {{ $inc->remitido_a }}</div>
+                                        @endif
+                                    </div>
+                                </div>
+                                @endforeach
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Seguimiento --}}
+            <div class="tab-pane fade" id="tab-seguimiento">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-0">
+                        @if($casosSeguimiento->isEmpty())
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-diagram-3 d-block mb-1" style="font-size:2rem;"></i>
+                            Sin casos de seguimiento registrados.
+                        </div>
+                        @else
+                        @foreach($casosSeguimiento as $caso)
+                        @php
+                            $nivelInfo  = $caso->nivel_riesgo_info;
+                            $estadoInfo = $caso->estado_info;
+                            $nivelColors = ['low'=>'#22c55e','green'=>'#22c55e','yellow'=>'#f59e0b','orange'=>'#f97316','red'=>'#ef4444'];
+                            $estadoColors = ['blue'=>['bg'=>'#dbeafe','text'=>'#1d4ed8'],'indigo'=>['bg'=>'#e0e7ff','text'=>'#4338ca'],'gray'=>['bg'=>'#f1f5f9','text'=>'#64748b']];
+                            $nivelC  = $nivelColors[$nivelInfo['color']] ?? '#6b7280';
+                            $estadoC = $estadoColors[$estadoInfo['color']] ?? ['bg'=>'#f1f5f9','text'=>'#64748b'];
+                        @endphp
+                        <div class="p-3 border-bottom">
+                            <div class="d-flex align-items-start gap-3 mb-2">
+                                <div style="width:38px;height:38px;border-radius:9px;background:{{ $nivelC }}20;color:{{ $nivelC }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="bi bi-diagram-3"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                        <span class="fw-semibold" style="font-size:.88rem;">{{ $caso->tipo_label }}</span>
+                                        <span class="badge" style="background:{{ $estadoC['bg'] }};color:{{ $estadoC['text'] }};font-size:.7rem;">{{ $estadoInfo['label'] }}</span>
+                                        <span class="badge" style="background:{{ $nivelC }}20;color:{{ $nivelC }};font-size:.7rem;border:1px solid {{ $nivelC }}40;">
+                                            Riesgo {{ $nivelInfo['label'] }}
+                                        </span>
+                                        <span class="ms-auto text-muted" style="font-size:.72rem;">{{ $caso->fecha_apertura?->format('d/m/Y') }}</span>
+                                    </div>
+                                    <div style="font-size:.83rem;color:#374151;">{{ $caso->descripcion }}</div>
+                                    @if($caso->responsable?->name)
+                                    <div class="text-muted mt-1" style="font-size:.76rem;"><i class="bi bi-person me-1"></i>Responsable: {{ $caso->responsable->name }}</div>
+                                    @endif
+                                    @if($caso->fecha_cierre)
+                                    <div class="text-muted" style="font-size:.76rem;"><i class="bi bi-calendar-check me-1"></i>Cerrado: {{ $caso->fecha_cierre->format('d/m/Y') }}</div>
+                                    @endif
+                                </div>
+                            </div>
+                            @if($caso->intervenciones->isNotEmpty())
+                            <div class="ms-5 ps-1">
+                                <div class="text-muted mb-1" style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Intervenciones ({{ $caso->intervenciones->count() }})</div>
+                                @foreach($caso->intervenciones->take(3) as $int)
+                                <div class="d-flex gap-2 mb-1" style="font-size:.8rem;">
+                                    <span class="text-muted" style="min-width:70px;">{{ $int->fecha?->format('d/m/Y') }}</span>
+                                    <span style="color:#374151;">{{ $int->descripcion }}</span>
+                                </div>
+                                @endforeach
+                                @if($caso->intervenciones->count() > 3)
+                                <div class="text-muted" style="font-size:.76rem;">+ {{ $caso->intervenciones->count() - 3 }} más...</div>
+                                @endif
+                            </div>
+                            @endif
+                        </div>
+                        @endforeach
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            {{-- Reconocimientos --}}
+            <div class="tab-pane fade" id="tab-reconocimientos">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-0">
+                        @if($reconocimientos->isEmpty())
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-trophy d-block mb-1" style="font-size:2rem;"></i>
+                            Sin reconocimientos registrados.
+                        </div>
+                        @else
+                        @foreach($reconocimientos as $rec)
+                        <div class="d-flex gap-3 p-3 border-bottom align-items-start">
+                            <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="bi bi-trophy" style="font-size:.9rem;"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                    <span class="fw-semibold" style="font-size:.88rem;">{{ $rec->titulo }}</span>
+                                    @if($rec->entregado)
+                                    <span class="badge text-bg-success" style="font-size:.68rem;"><i class="bi bi-check me-1"></i>Entregado</span>
+                                    @else
+                                    <span class="badge text-bg-secondary" style="font-size:.68rem;">Pendiente entrega</span>
+                                    @endif
+                                    <span class="ms-auto text-muted" style="font-size:.72rem;">{{ $rec->fecha?->format('d/m/Y') }}</span>
+                                </div>
+                                @if($rec->descripcion)
+                                <div style="font-size:.83rem;color:#374151;">{{ $rec->descripcion }}</div>
+                                @endif
+                                <div class="d-flex gap-3 mt-1 flex-wrap" style="font-size:.76rem;color:#6b7280;">
+                                    @if($rec->emitidoPor?->name)
+                                    <span><i class="bi bi-person me-1"></i>{{ $rec->emitidoPor->name }}</span>
+                                    @endif
+                                    @if($rec->fecha_entrega)
+                                    <span><i class="bi bi-calendar-check me-1"></i>Entregado: {{ $rec->fecha_entrega->format('d/m/Y') }}</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                        @endif
+                    </div>
+                </div>
+            </div>
 
             {{-- Historial --}}
             <div class="tab-pane fade" id="tab-historial">

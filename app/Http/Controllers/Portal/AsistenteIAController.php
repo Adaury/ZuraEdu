@@ -246,9 +246,18 @@ class AsistenteIAController extends Controller
                         flush();
                     }
                 }
+            } catch (\GuzzleHttp\Exception\ClientException $e) {
+                $status = $e->getResponse()->getStatusCode();
+                $msg = $status === 401
+                    ? 'Error de autenticación con ZuraAI. La API key de Anthropic puede estar revocada o incorrecta. Configura ANTHROPIC_API_KEY en .env.'
+                    : 'Error al conectar con ZuraAI (código ' . $status . '). Intenta de nuevo.';
+                $err = json_encode(['type' => 'error', 'error' => ['message' => $msg]]);
+                echo "data: {$err}\n\n";
+                if (ob_get_level() > 0) ob_flush();
+                flush();
             } catch (\Throwable $e) {
                 $err = json_encode(['type' => 'error', 'error' => ['message' => 'Error al conectar con ZuraAI. Intenta de nuevo.']]);
-                echo "event: error\ndata: {$err}\n\n";
+                echo "data: {$err}\n\n";
                 if (ob_get_level() > 0) ob_flush();
                 flush();
             }

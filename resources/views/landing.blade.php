@@ -198,6 +198,22 @@
             box-shadow: 0 20px 48px rgba(99,102,241,.1) !important;
         }
 
+        /* ── Hero entrance animations (GPU-only, lightweight) ─── */
+        @keyframes heroFadeUp {
+            from { opacity: 0; transform: translateY(32px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes heroFadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        .hero-badge    { animation: heroFadeUp 600ms cubic-bezier(.4,0,.2,1) 100ms both; }
+        .hero-title    { animation: heroFadeUp 700ms cubic-bezier(.4,0,.2,1) 220ms both; }
+        .hero-subtitle { animation: heroFadeUp 600ms cubic-bezier(.4,0,.2,1) 380ms both; }
+        .hero-ctas     { animation: heroFadeUp 600ms cubic-bezier(.4,0,.2,1) 500ms both; }
+        .hero-trust    { animation: heroFadeIn 700ms ease 680ms both; }
+        .hero-mockup   { animation: heroFadeUp 800ms cubic-bezier(.34,1.56,.64,1) 300ms both; }
+
         /* ── Hero float animation ─────────────────────────────── */
         @keyframes float {
             0%   { transform: translateY(0); }
@@ -263,25 +279,25 @@
             {{-- Columna izquierda: Texto --}}
             <div class="text-center lg:text-left">
                 {{-- Badge --}}
-                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-600/15 border border-blue-500/25 text-blue-300 text-xs font-semibold mb-6">
+                <div class="hero-badge inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-600/15 border border-blue-500/25 text-blue-300 text-xs font-semibold mb-6">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-slow"></span>
                     Plataforma SaaS educativa · Disponible ahora
                 </div>
 
                 {{-- Título --}}
-                <h1 class="text-4xl sm:text-5xl lg:text-[3.2rem] font-black text-white leading-[1.08] tracking-tight mb-5">
+                <h1 class="hero-title text-4xl sm:text-5xl lg:text-[3.2rem] font-black text-white leading-[1.08] tracking-tight mb-5">
                     ZuraEdu<br>
                     <span class="gradient-text">Sistema académico</span><br>
                     + aula virtual en una<br>sola plataforma
                 </h1>
 
                 {{-- Subtítulo --}}
-                <p class="text-slate-400 text-base sm:text-lg leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
+                <p class="hero-subtitle text-slate-400 text-base sm:text-lg leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
                     Gestiona tu centro educativo con notas por competencias, tareas, horarios y conexión con padres desde cualquier dispositivo.
                 </p>
 
                 {{-- Botones CTA --}}
-                <div class="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start mb-8">
+                <div class="hero-ctas flex flex-col sm:flex-row gap-3 justify-center lg:justify-start mb-8">
                     <a href="{{ route('onboarding') }}"
                        class="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-base font-bold text-white bg-success hover:bg-success-dark shadow-lg shadow-green-900/40 btn-success-hover">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/></svg>
@@ -300,7 +316,7 @@
                 </div>
 
                 {{-- Trust indicators --}}
-                <div class="flex flex-wrap items-center gap-4 justify-center lg:justify-start">
+                <div class="hero-trust flex flex-wrap items-center gap-4 justify-center lg:justify-start">
                     @foreach(['Sin tarjeta requerida','30 días gratis','Setup en 2 min'] as $trust)
                     <div class="flex items-center gap-1.5 text-slate-500 text-xs">
                         <svg class="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
@@ -311,7 +327,7 @@
             </div>
 
             {{-- Columna derecha: Mockup --}}
-            <div class="hidden lg:block">
+            <div class="hidden lg:block hero-mockup">
                 <div class="animate-float">
                     {{-- Ventana del navegador simulada --}}
                     <div class="bg-slate-800 rounded-2xl overflow-hidden mockup-glow border border-slate-700/50">

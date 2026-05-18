@@ -1133,9 +1133,17 @@ window._SGE_DEBUG     = {{ config('app.debug') ? 'true' : 'false' }};
             <div class="zura-header-title">ZuraAI</div>
             <div class="zura-header-sub">Asistente Académico · Claude</div>
         </div>
-        <button class="zura-header-close" id="zura-close" aria-label="Cerrar">
-            <i class="bi bi-x-lg"></i>
-        </button>
+        <div class="d-flex align-items-center gap-1 ms-auto">
+            <button id="zura-clear" title="Nueva conversación" aria-label="Nueva conversación"
+                style="background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:inherit;opacity:.6;transition:opacity .15s,background .15s;"
+                onmouseenter="this.style.opacity='1';this.style.background='rgba(255,255,255,.1)'"
+                onmouseleave="this.style.opacity='.6';this.style.background='none'">
+                <i class="bi bi-arrow-counterclockwise" style="font-size:.9rem;"></i>
+            </button>
+            <button class="zura-header-close" id="zura-close" aria-label="Cerrar">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
     </div>
 
     <div class="zura-messages" id="zura-messages"></div>
@@ -1172,6 +1180,7 @@ window._SGE_DEBUG     = {{ config('app.debug') ? 'true' : 'false' }};
     const btn       = document.getElementById('zura-ai-btn');
     const panel     = document.getElementById('zura-ai-panel');
     const closeBtn  = document.getElementById('zura-close');
+    const clearBtn  = document.getElementById('zura-clear');
     const messagesEl= document.getElementById('zura-messages');
     const inputEl   = document.getElementById('zura-input');
     const sendBtn   = document.getElementById('zura-send');
@@ -1191,6 +1200,18 @@ window._SGE_DEBUG     = {{ config('app.debug') ? 'true' : 'false' }};
         }
     });
     closeBtn.addEventListener('click', () => panel.classList.remove('open'));
+
+    // ── Clear / nueva conversación ────────────────────────────────────────
+    clearBtn.addEventListener('click', () => {
+        if (streaming) return;
+        history = [];
+        messagesEl.innerHTML = '';
+        suggsEl.style.display = '';
+        showWelcome();
+        inputEl.value = '';
+        inputEl.style.height = 'auto';
+        inputEl.focus();
+    });
 
     // ── Welcome message ───────────────────────────────────────────────────
     const ZURA_ROLE = "{{ $__zuraRole }}";
@@ -1304,8 +1325,9 @@ window._SGE_DEBUG     = {{ config('app.debug') ? 'true' : 'false' }};
 
         } catch (err) {
             if (typingEl.parentNode) typingEl.remove();
-            if (assistantBubble) assistantBubble.innerHTML = 'Error de conexión. Intenta de nuevo.';
-            else appendMessage('assistant', 'Error de conexión. Intenta de nuevo.');
+            const errMsg = 'Error de conexión. Intenta de nuevo.';
+            if (assistantBubble) assistantBubble.innerHTML = renderMd(errMsg);
+            else appendMessage('assistant', errMsg);
         } finally {
             streaming = false;
             sendBtn.disabled = false;
@@ -1313,9 +1335,42 @@ window._SGE_DEBUG     = {{ config('app.debug') ? 'true' : 'false' }};
                 history.push({ role: 'user',      content: text     });
                 history.push({ role: 'assistant', content: fullText });
                 if (history.length > 20) history = history.slice(-20);
+                // Mostrar sugerencias rápidas de seguimiento
+                showFollowUpSuggs();
             }
             scrollBottom();
         }
+    }
+
+    // ── Sugerencias de seguimiento ────────────────────────────────────────
+    function showFollowUpSuggs() {
+        // Elimina sugerencias anteriores de follow-up
+        messagesEl.querySelectorAll('.zura-followup').forEach(el => el.remove());
+        const ZURA_ROLE_LOCAL = "{{ $__zuraRole }}";
+        const chips = ZURA_ROLE_LOCAL === 'docente'
+            ? ['Más detalle','Otro ejemplo','Adaptarlo al grado','Simplificarlo']
+            : ZURA_ROLE_LOCAL === 'estudiante'
+            ? ['Dame un ejemplo','Explícalo más simple','Ejercicio práctico','Cómo lo recuerdo']
+            : ['Más consejos','Qué hacer si…','Dónde lo consulto','Otro tema'];
+        const row = document.createElement('div');
+        row.className = 'zura-followup';
+        row.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px;padding:4px 10px 8px;';
+        chips.forEach(txt => {
+            const btn = document.createElement('button');
+            btn.className = 'zura-suggestion';
+            btn.style.cssText = 'font-size:.7rem;padding:3px 9px;opacity:.85;';
+            btn.textContent = txt;
+            btn.addEventListener('click', () => {
+                if (streaming) return;
+                inputEl.value = txt;
+                autoResizeInput();
+                row.remove();
+                sendMessage();
+            });
+            row.appendChild(btn);
+        });
+        messagesEl.appendChild(row);
+        scrollBottom();
     }
 
     // ── DOM helpers ───────────────────────────────────────────────────────

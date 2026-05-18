@@ -304,8 +304,7 @@
 {{-- ── Área Académica — 4 Competencias MINERD ──────────────────────────── --}}
 @if($calificacionesAcademicas->count())
 @php
-use App\Models\CalificacionAcademica;
-$comps = CalificacionAcademica::COMPETENCIAS;
+$comps = \App\Models\CalificacionAcademica::COMPETENCIAS;
 $fmtB  = fn($v) => $v !== null
     ? rtrim(rtrim(number_format((float)$v, 1, '.', ''), '0'), '.')
     : '—';

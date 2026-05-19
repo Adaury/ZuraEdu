@@ -10,8 +10,10 @@ use App\Models\Docente;
 use App\Models\EntregaTarea;
 use App\Models\MaterialClase;
 use App\Models\Matricula;
+use App\Models\ConductaRegistro;
 use App\Models\Notificacion;
 use App\Models\Observacion;
+use App\Models\Periodo;
 use App\Models\SchoolYear;
 use App\Models\Tarea;
 use Illuminate\Http\Request;
@@ -475,6 +477,123 @@ class DocenteApiController extends Controller
             'estado_label'=> EntregaTarea::ESTADOS[$entrega->estado]       ?? $entrega->estado,
             'estado_color'=> EntregaTarea::COLORES_ESTADO[$entrega->estado] ?? '#6b7280',
             'calificacion'=> $entrega->calificacion,
+        ]);
+    }
+
+    /** GET /api/v1/docente/conducta?asignacion_id=X&periodo_id=Y */
+    public function conducta(Request $request)
+    {
+        $docente = $this->docenteOFail($request);
+        if (! $docente instanceof Docente) return $docente;
+
+        $asignacion = Asignacion::where('id', (int) $request->query('asignacion_id', 0))
+            ->where('docente_id', $docente->id)
+            ->first();
+        if (! $asignacion) return response()->json(['message' => 'Asignación no encontrada.'], 404);
+
+        $sy = SchoolYear::actual();
+
+        $periodos = Periodo::when($sy, fn($q) => $q->where('school_year_id', $sy->id))
+            ->orderBy('numero')->get()
+            ->map(fn($p) => ['id' => $p->id, 'nombre' => $p->nombre]);
+
+        $primerPeriodo = $periodos->first();
+        $periodoId     = (int) $request->query('periodo_id', $primerPeriodo['id'] ?? 0);
+
+        $matriculas = Matricula::with('estudiante')
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($sy, fn($q) => $q->where('school_year_id', $sy->id))
+            ->orderBy('id')
+            ->get();
+
+        $registros = ConductaRegistro::where('asignacion_id', $asignacion->id)
+            ->where('periodo_id', $periodoId)
+            ->get()
+            ->keyBy('matricula_id');
+
+        $escalaRaw = ConductaRegistro::ESCALA;
+        $escala    = collect($escalaRaw)
+            ->map(fn($v, $k) => ['valor' => $k, 'label' => $v['label'], 'nombre' => $v['nombre'], 'color' => $v['color']])
+            ->values();
+
+        $alumnos = $matriculas->map(function ($m) use ($registros, $escalaRaw) {
+            $reg      = $registros->get($m->id);
+            $concepto = $reg?->concepto;
+            $vals     = [];
+            foreach (array_keys(ConductaRegistro::INDICADORES) as $campo) {
+                $vals[$campo] = $reg?->$campo;
+            }
+            return [
+                'matricula_id'   => $m->id,
+                'nombre'         => $m->estudiante
+                    ? "{$m->estudiante->apellidos}, {$m->estudiante->nombres}"
+                    : '—',
+                'concepto'       => $concepto,
+                'concepto_label' => $concepto ? $escalaRaw[$concepto]['label'] : null,
+                'concepto_color' => $concepto ? $escalaRaw[$concepto]['color'] : null,
+                'indicadores'    => $vals,
+                'observaciones'  => $reg?->observaciones ?? '',
+            ];
+        })->sortBy('nombre')->values();
+
+        return response()->json([
+            'periodos'   => $periodos,
+            'periodo_id' => $periodoId,
+            'escala'     => $escala,
+            'alumnos'    => $alumnos,
+        ]);
+    }
+
+    /** POST /api/v1/docente/conducta */
+    public function guardarConducta(Request $request)
+    {
+        $docente = $this->docenteOFail($request);
+        if (! $docente instanceof Docente) return $docente;
+
+        $request->validate([
+            'asignacion_id'  => 'required|integer|exists:asignaciones,id',
+            'matricula_id'   => 'required|integer|exists:matriculas,id',
+            'periodo_id'     => 'required|integer|exists:periodos,id',
+            'puntualidad'     => 'nullable|integer|min:1|max:5',
+            'participacion'   => 'nullable|integer|min:1|max:5',
+            'respeto'         => 'nullable|integer|min:1|max:5',
+            'trabajo_equipo'  => 'nullable|integer|min:1|max:5',
+            'responsabilidad' => 'nullable|integer|min:1|max:5',
+            'orden'           => 'nullable|integer|min:1|max:5',
+            'observaciones'   => 'nullable|string|max:500',
+        ]);
+
+        $asignacion = Asignacion::where('id', $request->asignacion_id)
+            ->where('docente_id', $docente->id)->first();
+        if (! $asignacion) return response()->json(['message' => 'No autorizado.'], 403);
+
+        $data = [
+            'asignacion_id' => $asignacion->id,
+            'observaciones' => $request->input('observaciones', ''),
+        ];
+        foreach (array_keys(ConductaRegistro::INDICADORES) as $campo) {
+            $data[$campo] = $request->input($campo);
+        }
+
+        $registro = ConductaRegistro::updateOrCreate(
+            [
+                'matricula_id'  => $request->matricula_id,
+                'asignacion_id' => $asignacion->id,
+                'periodo_id'    => $request->periodo_id,
+            ],
+            $data,
+        );
+
+        $escala   = ConductaRegistro::ESCALA;
+        $concepto = $registro->concepto;
+
+        return response()->json([
+            'ok'             => true,
+            'concepto'       => $concepto,
+            'concepto_label' => $concepto ? $escala[$concepto]['label'] : null,
+            'concepto_color' => $concepto ? $escala[$concepto]['color'] : null,
+            'promedio'       => $registro->promedio,
         ]);
     }
 

@@ -129,6 +129,8 @@ Route::prefix('v1')->group(function () {
             Route::post('tareas',                            [DocenteApiController::class, 'storeTarea'])->name('tareas.store');
             Route::get('tareas/{tarea}/entregas',            [DocenteApiController::class, 'entregasTarea'])->name('tareas.entregas');
             Route::patch('tareas/{tarea}/calificar',         [DocenteApiController::class, 'calificarEntrega'])->name('tareas.calificar');
+            Route::get('conducta',                           [DocenteApiController::class, 'conducta'])->name('conducta');
+            Route::post('conducta',                          [DocenteApiController::class, 'guardarConducta'])->name('conducta.store');
         });
 
         // Mensajería interna

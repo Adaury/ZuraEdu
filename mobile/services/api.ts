@@ -114,6 +114,11 @@ export const docenteApi = {
   entregasTarea: (tareaId: number)  => api.get(`/docente/tareas/${tareaId}/entregas`),
   calificarEntrega: (tareaId: number, data: { estudiante_id: number; estado: string; calificacion?: number | null; notas_docente?: string }) =>
     api.patch(`/docente/tareas/${tareaId}/calificar`, data),
+  // Conducta
+  conducta: (asignacionId: number, periodoId?: number) =>
+    api.get('/docente/conducta', { params: { asignacion_id: asignacionId, ...(periodoId ? { periodo_id: periodoId } : {}) } }),
+  guardarConducta: (data: { asignacion_id: number; matricula_id: number; periodo_id: number; puntualidad?: number | null; participacion?: number | null; respeto?: number | null; trabajo_equipo?: number | null; responsabilidad?: number | null; orden?: number | null; observaciones?: string }) =>
+    api.post('/docente/conducta', data),
 }
 
 // ── Mensajes ─────────────────────────────────────────────────────────────────

@@ -79,6 +79,22 @@ class AuthApiController extends Controller
         return response()->json(['token' => $newToken]);
     }
 
+    /** PATCH /api/v1/auth/change-password */
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password'      => 'required|string',
+            'new_password'          => 'required|string|min:8|confirmed',
+        ]);
+
+        if (! Hash::check($request->current_password, $request->user()->password)) {
+            return response()->json(['message' => 'La contraseña actual es incorrecta.'], 422);
+        }
+
+        $request->user()->update(['password' => Hash::make($request->new_password)]);
+        return response()->json(['ok' => true]);
+    }
+
     private function avatar(User $user): ?string
     {
         if ($user->hasRole('Docente') && $user->docente?->foto)

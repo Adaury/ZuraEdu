@@ -32,8 +32,11 @@ export default function EstudianteLayout() {
       <Tabs.Screen name="tareas"      options={{ title: 'Tareas',     tabBarIcon: ({ color, size }) => <Ionicons name="checkbox-outline"   size={size} color={color} />, href: null }} />
       <Tabs.Screen name="cafeteria"   options={{ title: 'Cafetería',  tabBarIcon: ({ color, size }) => <Ionicons name="cafe-outline"       size={size} color={color} />, href: null }} />
       <Tabs.Screen name="transporte"  options={{ title: 'Transporte', tabBarIcon: ({ color, size }) => <Ionicons name="bus-outline"           size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="documentos"  options={{ title: 'Documentos', tabBarIcon: ({ color, size }) => <Ionicons name="folder-open-outline"    size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="solicitudes" options={{ title: 'Solicitudes',tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline"  size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="documentos"    options={{ title: 'Documentos',    tabBarIcon: ({ color, size }) => <Ionicons name="folder-open-outline"      size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="solicitudes"   options={{ title: 'Solicitudes',   tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline"    size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="calendario"    options={{ title: 'Calendario',    tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline"          size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="notificaciones"options={{ title: 'Notificaciones',tabBarIcon: ({ color, size }) => <Ionicons name="notifications-outline"     size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="perfil"        options={{ title: 'Perfil',        tabBarIcon: ({ color, size }) => <Ionicons name="person-circle-outline"     size={size} color={color} />, href: null }} />
     </Tabs>
   )
 }

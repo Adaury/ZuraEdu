@@ -26,7 +26,10 @@ export default function DocenteLayout() {
       <Tabs.Screen name="horario"        options={{ title: 'Horario',    tabBarIcon: ({ color, size }) => <Ionicons name="time"            size={size} color={color} />, href: null }} />
       <Tabs.Screen name="mensajes"       options={{ title: 'Mensajes',   tabBarIcon: ({ color, size }) => <Ionicons name="mail-outline"    size={size} color={color} />, href: null }} />
       <Tabs.Screen name="comunicados"    options={{ title: 'Comint',     tabBarIcon: ({ color, size }) => <Ionicons name="mail"            size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="gamificacion"  options={{ title: 'Gamificación', tabBarIcon: ({ color, size }) => <Ionicons name="trophy"          size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="gamificacion"   options={{ title: 'Gamificación',  tabBarIcon: ({ color, size }) => <Ionicons name="trophy"                   size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="calendario"    options={{ title: 'Calendario',    tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline"          size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="notificaciones"options={{ title: 'Notificaciones',tabBarIcon: ({ color, size }) => <Ionicons name="notifications-outline"     size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="perfil"        options={{ title: 'Perfil',        tabBarIcon: ({ color, size }) => <Ionicons name="person-circle-outline"     size={size} color={color} />, href: null }} />
     </Tabs>
   )
 }

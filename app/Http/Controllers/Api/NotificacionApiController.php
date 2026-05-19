@@ -25,7 +25,7 @@ class NotificacionApiController extends Controller
                 'id'         => $n->id,
                 'tipo'       => $n->tipo,
                 'titulo'     => $n->titulo,
-                'mensaje'    => $n->mensaje,
+                'cuerpo'     => $n->cuerpo,
                 'leida'      => $n->leida,
                 'created_at' => $n->created_at?->toIso8601String(),
             ]),

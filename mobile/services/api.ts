@@ -37,6 +37,8 @@ export const authApi = {
     api.post('/auth/login', { email, password }),
   logout: () => api.post('/auth/logout'),
   me:     () => api.get('/auth/me'),
+  changePassword: (data: { current_password: string; new_password: string; new_password_confirmation: string }) =>
+    api.patch('/auth/change-password', data),
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -80,7 +82,7 @@ export const comunicadosApi = {
 
 // ── Calendario ────────────────────────────────────────────────────────────────
 export const calendarioApi = {
-  index: () => api.get('/calendario'),
+  index: (params?: { desde?: string; hasta?: string }) => api.get('/calendario', { params }),
 }
 
 // ── Pagos ─────────────────────────────────────────────────────────────────────

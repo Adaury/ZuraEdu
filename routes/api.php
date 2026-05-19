@@ -57,9 +57,10 @@ Route::prefix('v1')->group(function () {
         Route::post('login',  [AuthApiController::class, 'login'])->name('api.auth.login');
 
         Route::middleware('auth:sanctum')->group(function () {
-            Route::post('logout', [AuthApiController::class, 'logout'])->name('api.auth.logout');
-            Route::get('me',      [AuthApiController::class, 'me'])->name('api.auth.me');
-            Route::post('refresh-token', [AuthApiController::class, 'refreshToken'])->name('api.auth.refresh');
+            Route::post('logout',           [AuthApiController::class, 'logout'])->name('api.auth.logout');
+            Route::get('me',                [AuthApiController::class, 'me'])->name('api.auth.me');
+            Route::post('refresh-token',    [AuthApiController::class, 'refreshToken'])->name('api.auth.refresh');
+            Route::patch('change-password', [AuthApiController::class, 'changePassword'])->name('api.auth.change-password');
         });
     });
 

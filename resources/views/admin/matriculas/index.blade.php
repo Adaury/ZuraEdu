@@ -195,18 +195,48 @@
             </span>
         </p>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ route('admin.matriculas.resumen') }}" class="btn btn-outline-primary btn-sm fw-semibold">
+            <i class="bi bi-bar-chart-line me-1"></i>Resumen
+        </a>
         <a href="{{ route('admin.matriculas.lista-pdf', request()->query()) }}" class="btn btn-danger btn-sm">
             <i class="bi bi-file-earmark-pdf-fill me-1"></i>PDF
         </a>
         <a href="{{ route('admin.matriculas.lista-excel', request()->query()) }}" class="btn btn-success btn-sm">
             <i class="bi bi-file-earmark-excel-fill me-1"></i>Excel
         </a>
+        <button class="btn btn-sm fw-semibold btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalMasivo">
+            <i class="bi bi-people me-1"></i>Masivo
+        </button>
         <a href="{{ route('admin.matriculas.create') }}" class="btn btn-sm fw-semibold" style="background:var(--primary);color:#fff;border-radius:8px;padding:.45rem 1rem;">
             <i class="bi bi-plus-lg me-1"></i>Nueva Matrícula
         </a>
     </div>
 </div>
+
+{{-- Stats rápidas --}}
+@if($schoolYear)
+<div class="d-flex gap-2 flex-wrap mb-3">
+    @php
+        $totalActivas    = $stats['activa']      ?? 0;
+        $totalRetiradas  = $stats['retirada']    ?? 0;
+        $totalTransferidas = $stats['transferida'] ?? 0;
+        $totalAll        = collect($stats)->sum();
+    @endphp
+    <div class="stats-pill"><i class="bi bi-check-circle-fill text-success me-1"></i><strong>{{ $totalActivas }}</strong> activas</div>
+    @if($totalRetiradas > 0)
+    <div class="stats-pill"><i class="bi bi-x-circle-fill text-danger me-1"></i><strong>{{ $totalRetiradas }}</strong> retiradas</div>
+    @endif
+    @if($totalTransferidas > 0)
+    <div class="stats-pill"><i class="bi bi-arrow-left-right text-warning me-1"></i><strong>{{ $totalTransferidas }}</strong> transferidas</div>
+    @endif
+    @if($inscPendientes > 0)
+    <a href="{{ route('admin.inscripciones.index') }}" class="stats-pill text-decoration-none" style="background:#fffbeb;border-color:#fbbf24;color:#b45309;">
+        <i class="bi bi-clock-fill me-1" style="color:#f59e0b"></i><strong>{{ $inscPendientes }}</strong> inscripciones pendientes de asignar
+    </a>
+    @endif
+</div>
+@endif
 
 {{-- Tabs de ciclo --}}
 @php
@@ -476,24 +506,49 @@
                                 </span>
                             </td>
                             <td class="text-end">
-                                <div class="d-flex gap-1 justify-content-end">
+                                <div class="d-flex gap-1 justify-content-end align-items-center">
                                     <a href="{{ route('admin.matriculas.show', $m) }}"
                                        class="btn btn-action"
                                        style="background:#f0f4f8;color:var(--primary);border:1px solid #e5e7eb;"
                                        title="Ver detalles">
                                         <i class="bi bi-eye-fill"></i>
                                     </a>
-                                    @if(($m->estado ?? 'activa') === 'activa')
-                                        <form action="{{ route('admin.matriculas.destroy', $m) }}" method="POST"
-                                              onsubmit="return confirm('¿Marcar esta matrícula como retirada?')">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="btn btn-action"
-                                                    style="background:#fff0f0;color:#dc2626;border:1px solid #fecaca;"
-                                                    title="Retirar">
-                                                <i class="bi bi-x-circle"></i>
-                                            </button>
-                                        </form>
-                                    @endif
+                                    <div class="dropdown">
+                                        <button class="btn btn-action" type="button" data-bs-toggle="dropdown"
+                                                style="background:#f0f4f8;color:#374151;border:1px solid #e5e7eb;">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow"
+                                            style="min-width:160px;border-radius:10px;border:1px solid #e5e7eb;font-size:.8rem;">
+                                            <li>
+                                                <a class="dropdown-item" href="{{ route('admin.matriculas.constancia', $m) }}" target="_blank">
+                                                    <i class="bi bi-file-earmark-text text-primary me-2"></i>Constancia PDF
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider my-1"></li>
+                                            @if(($m->estado ?? 'activa') === 'activa')
+                                                <li>
+                                                    <button class="dropdown-item text-danger"
+                                                            onclick="abrirCambioEstado({{ $m->id }},'{{ addslashes($m->estudiante->nombre_completo) }}','retirada')">
+                                                        <i class="bi bi-x-circle me-2"></i>Retirar
+                                                    </button>
+                                                </li>
+                                                <li>
+                                                    <button class="dropdown-item"  style="color:#d97706;"
+                                                            onclick="abrirCambioEstado({{ $m->id }},'{{ addslashes($m->estudiante->nombre_completo) }}','transferida')">
+                                                        <i class="bi bi-arrow-left-right me-2"></i>Transferir
+                                                    </button>
+                                                </li>
+                                            @else
+                                                <li>
+                                                    <button class="dropdown-item text-success"
+                                                            onclick="abrirCambioEstado({{ $m->id }},'{{ addslashes($m->estudiante->nombre_completo) }}','activa')">
+                                                        <i class="bi bi-arrow-counterclockwise me-2"></i>Reactivar
+                                                    </button>
+                                                </li>
+                                            @endif
+                                        </ul>
+                                    </div>
                                 </div>
                             </td>
                         </tr>
@@ -515,5 +570,198 @@
         @endif
     @endif
 </div>
+
+{{-- Modal: Cambiar Estado (compartido) --}}
+<div class="modal fade" id="modalCambiarEstado" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold" style="color:var(--primary);">
+                    <i class="bi bi-tag me-2"></i>Cambiar Estado de Matrícula
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formCambiarEstado" method="POST">
+                @csrf @method('PATCH')
+                <input type="hidden" name="estado" id="estadoInput">
+                <div class="modal-body">
+                    <p class="mb-3" style="font-size:.875rem;">
+                        Cambiar estado de <strong id="nombreEstudiante"></strong> a:
+                        <span id="badgeNuevoEstado" class="badge-estado ms-1"></span>
+                    </p>
+                    <div>
+                        <label class="form-label" style="font-size:.8rem;font-weight:600;">Motivo (opcional)</label>
+                        <textarea name="motivo" class="form-control" rows="2"
+                                  style="border-radius:8px;font-size:.875rem;"
+                                  placeholder="Ingresa el motivo del cambio..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm" data-bs-dismiss="modal"
+                            style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:8px;">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="btnConfirmarEstado" class="btn btn-sm fw-semibold"
+                            style="background:var(--primary);color:#fff;border-radius:8px;">
+                        <i class="bi bi-check-lg me-1"></i>Confirmar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: Matrícula Masiva --}}
+<div class="modal fade" id="modalMasivo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold" style="color:var(--primary);">
+                    <i class="bi bi-people me-2"></i>Matrícula Masiva
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('admin.matriculas.masiva') }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    @if($estudiantesDisp->isEmpty())
+                        <div class="alert alert-info border-0" style="border-radius:8px;background:#eff6ff;">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Todos los estudiantes activos ya están matriculados en este año escolar.
+                        </div>
+                    @else
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" style="font-size:.8rem;font-weight:600;">Grupo destino *</label>
+                                <select name="grupo_id" class="form-select" style="border-radius:8px;font-size:.875rem;" required>
+                                    <option value="">— Seleccionar grupo —</option>
+                                    @php
+                                        $nivelesM = [1=>'1ro',2=>'2do',3=>'3ro',4=>'4to',5=>'5to',6=>'6to'];
+                                        $gruposPorCicloM = $grupos->groupBy(fn($g) => $g->grado->ciclo ?? 'primer_ciclo');
+                                    @endphp
+                                    @foreach(['primer_ciclo' => 'Primer Ciclo', 'segundo_ciclo' => 'Segundo Ciclo'] as $ck => $cl)
+                                        @if($gruposPorCicloM->has($ck))
+                                            <optgroup label="{{ $cl }}">
+                                                @foreach($gruposPorCicloM[$ck] as $g)
+                                                    @php $lbl = ($nivelesM[$g->grado->nivel ?? 0] ?? '') . ' ' . ($g->seccion->nombre ?? ''); @endphp
+                                                    <option value="{{ $g->id }}">{{ $lbl }}</option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endif
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" style="font-size:.8rem;font-weight:600;">Fecha de matrícula *</label>
+                                <input type="date" name="fecha_matricula" class="form-control"
+                                       style="border-radius:8px;font-size:.875rem;"
+                                       value="{{ now()->format('Y-m-d') }}" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" style="font-size:.8rem;font-weight:600;">
+                                    Estudiantes a matricular *
+                                    <span class="text-muted" style="font-weight:400;">({{ $estudiantesDisp->count() }} disponibles)</span>
+                                </label>
+                                <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+                                    <div style="padding:.5rem .75rem;background:#f8fafc;border-bottom:1px solid #e5e7eb;
+                                                display:flex;justify-content:space-between;align-items:center;">
+                                        <span style="font-size:.75rem;color:#2563eb;font-weight:700;">Seleccionar estudiantes</span>
+                                        <div class="d-flex gap-2">
+                                            <button type="button" onclick="toggleAllMasivo(true)"
+                                                    style="background:#eff6ff;color:#2563eb;border:none;border-radius:6px;
+                                                           font-size:.72rem;padding:.2rem .55rem;cursor:pointer;">
+                                                <i class="bi bi-check-all me-1"></i>Todos
+                                            </button>
+                                            <button type="button" onclick="toggleAllMasivo(false)"
+                                                    style="background:#f3f4f6;color:#6b7280;border:none;border-radius:6px;
+                                                           font-size:.72rem;padding:.2rem .55rem;cursor:pointer;">
+                                                Ninguno
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="listaMasivoEstudiantes" style="max-height:220px;overflow-y:auto;padding:.4rem 0;">
+                                        @foreach($estudiantesDisp as $est)
+                                            <label class="d-flex align-items-center gap-2 px-3 py-1"
+                                                   style="cursor:pointer;font-size:.83rem;">
+                                                <input type="checkbox" name="estudiante_ids[]" value="{{ $est->id }}"
+                                                       class="form-check-input masivo-check" style="margin-top:0;flex-shrink:0;">
+                                                <span style="font-weight:600;color:#1e293b;">
+                                                    {{ $est->apellidos }}, {{ $est->nombres }}
+                                                </span>
+                                                @if($est->numero_matricula)
+                                                    <span style="font-size:.7rem;color:#2563eb;font-family:monospace;">
+                                                        {{ $est->numero_matricula }}
+                                                    </span>
+                                                @endif
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                <div class="mt-1" style="font-size:.73rem;color:#6b7280;">
+                                    <span id="masivoSelCount">0</span> estudiante(s) seleccionado(s)
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm" data-bs-dismiss="modal"
+                            style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:8px;">
+                        Cerrar
+                    </button>
+                    @if($estudiantesDisp->isNotEmpty())
+                        <button type="submit" class="btn btn-sm fw-semibold"
+                                style="background:var(--primary);color:#fff;border-radius:8px;">
+                            <i class="bi bi-people me-1"></i>Matricular Seleccionados
+                        </button>
+                    @endif
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+function abrirCambioEstado(id, nombre, nuevoEstado) {
+    const form = document.getElementById('formCambiarEstado');
+    form.action = '{{ url("admin/matriculas") }}/' + id + '/estado';
+
+    document.getElementById('estadoInput').value = nuevoEstado;
+    document.getElementById('nombreEstudiante').textContent = nombre;
+
+    const badge = document.getElementById('badgeNuevoEstado');
+    const btn   = document.getElementById('btnConfirmarEstado');
+
+    const cfg = {
+        activa:      { cls: 'badge-activa',    label: 'ACTIVA',     btn: '#059669' },
+        retirada:    { cls: 'badge-retirada',  label: 'RETIRADA',   btn: '#dc2626' },
+        transferida: { cls: 'badge-trasladada',label: 'TRANSFERIDA',btn: '#d97706' },
+    };
+    const c = cfg[nuevoEstado] || cfg.activa;
+    badge.className = 'badge-estado ' + c.cls + ' ms-1';
+    badge.textContent = c.label;
+    btn.style.background = c.btn;
+    btn.style.color = '#fff';
+
+    form.querySelector('textarea[name="motivo"]').value = '';
+    new bootstrap.Modal(document.getElementById('modalCambiarEstado')).show();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const container = document.getElementById('listaMasivoEstudiantes');
+    if (container) container.addEventListener('change', updateMasivoCount);
+});
+function updateMasivoCount() {
+    const n = document.querySelectorAll('.masivo-check:checked').length;
+    const el = document.getElementById('masivoSelCount');
+    if (el) el.textContent = n;
+}
+function toggleAllMasivo(checked) {
+    document.querySelectorAll('.masivo-check').forEach(c => c.checked = checked);
+    updateMasivoCount();
+}
+</script>
+@endpush
 
 @endsection

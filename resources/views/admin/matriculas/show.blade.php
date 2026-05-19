@@ -203,10 +203,23 @@
            class="btn btn-sm fw-semibold btn-outline-primary">
             <i class="bi bi-mortarboard me-1"></i>Const. Estudios
         </a>
+        <button type="button" class="btn btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#editarMatriculaModal"
+                style="background:#f0f4f8;color:var(--primary);border:1px solid #dde3ef;border-radius:8px;">
+            <i class="bi bi-pencil me-1"></i>Editar
+        </button>
         @if(($matricula->estado ?? 'activa') === 'activa')
             <button type="button" class="btn btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#cambiarGrupoModal"
                     style="background:#f0f4f8;color:var(--primary);border:1px solid #dde3ef;border-radius:8px;">
                 <i class="bi bi-arrow-left-right me-1"></i>Cambiar Grupo
+            </button>
+            <button type="button" class="btn btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#cambiarEstadoModal"
+                    style="background:#fff0f0;color:#dc2626;border:1px solid #fecaca;border-radius:8px;">
+                <i class="bi bi-tag me-1"></i>Estado
+            </button>
+        @else
+            <button type="button" class="btn btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#cambiarEstadoModal"
+                    style="background:#f0fdf4;color:#059669;border:1px solid #6ee7b7;border-radius:8px;">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Reactivar
             </button>
         @endif
         <a href="{{ route('admin.matriculas.index') }}" class="btn btn-sm"
@@ -328,6 +341,113 @@
         </div>
     </div>
 
+    {{-- Representantes --}}
+    @if($matricula->estudiante->representantes && $matricula->estudiante->representantes->isNotEmpty())
+    <div class="col-12 col-md-6">
+        <div class="info-card h-100">
+            <div class="info-card-header" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);">
+                <h5>Representantes / Tutores</h5>
+                <div class="title">
+                    <i class="bi bi-people me-1"></i>
+                    {{ $matricula->estudiante->representantes->count() }} representante(s)
+                </div>
+            </div>
+            <div class="info-card-body" style="padding:0;">
+                @foreach($matricula->estudiante->representantes as $rep)
+                    <div style="padding:.85rem 1.2rem;{{ !$loop->last ? 'border-bottom:1px solid #f3f4f6;' : '' }}">
+                        <div class="d-flex align-items-start gap-2">
+                            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a78bfa);
+                                        display:flex;align-items:center;justify-content:center;
+                                        font-size:.75rem;font-weight:800;color:#fff;flex-shrink:0;">
+                                {{ strtoupper(substr($rep->nombres ?? $rep->nombre ?? '?', 0, 1)) }}
+                            </div>
+                            <div class="flex-grow-1">
+                                <div style="font-weight:700;font-size:.85rem;color:#1e293b;">
+                                    {{ trim(($rep->nombres ?? $rep->nombre ?? '') . ' ' . ($rep->apellidos ?? $rep->apellido ?? '')) ?: '—' }}
+                                </div>
+                                <div class="d-flex flex-wrap gap-2 mt-1">
+                                    @if($rep->parentesco ?? $rep->vinculo ?? null)
+                                        <span style="font-size:.72rem;background:#ede9fe;color:#7c3aed;
+                                                     border-radius:5px;padding:.1rem .45rem;font-weight:700;">
+                                            {{ $rep->parentesco ?? $rep->vinculo }}
+                                        </span>
+                                    @endif
+                                    @if($rep->celular ?? $rep->telefono ?? null)
+                                        <span style="font-size:.72rem;color:#2563eb;font-family:monospace;font-weight:700;">
+                                            <i class="bi bi-telephone me-1"></i>{{ $rep->celular ?? $rep->telefono }}
+                                        </span>
+                                    @endif
+                                    @if($rep->email ?? null)
+                                        <span style="font-size:.72rem;color:#059669;">
+                                            <i class="bi bi-envelope me-1"></i>{{ $rep->email }}
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Asistencia stats --}}
+    <div class="col-12 col-md-6">
+        <div class="info-card h-100">
+            <div class="info-card-header" style="background:linear-gradient(135deg,#0891b2,#38bdf8);">
+                <h5>Asistencia</h5>
+                <div class="title">
+                    <i class="bi bi-calendar-check me-1"></i>Estadísticas de asistencia
+                </div>
+            </div>
+            <div class="info-card-body">
+                @if($totalAsistencias > 0)
+                    @php
+                        $ausentes = $totalAsistencias - $presentes;
+                        $pctColor = $pctAsistencia >= 85 ? '#059669' : ($pctAsistencia >= 70 ? '#d97706' : '#dc2626');
+                        $pctBg    = $pctAsistencia >= 85 ? '#d1fae5' : ($pctAsistencia >= 70 ? '#fef3c7' : '#fee2e2');
+                    @endphp
+                    <div class="text-center mb-3">
+                        <div style="font-size:2.2rem;font-weight:900;color:{{ $pctColor }};">
+                            {{ $pctAsistencia }}%
+                        </div>
+                        <div style="font-size:.75rem;color:#6b7280;">porcentaje de asistencia</div>
+                        <div class="mt-2" style="background:#e5e7eb;border-radius:8px;height:10px;overflow:hidden;">
+                            <div style="height:100%;width:{{ $pctAsistencia }}%;background:{{ $pctColor }};border-radius:8px;
+                                        transition:width .6s ease;"></div>
+                        </div>
+                    </div>
+                    <div class="row g-2 text-center">
+                        <div class="col-4">
+                            <div style="background:#eff6ff;border-radius:8px;padding:.6rem .3rem;">
+                                <div style="font-size:1.1rem;font-weight:800;color:#1d4ed8;">{{ $totalAsistencias }}</div>
+                                <div style="font-size:.68rem;color:#2563eb;font-weight:600;">TOTAL</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div style="background:#f0fdf4;border-radius:8px;padding:.6rem .3rem;">
+                                <div style="font-size:1.1rem;font-weight:800;color:#059669;">{{ $presentes }}</div>
+                                <div style="font-size:.68rem;color:#059669;font-weight:600;">PRESENTES</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div style="background:#fff1f2;border-radius:8px;padding:.6rem .3rem;">
+                                <div style="font-size:1.1rem;font-weight:800;color:#dc2626;">{{ $ausentes }}</div>
+                                <div style="font-size:.68rem;color:#dc2626;font-weight:600;">AUSENTES</div>
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    <div class="text-center py-4">
+                        <i class="bi bi-calendar-x" style="font-size:2rem;color:#d1d5db;display:block;margin-bottom:.5rem;"></i>
+                        <div style="font-size:.82rem;color:#9ca3af;">Sin registros de asistencia aún.</div>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+
     {{-- Calificaciones summary --}}
     @if($matricula->calificaciones && $matricula->calificaciones->isNotEmpty())
         <div class="col-12">
@@ -376,6 +496,90 @@
         </div>
     @endif
 
+</div>
+
+{{-- Modal: Editar Matrícula --}}
+<div class="modal fade" id="editarMatriculaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold" style="color:var(--primary);">
+                    <i class="bi bi-pencil me-2"></i>Editar Matrícula
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('admin.matriculas.update', $matricula) }}" method="POST">
+                @csrf @method('PATCH')
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:.8rem;font-weight:600;">Fecha de Matrícula *</label>
+                        <input type="date" name="fecha_matricula" class="form-control"
+                               style="border-radius:8px;font-size:.875rem;"
+                               value="{{ $matricula->fecha_matricula?->format('Y-m-d') }}" required>
+                    </div>
+                    <div>
+                        <label class="form-label" style="font-size:.8rem;font-weight:600;">Observaciones</label>
+                        <textarea name="observaciones" class="form-control" rows="3"
+                                  style="border-radius:8px;font-size:.875rem;"
+                                  placeholder="Notas u observaciones sobre esta matrícula...">{{ $matricula->observaciones }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm" data-bs-dismiss="modal"
+                            style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:8px;">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-sm fw-semibold"
+                            style="background:var(--primary);color:#fff;border-radius:8px;">
+                        <i class="bi bi-check-lg me-1"></i>Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: Cambiar Estado --}}
+<div class="modal fade" id="cambiarEstadoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold" style="color:var(--primary);">
+                    <i class="bi bi-tag me-2"></i>Cambiar Estado de Matrícula
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('admin.matriculas.estado', $matricula) }}" method="POST">
+                @csrf @method('PATCH')
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:.8rem;font-weight:600;">Nuevo Estado *</label>
+                        <select name="estado" class="form-select" style="border-radius:8px;font-size:.875rem;" required>
+                            <option value="activa"      {{ ($matricula->estado ?? 'activa') === 'activa'      ? 'selected' : '' }}>Activa</option>
+                            <option value="retirada"    {{ ($matricula->estado ?? '') === 'retirada'    ? 'selected' : '' }}>Retirada</option>
+                            <option value="transferida" {{ ($matricula->estado ?? '') === 'transferida' ? 'selected' : '' }}>Transferida</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label" style="font-size:.8rem;font-weight:600;">Motivo</label>
+                        <textarea name="motivo" class="form-control" rows="2"
+                                  style="border-radius:8px;font-size:.875rem;"
+                                  placeholder="Motivo del cambio de estado..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm" data-bs-dismiss="modal"
+                            style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:8px;">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-sm fw-semibold"
+                            style="background:var(--primary);color:#fff;border-radius:8px;">
+                        <i class="bi bi-check-lg me-1"></i>Confirmar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 {{-- Cambiar Grupo Modal --}}

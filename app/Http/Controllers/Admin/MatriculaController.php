@@ -6,10 +6,12 @@ use App\Events\DashboardActualizado;
 use App\Http\Controllers\Controller;
 use App\Models\Estudiante;
 use App\Models\Grupo;
+use App\Models\Inscripcion;
 use App\Models\Matricula;
 use App\Models\Notificacion;
 use App\Models\SchoolYear;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class MatriculaController extends Controller
@@ -58,12 +60,30 @@ class MatriculaController extends Controller
             ->get();
 
         // Conteos para el panel de configuración inicial
-        $totalGruposAnio      = $schoolYear ? Grupo::where('school_year_id', $schoolYear->id)->count() : 0;
+        $totalGruposAnio         = $schoolYear ? Grupo::where('school_year_id', $schoolYear->id)->count() : 0;
         $totalEstudiantesActivos = Estudiante::where('estado', 'activo')->count();
+
+        // Stats rápidas para el header
+        $stats = Matricula::where('school_year_id', $schoolYear?->id)
+            ->selectRaw('estado, count(*) as total')
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
+
+        $inscPendientes = Inscripcion::where('school_year_id', $schoolYear?->id)
+            ->where('estado', 'pendiente')
+            ->count();
+
+        // Estudiantes disponibles para matrícula masiva
+        $enrolledIds    = Matricula::where('school_year_id', $schoolYear?->id)->pluck('estudiante_id');
+        $estudiantesDisp = Estudiante::activos()
+            ->whereNotIn('id', $enrolledIds)
+            ->orderBy('apellidos')
+            ->get(['id', 'nombres', 'apellidos', 'numero_matricula']);
 
         return view('admin.matriculas.index', compact(
             'matriculas', 'schoolYear', 'grupos', 'ciclo',
-            'totalGruposAnio', 'totalEstudiantesActivos'
+            'totalGruposAnio', 'totalEstudiantesActivos',
+            'stats', 'inscPendientes', 'estudiantesDisp'
         ));
     }
 
@@ -150,9 +170,149 @@ class MatriculaController extends Controller
 
     public function show(Matricula $matricula)
     {
-        $matricula->load(['estudiante', 'grupo.grado', 'grupo.seccion', 'grupo.schoolYear', 'calificaciones']);
+        $matricula->load([
+            'estudiante.representantes',
+            'grupo.grado',
+            'grupo.seccion',
+            'grupo.schoolYear',
+            'calificaciones.asignacion.asignatura',
+            'calificaciones.periodo',
+        ]);
 
-        return view('admin.matriculas.show', compact('matricula'));
+        $totalAsistencias = $matricula->asistencias()->count();
+        $presentes        = $matricula->asistencias()->whereIn('estado', ['presente', 'tarde'])->count();
+        $pctAsistencia    = $totalAsistencias > 0 ? round($presentes / $totalAsistencias * 100, 1) : null;
+
+        $gruposDisp = Grupo::with(['grado', 'seccion'])
+            ->where('school_year_id', $matricula->grupo?->school_year_id)
+            ->activos()
+            ->orderBy('grado_id')->orderBy('seccion_id')
+            ->get();
+
+        return view('admin.matriculas.show', compact(
+            'matricula', 'totalAsistencias', 'presentes', 'pctAsistencia', 'gruposDisp'
+        ));
+    }
+
+    public function update(Request $request, Matricula $matricula)
+    {
+        $data = $request->validate([
+            'fecha_matricula' => 'required|date',
+            'observaciones'   => 'nullable|string|max:1000',
+        ]);
+
+        $matricula->update($data);
+
+        return back()->with('success', 'Matrícula actualizada.');
+    }
+
+    public function cambiarEstado(Request $request, Matricula $matricula)
+    {
+        $data = $request->validate([
+            'estado' => 'required|in:activa,retirada,transferida',
+            'motivo' => 'nullable|string|max:500',
+        ]);
+
+        $matricula->update([
+            'estado'       => $data['estado'],
+            'observaciones'=> $data['motivo']
+                ? ($matricula->observaciones ? $matricula->observaciones . ' | ' : '') . $data['motivo']
+                : $matricula->observaciones,
+        ]);
+
+        $labels = ['activa' => 'reactivada', 'retirada' => 'marcada como retirada', 'transferida' => 'marcada como transferida'];
+
+        return back()->with('success', 'Matrícula ' . ($labels[$data['estado']] ?? $data['estado']) . ' correctamente.');
+    }
+
+    public function storeMasivo(Request $request)
+    {
+        $data = $request->validate([
+            'grupo_id'          => 'required|exists:grupos,id',
+            'estudiante_ids'    => 'required|array|min:1',
+            'estudiante_ids.*'  => 'integer|exists:estudiantes,id',
+            'fecha_matricula'   => 'required|date',
+        ]);
+
+        $schoolYear = SchoolYear::actual();
+        abort_unless($schoolYear, 422, 'No hay año escolar activo.');
+
+        $creados = 0;
+        $omitidos = 0;
+
+        DB::transaction(function () use ($data, $schoolYear, &$creados, &$omitidos) {
+            foreach ($data['estudiante_ids'] as $estId) {
+                $yaExiste = Matricula::where('school_year_id', $schoolYear->id)
+                    ->where('estudiante_id', $estId)
+                    ->exists();
+
+                if ($yaExiste) { $omitidos++; continue; }
+
+                $numeroOrden = Matricula::where('grupo_id', $data['grupo_id'])->count() + $creados + 1;
+
+                $matricula = Matricula::create([
+                    'school_year_id'  => $schoolYear->id,
+                    'estudiante_id'   => $estId,
+                    'grupo_id'        => $data['grupo_id'],
+                    'fecha_matricula' => $data['fecha_matricula'],
+                    'numero_orden'    => $numeroOrden,
+                    'estado'          => 'activa',
+                ]);
+
+                // Marcar inscripción como asignada si existe
+                Inscripcion::where('school_year_id', $schoolYear->id)
+                    ->where('estudiante_id', $estId)
+                    ->where('estado', 'pendiente')
+                    ->update(['estado' => 'asignada', 'grupo_id' => $data['grupo_id'], 'matricula_id' => $matricula->id]);
+
+                $creados++;
+            }
+
+            try {
+                DashboardActualizado::dispatch(tenant_id() ?? 0, 'nueva_matricula', [
+                    'grupo_id' => $data['grupo_id'],
+                ]);
+            } catch (\Throwable) {}
+        });
+
+        $msg = "{$creados} matrícula(s) registrada(s) exitosamente.";
+        if ($omitidos) $msg .= " {$omitidos} omitida(s) por ya estar matriculadas.";
+
+        return back()->with('success', $msg);
+    }
+
+    public function resumen()
+    {
+        $schoolYear = SchoolYear::actual();
+
+        $grupos = Grupo::with(['grado', 'seccion'])
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->orderBy('grado_id')->orderBy('seccion_id')
+            ->get();
+
+        $grupoIds = $grupos->pluck('id');
+
+        // Conteos por estado por grupo en una sola query
+        $conteosPorGrupo = Matricula::where('school_year_id', $schoolYear?->id)
+            ->whereIn('grupo_id', $grupoIds)
+            ->selectRaw('grupo_id, estado, count(*) as total')
+            ->groupBy('grupo_id', 'estado')
+            ->get()
+            ->groupBy('grupo_id');
+
+        // Totales globales
+        $totales = Matricula::where('school_year_id', $schoolYear?->id)
+            ->selectRaw('estado, count(*) as total')
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
+
+        $inscPendientes = Inscripcion::where('school_year_id', $schoolYear?->id)
+            ->where('estado', 'pendiente')
+            ->count();
+
+        return view('admin.matriculas.resumen', compact(
+            'schoolYear', 'grupos', 'conteosPorGrupo', 'totales', 'inscPendientes'
+        ));
     }
 
     public function destroy(Matricula $matricula)

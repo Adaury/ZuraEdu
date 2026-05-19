@@ -69,11 +69,15 @@ Route::middleware('can:gestionar-matriculas')->group(function () {
 
 // ── Matrículas + Asignaciones ─────────────────────────────────────────────
 Route::middleware('can:gestionar-matriculas')->group(function () {
-    Route::patch('matriculas/{matricula}/cambiar-grupo',  [MatriculaController::class, 'cambiarGrupo'])->name('matriculas.cambiarGrupo');
-    Route::get('matriculas/{matricula}/constancia',         [MatriculaController::class, 'constancia'])->name('matriculas.constancia');
-    Route::get('matriculas/{matricula}/constancia-estudios',[MatriculaController::class, 'constanciaEstudios'])->name('matriculas.constancia-estudios');
-    Route::get('matriculas/lista/pdf',                      [MatriculaController::class, 'listaPdf'])->name('matriculas.lista-pdf');
-    Route::get('matriculas/lista/excel',                    [MatriculaController::class, 'listaExcel'])->name('matriculas.lista-excel');
+    Route::get('matriculas/resumen',                          [MatriculaController::class, 'resumen'])->name('matriculas.resumen');
+    Route::post('matriculas/masiva',                          [MatriculaController::class, 'storeMasivo'])->name('matriculas.masiva');
+    Route::patch('matriculas/{matricula}/cambiar-grupo',      [MatriculaController::class, 'cambiarGrupo'])->name('matriculas.cambiarGrupo');
+    Route::patch('matriculas/{matricula}/estado',             [MatriculaController::class, 'cambiarEstado'])->name('matriculas.estado');
+    Route::patch('matriculas/{matricula}',                    [MatriculaController::class, 'update'])->name('matriculas.update');
+    Route::get('matriculas/{matricula}/constancia',           [MatriculaController::class, 'constancia'])->name('matriculas.constancia');
+    Route::get('matriculas/{matricula}/constancia-estudios',  [MatriculaController::class, 'constanciaEstudios'])->name('matriculas.constancia-estudios');
+    Route::get('matriculas/lista/pdf',                        [MatriculaController::class, 'listaPdf'])->name('matriculas.lista-pdf');
+    Route::get('matriculas/lista/excel',                      [MatriculaController::class, 'listaExcel'])->name('matriculas.lista-excel');
     Route::resource('matriculas', MatriculaController::class)->except(['edit', 'update']);
     Route::get('asignaciones/lista/pdf',   [AsignacionController::class, 'listaPdf'])->name('asignaciones.lista-pdf');
     Route::get('asignaciones/lista/excel', [AsignacionController::class, 'listaExcel'])->name('asignaciones.lista-excel');

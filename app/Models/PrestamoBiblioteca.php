@@ -21,12 +21,14 @@ class PrestamoBiblioteca extends Model
         'fecha_devolucion',
         'estado',
         'notas',
+        'renovaciones',
     ];
 
     protected $casts = [
         'fecha_prestamo'    => 'date',
         'fecha_vencimiento' => 'date',
         'fecha_devolucion'  => 'date',
+        'renovaciones'      => 'integer',
     ];
 
     // ── Relaciones ────────────────────────────────────────────────────────

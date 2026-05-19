@@ -226,6 +226,7 @@ class BibliotecaController extends Controller
         $prestamo->update([
             'fecha_vencimiento' => $data['nueva_fecha'],
             'estado'            => 'activo',
+            'renovaciones'      => ($prestamo->renovaciones ?? 0) + 1,
         ]);
 
         return back()->with('success', 'Préstamo renovado hasta el ' . \Carbon\Carbon::parse($data['nueva_fecha'])->format('d/m/Y') . '.');
@@ -345,7 +346,7 @@ class BibliotecaController extends Controller
             $ws->setCellValue("C{$row}", $p->libro?->titulo ?? '—');
             $ws->setCellValue("D{$row}", $p->fecha_prestamo?->format('d/m/Y') ?? '—');
             $ws->setCellValue("E{$row}", $p->fecha_devolucion ? $p->fecha_devolucion->format('d/m/Y') : ($p->fecha_vencimiento?->format('d/m/Y') ?? '—'));
-            $ws->setCellValue("F{$row}", $p->devuelto ? 'Devuelto' : ($p->fecha_vencimiento?->isPast() ? 'Vencido' : 'Activo'));
+            $ws->setCellValue("F{$row}", $p->estado === 'devuelto' ? 'Devuelto' : ($p->fecha_vencimiento?->isPast() ? 'Vencido' : 'Activo'));
             $ws->setCellValue("G{$row}", $p->renovaciones ?? 0);
             if ($i % 2 === 1) {
                 $ws->getStyle("A{$row}:G{$row}")->getFill()

@@ -1,6 +1,22 @@
 @extends('layouts.admin')
 @section('page-title', 'Biblioteca — Préstamos')
 
+@push('styles')
+<style>
+[data-theme="dark"] .card { background:#1e293b !important; border-color:#334155 !important; }
+[data-theme="dark"] .card-body { background:#1e293b !important; }
+[data-theme="dark"] .table-light, [data-theme="dark"] thead.table-light { background:#1e3a8a !important; }
+[data-theme="dark"] thead th { color:#93c5fd !important; border-color:#334155 !important; }
+[data-theme="dark"] .table-hover tbody tr:hover { background:#334155 !important; }
+[data-theme="dark"] tbody td { border-color:#334155 !important; color:#e2e8f0 !important; }
+[data-theme="dark"] .text-muted { color:#94a3b8 !important; }
+[data-theme="dark"] .form-control, [data-theme="dark"] .form-select { background:#1e293b; border-color:#334155; color:#e2e8f0; }
+[data-theme="dark"] .modal-content { background:#1e293b !important; border-color:#334155 !important; }
+[data-theme="dark"] .modal-header, [data-theme="dark"] .modal-footer { border-color:#334155 !important; }
+[data-theme="dark"] .table-danger { background:rgba(239,68,68,.12) !important; }
+</style>
+@endpush
+
 @section('content')
 <div class="container-fluid py-3">
 
@@ -125,7 +141,7 @@
         <div class="card-body p-0">
             @if($prestamos->isEmpty())
             <div class="text-center py-5 text-muted">
-                <i class="bi bi-arrow-left-right" style="font-size:2.5rem;"></i>
+                <i class="bi bi-arrow-left-right" style="font-size:2.5rem;display:block;margin-bottom:.5rem;"></i>
                 <p class="mt-2 mb-0">No hay préstamos registrados.</p>
                 <a href="{{ route('admin.biblioteca.prestamos.create') }}" class="btn btn-primary btn-sm mt-2">
                     Registrar primer préstamo
@@ -142,6 +158,7 @@
                             <th class="text-center">Vencimiento</th>
                             <th class="text-center">Devolución</th>
                             <th class="text-center">Estado</th>
+                            <th class="text-center">Renov.</th>
                             <th class="text-end">Acción</th>
                         </tr>
                     </thead>
@@ -172,6 +189,13 @@
                                 <span class="badge bg-{{ $prestamo->badge_estado }}">
                                     {{ ucfirst($prestamo->estado) }}
                                 </span>
+                            </td>
+                            <td class="text-center">
+                                @if(($prestamo->renovaciones ?? 0) > 0)
+                                <span class="badge bg-secondary">{{ $prestamo->renovaciones }}</span>
+                                @else
+                                <span class="text-muted">—</span>
+                                @endif
                             </td>
                             <td class="text-end">
                                 @if($prestamo->estado !== 'devuelto')

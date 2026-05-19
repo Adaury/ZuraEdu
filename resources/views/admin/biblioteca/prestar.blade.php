@@ -43,14 +43,12 @@
                         <select name="libro_id"
                                 class="form-select @error('libro_id') is-invalid @enderror"
                                 required
-                                x-data
-                                x-init
                                 id="selectLibro">
                             <option value="">Seleccionar libro disponible...</option>
                             @foreach($libros as $libro)
                             <option value="{{ $libro->id }}"
                                     data-disponibles="{{ $libro->cantidad_disponible }}"
-                                    {{ old('libro_id') == $libro->id ? 'selected' : '' }}>
+                                    {{ old('libro_id', request('libro_id')) == $libro->id ? 'selected' : '' }}>
                                 {{ $libro->titulo }} — {{ $libro->autor }}
                                 ({{ $libro->cantidad_disponible }} disponible{{ $libro->cantidad_disponible !== 1 ? 's' : '' }})
                             </option>

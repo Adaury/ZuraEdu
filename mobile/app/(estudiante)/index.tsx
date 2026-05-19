@@ -10,6 +10,7 @@ import { KpiCard } from '../../components/ui/Card'
 import { Colors } from '../../constants/Colors'
 
 const QUICK_LINKS = [
+  { label: 'Observaciones', icon: 'chatbubble',    route: '/(estudiante)/observaciones', color: Colors.indigo },
   { label: 'Horario',    icon: 'time',             route: '/(estudiante)/horario',      color: Colors.blue   },
   { label: 'Mi Estado',  icon: 'shield-checkmark', route: '/(estudiante)/riesgo',       color: Colors.amber  },
   { label: 'Mis Pagos',  icon: 'card',             route: '/(estudiante)/pagos',        color: Colors.green  },

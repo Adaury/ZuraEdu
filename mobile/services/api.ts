@@ -184,6 +184,12 @@ export const documentosApi = {
   infoHijo: (id: number) => api.get(`/documentos/info-hijo/${id}`),
 }
 
+// ── Observaciones (Estudiante y Representante) ────────────────────────────────
+export const observacionesApi = {
+  index:              () => api.get('/observaciones'),
+  hijo: (id: number) => api.get(`/observaciones/hijo/${id}`),
+}
+
 // ── Solicitudes ───────────────────────────────────────────────────────────────
 export const solicitudesApi = {
   index: () => api.get('/solicitudes'),

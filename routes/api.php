@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AsistenciaApiController;
+use App\Http\Controllers\Api\ObservacionesApiController;
 use App\Http\Controllers\Api\AuthApiController;
 use App\Http\Controllers\Api\CafeteriaApiController;
 use App\Http\Controllers\Api\CalendarioApiController;
@@ -184,6 +185,12 @@ Route::prefix('v1')->group(function () {
         Route::prefix('documentos')->name('api.documentos.')->group(function () {
             Route::get('info',                        [DocumentosApiController::class, 'info'])->name('info');
             Route::get('info-hijo/{estudiante}',      [DocumentosApiController::class, 'infoHijo'])->name('info-hijo');
+        });
+
+        // Observaciones (Estudiante ve las suyas; Representante ve las de su hijo)
+        Route::prefix('observaciones')->name('api.observaciones.')->group(function () {
+            Route::get('/',                    [ObservacionesApiController::class, 'misObservaciones'])->name('index');
+            Route::get('hijo/{estudiante}',    [ObservacionesApiController::class, 'hijoObservaciones'])->name('hijo');
         });
 
         // Solicitudes (estudiante + representante)

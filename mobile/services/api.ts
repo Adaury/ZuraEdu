@@ -103,6 +103,17 @@ export const docenteApi = {
   consultarAsistencia: (id: number)=> api.get(`/docente/asistencia/${id}`),
   registrarAsistencia: (data: any) => api.post('/docente/asistencia', data),
   calificaciones: (asignacionId: number) => api.get(`/docente/calificaciones/${asignacionId}`),
+  // Observaciones
+  observaciones: (asignacionId: number) => api.get('/docente/observaciones', { params: { asignacion_id: asignacionId } }),
+  storeObservacion: (data: { asignacion_id: number; estudiante_id: number; tipo: string; texto: string; privada?: boolean }) =>
+    api.post('/docente/observaciones', data),
+  // Tareas docente
+  tareasDocente: (asignacionId: number) => api.get('/docente/tareas', { params: { asignacion_id: asignacionId } }),
+  storeTarea: (data: { asignacion_id: number; titulo: string; tipo: string; fecha_limite: string; descripcion?: string; puntos_valor?: number }) =>
+    api.post('/docente/tareas', data),
+  entregasTarea: (tareaId: number)  => api.get(`/docente/tareas/${tareaId}/entregas`),
+  calificarEntrega: (tareaId: number, data: { estudiante_id: number; estado: string; calificacion?: number | null; notas_docente?: string }) =>
+    api.patch(`/docente/tareas/${tareaId}/calificar`, data),
 }
 
 // ── Mensajes ─────────────────────────────────────────────────────────────────

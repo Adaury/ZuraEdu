@@ -30,6 +30,8 @@ export default function DocenteLayout() {
       <Tabs.Screen name="calendario"    options={{ title: 'Calendario',    tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline"          size={size} color={color} />, href: null }} />
       <Tabs.Screen name="notificaciones"options={{ title: 'Notificaciones',tabBarIcon: ({ color, size }) => <Ionicons name="notifications-outline"     size={size} color={color} />, href: null }} />
       <Tabs.Screen name="perfil"        options={{ title: 'Perfil',        tabBarIcon: ({ color, size }) => <Ionicons name="person-circle-outline"     size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="observaciones" options={{ title: 'Observaciones',  tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble-outline"          size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="tareas"        options={{ title: 'Tareas',         tabBarIcon: ({ color, size }) => <Ionicons name="checkbox-outline"            size={size} color={color} />, href: null }} />
     </Tabs>
   )
 }

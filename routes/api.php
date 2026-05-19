@@ -116,12 +116,18 @@ Route::prefix('v1')->group(function () {
             Route::get('{claseVirtual}/materiales',  [ClassroomApiController::class, 'materiales'])->name('materiales');
         });
 
-        // Docente — gestión de grupos, asistencia y calificaciones
+        // Docente — gestión de grupos, asistencia, calificaciones, observaciones y tareas
         Route::prefix('docente')->name('api.docente.')->group(function () {
-            Route::get('grupos',                        [DocenteApiController::class, 'grupos'])->name('grupos');
-            Route::get('asistencia/{id}',               [DocenteApiController::class, 'consultarAsistencia'])->name('asistencia.consultar');
-            Route::post('asistencia',                   [DocenteApiController::class, 'registrarAsistencia'])->name('asistencia.registrar');
-            Route::get('calificaciones/{asignacion}',   [DocenteApiController::class, 'calificaciones'])->name('calificaciones');
+            Route::get('grupos',                             [DocenteApiController::class, 'grupos'])->name('grupos');
+            Route::get('asistencia/{id}',                    [DocenteApiController::class, 'consultarAsistencia'])->name('asistencia.consultar');
+            Route::post('asistencia',                        [DocenteApiController::class, 'registrarAsistencia'])->name('asistencia.registrar');
+            Route::get('calificaciones/{asignacion}',        [DocenteApiController::class, 'calificaciones'])->name('calificaciones');
+            Route::get('observaciones',                      [DocenteApiController::class, 'observaciones'])->name('observaciones');
+            Route::post('observaciones',                     [DocenteApiController::class, 'storeObservacion'])->name('observaciones.store');
+            Route::get('tareas',                             [DocenteApiController::class, 'tareasDocente'])->name('tareas');
+            Route::post('tareas',                            [DocenteApiController::class, 'storeTarea'])->name('tareas.store');
+            Route::get('tareas/{tarea}/entregas',            [DocenteApiController::class, 'entregasTarea'])->name('tareas.entregas');
+            Route::patch('tareas/{tarea}/calificar',         [DocenteApiController::class, 'calificarEntrega'])->name('tareas.calificar');
         });
 
         // Mensajería interna

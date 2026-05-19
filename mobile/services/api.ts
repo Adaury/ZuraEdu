@@ -164,3 +164,17 @@ export const transporteApi = {
   miRuta:        ()              => api.get('/transporte/mi-ruta'),
   rutaHijo: (id: number) => api.get(`/transporte/ruta-hijo/${id}`),
 }
+
+// ── Documentos ────────────────────────────────────────────────────────────────
+export const documentosApi = {
+  info:              ()              => api.get('/documentos/info'),
+  infoHijo: (id: number) => api.get(`/documentos/info-hijo/${id}`),
+}
+
+// ── Solicitudes ───────────────────────────────────────────────────────────────
+export const solicitudesApi = {
+  index: () => api.get('/solicitudes'),
+  store: (data: { tipo: string; asunto: string; descripcion: string; fecha_evento?: string; estudiante_id?: number }) =>
+    api.post('/solicitudes', data),
+  show: (id: number) => api.get(`/solicitudes/${id}`),
+}

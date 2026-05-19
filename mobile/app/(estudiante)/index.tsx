@@ -20,6 +20,8 @@ const QUICK_LINKS = [
   { label: 'Encuestas',  icon: 'clipboard',        route: '/(estudiante)/encuestas',    color: '#8b5cf6'     },
   { label: 'Cafetería',  icon: 'cafe',             route: '/(estudiante)/cafeteria',    color: '#7c3aed'     },
   { label: 'Transporte', icon: 'bus',              route: '/(estudiante)/transporte',   color: '#0369a1'     },
+  { label: 'Documentos', icon: 'folder-open',      route: '/(estudiante)/documentos',   color: Colors.blue   },
+  { label: 'Solicitudes',icon: 'clipboard',        route: '/(estudiante)/solicitudes',  color: Colors.indigo },
 ] as const
 
 export default function EstudianteDashboard() {

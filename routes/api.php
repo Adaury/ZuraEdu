@@ -8,11 +8,13 @@ use App\Http\Controllers\Api\CalificacionesApiController;
 use App\Http\Controllers\Api\ClassroomApiController;
 use App\Http\Controllers\Api\ComunicadosApiController;
 use App\Http\Controllers\Api\DashboardApiController;
+use App\Http\Controllers\Api\DocumentosApiController;
 use App\Http\Controllers\Api\DocenteApiController;
 use App\Http\Controllers\Api\EncuestasApiController;
 use App\Http\Controllers\Api\HorarioApiController;
 use App\Http\Controllers\Api\NotificacionApiController;
 use App\Http\Controllers\Api\PagosApiController;
+use App\Http\Controllers\Api\SolicitudesApiController;
 use App\Http\Controllers\Api\TareasApiController;
 use App\Http\Controllers\Api\TransporteApiController;
 use Illuminate\Support\Facades\Route;
@@ -169,6 +171,19 @@ Route::prefix('v1')->group(function () {
         Route::prefix('transporte')->name('api.transporte.')->group(function () {
             Route::get('mi-ruta',                     [TransporteApiController::class, 'miRuta'])->name('mi-ruta');
             Route::get('ruta-hijo/{estudiante}',      [TransporteApiController::class, 'rutaHijo'])->name('ruta-hijo');
+        });
+
+        // Documentos (hub de PDFs con token temporal)
+        Route::prefix('documentos')->name('api.documentos.')->group(function () {
+            Route::get('info',                        [DocumentosApiController::class, 'info'])->name('info');
+            Route::get('info-hijo/{estudiante}',      [DocumentosApiController::class, 'infoHijo'])->name('info-hijo');
+        });
+
+        // Solicitudes (estudiante + representante)
+        Route::prefix('solicitudes')->name('api.solicitudes.')->group(function () {
+            Route::get('/',                           [SolicitudesApiController::class, 'index'])->name('index');
+            Route::post('/',                          [SolicitudesApiController::class, 'store'])->name('store');
+            Route::get('{id}',                        [SolicitudesApiController::class, 'show'])->name('show');
         });
     });
 });

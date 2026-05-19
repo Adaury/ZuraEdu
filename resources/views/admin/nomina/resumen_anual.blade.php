@@ -1,6 +1,21 @@
 @extends('layouts.admin')
 @section('page-title', 'Nómina — Resumen Anual ' . $anio)
 
+@push('styles')
+<style>
+[data-theme="dark"] .card { background:#1e293b !important; border-color:#334155 !important; }
+[data-theme="dark"] .table-responsive { background:#1e293b; }
+[data-theme="dark"] thead { background:#1e3a8a !important; }
+[data-theme="dark"] thead th { color:#93c5fd !important; background:#1e3a8a !important; }
+[data-theme="dark"] .table-hover tbody tr:hover { background:#334155 !important; }
+[data-theme="dark"] tbody tr td { border-color:#334155 !important; color:#e2e8f0; }
+[data-theme="dark"] tfoot { background:#164e3a !important; border-color:#14532d !important; }
+[data-theme="dark"] tfoot td { color:#86efac !important; }
+[data-theme="dark"] .text-muted { color:#94a3b8 !important; }
+[data-theme="dark"] .form-control { background:#1e293b; border-color:#334155; color:#e2e8f0; }
+</style>
+@endpush
+
 @section('content')
 
 <x-breadcrumb :items="[

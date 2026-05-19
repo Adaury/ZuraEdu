@@ -20,6 +20,7 @@ Route::prefix('nomina')->name('nomina.')->group(function () {
     Route::delete('/{nomina}',                         [NominaController::class, 'destroy'])->name('destroy');
     Route::post('/{nomina}/generar-recibo',            [NominaController::class, 'generarRecibo'])->name('generar-recibo');
     Route::get('/{nomina}/recibo-pdf',                 [NominaController::class, 'reciboPdf'])->name('recibo-pdf');
+    Route::post('/{nomina}/procesar-solo',              [NominaController::class, 'procesarSolo'])->name('procesar-solo');
     Route::post('/{nomina}/guardar-pago',              [NominaController::class, 'guardarPago'])->name('guardar-pago');
     Route::post('/{nomina}/marcar-pagado',             [NominaController::class, 'marcarPagado'])->name('marcar-pagado');
 });

@@ -90,7 +90,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
     <div class="section-title">Datos del Empleado</div>
     <div class="row">
         <span class="label">Nombre Completo</span>
-        <span class="value">{{ $user?->nombre_completo ?? '—' }}</span>
+        <span class="value">{{ trim(($user?->name ?? '') . ' ' . ($user?->apellidos ?? '')) ?: '—' }}</span>
     </div>
     <div class="row">
         <span class="label">Email</span>
@@ -149,10 +149,40 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
             <td class="lbl">Salario Bruto</td>
             <td class="val">{{ $mon }} {{ number_format($pago->salario_bruto, 2) }}</td>
         </tr>
-        <tr class="deduccion">
-            <td class="lbl">Deducciones</td>
-            <td class="val">- {{ $mon }} {{ number_format($pago->deducciones, 2) }}</td>
+        @if($pago->horas_extra > 0)
+        <tr>
+            <td class="lbl">Horas Extra</td>
+            <td class="val">+ {{ $mon }} {{ number_format($pago->horas_extra, 2) }}</td>
         </tr>
+        @endif
+        @if($pago->bonificacion > 0)
+        <tr>
+            <td class="lbl">Bonificación</td>
+            <td class="val">+ {{ $mon }} {{ number_format($pago->bonificacion, 2) }}</td>
+        </tr>
+        @endif
+        @if($pago->otros_ingresos > 0)
+        <tr>
+            <td class="lbl">Otros Ingresos</td>
+            <td class="val">+ {{ $mon }} {{ number_format($pago->otros_ingresos, 2) }}</td>
+        </tr>
+        @endif
+        <tr class="deduccion">
+            <td class="lbl">SFS/TSS ({{ $nomina->tss_porcentaje }}%)</td>
+            <td class="val">- {{ $mon }} {{ number_format($pago->desc_tss, 2) }}</td>
+        </tr>
+        @if($pago->desc_isr > 0)
+        <tr class="deduccion">
+            <td class="lbl">ISR</td>
+            <td class="val">- {{ $mon }} {{ number_format($pago->desc_isr, 2) }}</td>
+        </tr>
+        @endif
+        @if($pago->desc_otros > 0)
+        <tr class="deduccion">
+            <td class="lbl">Otras Deducciones{{ $pago->notas_deducciones ? ' ('.$pago->notas_deducciones.')' : '' }}</td>
+            <td class="val">- {{ $mon }} {{ number_format($pago->desc_otros, 2) }}</td>
+        </tr>
+        @endif
         <tr class="neto">
             <td class="lbl">SALARIO NETO A PAGAR</td>
             <td class="val">{{ $mon }} {{ number_format($pago->salario_neto, 2) }}</td>
@@ -171,7 +201,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
     <div class="sig-block">
         <div style="height:32px;"></div>
         <div class="sig-line"></div>
-        <div class="sig-name">{{ $user?->nombre_completo ?? '______________________' }}</div>
+        <div class="sig-name">{{ trim(($user?->name ?? '') . ' ' . ($user?->apellidos ?? '')) ?: '______________________' }}</div>
         <div class="sig-role">Empleado/a — Firma de Conformidad</div>
     </div>
 </div>
@@ -188,7 +218,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
     <span style="font-size:7.5pt;color:#6b7280;">RECIBO DE NÓMINA No. {{ str_pad($pago->id,6,'0',STR_PAD_LEFT) }}</span>
 </div>
 <div style="display:flex;justify-content:space-between;font-size:8pt;padding:0 .5rem;margin-bottom:.2rem;">
-    <span><b>{{ $user?->nombre_completo ?? '—' }}</b> — {{ $nomina->cargo }}</span>
+    <span><b>{{ trim(($user?->name ?? '') . ' ' . ($user?->apellidos ?? '')) ?: '—' }}</b> — {{ $nomina->cargo }}</span>
     <span style="font-weight:900;color:#1e3a6e;">{{ $mon }} {{ number_format($pago->salario_neto,2) }}</span>
 </div>
 <div style="font-size:7.5pt;color:#6b7280;padding:0 .5rem;">

@@ -185,6 +185,32 @@ class NominaController extends Controller
         return back()->with('success', "Nómina de {$this->mesLabel($mes)} procesada para {$creados} empleado(s).");
     }
 
+    // ── Procesar pago solo para un empleado ───────────────────────────────
+    public function procesarSolo(Request $request, NominaEmpleado $nomina)
+    {
+        $mes = $request->input('mes', now()->format('Y-m'));
+        if (!preg_match('/^\d{4}-\d{2}$/', $mes)) $mes = now()->format('Y-m');
+
+        $tss      = $nomina->calcularTSS();
+        $isr      = $nomina->calcularISR();
+        $dedTotal = $tss + $isr;
+
+        PagoNomina::firstOrCreate(
+            ['nomina_empleado_id' => $nomina->id, 'mes' => $mes],
+            [
+                'salario_bruto' => $nomina->salario_base,
+                'desc_tss'      => $tss,
+                'desc_isr'      => $isr,
+                'desc_otros'    => 0,
+                'deducciones'   => $dedTotal,
+                'salario_neto'  => $nomina->salario_base - $dedTotal,
+                'pagado'        => false,
+            ]
+        );
+
+        return back()->with('success', "Pago de {$this->mesLabel($mes)} generado para {$nomina->user->name}.");
+    }
+
     // ── Guardar pago individual (editar deducciones/bonos) ─────────────────
     public function guardarPago(Request $request, NominaEmpleado $nomina)
     {

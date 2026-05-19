@@ -1,6 +1,21 @@
 @extends('layouts.admin')
 @section('page-title', 'Perfil — '.$nomina->user->name)
 
+@push('styles')
+<style>
+[data-theme="dark"] .card { background:#1e293b !important; border-color:#334155 !important; }
+[data-theme="dark"] .card-header { color:#e2e8f0 !important; }
+[data-theme="dark"] .table-responsive table { color:#e2e8f0; }
+[data-theme="dark"] thead { background:#1e3a8a !important; }
+[data-theme="dark"] thead th { color:#93c5fd !important; }
+[data-theme="dark"] .text-muted { color:#94a3b8 !important; }
+[data-theme="dark"] hr { border-color:#334155; }
+[data-theme="dark"] .rounded-3 { background:#0f172a !important; border-color:#334155 !important; }
+[data-theme="dark"] details summary { color:#60a5fa !important; }
+[data-theme="dark"] .form-control, [data-theme="dark"] .form-select { background:#1e293b; border-color:#334155; color:#e2e8f0; }
+</style>
+@endpush
+
 @section('content')
 
 @php
@@ -12,6 +27,13 @@ $mesPre = request('mes', now()->format('Y-m'));
     ['label'=>'Nómina','url'=>route('admin.nomina.index')],
     ['label'=>$nomina->user->name],
 ]"/>
+
+@if(session('success'))
+<div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-3" style="border-radius:10px;">
+    <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
 
 <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
     <a href="{{ route('admin.nomina.index') }}" class="btn btn-outline-secondary btn-sm" style="border-radius:8px;">
@@ -211,13 +233,23 @@ $mesPre = request('mes', now()->format('Y-m'));
         <div class="text-center py-4 text-muted">
             <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:.75rem;color:#CBD5E1;"></i>
             <p class="mb-2">No hay pago registrado para este mes</p>
-            <form method="POST" action="{{ route('admin.nomina.procesar-mes') }}" class="d-inline">
-                @csrf
-                <input type="hidden" name="mes" value="{{ $mesPre }}">
-                <button type="submit" class="btn btn-sm btn-outline-primary" style="border-radius:8px;">
-                    <i class="bi bi-gear me-1"></i>Generar pago
-                </button>
-            </form>
+            <div class="d-flex gap-2 justify-content-center flex-wrap">
+                <form method="POST" action="{{ route('admin.nomina.procesar-solo', $nomina) }}" class="d-inline">
+                    @csrf
+                    <input type="hidden" name="mes" value="{{ $mesPre }}">
+                    <button type="submit" class="btn btn-sm btn-outline-primary" style="border-radius:8px;">
+                        <i class="bi bi-person-check me-1"></i>Generar solo para este empleado
+                    </button>
+                </form>
+                <form method="POST" action="{{ route('admin.nomina.procesar-mes') }}" class="d-inline"
+                      onsubmit="return confirm('¿Procesar nómina del mes para TODOS los empleados activos?')">
+                    @csrf
+                    <input type="hidden" name="mes" value="{{ $mesPre }}">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;">
+                        <i class="bi bi-people me-1"></i>Procesar todo el mes
+                    </button>
+                </form>
+            </div>
         </div>
         @endif
     </div>

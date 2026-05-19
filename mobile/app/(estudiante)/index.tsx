@@ -25,8 +25,9 @@ const QUICK_LINKS = [
   { label: 'Solicitudes',icon: 'clipboard',        route: '/(estudiante)/solicitudes',     color: Colors.indigo },
   { label: 'Calendario', icon: 'calendar',         route: '/(estudiante)/calendario',      color: Colors.amber  },
   { label: 'Notifs',     icon: 'notifications',    route: '/(estudiante)/notificaciones',  color: Colors.blue   },
-  { label: 'Conducta',       icon: 'shield-half',     route: '/(estudiante)/conducta',        color: Colors.purple },
-  { label: 'Plan Eval.',     icon: 'document-text',   route: '/(estudiante)/plan-evaluacion', color: Colors.blue   },
+  { label: 'Conducta',       icon: 'shield-half',     route: '/(estudiante)/conducta',              color: Colors.purple },
+  { label: 'Plan Eval.',     icon: 'document-text',   route: '/(estudiante)/plan-evaluacion',       color: Colors.blue   },
+  { label: 'Evaluaciones',   icon: 'ribbon',          route: '/(estudiante)/resultados-evaluacion', color: Colors.green  },
   { label: 'Perfil',         icon: 'person-circle',   route: '/(estudiante)/perfil',          color: Colors.muted  },
 ] as const
 

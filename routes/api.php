@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AsistenciaApiController;
 use App\Http\Controllers\Api\ConductaApiController;
 use App\Http\Controllers\Api\ObservacionesApiController;
 use App\Http\Controllers\Api\PlanEvaluacionApiController;
+use App\Http\Controllers\Api\ResultadosEvaluacionApiController;
 use App\Http\Controllers\Api\AuthApiController;
 use App\Http\Controllers\Api\CafeteriaApiController;
 use App\Http\Controllers\Api\CalendarioApiController;
@@ -135,6 +136,7 @@ Route::prefix('v1')->group(function () {
             Route::post('conducta',                          [DocenteApiController::class, 'guardarConducta'])->name('conducta.store');
             Route::get('plan-evaluacion',                    [DocenteApiController::class, 'planEvaluacion'])->name('plan-evaluacion');
             Route::get('instrumentos',                       [DocenteApiController::class, 'instrumentos'])->name('instrumentos');
+            Route::get('riesgo',                             [DocenteApiController::class, 'riesgoGrupo'])->name('riesgo');
         });
 
         // Mensajería interna
@@ -197,6 +199,12 @@ Route::prefix('v1')->group(function () {
         Route::prefix('observaciones')->name('api.observaciones.')->group(function () {
             Route::get('/',                    [ObservacionesApiController::class, 'misObservaciones'])->name('index');
             Route::get('hijo/{estudiante}',    [ObservacionesApiController::class, 'hijoObservaciones'])->name('hijo');
+        });
+
+        // Resultados de evaluación (Estudiante y Representante)
+        Route::prefix('mis-resultados')->name('api.resultados.')->group(function () {
+            Route::get('/',                    [ResultadosEvaluacionApiController::class, 'misResultados'])->name('index');
+            Route::get('hijo/{estudiante}',    [ResultadosEvaluacionApiController::class, 'hijoResultados'])->name('hijo');
         });
 
         // Conducta (Estudiante ve la suya; Representante ve la de su hijo)

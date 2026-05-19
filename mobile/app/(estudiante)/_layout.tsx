@@ -39,7 +39,8 @@ export default function EstudianteLayout() {
       <Tabs.Screen name="perfil"        options={{ title: 'Perfil',        tabBarIcon: ({ color, size }) => <Ionicons name="person-circle-outline"     size={size} color={color} />, href: null }} />
       <Tabs.Screen name="observaciones"   options={{ title: 'Observaciones',   tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble-outline"     size={size} color={color} />, href: null }} />
       <Tabs.Screen name="conducta"        options={{ title: 'Conducta',        tabBarIcon: ({ color, size }) => <Ionicons name="shield-half-outline"    size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="plan-evaluacion" options={{ title: 'Plan Evaluación', tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline" size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="plan-evaluacion"      options={{ title: 'Plan Evaluación', tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline"  size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="resultados-evaluacion" options={{ title: 'Mis Evaluaciones', tabBarIcon: ({ color, size }) => <Ionicons name="ribbon-outline"          size={size} color={color} />, href: null }} />
     </Tabs>
   )
 }

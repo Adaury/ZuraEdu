@@ -124,6 +124,9 @@ export const docenteApi = {
     api.get('/docente/plan-evaluacion', { params: { asignacion_id: asignacionId } }),
   instrumentos: (asignacionId: number) =>
     api.get('/docente/instrumentos', { params: { asignacion_id: asignacionId } }),
+  // Riesgo académico del grupo
+  riesgoGrupo: (asignacionId: number) =>
+    api.get('/docente/riesgo', { params: { asignacion_id: asignacionId } }),
 }
 
 // ── Mensajes ─────────────────────────────────────────────────────────────────
@@ -198,6 +201,12 @@ export const documentosApi = {
 export const observacionesApi = {
   index:              () => api.get('/observaciones'),
   hijo: (id: number) => api.get(`/observaciones/hijo/${id}`),
+}
+
+// ── Resultados de evaluación (Estudiante y Representante) ────────────────────
+export const resultadosApi = {
+  index:              () => api.get('/mis-resultados'),
+  hijo: (id: number) => api.get(`/mis-resultados/hijo/${id}`),
 }
 
 // ── Conducta (Estudiante y Representante) ─────────────────────────────────────

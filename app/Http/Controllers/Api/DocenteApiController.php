@@ -10,6 +10,7 @@ use App\Models\Docente;
 use App\Models\EntregaTarea;
 use App\Models\MaterialClase;
 use App\Models\Matricula;
+use App\Models\AcademicRiskScore;
 use App\Models\ConductaRegistro;
 use App\Models\InstrumentoEvaluacion;
 use App\Models\Notificacion;
@@ -596,6 +597,74 @@ class DocenteApiController extends Controller
             'concepto_label' => $concepto ? $escala[$concepto]['label'] : null,
             'concepto_color' => $concepto ? $escala[$concepto]['color'] : null,
             'promedio'       => $registro->promedio,
+        ]);
+    }
+
+    /** GET /api/v1/docente/riesgo?asignacion_id=X */
+    public function riesgoGrupo(Request $request)
+    {
+        $docente = $this->docenteOFail($request);
+        if (! $docente instanceof Docente) return $docente;
+
+        $asignacion = Asignacion::with(['asignatura', 'grupo'])
+            ->where('id', (int) $request->query('asignacion_id', 0))
+            ->where('docente_id', $docente->id)
+            ->first();
+        if (! $asignacion) return response()->json(['message' => 'Asignación no encontrada.'], 404);
+
+        $sy = SchoolYear::actual();
+
+        $matriculas = Matricula::with('estudiante')
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($sy, fn($q) => $q->where('school_year_id', $sy->id))
+            ->get();
+
+        $estudianteIds = $matriculas->pluck('estudiante_id');
+
+        $scores = AcademicRiskScore::whereIn('estudiante_id', $estudianteIds)
+            ->when($sy, fn($q) => $q->where('school_year_id', $sy->id))
+            ->get()
+            ->keyBy('estudiante_id');
+
+        $alumnos = $matriculas->map(function ($m) use ($scores) {
+            $score = $scores->get($m->estudiante_id);
+            $cfg   = $score?->nivel_config;
+            return [
+                'matricula_id'   => $m->id,
+                'nombre'         => $m->estudiante
+                    ? "{$m->estudiante->apellidos}, {$m->estudiante->nombres}"
+                    : '—',
+                'calculado'      => $score !== null,
+                'score'          => $score?->score,
+                'nivel'          => $score?->nivel ?? 'sin_datos',
+                'nivel_label'    => $cfg ? $cfg['label'] : 'Sin datos',
+                'nivel_color'    => $cfg ? $cfg['color'] : '#94a3b8',
+                'promedio'       => $score?->promedio_general !== null ? round($score->promedio_general, 1) : null,
+                'pct_asistencia' => $score?->pct_asistencia !== null  ? round($score->pct_asistencia, 1)  : null,
+                'dim_academico'  => $score?->dim_academico  !== null  ? round($score->dim_academico, 1)   : null,
+                'dim_asistencia' => $score?->dim_asistencia !== null  ? round($score->dim_asistencia, 1)  : null,
+                'dim_disciplina' => $score?->dim_disciplina !== null  ? round($score->dim_disciplina, 1)  : null,
+                'materias_riesgo'=> $score?->materias_en_riesgo ?? 0,
+                'total_materias' => $score?->total_materias ?? 0,
+            ];
+        })
+        ->sortByDesc(fn($a) => $a['score'] ?? -1)
+        ->values();
+
+        $niveles = collect(AcademicRiskScore::NIVELES)
+            ->map(fn($v, $k) => ['nivel' => $k, 'label' => $v['label'], 'color' => $v['color']])
+            ->values();
+
+        return response()->json([
+            'asignacion_id' => $asignacion->id,
+            'asignatura'    => $asignacion->asignatura?->nombre,
+            'color'         => $asignacion->asignatura?->color ?? '#64748b',
+            'grupo'         => $asignacion->grupo?->nombre_completo,
+            'niveles'       => $niveles,
+            'alumnos'       => $alumnos,
+            'total'         => $alumnos->count(),
+            'con_datos'     => $alumnos->where('calculado', true)->count(),
         ]);
     }
 

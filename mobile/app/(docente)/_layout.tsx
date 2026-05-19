@@ -34,7 +34,8 @@ export default function DocenteLayout() {
       <Tabs.Screen name="tareas"        options={{ title: 'Tareas',         tabBarIcon: ({ color, size }) => <Ionicons name="checkbox-outline"            size={size} color={color} />, href: null }} />
       <Tabs.Screen name="conducta"        options={{ title: 'Conducta',        tabBarIcon: ({ color, size }) => <Ionicons name="shield-half-outline"    size={size} color={color} />, href: null }} />
       <Tabs.Screen name="plan-evaluacion" options={{ title: 'Plan Eval.',     tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline" size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="instrumentos"    options={{ title: 'Instrumentos',   tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline"          size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="instrumentos"   options={{ title: 'Instrumentos',   tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline"          size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="riesgo"         options={{ title: 'Riesgo',         tabBarIcon: ({ color, size }) => <Ionicons name="analytics-outline"     size={size} color={color} />, href: null }} />
     </Tabs>
   )
 }

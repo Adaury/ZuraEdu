@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AcademicoController;
 use App\Http\Controllers\Admin\CalificacionController;
 use App\Http\Controllers\Admin\CalificacionAcademicaController;
 use App\Http\Controllers\Admin\AsistenciaController;
@@ -17,6 +18,17 @@ use App\Http\Controllers\Admin\InstrumentoController;
 use App\Http\Controllers\Admin\HomepageController;
 use App\Http\Controllers\Admin\ObservacionController;
 use App\Http\Controllers\Admin\BachilleratoTecnicoController;
+
+// ── Año Escolar → Cursos → Materias ──────────────────────────────────────
+Route::get('academico',                                          [AcademicoController::class, 'index'])->name('academico.index');
+Route::post('academico/cursos',                                  [AcademicoController::class, 'storeCurso'])->name('academico.cursos.store');
+Route::put('academico/cursos/{grupo}',                           [AcademicoController::class, 'updateCurso'])->name('academico.cursos.update');
+Route::delete('academico/cursos/{grupo}',                        [AcademicoController::class, 'destroyCurso'])->name('academico.cursos.destroy');
+Route::get('academico/{grupo}',                                  [AcademicoController::class, 'show'])->name('academico.show');
+Route::post('academico/{grupo}/materias',                        [AcademicoController::class, 'storeMateria'])->name('academico.materias.store');
+Route::put('academico/materias/{asignacion}',                    [AcademicoController::class, 'updateMateria'])->name('academico.materias.update');
+Route::patch('academico/materias/{asignacion}/toggle',           [AcademicoController::class, 'toggleMateria'])->name('academico.materias.toggle');
+Route::delete('academico/materias/{asignacion}',                 [AcademicoController::class, 'destroyMateria'])->name('academico.materias.destroy');
 
 // ── Asignaturas ───────────────────────────────────────────────────────────
 Route::middleware('can:gestionar-asignaturas')->group(function () {

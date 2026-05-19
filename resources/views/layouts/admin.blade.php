@@ -2257,6 +2257,11 @@ if (auth()->check()) {
                 </li>
                 @if($canAcad)
                 <li class="nav-item">
+                    <a href="{{ route('admin.academico.index') }}" class="{{ request()->routeIs('admin.academico*') ? 'active' : '' }}">
+                        <i class="bi bi-calendar3-event"></i>Año Escolar
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.grupos.index') }}" class="{{ request()->routeIs('admin.grupos*') ? 'active' : '' }}">
                         <i class="bi bi-grid-3x3-gap"></i>Grupos / Cursos
                     </a>

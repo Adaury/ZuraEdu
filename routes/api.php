@@ -133,6 +133,8 @@ Route::prefix('v1')->group(function () {
             Route::patch('tareas/{tarea}/calificar',         [DocenteApiController::class, 'calificarEntrega'])->name('tareas.calificar');
             Route::get('conducta',                           [DocenteApiController::class, 'conducta'])->name('conducta');
             Route::post('conducta',                          [DocenteApiController::class, 'guardarConducta'])->name('conducta.store');
+            Route::get('plan-evaluacion',                    [DocenteApiController::class, 'planEvaluacion'])->name('plan-evaluacion');
+            Route::get('instrumentos',                       [DocenteApiController::class, 'instrumentos'])->name('instrumentos');
         });
 
         // Mensajería interna

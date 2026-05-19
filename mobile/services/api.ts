@@ -119,6 +119,11 @@ export const docenteApi = {
     api.get('/docente/conducta', { params: { asignacion_id: asignacionId, ...(periodoId ? { periodo_id: periodoId } : {}) } }),
   guardarConducta: (data: { asignacion_id: number; matricula_id: number; periodo_id: number; puntualidad?: number | null; participacion?: number | null; respeto?: number | null; trabajo_equipo?: number | null; responsabilidad?: number | null; orden?: number | null; observaciones?: string }) =>
     api.post('/docente/conducta', data),
+  // Plan de evaluación e instrumentos
+  planEvaluacion: (asignacionId: number) =>
+    api.get('/docente/plan-evaluacion', { params: { asignacion_id: asignacionId } }),
+  instrumentos: (asignacionId: number) =>
+    api.get('/docente/instrumentos', { params: { asignacion_id: asignacionId } }),
 }
 
 // ── Mensajes ─────────────────────────────────────────────────────────────────

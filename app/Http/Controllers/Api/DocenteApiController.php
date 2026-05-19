@@ -11,9 +11,11 @@ use App\Models\EntregaTarea;
 use App\Models\MaterialClase;
 use App\Models\Matricula;
 use App\Models\ConductaRegistro;
+use App\Models\InstrumentoEvaluacion;
 use App\Models\Notificacion;
 use App\Models\Observacion;
 use App\Models\Periodo;
+use App\Models\PlanEvaluacionPeriodo;
 use App\Models\SchoolYear;
 use App\Models\Tarea;
 use Illuminate\Http\Request;
@@ -594,6 +596,131 @@ class DocenteApiController extends Controller
             'concepto_label' => $concepto ? $escala[$concepto]['label'] : null,
             'concepto_color' => $concepto ? $escala[$concepto]['color'] : null,
             'promedio'       => $registro->promedio,
+        ]);
+    }
+
+    /** GET /api/v1/docente/plan-evaluacion?asignacion_id=X */
+    public function planEvaluacion(Request $request)
+    {
+        $docente = $this->docenteOFail($request);
+        if (! $docente instanceof Docente) return $docente;
+
+        $asignacion = Asignacion::with(['asignatura', 'grupo'])
+            ->where('id', (int) $request->query('asignacion_id', 0))
+            ->where('docente_id', $docente->id)
+            ->first();
+        if (! $asignacion) return response()->json(['message' => 'Asignación no encontrada.'], 404);
+
+        $sy = SchoolYear::actual();
+
+        $periodos = Periodo::when($sy, fn($q) => $q->where('school_year_id', $sy->id))
+            ->orderBy('numero')->get()
+            ->map(fn($p) => ['id' => $p->id, 'nombre' => $p->nombre]);
+
+        $categorias = collect(PlanEvaluacionPeriodo::$categorias)
+            ->map(fn($v, $k) => ['clave' => $k, 'label' => $v['label'], 'color' => $v['color']])
+            ->values();
+
+        $planesDB = PlanEvaluacionPeriodo::where('asignacion_id', $asignacion->id)
+            ->get()->keyBy('periodo_id');
+
+        $instrumentosDB = InstrumentoEvaluacion::withCount('criterios')
+            ->where('asignacion_id', $asignacion->id)
+            ->orderBy('fecha_aplicacion')
+            ->get()
+            ->groupBy('periodo_id')
+            ->map(fn($g) => $g->map(fn($i) => [
+                'id'        => $i->id,
+                'titulo'    => $i->titulo,
+                'tipo'      => $i->tipo,
+                'tipo_label'=> $i->tipo_label,
+                'fecha'     => $i->fecha_aplicacion?->format('d/m/Y'),
+                'publicado' => $i->publicado,
+                'criterios' => $i->criterios_count,
+            ])->values());
+
+        $planesResponse = [];
+        foreach ($periodos as $p) {
+            $pid  = $p['id'];
+            $plan = $planesDB->get($pid);
+            $planesResponse[$pid] = $plan ? [
+                'id'            => $plan->id,
+                'tareas'        => $plan->tareas,
+                'practicas'     => $plan->practicas,
+                'participacion' => $plan->participacion,
+                'proyecto'      => $plan->proyecto,
+                'examen'        => $plan->examen,
+                'total'         => $plan->total,
+                'publicado'     => $plan->publicado,
+                'observaciones' => $plan->observaciones,
+            ] : null;
+        }
+
+        return response()->json([
+            'asignacion_id' => $asignacion->id,
+            'asignatura'    => $asignacion->asignatura?->nombre,
+            'color'         => $asignacion->asignatura?->color ?? '#64748b',
+            'grupo'         => $asignacion->grupo?->nombre_completo,
+            'periodos'      => $periodos,
+            'categorias'    => $categorias,
+            'planes'        => $planesResponse,
+            'instrumentos'  => $instrumentosDB,
+        ]);
+    }
+
+    /** GET /api/v1/docente/instrumentos?asignacion_id=X */
+    public function instrumentos(Request $request)
+    {
+        $docente = $this->docenteOFail($request);
+        if (! $docente instanceof Docente) return $docente;
+
+        $asignacion = Asignacion::with(['asignatura', 'grupo'])
+            ->where('id', (int) $request->query('asignacion_id', 0))
+            ->where('docente_id', $docente->id)
+            ->first();
+        if (! $asignacion) return response()->json(['message' => 'Asignación no encontrada.'], 404);
+
+        $sy = SchoolYear::actual();
+
+        $periodos = Periodo::when($sy, fn($q) => $q->where('school_year_id', $sy->id))
+            ->orderBy('numero')->get()
+            ->map(fn($p) => ['id' => $p->id, 'nombre' => $p->nombre]);
+
+        $periodoMap = $periodos->keyBy('id');
+
+        $instrumentos = InstrumentoEvaluacion::with('criterios')
+            ->where('asignacion_id', $asignacion->id)
+            ->orderBy('periodo_id')
+            ->orderByDesc('publicado')
+            ->orderBy('fecha_aplicacion')
+            ->get()
+            ->map(fn($i) => [
+                'id'             => $i->id,
+                'periodo_id'     => $i->periodo_id,
+                'periodo_nombre' => $periodoMap->get($i->periodo_id)['nombre'] ?? "Período {$i->periodo_id}",
+                'titulo'         => $i->titulo,
+                'tipo'           => $i->tipo,
+                'tipo_label'     => $i->tipo_label,
+                'competencia'    => $i->competencia,
+                'descripcion'    => $i->descripcion,
+                'fecha'          => $i->fecha_aplicacion?->format('d/m/Y'),
+                'publicado'      => $i->publicado,
+                'criterios'      => $i->criterios->map(fn($c) => [
+                    'id'          => $c->id,
+                    'nombre'      => $c->nombre,
+                    'descripcion' => $c->descripcion,
+                    'peso_max'    => $c->peso_max,
+                ])->values(),
+            ]);
+
+        return response()->json([
+            'asignacion_id' => $asignacion->id,
+            'asignatura'    => $asignacion->asignatura?->nombre,
+            'color'         => $asignacion->asignatura?->color ?? '#64748b',
+            'grupo'         => $asignacion->grupo?->nombre_completo,
+            'periodos'      => $periodos,
+            'tipos'         => InstrumentoEvaluacion::$tiposLabels,
+            'instrumentos'  => $instrumentos,
         ]);
     }
 

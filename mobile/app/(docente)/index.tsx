@@ -92,6 +92,8 @@ export default function DocenteDashboard() {
               { label: 'Observaciones', icon: 'chatbubble',      route: '/(docente)/observaciones',    color: Colors.indigo },
               { label: 'Tareas',        icon: 'checkbox',        route: '/(docente)/tareas',           color: Colors.green  },
               { label: 'Conducta',      icon: 'shield-half',     route: '/(docente)/conducta',         color: Colors.purple },
+              { label: 'Plan Eval.',   icon: 'document-text',   route: '/(docente)/plan-evaluacion',  color: Colors.blue   },
+              { label: 'Instrumentos', icon: 'grid',            route: '/(docente)/instrumentos',     color: Colors.indigo },
               { label: 'Gamificación',  icon: 'trophy',          route: '/(docente)/gamificacion',     color: '#f59e0b'     },
               { label: 'Calendario',    icon: 'calendar',        route: '/(docente)/calendario',       color: Colors.amber  },
               { label: 'Notificaciones',icon: 'notifications',   route: '/(docente)/notificaciones',   color: Colors.blue   },

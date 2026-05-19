@@ -195,6 +195,18 @@ export const observacionesApi = {
   hijo: (id: number) => api.get(`/observaciones/hijo/${id}`),
 }
 
+// ── Conducta (Estudiante y Representante) ─────────────────────────────────────
+export const conductaApi = {
+  index:              () => api.get('/conducta'),
+  hijo: (id: number) => api.get(`/conducta/hijo/${id}`),
+}
+
+// ── Plan de Evaluación (Estudiante y Representante) ───────────────────────────
+export const planEvaluacionApi = {
+  index:              () => api.get('/plan-evaluacion'),
+  hijo: (id: number) => api.get(`/plan-evaluacion/hijo/${id}`),
+}
+
 // ── Solicitudes ───────────────────────────────────────────────────────────────
 export const solicitudesApi = {
   index: () => api.get('/solicitudes'),

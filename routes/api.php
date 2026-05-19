@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\AsistenciaApiController;
+use App\Http\Controllers\Api\ConductaApiController;
 use App\Http\Controllers\Api\ObservacionesApiController;
+use App\Http\Controllers\Api\PlanEvaluacionApiController;
 use App\Http\Controllers\Api\AuthApiController;
 use App\Http\Controllers\Api\CafeteriaApiController;
 use App\Http\Controllers\Api\CalendarioApiController;
@@ -193,6 +195,18 @@ Route::prefix('v1')->group(function () {
         Route::prefix('observaciones')->name('api.observaciones.')->group(function () {
             Route::get('/',                    [ObservacionesApiController::class, 'misObservaciones'])->name('index');
             Route::get('hijo/{estudiante}',    [ObservacionesApiController::class, 'hijoObservaciones'])->name('hijo');
+        });
+
+        // Conducta (Estudiante ve la suya; Representante ve la de su hijo)
+        Route::prefix('conducta')->name('api.conducta.')->group(function () {
+            Route::get('/',                    [ConductaApiController::class, 'miConducta'])->name('index');
+            Route::get('hijo/{estudiante}',    [ConductaApiController::class, 'hijoConducta'])->name('hijo');
+        });
+
+        // Plan de Evaluación (Estudiante y Representante)
+        Route::prefix('plan-evaluacion')->name('api.plan-evaluacion.')->group(function () {
+            Route::get('/',                    [PlanEvaluacionApiController::class, 'miPlan'])->name('index');
+            Route::get('hijo/{estudiante}',    [PlanEvaluacionApiController::class, 'hijoPlan'])->name('hijo');
         });
 
         // Solicitudes (estudiante + representante)

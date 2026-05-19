@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Helpers\Setting;
 use App\Models\ConfigInstitucional;
+use App\Models\ConceptoPago;
 use App\Models\Estudiante;
 use App\Models\Grupo;
 use App\Models\Matricula;
@@ -44,9 +45,9 @@ class PagoController extends Controller
         if ($request->filled('buscar')) {
             $term = $request->buscar;
             $q->whereHas('matricula.estudiante', function ($e) use ($term) {
-                $e->where('nombre', 'like', "%{$term}%")
-                  ->orWhere('apellido', 'like', "%{$term}%")
-                  ->orWhere('matricula', 'like', "%{$term}%");
+                $e->where('nombres', 'like', "%{$term}%")
+                  ->orWhere('apellidos', 'like', "%{$term}%")
+                  ->orWhere('numero_matricula', 'like', "%{$term}%");
             });
         }
 
@@ -70,7 +71,9 @@ class PagoController extends Controller
             ->limit(8)
             ->pluck('total', 'mes');
 
-        return view('admin.pagos.index', compact('pagos', 'grupos', 'resumen', 'cobrosPorMes'));
+        $conceptos = ConceptoPago::activos()->orderBy('nombre')->get();
+
+        return view('admin.pagos.index', compact('pagos', 'grupos', 'resumen', 'cobrosPorMes', 'conceptos'));
     }
 
     // ── Estado de cuenta de un estudiante ─────────────────────────────────
@@ -128,12 +131,13 @@ class PagoController extends Controller
         $syActual   = SchoolYear::actual();
         $matriculas = Matricula::with(['estudiante', 'grupo.grado', 'grupo.seccion'])
             ->where('school_year_id', $syActual?->id)
-            ->orderByHas('estudiante', fn ($q) => $q->orderBy('apellido'))
+            ->orderByHas('estudiante', fn ($q) => $q->orderBy('apellidos'))
             ->get();
 
-        $concepto = Setting::get('payments_concept', 'Cuota escolar mensual');
+        $concepto  = Setting::get('payments_concept', 'Cuota escolar mensual');
+        $conceptos = ConceptoPago::activos()->orderBy('nombre')->get();
 
-        return view('admin.pagos.create', compact('matriculas', 'concepto'));
+        return view('admin.pagos.create', compact('matriculas', 'concepto', 'conceptos'));
     }
 
     // ── Guardar nuevo pago ────────────────────────────────────────────────
@@ -431,9 +435,9 @@ class PagoController extends Controller
         foreach ($matriculas->values() as $i => $mat) {
             $row = $i + 2;
             $ws->setCellValue("A{$row}", $i + 1);
-            $ws->setCellValue("B{$row}", $mat->estudiante->matricula ?? '—');
-            $ws->setCellValue("C{$row}", $mat->estudiante->apellido ?? $mat->estudiante->apellidos ?? '—');
-            $ws->setCellValue("D{$row}", $mat->estudiante->nombre ?? $mat->estudiante->nombres ?? '—');
+            $ws->setCellValue("B{$row}", $mat->estudiante->numero_matricula ?? '—');
+            $ws->setCellValue("C{$row}", $mat->estudiante->apellidos ?? '—');
+            $ws->setCellValue("D{$row}", $mat->estudiante->nombres ?? '—');
             $ws->setCellValue("E{$row}", ($mat->grupo->grado->nombre ?? '') . ' ' . ($mat->grupo->seccion->nombre ?? ''));
             $ws->setCellValue("F{$row}", $mat->cuotas_vencidas);
             $ws->setCellValue("G{$row}", number_format($mat->total_vencido, 2));
@@ -747,10 +751,50 @@ class PagoController extends Controller
 
     private function enrichDeudor(Matricula $mat): Matricula
     {
-        $pagosVencidos       = $mat->pagos->where('estado', 'vencido');
-        $mat->total_vencido  = $pagosVencidos->sum('monto');
-        $mat->cuotas_vencidas= $pagosVencidos->count();
-        $mat->primera_mora   = $pagosVencidos->min('fecha_vencimiento');
+        $pagosVencidos        = $mat->pagos->where('estado', 'vencido');
+        $mat->total_vencido   = $pagosVencidos->sum('monto');
+        $mat->cuotas_vencidas = $pagosVencidos->count();
+        $mat->primera_mora    = $pagosVencidos->min('fecha_vencimiento');
         return $mat;
+    }
+
+    // ── Conceptos de Pago ────────────────────────────────────────────────────
+    public function conceptos()
+    {
+        $conceptos = ConceptoPago::orderBy('activo', 'desc')->orderBy('nombre')->get();
+        return view('admin.pagos.conceptos', compact('conceptos'));
+    }
+
+    public function storeConcepto(Request $request)
+    {
+        $data = $request->validate([
+            'nombre'        => 'required|string|max:255',
+            'monto_defecto' => 'nullable|numeric|min:0',
+            'tipo'          => 'required|in:mensualidad,inscripcion,otro',
+            'descripcion'   => 'nullable|string|max:500',
+        ]);
+        $data['activo'] = true;
+        ConceptoPago::create($data);
+        return back()->with('success', 'Concepto creado correctamente.');
+    }
+
+    public function updateConcepto(Request $request, ConceptoPago $conceptoPago)
+    {
+        $data = $request->validate([
+            'nombre'        => 'required|string|max:255',
+            'monto_defecto' => 'nullable|numeric|min:0',
+            'tipo'          => 'required|in:mensualidad,inscripcion,otro',
+            'descripcion'   => 'nullable|string|max:500',
+            'activo'        => 'nullable|boolean',
+        ]);
+        $data['activo'] = $request->boolean('activo');
+        $conceptoPago->update($data);
+        return back()->with('success', 'Concepto actualizado.');
+    }
+
+    public function destroyConcepto(ConceptoPago $conceptoPago)
+    {
+        $conceptoPago->delete();
+        return back()->with('success', 'Concepto eliminado.');
     }
 }

@@ -51,11 +51,11 @@
 
 {{-- Info del estudiante --}}
 <div class="estudiante-card">
-    <div class="est-avatar">{{ strtoupper(substr($matricula->estudiante->nombre, 0, 1)) }}</div>
+    <div class="est-avatar">{{ strtoupper(substr($matricula->estudiante->nombres ?? '?', 0, 1)) }}</div>
     <div>
         <div class="est-name">{{ $matricula->estudiante->nombre_completo }}</div>
         <div class="est-meta">
-            Matrícula: <strong>{{ $matricula->estudiante->matricula ?? '—' }}</strong>
+            Matrícula: <strong>{{ $matricula->estudiante->numero_matricula ?? '—' }}</strong>
             &nbsp;·&nbsp;
             Grupo: <strong>{{ $matricula->grupo->grado->nombre ?? '—' }} {{ $matricula->grupo->seccion->nombre ?? '' }}</strong>
         </div>

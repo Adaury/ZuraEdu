@@ -194,6 +194,11 @@
         </div>
     </div>
     <div class="d-flex gap-2 flex-shrink-0">
+        <a href="{{ route('admin.pagos.por-estudiante', $matricula) }}"
+           class="btn btn-sm fw-semibold"
+           style="background:#059669;color:#fff;border-radius:8px;">
+            <i class="bi bi-cash-coin me-1"></i>Pagos
+        </a>
         <a href="{{ route('admin.matriculas.constancia', $matricula) }}" target="_blank"
            class="btn btn-sm fw-semibold"
            style="background:#1e3a6e;color:#fff;border-radius:8px;">

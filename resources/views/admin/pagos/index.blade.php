@@ -82,6 +82,9 @@
         <a href="{{ route('admin.pagos.deudores') }}" class="btn btn-outline-danger btn-sm">
             <i class="bi bi-exclamation-circle"></i> Deudores
         </a>
+        <a href="{{ route('admin.pagos.conceptos') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-tags"></i> Conceptos
+        </a>
         <a href="{{ route('admin.pagos.config') }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-gear"></i> Config
         </a>
@@ -269,9 +272,9 @@ new Chart(document.getElementById('chartCobros'), {
             <tr>
                 <td>
                     <a href="{{ route('admin.pagos.por-estudiante', $pago->matricula) }}" class="fw-semibold text-decoration-none" style="color:var(--primary);">
-                        {{ $est->apellido }}, {{ $est->nombre }}
+                        {{ $est->apellidos }}, {{ $est->nombres }}
                     </a>
-                    <div style="font-size:.72rem;color:#6b7280;">Matr. {{ $est->matricula ?? '—' }}</div>
+                    <div style="font-size:.72rem;color:#6b7280;">Matr. {{ $est->numero_matricula ?? '—' }}</div>
                 </td>
                 <td style="font-size:.82rem;">{{ $grp->grado->nombre ?? '—' }} {{ $grp->seccion->nombre ?? '' }}</td>
                 <td>{{ $pago->concepto }}</td>
@@ -381,16 +384,30 @@ new Chart(document.getElementById('chartCobros'), {
                         <i class="bi bi-info-circle me-1"></i>
                         Se generará una cuota pendiente para cada estudiante activo. No se duplican si ya existe el mismo concepto y fecha.
                     </div>
+                    @if($conceptos->isNotEmpty())
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold" style="font-size:.83rem;">Usar concepto predefinido</label>
+                        <select id="selectConceptoPredefinido" class="form-select form-select-sm">
+                            <option value="">— Seleccionar (opcional) —</option>
+                            @foreach($conceptos as $cp)
+                                <option value="{{ $cp->nombre }}" data-monto="{{ $cp->monto_defecto ?? '' }}">
+                                    {{ $cp->nombre }}
+                                    @if($cp->monto_defecto) — RD$ {{ number_format($cp->monto_defecto,2) }}@endif
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
                     <div class="mb-3">
                         <label class="form-label fw-semibold" style="font-size:.83rem;">Concepto</label>
-                        <input type="text" name="concepto" class="form-control form-control-sm"
+                        <input type="text" id="inputConceptoGen" name="concepto" class="form-control form-control-sm"
                                value="{{ \App\Helpers\Setting::get('payments_concept','Cuota escolar mensual') }}"
                                placeholder="Ej: Cuota Enero 2026" required>
                     </div>
                     <div class="row g-3">
                         <div class="col-6">
                             <label class="form-label fw-semibold" style="font-size:.83rem;">Monto (RD$)</label>
-                            <input type="number" name="monto" class="form-control form-control-sm" step="0.01" min="1" required>
+                            <input type="number" id="inputMontoGen" name="monto" class="form-control form-control-sm" step="0.01" min="1" required>
                         </div>
                         <div class="col-6">
                             <label class="form-label fw-semibold" style="font-size:.83rem;">Fecha límite pago</label>
@@ -423,6 +440,20 @@ function abrirPagar(id, concepto) {
     document.getElementById('formPagar').action = `/admin/pagos/${id}/pagar`;
     document.getElementById('pagarConcepto').textContent = concepto;
     new bootstrap.Modal(document.getElementById('modalPagar')).show();
+}
+
+// Selector de concepto predefinido en modal generar
+const selConcepto = document.getElementById('selectConceptoPredefinido');
+if (selConcepto) {
+    selConcepto.addEventListener('change', function () {
+        const opt = this.options[this.selectedIndex];
+        if (opt.value) {
+            document.getElementById('inputConceptoGen').value = opt.value;
+            if (opt.dataset.monto) {
+                document.getElementById('inputMontoGen').value = opt.dataset.monto;
+            }
+        }
+    });
 }
 
 document.getElementById('formPagar').addEventListener('submit', async function(e) {

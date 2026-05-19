@@ -31,7 +31,7 @@
                 @foreach($matriculas as $m)
                     <option value="{{ $m->id }}"
                         {{ (request('matricula')==$m->id || old('matricula_id')==$m->id) ? 'selected' : '' }}>
-                        {{ $m->estudiante->apellido }}, {{ $m->estudiante->nombre }}
+                        {{ $m->estudiante->apellidos }}, {{ $m->estudiante->nombres }}
                         — {{ $m->grupo->grado->nombre ?? '' }} {{ $m->grupo->seccion->nombre ?? '' }}
                     </option>
                 @endforeach
@@ -39,9 +39,24 @@
             @error('matricula_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
 
+        @if($conceptos->isNotEmpty())
+        <div class="mb-2">
+            <label class="form-label-custom">Usar concepto predefinido</label>
+            <select id="selectConceptoPredefinido" class="form-select form-select-sm">
+                <option value="">— Seleccionar para autocompletar —</option>
+                @foreach($conceptos as $cp)
+                    <option value="{{ $cp->nombre }}" data-monto="{{ $cp->monto_defecto ?? '' }}">
+                        {{ $cp->nombre }}
+                        @if($cp->monto_defecto) — RD$ {{ number_format($cp->monto_defecto,2) }}@endif
+                    </option>
+                @endforeach
+            </select>
+        </div>
+        @endif
+
         <div class="mb-3">
             <label class="form-label-custom">Concepto</label>
-            <input type="text" name="concepto" class="form-control form-control-sm @error('concepto') is-invalid @enderror"
+            <input type="text" id="inputConcepto" name="concepto" class="form-control form-control-sm @error('concepto') is-invalid @enderror"
                    value="{{ old('concepto', $concepto) }}" placeholder="Ej: Cuota Enero 2026" required>
             @error('concepto')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
@@ -49,7 +64,7 @@
         <div class="row g-3 mb-3">
             <div class="col-6">
                 <label class="form-label-custom">Monto (RD$)</label>
-                <input type="number" name="monto" class="form-control form-control-sm @error('monto') is-invalid @enderror"
+                <input type="number" id="inputMonto" name="monto" class="form-control form-control-sm @error('monto') is-invalid @enderror"
                        value="{{ old('monto') }}" step="0.01" min="0.01" required>
                 @error('monto')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
@@ -118,5 +133,16 @@
 document.querySelector('[name=estado]').addEventListener('change', function () {
     document.getElementById('camposPago').style.display = this.value === 'pagado' ? '' : 'none';
 });
+
+const selCP = document.getElementById('selectConceptoPredefinido');
+if (selCP) {
+    selCP.addEventListener('change', function () {
+        const opt = this.options[this.selectedIndex];
+        if (opt.value) {
+            document.getElementById('inputConcepto').value = opt.value;
+            if (opt.dataset.monto) document.getElementById('inputMonto').value = opt.dataset.monto;
+        }
+    });
+}
 </script>
 @endpush

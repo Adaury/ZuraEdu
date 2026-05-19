@@ -2575,6 +2575,11 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('admin.pagos.conceptos') }}" class="{{ request()->routeIs('admin.pagos.conceptos') ? 'active' : '' }}">
+                        <i class="bi bi-tags"></i>Conceptos de Pago
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.pagos.config') }}" class="{{ request()->routeIs('admin.pagos.config') ? 'active' : '' }}">
                         <i class="bi bi-gear"></i>Config. Pagos
                     </a>

@@ -23,6 +23,10 @@ Route::prefix('pagos')->name('pagos.')->group(function () {
     Route::get('/deudores/pdf',                  [PagoController::class, 'deudoresPdf'])->name('deudores.pdf');
     Route::get('/deudores/excel',                [PagoController::class, 'deudoresExcel'])->name('deudores.excel');
     Route::post('/deudores/recordatorio',        [PagoController::class, 'recordatorio'])->name('deudores.recordatorio');
-    Route::get('/config',                        [PagoController::class, 'configIndex'])->name('config');
-    Route::post('/config',                       [PagoController::class, 'configUpdate'])->name('config.update');
+    Route::get('/config',                              [PagoController::class, 'configIndex'])->name('config');
+    Route::post('/config',                             [PagoController::class, 'configUpdate'])->name('config.update');
+    Route::get('/conceptos',                           [PagoController::class, 'conceptos'])->name('conceptos');
+    Route::post('/conceptos',                          [PagoController::class, 'storeConcepto'])->name('conceptos.store');
+    Route::put('/conceptos/{conceptoPago}',            [PagoController::class, 'updateConcepto'])->name('conceptos.update');
+    Route::delete('/conceptos/{conceptoPago}',         [PagoController::class, 'destroyConcepto'])->name('conceptos.destroy');
 });

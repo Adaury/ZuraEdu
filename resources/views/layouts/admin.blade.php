@@ -2189,6 +2189,11 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('admin.inscripciones.index') }}" class="{{ request()->routeIs('admin.inscripciones*') ? 'active' : '' }}">
+                        <i class="bi bi-clipboard-check"></i>Inscripciones
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.matriculas.index') }}" class="{{ request()->routeIs('admin.matriculas*') ? 'active' : '' }}">
                         <i class="bi bi-card-list"></i>Matrículas
                     </a>
@@ -2582,6 +2587,11 @@ if (auth()->check()) {
             @php $pmPendientes = \App\Models\PreMatricula::where('estado','pendiente')->count(); @endphp
             <div class="nav-section-title">Inscripciones</div>
             <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.inscripciones.index') }}" class="{{ request()->routeIs('admin.inscripciones*') ? 'active' : '' }}">
+                        <i class="bi bi-clipboard-check"></i>Inscripciones
+                    </a>
+                </li>
                 <li class="nav-item">
                     <a href="{{ route('admin.pre-matriculas.index') }}"
                        class="{{ request()->routeIs('admin.pre-matriculas*') ? 'active' : '' }}"

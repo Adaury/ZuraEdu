@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DocenteSetupController;
 use App\Http\Controllers\Admin\EstudianteController;
 use App\Http\Controllers\Admin\GrupoController;
 use App\Http\Controllers\Admin\MatriculaController;
+use App\Http\Controllers\Admin\InscripcionController;
 use App\Http\Controllers\Admin\AsignacionController;
 use App\Http\Controllers\Admin\PerfilDocenteController;
 use App\Http\Controllers\Admin\PerfilEstudianteController;
@@ -54,6 +55,16 @@ Route::middleware('can:gestionar-grupos')->group(function () {
     Route::post('secciones',              [\App\Http\Controllers\Admin\SeccionController::class, 'store'])->name('secciones.store');
     Route::put('secciones/{seccion}',     [\App\Http\Controllers\Admin\SeccionController::class, 'update'])->name('secciones.update');
     Route::delete('secciones/{seccion}',  [\App\Http\Controllers\Admin\SeccionController::class, 'destroy'])->name('secciones.destroy');
+});
+
+// ── Inscripciones (Matrícula → Inscripción → Asignación) ─────────────────
+Route::middleware('can:gestionar-matriculas')->group(function () {
+    Route::get('inscripciones',                                [InscripcionController::class, 'index'])->name('inscripciones.index');
+    Route::post('inscripciones',                               [InscripcionController::class, 'store'])->name('inscripciones.store');
+    Route::post('inscripciones/masivo',                        [InscripcionController::class, 'storeMasivo'])->name('inscripciones.masivo');
+    Route::post('inscripciones/asignar-masivo',                [InscripcionController::class, 'asignarMasivo'])->name('inscripciones.asignar-masivo');
+    Route::post('inscripciones/{inscripcion}/asignar',         [InscripcionController::class, 'asignar'])->name('inscripciones.asignar');
+    Route::delete('inscripciones/{inscripcion}',               [InscripcionController::class, 'destroy'])->name('inscripciones.destroy');
 });
 
 // ── Matrículas + Asignaciones ─────────────────────────────────────────────

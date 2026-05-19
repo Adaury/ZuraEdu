@@ -2,15 +2,19 @@
 
 use App\Http\Controllers\Api\AsistenciaApiController;
 use App\Http\Controllers\Api\AuthApiController;
+use App\Http\Controllers\Api\CafeteriaApiController;
 use App\Http\Controllers\Api\CalendarioApiController;
 use App\Http\Controllers\Api\CalificacionesApiController;
 use App\Http\Controllers\Api\ClassroomApiController;
 use App\Http\Controllers\Api\ComunicadosApiController;
 use App\Http\Controllers\Api\DashboardApiController;
 use App\Http\Controllers\Api\DocenteApiController;
+use App\Http\Controllers\Api\EncuestasApiController;
 use App\Http\Controllers\Api\HorarioApiController;
 use App\Http\Controllers\Api\NotificacionApiController;
 use App\Http\Controllers\Api\PagosApiController;
+use App\Http\Controllers\Api\TareasApiController;
+use App\Http\Controllers\Api\TransporteApiController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -141,5 +145,30 @@ Route::prefix('v1')->group(function () {
         Route::post('ai/chat', [\App\Http\Controllers\Api\TutorIaApiController::class, 'chat'])
              ->middleware('throttle:30,1')
              ->name('api.ai.chat');
+
+        // Encuestas de satisfacción
+        Route::prefix('encuestas')->name('api.encuestas.')->group(function () {
+            Route::get('/',                       [EncuestasApiController::class, 'index'])->name('index');
+            Route::get('{encuesta}',              [EncuestasApiController::class, 'show'])->name('show');
+            Route::post('{encuesta}/responder',   [EncuestasApiController::class, 'responder'])->name('responder');
+        });
+
+        // Tareas
+        Route::prefix('tareas')->name('api.tareas.')->group(function () {
+            Route::get('/',                       [TareasApiController::class, 'index'])->name('index');
+            Route::get('hijo/{estudiante}',       [TareasApiController::class, 'hijo'])->name('hijo');
+        });
+
+        // Cafetería
+        Route::prefix('cafeteria')->name('api.cafeteria.')->group(function () {
+            Route::get('saldo',                   [CafeteriaApiController::class, 'saldo'])->name('saldo');
+            Route::get('saldo-hijo/{estudiante}', [CafeteriaApiController::class, 'saldoHijo'])->name('saldo-hijo');
+        });
+
+        // Transporte
+        Route::prefix('transporte')->name('api.transporte.')->group(function () {
+            Route::get('mi-ruta',                     [TransporteApiController::class, 'miRuta'])->name('mi-ruta');
+            Route::get('ruta-hijo/{estudiante}',      [TransporteApiController::class, 'rutaHijo'])->name('ruta-hijo');
+        });
     });
 });

@@ -16,6 +16,10 @@ const QUICK_LINKS = [
   { label: 'Mensajes',   icon: 'mail',             route: '/(estudiante)/mensajes',     color: Colors.indigo },
   { label: 'Noticias',   icon: 'megaphone',        route: '/(estudiante)/comunicados',  color: Colors.purple },
   { label: 'Mis Puntos', icon: 'trophy',           route: '/(estudiante)/mis-puntos',   color: '#6366f1'     },
+  { label: 'Tareas',     icon: 'checkbox',         route: '/(estudiante)/tareas',       color: Colors.blue   },
+  { label: 'Encuestas',  icon: 'clipboard',        route: '/(estudiante)/encuestas',    color: '#8b5cf6'     },
+  { label: 'Cafetería',  icon: 'cafe',             route: '/(estudiante)/cafeteria',    color: '#7c3aed'     },
+  { label: 'Transporte', icon: 'bus',              route: '/(estudiante)/transporte',   color: '#0369a1'     },
 ] as const
 
 export default function EstudianteDashboard() {

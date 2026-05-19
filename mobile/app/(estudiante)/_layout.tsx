@@ -28,6 +28,10 @@ export default function EstudianteLayout() {
       <Tabs.Screen name="mensajes"     options={{ title: 'Mensajes',   tabBarIcon: ({ color, size }) => <Ionicons name="mail"             size={size} color={color} />, href: null }} />
       <Tabs.Screen name="comunicados"  options={{ title: 'Noticias',   tabBarIcon: ({ color, size }) => <Ionicons name="megaphone"        size={size} color={color} />, href: null }} />
       <Tabs.Screen name="mis-puntos"  options={{ title: 'Mis Puntos', tabBarIcon: ({ color, size }) => <Ionicons name="trophy"           size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="encuestas"   options={{ title: 'Encuestas',  tabBarIcon: ({ color, size }) => <Ionicons name="clipboard-outline"  size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="tareas"      options={{ title: 'Tareas',     tabBarIcon: ({ color, size }) => <Ionicons name="checkbox-outline"   size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="cafeteria"   options={{ title: 'Cafetería',  tabBarIcon: ({ color, size }) => <Ionicons name="cafe-outline"       size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="transporte"  options={{ title: 'Transporte', tabBarIcon: ({ color, size }) => <Ionicons name="bus-outline"        size={size} color={color} />, href: null }} />
     </Tabs>
   )
 }

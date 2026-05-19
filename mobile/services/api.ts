@@ -137,3 +137,30 @@ export const tutorApi = {
   chat: (message: string, history: { role: 'user' | 'assistant'; content: string }[] = []) =>
     api.post('/ai/chat', { message, history }),
 }
+
+// ── Encuestas ─────────────────────────────────────────────────────────────────
+export const encuestasApi = {
+  index:    ()                                  => api.get('/encuestas'),
+  show:     (id: number)                        => api.get(`/encuestas/${id}`),
+  responder: (id: number, respuestas: Record<number, {
+    opcion_id?: number; escala_valor?: number; respuesta_texto?: string
+  }>) => api.post(`/encuestas/${id}/responder`, { respuestas }),
+}
+
+// ── Tareas ────────────────────────────────────────────────────────────────────
+export const tareasApi = {
+  index:         ()              => api.get('/tareas'),
+  hijo: (id: number) => api.get(`/tareas/hijo/${id}`),
+}
+
+// ── Cafetería ─────────────────────────────────────────────────────────────────
+export const cafeteriaApi = {
+  saldo:         ()              => api.get('/cafeteria/saldo'),
+  saldoHijo: (id: number) => api.get(`/cafeteria/saldo-hijo/${id}`),
+}
+
+// ── Transporte ────────────────────────────────────────────────────────────────
+export const transporteApi = {
+  miRuta:        ()              => api.get('/transporte/mi-ruta'),
+  rutaHijo: (id: number) => api.get(`/transporte/ruta-hijo/${id}`),
+}

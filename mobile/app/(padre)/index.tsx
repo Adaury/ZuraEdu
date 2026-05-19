@@ -16,6 +16,10 @@ const QUICK_LINKS = [
   { label: 'Mensajes',   icon: 'mail',             route: '/(padre)/mensajes',   color: Colors.indigo },
   { label: 'Noticias',   icon: 'megaphone',        route: '/(padre)/comunicados',color: Colors.purple },
   { label: 'Logros',     icon: 'trophy',           route: '/(padre)/mis-puntos', color: '#6366f1'     },
+  { label: 'Tareas',     icon: 'checkbox',         route: '/(padre)/tareas',     color: Colors.blue   },
+  { label: 'Encuestas',  icon: 'clipboard',        route: '/(padre)/encuestas',  color: '#8b5cf6'     },
+  { label: 'Cafetería',  icon: 'cafe',             route: '/(padre)/cafeteria',  color: '#7c3aed'     },
+  { label: 'Transporte', icon: 'bus',              route: '/(padre)/transporte', color: '#0369a1'     },
 ] as const
 
 export default function PadreDashboard() {

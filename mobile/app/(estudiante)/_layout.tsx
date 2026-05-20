@@ -2,26 +2,31 @@ import { Tabs, useRouter } from 'expo-router'
 import { TouchableOpacity } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useQuery } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import { Colors } from '../../constants/Colors'
 import { mensajesApi, notificacionesApi } from '../../services/api'
 
-export default function EstudianteLayout() {
-  const color  = Colors.roles.estudiante
+// Fuera del componente — referencia estable, nunca se recrea
+function BackButton() {
   const router = useRouter()
+  return (
+    <TouchableOpacity onPress={() => { if (router.canGoBack()) router.back() }} style={{ paddingLeft: 12 }}>
+      <Ionicons name="chevron-back" size={26} color="#fff" />
+    </TouchableOpacity>
+  )
+}
+
+const renderBackBtn = () => <BackButton />
+const renderNoBack  = () => undefined
+
+export default function EstudianteLayout() {
+  const color = Colors.roles.estudiante
 
   const { data: msgs }   = useQuery({ queryKey: ['mensajes-estudiante'], queryFn: () => mensajesApi.index().then(r => r.data),       staleTime: 30_000, refetchInterval: 60_000 })
   const { data: notifs } = useQuery({ queryKey: ['notificaciones'],       queryFn: () => notificacionesApi.index().then(r => r.data), staleTime: 30_000, refetchInterval: 60_000 })
 
   const msgBadge   = (msgs?.no_leidos   ?? 0) > 0 ? msgs!.no_leidos   : undefined
   const notifBadge = (notifs?.no_leidas ?? 0) > 0 ? notifs!.no_leidas : undefined
-
-  const BackBtn = () => (
-    <TouchableOpacity onPress={() => { if (router.canGoBack()) router.back() }} style={{ paddingLeft: 12 }}>
-      <Ionicons name="chevron-back" size={26} color="#fff" />
-    </TouchableOpacity>
-  )
-
-  const noBack = { headerLeft: undefined } as const
 
   return (
     <Tabs
@@ -33,14 +38,14 @@ export default function EstudianteLayout() {
         headerStyle:             { backgroundColor: Colors.primary },
         headerTintColor:         '#fff',
         headerTitleStyle:        { fontWeight: '800', fontSize: 17 },
-        headerLeft:              () => <BackBtn />,
+        headerLeft:              renderBackBtn,
       }}
     >
-      <Tabs.Screen name="index"        options={{ title: 'Inicio',     tabBarIcon: ({ color, size }) => <Ionicons name="home"             size={size} color={color} />, ...noBack }} />
-      <Tabs.Screen name="classroom"    options={{ title: 'Classroom',  tabBarIcon: ({ color, size }) => <Ionicons name="easel"            size={size} color={color} />, ...noBack }} />
-      <Tabs.Screen name="notas"        options={{ title: 'Notas',      tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart"        size={size} color={color} />, ...noBack }} />
-      <Tabs.Screen name="asistencia"   options={{ title: 'Asistencia', tabBarIcon: ({ color, size }) => <Ionicons name="calendar"         size={size} color={color} />, ...noBack }} />
-      <Tabs.Screen name="tutor"        options={{ title: 'Tutor IA',   tabBarIcon: ({ color, size }) => <Ionicons name="sparkles"         size={size} color={color} />, ...noBack }} />
+      <Tabs.Screen name="index"        options={{ title: 'Inicio',     tabBarIcon: ({ color, size }) => <Ionicons name="home"             size={size} color={color} />, headerLeft: renderNoBack }} />
+      <Tabs.Screen name="classroom"    options={{ title: 'Classroom',  tabBarIcon: ({ color, size }) => <Ionicons name="easel"            size={size} color={color} />, headerLeft: renderNoBack }} />
+      <Tabs.Screen name="notas"        options={{ title: 'Notas',      tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart"        size={size} color={color} />, headerLeft: renderNoBack }} />
+      <Tabs.Screen name="asistencia"   options={{ title: 'Asistencia', tabBarIcon: ({ color, size }) => <Ionicons name="calendar"         size={size} color={color} />, headerLeft: renderNoBack }} />
+      <Tabs.Screen name="tutor"        options={{ title: 'Tutor IA',   tabBarIcon: ({ color, size }) => <Ionicons name="sparkles"         size={size} color={color} />, headerLeft: renderNoBack }} />
       <Tabs.Screen name="riesgo"       options={{ title: 'Mi Estado',  tabBarIcon: ({ color, size }) => <Ionicons name="shield-checkmark" size={size} color={color} />, href: null }} />
       <Tabs.Screen name="horario"      options={{ title: 'Horario',    tabBarIcon: ({ color, size }) => <Ionicons name="time"             size={size} color={color} />, href: null }} />
       <Tabs.Screen name="pagos"        options={{ title: 'Pagos',      tabBarIcon: ({ color, size }) => <Ionicons name="card"             size={size} color={color} />, href: null }} />

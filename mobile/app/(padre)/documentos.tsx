@@ -19,16 +19,10 @@ export default function DocumentosPadre() {
   })
 
   const hijos: { id: number; nombre: string }[] = React.useMemo(() => {
-    const clases = clData?.aulas ?? clData?.clases ?? clData ?? []
-    const seen   = new Set<number>()
-    const list: { id: number; nombre: string }[] = []
-    for (const c of clases) {
-      if (c.estudiante_id && !seen.has(c.estudiante_id)) {
-        seen.add(c.estudiante_id)
-        list.push({ id: c.estudiante_id, nombre: c.estudiante ?? c.nombre_estudiante ?? `Hijo #${c.estudiante_id}` })
-      }
-    }
-    return list
+    return (clData?.hijos ?? []).map((h: any) => ({
+      id:     h.estudiante_id,
+      nombre: h.estudiante ?? `Hijo #${h.estudiante_id}`,
+    }))
   }, [clData])
 
   // Auto-seleccionar primer hijo

@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
 import { asistenciaApi } from '../../services/api'
@@ -13,9 +13,10 @@ const ESTADOS: Record<string, { label: string; color: string; bg: string }> = {
 }
 
 export default function AsistenciaEstudiante() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['asistencia'],
     queryFn:  () => asistenciaApi.index().then(r => r.data),
+    staleTime: 60_000,
   })
 
   const resumen = data?.resumen ?? {}
@@ -23,7 +24,10 @@ export default function AsistenciaEstudiante() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.blue} />}
+      >
         <Text style={styles.title}>Mi Asistencia</Text>
 
         {/* Resumen */}

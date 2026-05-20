@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native'
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
 import { calificacionesApi } from '../../services/api'
@@ -10,9 +10,10 @@ function semColor(n: number) {
 }
 
 export default function NotasEstudiante() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['calificaciones'],
     queryFn:  () => calificacionesApi.index().then(r => r.data),
+    staleTime: 60_000,
   })
 
   const periodos: string[] = data?.periodos ?? []
@@ -23,7 +24,10 @@ export default function NotasEstudiante() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.blue} />}
+      >
         <Text style={styles.title}>Mis Calificaciones</Text>
 
         {/* Tabs de períodos */}

@@ -19,6 +19,8 @@ composer install --no-dev --optimize-autoloader
 cp .env.example .env
 php artisan key:generate
 php artisan migrate --force
+php artisan db:seed --class=RolesSeeder        # roles y permisos base
+php artisan db:seed --class=SuperAdminSeeder   # primer superadmin
 php artisan storage:link
 php artisan optimize
 npm ci && npm run build
@@ -32,6 +34,14 @@ npm ci && npm run build
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://tu-dominio.edu.do
+
+# ── Base de datos ──────────────────────────────────────────────────
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=zuraedu
+DB_USERNAME=zuraedu_user
+DB_PASSWORD=password-seguro-aqui
 
 # ── Cola y caché ──────────────────────────────────────────────────
 CACHE_DRIVER=redis
@@ -71,11 +81,42 @@ MAIL_FROM_ADDRESS=noreply@tudominio.edu.do
 
 # ── IA ────────────────────────────────────────────────────────────
 GEMINI_API_KEY=tu-clave-aqui
+
+# ── Push notifications (Expo) ─────────────────────────────────────
+EXPO_ACCESS_TOKEN=tu-expo-access-token   # expo.dev → Account → Access Tokens
 ```
 
 ---
 
-## 3. Scheduler (crontab)
+## 3. Multi-tenant — primer tenant (institución)
+
+Tras el primer deploy, crear el tenant desde el panel SuperAdmin:
+
+```
+https://tu-dominio.edu.do/superadmin/tenants/create
+```
+
+O por Tinker:
+
+```bash
+php artisan tinker
+```
+```php
+$tenant = \App\Models\Tenant::create([
+    'nombre'    => 'Nombre del Centro Educativo',
+    'subdominio' => 'micentro',   // acceso en micentro.tu-dominio.edu.do
+    'plan'      => 'enterprise',
+    'activo'    => true,
+]);
+```
+
+### Variables de entorno por tenant
+
+No se usan archivos `.env` separados. Cada tenant lleva su configuración en la tabla `tenants` (columna `settings` JSON). Los valores sobreescriben la configuración global vía `BelongsToTenant` trait y el middleware `ResolveTenant`.
+
+---
+
+## 4. Scheduler (crontab)
 
 ```cron
 * * * * * cd /ruta/al/proyecto && php artisan schedule:run >> /dev/null 2>&1
@@ -92,7 +133,7 @@ GEMINI_API_KEY=tu-clave-aqui
 
 ---
 
-## 4. Supervisor — Horizon + Reverb
+## 5. Supervisor — Horizon + Reverb
 
 Crear el archivo `/etc/supervisor/conf.d/zuraedu.conf`:
 
@@ -130,7 +171,7 @@ supervisorctl status
 ### Queues gestionadas por Horizon:
 | Cola | Propósito |
 |---|---|
-| `notifications` | Notificaciones en-app + broadcast |
+| `notifications` | Notificaciones en-app + push móvil + broadcast |
 | `emails` | Envío de correos |
 | `pdfs` | Generación de PDFs |
 | `classroom` | Eventos de ZuraClass |
@@ -141,7 +182,7 @@ supervisorctl status
 
 ---
 
-## 5. Nginx — proxy para Reverb (WebSocket)
+## 6. Nginx — proxy para Reverb (WebSocket)
 
 Agregar dentro del bloque `server` en la config de Nginx:
 
@@ -163,7 +204,47 @@ location /app {
 
 ---
 
-## 6. Permisos de carpetas
+## 7. Push notifications móviles (Expo)
+
+El backend envía push notifications a través de la API de Expo. No requiere Firebase ni APNs directamente — Expo actúa como intermediario.
+
+### 7.1 Obtener token de acceso
+
+1. Ir a [expo.dev](https://expo.dev) → Settings → Access Tokens
+2. Crear token con permiso `Push notifications`
+3. Agregar al `.env`: `EXPO_ACCESS_TOKEN=...`
+
+### 7.2 Flujo del sistema
+
+```
+App móvil                   Backend Laravel              Expo Push API
+─────────                   ───────────────              ─────────────
+POST /api/push-token  ──►   Guarda token en              
+  { token, role }           push_tokens table            
+                                                         
+Evento en backend  ──►      NotificacionCreada job  ──►  POST /v2/push/send
+                            (cola: notifications)        { to: expoPushToken }
+```
+
+### 7.3 Formato del payload
+
+```json
+{
+  "to": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+  "title": "Título de la notificación",
+  "body": "Cuerpo del mensaje",
+  "data": {
+    "tipo": "nueva_nota | nuevo_mensaje | comunicado | tarea | ...",
+    "id": 123
+  }
+}
+```
+
+El campo `data.tipo` es interpretado por el deeplink handler de la app (`hooks/usePushNotifications.ts`) para navegar a la pantalla correcta según el rol del usuario.
+
+---
+
+## 8. Permisos de carpetas
 
 ```bash
 chmod -R 775 storage bootstrap/cache
@@ -172,7 +253,7 @@ chown -R www-data:www-data storage bootstrap/cache
 
 ---
 
-## 7. Deploy checklist
+## 9. Deploy checklist
 
 ```bash
 # 1. Bajar el sitio (opcional)
@@ -201,16 +282,17 @@ php artisan up
 
 ---
 
-## 8. Monitoreo
+## 10. Monitoreo
 
 | URL | Descripción |
 |---|---|
 | `/horizon` | Panel Horizon — queues, workers, métricas, failed jobs |
 | `/health` | JSON con estado de DB, Redis y Horizon |
+| `/superadmin` | Panel SuperAdmin — tenants, planes, feature flags |
 
 ---
 
-## 9. Desarrollo local (Laragon)
+## 11. Desarrollo local (Laragon)
 
 Levanta los tres procesos en terminales separadas:
 
@@ -223,3 +305,15 @@ php artisan horizon
 # Terminal 3 — WebSocket
 php artisan reverb:start
 ```
+
+> Variables `.env` locales para desarrollo con Laragon:
+> ```env
+> APP_URL=http://sge.test
+> REVERB_HOST=localhost
+> REVERB_PORT=8080
+> REVERB_SCHEME=http
+> VITE_REVERB_HOST=localhost
+> VITE_REVERB_SCHEME=http
+> BROADCAST_DRIVER=reverb
+> QUEUE_CONNECTION=redis
+> ```

@@ -98,6 +98,7 @@ export default function DocenteDashboard() {
               { label: 'Gamificación',  icon: 'trophy',          route: '/(docente)/gamificacion',     color: '#f59e0b'     },
               { label: 'Calendario',    icon: 'calendar',        route: '/(docente)/calendario',       color: Colors.amber  },
               { label: 'Notificaciones',icon: 'notifications',   route: '/(docente)/notificaciones',   color: Colors.blue   },
+              { label: 'Solicitudes',   icon: 'document-text',   route: '/(docente)/solicitudes',      color: Colors.amber  },
               { label: 'Perfil',        icon: 'person-circle',   route: '/(docente)/perfil',           color: Colors.muted  },
             ].map(({ label, icon, route, color }) => (
               <TouchableOpacity key={label} style={styles.quickItem} onPress={() => router.push(route as any)}>

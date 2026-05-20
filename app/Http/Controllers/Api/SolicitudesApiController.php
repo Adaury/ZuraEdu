@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Docente;
 use App\Models\Estudiante;
 use App\Models\Notificacion;
 use App\Models\Representante;
+use App\Models\SolicitudDocente;
 use App\Models\SolicitudEstudiante;
 use App\Models\SolicitudRepresentante;
 use App\Models\User;
@@ -19,12 +21,9 @@ class SolicitudesApiController extends Controller
     {
         $user = $request->user();
 
-        if ($user->hasRole('Estudiante')) {
-            return $this->indexEstudiante($user);
-        }
-        if ($user->hasRole('Representante')) {
-            return $this->indexRepresentante($user);
-        }
+        if ($user->hasRole('Docente'))        return $this->indexDocente($user);
+        if ($user->hasRole('Estudiante'))     return $this->indexEstudiante($user);
+        if ($user->hasRole('Representante'))  return $this->indexRepresentante($user);
 
         return response()->json(['message' => 'Rol no soportado.'], 403);
     }
@@ -34,12 +33,9 @@ class SolicitudesApiController extends Controller
     {
         $user = $request->user();
 
-        if ($user->hasRole('Estudiante')) {
-            return $this->storeEstudiante($request, $user);
-        }
-        if ($user->hasRole('Representante')) {
-            return $this->storeRepresentante($request, $user);
-        }
+        if ($user->hasRole('Docente'))        return $this->storeDocente($request, $user);
+        if ($user->hasRole('Estudiante'))     return $this->storeEstudiante($request, $user);
+        if ($user->hasRole('Representante'))  return $this->storeRepresentante($request, $user);
 
         return response()->json(['message' => 'Rol no soportado.'], 403);
     }
@@ -48,6 +44,16 @@ class SolicitudesApiController extends Controller
     public function show(Request $request, int $id)
     {
         $user = $request->user();
+
+        if ($user->hasRole('Docente')) {
+            $doc = Docente::where('user_id', $user->id)->first();
+            if (! $doc) return response()->json(['message' => 'Perfil no encontrado.'], 404);
+
+            $sol = SolicitudDocente::where('id', $id)->where('docente_id', $doc->id)->first();
+            if (! $sol) return response()->json(['message' => 'Solicitud no encontrada.'], 404);
+
+            return response()->json(['solicitud' => $this->formatDocente($sol)]);
+        }
 
         if ($user->hasRole('Estudiante')) {
             $est = Estudiante::where('user_id', $user->id)->first();
@@ -75,6 +81,96 @@ class SolicitudesApiController extends Controller
         }
 
         return response()->json(['message' => 'Rol no soportado.'], 403);
+    }
+
+    // ── Privados Docente ──────────────────────────────────────────────────────
+
+    private function indexDocente($user)
+    {
+        $doc = Docente::where('user_id', $user->id)->first();
+        if (! $doc) return response()->json(['message' => 'Perfil no encontrado.'], 404);
+
+        $solicitudes = SolicitudDocente::where('docente_id', $doc->id)
+            ->orderByRaw("FIELD(estado,'pendiente','en_proceso','aprobada','rechazada')")
+            ->orderByDesc('created_at')
+            ->get();
+
+        $stats = [
+            'pendientes' => $solicitudes->where('estado', 'pendiente')->count(),
+            'en_proceso' => $solicitudes->where('estado', 'en_proceso')->count(),
+            'aprobadas'  => $solicitudes->where('estado', 'aprobada')->count(),
+            'total'      => $solicitudes->count(),
+        ];
+
+        return response()->json([
+            'tipos'       => SolicitudDocente::TIPOS,
+            'stats'       => $stats,
+            'solicitudes' => $solicitudes->map(fn($s) => $this->formatDocente($s)),
+        ]);
+    }
+
+    private function storeDocente(Request $request, $user)
+    {
+        $doc = Docente::where('user_id', $user->id)->first();
+        if (! $doc) return response()->json(['message' => 'Perfil no encontrado.'], 404);
+
+        $validated = $request->validate([
+            'tipo'         => ['required', 'in:' . implode(',', array_keys(SolicitudDocente::TIPOS))],
+            'asunto'       => ['required', 'string', 'max:200'],
+            'descripcion'  => ['required', 'string', 'max:3000'],
+            'fecha_inicio' => ['nullable', 'date'],
+            'fecha_fin'    => ['nullable', 'date', 'after_or_equal:fecha_inicio'],
+        ]);
+
+        $sol = SolicitudDocente::create([
+            'docente_id'  => $doc->id,
+            'tipo'        => $validated['tipo'],
+            'asunto'      => $validated['asunto'],
+            'descripcion' => $validated['descripcion'],
+            'fecha_inicio'=> $validated['fecha_inicio'] ?? null,
+            'fecha_fin'   => $validated['fecha_fin']    ?? null,
+            'estado'      => 'pendiente',
+        ]);
+
+        try {
+            User::role(['Administrador', 'Director'])->each(function ($admin) use ($doc, $sol) {
+                Notificacion::create([
+                    'user_id' => $admin->id,
+                    'titulo'  => 'Solicitud docente: ' . (SolicitudDocente::TIPOS[$sol->tipo] ?? $sol->tipo),
+                    'cuerpo'  => "{$doc->apellidos}, {$doc->nombres} envió: {$sol->asunto}",
+                    'tipo'    => 'info',
+                    'leida'   => false,
+                ]);
+            });
+        } catch (\Throwable) {}
+
+        return response()->json([
+            'message'   => 'Solicitud enviada correctamente.',
+            'solicitud' => $this->formatDocente($sol),
+        ], 201);
+    }
+
+    private function formatDocente(SolicitudDocente $s): array
+    {
+        $estados = SolicitudDocente::estados();
+        $ec = $estados[$s->estado] ?? $estados['pendiente'];
+
+        return [
+            'id'           => $s->id,
+            'tipo'         => $s->tipo,
+            'tipo_label'   => SolicitudDocente::TIPOS[$s->tipo] ?? $s->tipo,
+            'asunto'       => $s->asunto,
+            'descripcion'  => $s->descripcion,
+            'fecha_inicio' => $s->fecha_inicio?->toDateString(),
+            'fecha_fin'    => $s->fecha_fin?->toDateString(),
+            'estado'       => $s->estado,
+            'estado_label' => $ec['label'],
+            'estado_color' => $ec['color'],
+            'respuesta'    => $s->respuesta,
+            'respondido_en'=> $s->respondido_en?->toDateTimeString(),
+            'creado_en'    => $s->created_at->toDateTimeString(),
+            'creado_hace'  => $s->created_at->diffForHumans(),
+        ];
     }
 
     // ── Privados Estudiante ───────────────────────────────────────────────────

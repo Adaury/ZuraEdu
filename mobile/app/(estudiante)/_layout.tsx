@@ -16,10 +16,12 @@ export default function EstudianteLayout() {
   const notifBadge = (notifs?.no_leidas ?? 0) > 0 ? notifs!.no_leidas : undefined
 
   const BackBtn = () => (
-    <TouchableOpacity onPress={() => router.back()} style={{ paddingLeft: 12 }}>
+    <TouchableOpacity onPress={() => { if (router.canGoBack()) router.back() }} style={{ paddingLeft: 12 }}>
       <Ionicons name="chevron-back" size={26} color="#fff" />
     </TouchableOpacity>
   )
+
+  const noBack = { headerLeft: undefined } as const
 
   return (
     <Tabs
@@ -31,14 +33,14 @@ export default function EstudianteLayout() {
         headerStyle:             { backgroundColor: Colors.primary },
         headerTintColor:         '#fff',
         headerTitleStyle:        { fontWeight: '800', fontSize: 17 },
-        headerLeft:              () => router.canGoBack() ? <BackBtn /> : undefined,
+        headerLeft:              () => <BackBtn />,
       }}
     >
-      <Tabs.Screen name="index"        options={{ title: 'Inicio',     tabBarIcon: ({ color, size }) => <Ionicons name="home"             size={size} color={color} /> }} />
-      <Tabs.Screen name="classroom"    options={{ title: 'Classroom',  tabBarIcon: ({ color, size }) => <Ionicons name="easel"            size={size} color={color} /> }} />
-      <Tabs.Screen name="notas"        options={{ title: 'Notas',      tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart"        size={size} color={color} /> }} />
-      <Tabs.Screen name="asistencia"   options={{ title: 'Asistencia', tabBarIcon: ({ color, size }) => <Ionicons name="calendar"         size={size} color={color} /> }} />
-      <Tabs.Screen name="tutor"        options={{ title: 'Tutor IA',   tabBarIcon: ({ color, size }) => <Ionicons name="sparkles"         size={size} color={color} /> }} />
+      <Tabs.Screen name="index"        options={{ title: 'Inicio',     tabBarIcon: ({ color, size }) => <Ionicons name="home"             size={size} color={color} />, ...noBack }} />
+      <Tabs.Screen name="classroom"    options={{ title: 'Classroom',  tabBarIcon: ({ color, size }) => <Ionicons name="easel"            size={size} color={color} />, ...noBack }} />
+      <Tabs.Screen name="notas"        options={{ title: 'Notas',      tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart"        size={size} color={color} />, ...noBack }} />
+      <Tabs.Screen name="asistencia"   options={{ title: 'Asistencia', tabBarIcon: ({ color, size }) => <Ionicons name="calendar"         size={size} color={color} />, ...noBack }} />
+      <Tabs.Screen name="tutor"        options={{ title: 'Tutor IA',   tabBarIcon: ({ color, size }) => <Ionicons name="sparkles"         size={size} color={color} />, ...noBack }} />
       <Tabs.Screen name="riesgo"       options={{ title: 'Mi Estado',  tabBarIcon: ({ color, size }) => <Ionicons name="shield-checkmark" size={size} color={color} />, href: null }} />
       <Tabs.Screen name="horario"      options={{ title: 'Horario',    tabBarIcon: ({ color, size }) => <Ionicons name="time"             size={size} color={color} />, href: null }} />
       <Tabs.Screen name="pagos"        options={{ title: 'Pagos',      tabBarIcon: ({ color, size }) => <Ionicons name="card"             size={size} color={color} />, href: null }} />

@@ -1,9 +1,17 @@
 import { Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import { useQuery } from '@tanstack/react-query'
 import { Colors } from '../../constants/Colors'
+import { mensajesApi, notificacionesApi } from '../../services/api'
 
 export default function EstudianteLayout() {
   const color = Colors.roles.estudiante
+
+  const { data: msgs }   = useQuery({ queryKey: ['mensajes-estudiante'], queryFn: () => mensajesApi.index().then(r => r.data),       staleTime: 30_000, refetchInterval: 60_000 })
+  const { data: notifs } = useQuery({ queryKey: ['notificaciones'],       queryFn: () => notificacionesApi.index().then(r => r.data), staleTime: 30_000, refetchInterval: 60_000 })
+
+  const msgBadge   = (msgs?.no_leidos   ?? 0) > 0 ? msgs!.no_leidos   : undefined
+  const notifBadge = (notifs?.no_leidas ?? 0) > 0 ? notifs!.no_leidas : undefined
 
   return (
     <Tabs
@@ -25,21 +33,21 @@ export default function EstudianteLayout() {
       <Tabs.Screen name="riesgo"       options={{ title: 'Mi Estado',  tabBarIcon: ({ color, size }) => <Ionicons name="shield-checkmark" size={size} color={color} />, href: null }} />
       <Tabs.Screen name="horario"      options={{ title: 'Horario',    tabBarIcon: ({ color, size }) => <Ionicons name="time"             size={size} color={color} />, href: null }} />
       <Tabs.Screen name="pagos"        options={{ title: 'Pagos',      tabBarIcon: ({ color, size }) => <Ionicons name="card"             size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="mensajes"     options={{ title: 'Mensajes',   tabBarIcon: ({ color, size }) => <Ionicons name="mail"             size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="mensajes"     options={{ title: 'Mensajes',   tabBarIcon: ({ color, size }) => <Ionicons name="mail"             size={size} color={color} />, href: null, tabBarBadge: msgBadge }} />
       <Tabs.Screen name="comunicados"  options={{ title: 'Noticias',   tabBarIcon: ({ color, size }) => <Ionicons name="megaphone"        size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="mis-puntos"  options={{ title: 'Mis Puntos', tabBarIcon: ({ color, size }) => <Ionicons name="trophy"           size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="encuestas"   options={{ title: 'Encuestas',  tabBarIcon: ({ color, size }) => <Ionicons name="clipboard-outline"  size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="tareas"      options={{ title: 'Tareas',     tabBarIcon: ({ color, size }) => <Ionicons name="checkbox-outline"   size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="cafeteria"   options={{ title: 'Cafetería',  tabBarIcon: ({ color, size }) => <Ionicons name="cafe-outline"       size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="transporte"  options={{ title: 'Transporte', tabBarIcon: ({ color, size }) => <Ionicons name="bus-outline"           size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="documentos"    options={{ title: 'Documentos',    tabBarIcon: ({ color, size }) => <Ionicons name="folder-open-outline"      size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="solicitudes"   options={{ title: 'Solicitudes',   tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline"    size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="calendario"    options={{ title: 'Calendario',    tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline"          size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="notificaciones"options={{ title: 'Notificaciones',tabBarIcon: ({ color, size }) => <Ionicons name="notifications-outline"     size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="perfil"        options={{ title: 'Perfil',        tabBarIcon: ({ color, size }) => <Ionicons name="person-circle-outline"     size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="observaciones"   options={{ title: 'Observaciones',   tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble-outline"     size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="conducta"        options={{ title: 'Conducta',        tabBarIcon: ({ color, size }) => <Ionicons name="shield-half-outline"    size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="plan-evaluacion"      options={{ title: 'Plan Evaluación', tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline"  size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="mis-puntos"   options={{ title: 'Mis Puntos', tabBarIcon: ({ color, size }) => <Ionicons name="trophy"           size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="encuestas"    options={{ title: 'Encuestas',  tabBarIcon: ({ color, size }) => <Ionicons name="clipboard-outline"  size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="tareas"       options={{ title: 'Tareas',     tabBarIcon: ({ color, size }) => <Ionicons name="checkbox-outline"   size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="cafeteria"    options={{ title: 'Cafetería',  tabBarIcon: ({ color, size }) => <Ionicons name="cafe-outline"       size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="transporte"   options={{ title: 'Transporte', tabBarIcon: ({ color, size }) => <Ionicons name="bus-outline"           size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="documentos"          options={{ title: 'Documentos',      tabBarIcon: ({ color, size }) => <Ionicons name="folder-open-outline"      size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="solicitudes"         options={{ title: 'Solicitudes',     tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline"    size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="calendario"          options={{ title: 'Calendario',      tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline"          size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="notificaciones"      options={{ title: 'Notificaciones',  tabBarIcon: ({ color, size }) => <Ionicons name="notifications-outline"     size={size} color={color} />, href: null, tabBarBadge: notifBadge }} />
+      <Tabs.Screen name="perfil"              options={{ title: 'Perfil',          tabBarIcon: ({ color, size }) => <Ionicons name="person-circle-outline"     size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="observaciones"         options={{ title: 'Observaciones',   tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble-outline"     size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="conducta"              options={{ title: 'Conducta',        tabBarIcon: ({ color, size }) => <Ionicons name="shield-half-outline"    size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="plan-evaluacion"       options={{ title: 'Plan Evaluación', tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline"  size={size} color={color} />, href: null }} />
       <Tabs.Screen name="resultados-evaluacion" options={{ title: 'Mis Evaluaciones', tabBarIcon: ({ color, size }) => <Ionicons name="ribbon-outline"          size={size} color={color} />, href: null }} />
     </Tabs>
   )

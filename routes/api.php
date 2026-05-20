@@ -68,6 +68,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('profile',         [AuthApiController::class, 'updateProfile'])->name('api.auth.profile');
             Route::post('push-token',       [AuthApiController::class, 'registerPushToken'])->name('api.auth.push-token');
             Route::delete('push-token',     [AuthApiController::class, 'removePushToken'])->name('api.auth.push-token.remove');
+            Route::post('avatar',           [AuthApiController::class, 'uploadAvatar'])->name('api.auth.avatar');
         });
     });
 
@@ -120,6 +121,7 @@ Route::prefix('v1')->group(function () {
         // Classroom (LMS)
         Route::prefix('classroom')->name('api.classroom.')->group(function () {
             Route::get('/',                                    [ClassroomApiController::class, 'index'])->name('index');
+            Route::post('/',                                   [ClassroomApiController::class, 'store'])->name('store');
             Route::get('{claseVirtual}/materiales',            [ClassroomApiController::class, 'materiales'])->name('materiales');
             Route::post('{claseVirtual}/materiales',           [ClassroomApiController::class, 'storeMaterial'])->name('materiales.store');
             Route::patch('materiales/{material}/publicar',     [ClassroomApiController::class, 'togglePublicar'])->name('materiales.publicar');

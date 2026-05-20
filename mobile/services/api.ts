@@ -45,6 +45,14 @@ export const authApi = {
     api.post('/auth/push-token', { token, platform }),
   removePushToken: (token: string) =>
     api.delete('/auth/push-token', { data: { token } }),
+  uploadAvatar: (uri: string) => {
+    const form = new FormData()
+    const filename = uri.split('/').pop() ?? 'foto.jpg'
+    const ext = filename.split('.').pop()?.toLowerCase() ?? 'jpg'
+    const mime = ext === 'png' ? 'image/png' : 'image/jpeg'
+    form.append('foto', { uri, name: filename, type: mime } as any)
+    return api.post('/auth/avatar', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -100,6 +108,8 @@ export const pagosApi = {
 // ── Classroom ─────────────────────────────────────────────────────────────────
 export const classroomApi = {
   index:                   () => api.get('/classroom'),
+  storeClase: (data: { asignacion_id: number; nombre: string; descripcion?: string; portada_color?: string }) =>
+    api.post('/classroom', data),
   materiales: (id: number) => api.get(`/classroom/${id}/materiales`),
   storeMaterial: (claseId: number, data: { titulo: string; tipo: string; contenido?: string; url_externo?: string; fecha_limite?: string; puntos?: number; publicado?: boolean }) =>
     api.post(`/classroom/${claseId}/materiales`, data),

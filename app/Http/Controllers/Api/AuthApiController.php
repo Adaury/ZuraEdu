@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\DeviceToken;
+use App\Models\Docente;
+use App\Models\Estudiante;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class AuthApiController extends Controller
 {
@@ -127,6 +130,31 @@ class AuthApiController extends Controller
             'telefono'  => $user->telefono,
             'role'      => $user->roles->first()?->name ?? 'Usuario',
         ]);
+    }
+
+    /** POST /api/v1/auth/avatar — Sube foto de perfil del docente o estudiante. */
+    public function uploadAvatar(Request $request)
+    {
+        $request->validate(['foto' => 'required|image|max:4096']);
+
+        $user = $request->user();
+        $path = $request->file('foto')->store('fotos/perfil', 'public');
+
+        if ($user->hasRole('Docente')) {
+            $docente = Docente::where('user_id', $user->id)->first();
+            if ($docente) {
+                if ($docente->foto) Storage::disk('public')->delete($docente->foto);
+                $docente->update(['foto' => $path]);
+            }
+        } elseif ($user->hasRole('Estudiante')) {
+            $est = Estudiante::where('user_id', $user->id)->first();
+            if ($est) {
+                if ($est->foto) Storage::disk('public')->delete($est->foto);
+                $est->update(['foto' => $path]);
+            }
+        }
+
+        return response()->json(['ok' => true, 'avatar' => asset('storage/' . $path)]);
     }
 
     /** PATCH /api/v1/auth/change-password */

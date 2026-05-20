@@ -7,7 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
-import { classroomApi } from '../../services/api'
+import { classroomApi, docenteApi } from '../../services/api'
 import { Colors } from '../../constants/Colors'
 
 const color = Colors.roles.docente
@@ -36,18 +36,29 @@ function diasRestantes(iso: string | null): number | null {
 
 const FORM_EMPTY = { titulo: '', tipo: 'material' as Tipo, contenido: '', url_externo: '', publicado: false }
 
+const AULA_COLORS = ['#1e3a6e', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b']
+const AULA_EMPTY  = { asignacion_id: 0, nombre: '', portada_color: '#1e3a6e' }
+
 export default function ClassroomDocente() {
   const qc = useQueryClient()
-  const [claseSeleccionada, setClase] = useState<any | null>(null)
-  const [showForm, setShowForm]       = useState(false)
-  const [form, setForm]               = useState(FORM_EMPTY)
+  const [claseSeleccionada, setClase]   = useState<any | null>(null)
+  const [showForm, setShowForm]         = useState(false)
+  const [form, setForm]                 = useState(FORM_EMPTY)
+  const [showAulaForm, setShowAulaForm] = useState(false)
+  const [aulaForm, setAulaForm]         = useState(AULA_EMPTY)
 
   const { data: listaData, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ['classroom-docente'],
     queryFn:  () => classroomApi.index().then(r => r.data),
   })
 
-  const clases: any[] = listaData?.clases ?? []
+  const { data: gruposData } = useQuery({
+    queryKey: ['docente-grupos'],
+    queryFn:  () => docenteApi.grupos().then(r => r.data),
+  })
+
+  const clases: any[]       = listaData?.clases    ?? []
+  const asignaciones: any[] = gruposData?.asignaciones ?? []
 
   const { data: detalle, isLoading: detLoading, refetch: detRefetch } = useQuery({
     queryKey:  ['classroom-mat-docente', claseSeleccionada?.id],
@@ -79,10 +90,110 @@ export default function ClassroomDocente() {
     onError: () => Alert.alert('Error', 'No se pudo cambiar el estado.'),
   })
 
+  const crearAula = useMutation({
+    mutationFn: () => classroomApi.storeClase({
+      asignacion_id: aulaForm.asignacion_id,
+      nombre:        aulaForm.nombre.trim(),
+      portada_color: aulaForm.portada_color,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['classroom-docente'] })
+      setShowAulaForm(false)
+      setAulaForm(AULA_EMPTY)
+    },
+    onError: () => Alert.alert('Error', 'No se pudo crear el aula.'),
+  })
+
+  const submitAula = () => {
+    if (!aulaForm.nombre.trim())   return Alert.alert('Atención', 'El nombre del aula es obligatorio.')
+    if (!aulaForm.asignacion_id)   return Alert.alert('Atención', 'Selecciona una asignatura/grupo.')
+    crearAula.mutate()
+  }
+
   const submitForm = () => {
     if (!form.titulo.trim()) return Alert.alert('Atención', 'El título es obligatorio.')
     crearMaterial.mutate()
   }
+
+  // ── Modal crear aula ────────────────────────────────────────────────────
+  const AulaModal = (
+    <Modal visible={showAulaForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAulaForm(false)}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bg }} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowAulaForm(false)} style={{ padding: 4 }}>
+              <Ionicons name="close" size={22} color={Colors.text} />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Nueva Aula Virtual</Text>
+            <TouchableOpacity
+              onPress={submitAula}
+              disabled={crearAula.isPending}
+              style={[styles.modalSaveBtn, { backgroundColor: color }]}
+            >
+              {crearAula.isPending
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={styles.modalSaveTxt}>Crear</Text>
+              }
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled">
+            {/* Nombre */}
+            <View>
+              <Text style={styles.fieldLabel}>Nombre del aula *</Text>
+              <TextInput
+                style={styles.input}
+                value={aulaForm.nombre}
+                onChangeText={t => setAulaForm(f => ({ ...f, nombre: t }))}
+                placeholder="Ej: Matemáticas 1er Cuatrimestre"
+                placeholderTextColor={Colors.muted}
+              />
+            </View>
+
+            {/* Asignatura/grupo */}
+            <View>
+              <Text style={styles.fieldLabel}>Asignatura / Grupo *</Text>
+              {asignaciones.length === 0
+                ? <Text style={{ color: Colors.muted, fontSize: 13 }}>Cargando asignaciones...</Text>
+                : asignaciones.map((a: any) => (
+                  <TouchableOpacity
+                    key={a.asignacion_id}
+                    style={[styles.asigRow, aulaForm.asignacion_id === a.asignacion_id && { borderColor: color, backgroundColor: color + '10' }]}
+                    onPress={() => setAulaForm(f => ({ ...f, asignacion_id: a.asignacion_id }))}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text }}>{a.asignatura}</Text>
+                      <Text style={{ fontSize: 11, color: Colors.muted }}>{a.grupo}</Text>
+                    </View>
+                    {aulaForm.asignacion_id === a.asignacion_id && (
+                      <Ionicons name="checkmark-circle" size={20} color={color} />
+                    )}
+                  </TouchableOpacity>
+                ))
+              }
+            </View>
+
+            {/* Color */}
+            <View>
+              <Text style={styles.fieldLabel}>Color de portada</Text>
+              <View style={styles.colorRow}>
+                {AULA_COLORS.map(c => (
+                  <TouchableOpacity
+                    key={c}
+                    style={[styles.colorSwatch, { backgroundColor: c },
+                      aulaForm.portada_color === c && styles.colorSwatchSel]}
+                    onPress={() => setAulaForm(f => ({ ...f, portada_color: c }))}
+                  >
+                    {aulaForm.portada_color === c && <Ionicons name="checkmark" size={14} color="#fff" />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </Modal>
+  )
 
   // ── Modal crear material ────────────────────────────────────────────────
   const FormModal = (
@@ -303,11 +414,21 @@ export default function ClassroomDocente() {
   // ── Vista lista ────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      {AulaModal}
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={color} />}
       >
-        <Text style={styles.pageTitle}>Mis Aulas</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+          <Text style={[styles.pageTitle, { flex: 1, marginBottom: 0 }]}>Mis Aulas</Text>
+          <TouchableOpacity
+            style={[styles.fabList, { backgroundColor: color }]}
+            onPress={() => { setAulaForm(AULA_EMPTY); setShowAulaForm(true) }}
+          >
+            <Ionicons name="add" size={20} color="#fff" />
+            <Text style={styles.fabListTxt}>Nueva</Text>
+          </TouchableOpacity>
+        </View>
 
         {isLoading && <ActivityIndicator color={color} style={{ marginTop: 40 }} />}
 
@@ -389,6 +510,16 @@ const styles = StyleSheet.create({
   urlText:           { fontSize: 12, color: Colors.indigo, fontWeight: '600' },
 
   emptyText:         { fontSize: 13, color: Colors.muted, textAlign: 'center' },
+
+  fabList:           { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99 },
+  fabListTxt:        { color: '#fff', fontWeight: '700', fontSize: 13 },
+
+  asigRow:           { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: Colors.border,
+                       borderRadius: 12, padding: 12, marginBottom: 8, backgroundColor: '#fff' },
+
+  colorRow:          { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
+  colorSwatch:       { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  colorSwatchSel:    { borderWidth: 3, borderColor: '#fff', shadowColor: '#000', shadowOpacity: .25, shadowRadius: 4, elevation: 4 },
 
   // Modal
   modalHeader:       { flexDirection: 'row', alignItems: 'center', padding: 16,

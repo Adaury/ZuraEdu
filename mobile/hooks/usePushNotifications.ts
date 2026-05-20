@@ -71,7 +71,8 @@ export function usePushNotifications(primaryRole: string | null) {
     // Listener: usuario toca la notificación → navegar a la pantalla correcta
     responseRef.current = Notifications.addNotificationResponseReceivedListener(response => {
       const data  = response.notification.request.content.data as Record<string, any>
-      const route = data?.route ?? routeFromRole(primaryRole)
+      const tipo  = data?.tipo as string | undefined
+      const route = data?.route ?? routeFromNotification(tipo, primaryRole)
       try { router.push(route as any) } catch {}
     })
 
@@ -86,7 +87,36 @@ export function usePushNotifications(primaryRole: string | null) {
 
 
 function routeFromRole(role: string | null): string {
-  if (role === 'Docente')         return '/(docente)/notificaciones'
-  if (role === 'Representante')   return '/(padre)/notificaciones'
+  if (role === 'Docente')       return '/(docente)/notificaciones'
+  if (role === 'Representante') return '/(padre)/notificaciones'
   return '/(estudiante)/notificaciones'
+}
+
+function routeFromNotification(tipo: string | undefined, role: string | null): string {
+  const prefix = role === 'Docente'       ? '/(docente)'
+               : role === 'Representante' ? '/(padre)'
+               : '/(estudiante)'
+
+  if (!tipo) return `${prefix}/notificaciones`
+
+  const map: Record<string, string> = {
+    nueva_nota:         `${prefix}/notas`,
+    ausencia:           `${prefix}/asistencia`,
+    nueva_calificacion: role === 'Docente' ? '/(docente)/calificaciones' : `${prefix}/notas`,
+    comunicado:         `${prefix}/comunicados`,
+    nuevo_comunicado:   `${prefix}/comunicados`,
+    mensaje:            `${prefix}/mensajes`,
+    nuevo_mensaje:      `${prefix}/mensajes`,
+    tarea:              `${prefix}/tareas`,
+    nueva_tarea:        `${prefix}/tareas`,
+    encuesta:           `${prefix}/encuestas`,
+    nueva_encuesta:     `${prefix}/encuestas`,
+    pago:               `${prefix}/pagos`,
+    pago_vencido:       `${prefix}/pagos`,
+    observacion:        `${prefix}/observaciones`,
+    gamificacion:       role === 'Docente' ? '/(docente)/gamificacion' : `${prefix}/mis-puntos`,
+    puntos:             role === 'Docente' ? '/(docente)/gamificacion' : `${prefix}/mis-puntos`,
+  }
+
+  return map[tipo] ?? `${prefix}/notificaciones`
 }

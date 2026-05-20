@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
+import * as ImagePicker from 'expo-image-picker'
 import { useAuth } from '../../context/AuthContext'
 import { authApi } from '../../services/api'
 import { Colors } from '../../constants/Colors'
@@ -58,6 +59,29 @@ export default function PerfilScreen() {
     onError: () => Alert.alert('Error', 'No se pudo actualizar el perfil.'),
   })
 
+  const avatarMutation = useMutation({
+    mutationFn: (uri: string) => authApi.uploadAvatar(uri),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['me'] }) },
+    onError:   () => Alert.alert('Error', 'No se pudo subir la foto.'),
+  })
+
+  const pickAvatar = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== 'granted') {
+      Alert.alert('Permiso necesario', 'Se necesita acceso a la galería para cambiar la foto.')
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    })
+    if (!result.canceled && result.assets[0]) {
+      avatarMutation.mutate(result.assets[0].uri)
+    }
+  }
+
   const submit = () => {
     if (!form.current.trim())        return Alert.alert('Atención', 'Escribe tu contraseña actual.')
     if (form.nueva.length < 8)       return Alert.alert('Atención', 'La nueva contraseña debe tener al menos 8 caracteres.')
@@ -73,6 +97,7 @@ export default function PerfilScreen() {
   const nombre   = `${data?.name ?? user?.name ?? ''} ${data?.apellidos ?? ''}`.trim()
   const email    = data?.email   ?? (user as any)?.email ?? ''
   const telefono = data?.telefono ?? ''
+  const avatarUrl= data?.avatar  ?? null
   const inits    = nombre.split(' ').slice(0, 2).map((w: string) => w[0] ?? '').join('').toUpperCase()
   const rc       = ROLE_COLORS[rol] ?? Colors.blue
 
@@ -83,9 +108,20 @@ export default function PerfilScreen() {
 
           {/* Avatar */}
           <View style={styles.avatarSection}>
-            <View style={[styles.avatarCircle, { backgroundColor: rc + '20' }]}>
-              <Text style={[styles.avatarInits, { color: rc }]}>{inits}</Text>
-            </View>
+            <TouchableOpacity onPress={pickAvatar} style={styles.avatarWrap} disabled={avatarMutation.isPending}>
+              {avatarUrl
+                ? <Image source={{ uri: avatarUrl }} style={styles.avatarImg} />
+                : <View style={[styles.avatarCircle, { backgroundColor: rc + '20' }]}>
+                    <Text style={[styles.avatarInits, { color: rc }]}>{inits}</Text>
+                  </View>
+              }
+              <View style={[styles.avatarEdit, { backgroundColor: rc }]}>
+                {avatarMutation.isPending
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Ionicons name="camera" size={13} color="#fff" />
+                }
+              </View>
+            </TouchableOpacity>
             <Text style={styles.nombre}>{nombre}</Text>
             <Text style={styles.email}>{email}</Text>
             <View style={[styles.roleBadge, { backgroundColor: rc + '18' }]}>
@@ -249,8 +285,13 @@ const styles = StyleSheet.create({
   safe:           { flex: 1, backgroundColor: Colors.bg },
   content:        { padding: 16, gap: 14, paddingBottom: 40 },
   avatarSection:  { alignItems: 'center', gap: 8, paddingVertical: 16 },
+  avatarWrap:     { position: 'relative', marginBottom: 4 },
+  avatarImg:      { width: 80, height: 80, borderRadius: 24 },
   avatarCircle:   { width: 80, height: 80, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   avatarInits:    { fontSize: 30, fontWeight: '900' },
+  avatarEdit:     { position: 'absolute', bottom: -6, right: -6, width: 26, height: 26,
+                    borderRadius: 8, alignItems: 'center', justifyContent: 'center',
+                    borderWidth: 2, borderColor: Colors.bg },
   nombre:         { fontSize: 20, fontWeight: '900', color: Colors.text },
   email:          { fontSize: 14, color: Colors.muted },
   roleBadge:      { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 5, marginTop: 2 },

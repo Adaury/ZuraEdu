@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Asignacion;
 use App\Models\ClaseVirtual;
 use App\Models\Docente;
 use App\Models\EntregaClassroom;
@@ -79,6 +80,43 @@ class ClassroomApiController extends Controller
         }
 
         return response()->json(['message' => 'Rol no soportado.'], 403);
+    }
+
+    /** POST /api/v1/classroom — Crea nueva aula virtual (solo docente). */
+    public function store(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
+        if (! $user->hasRole('Docente')) {
+            return response()->json(['message' => 'No autorizado.'], 403);
+        }
+
+        $docente = Docente::where('user_id', $user->id)->first();
+        if (! $docente) {
+            return response()->json(['message' => 'Perfil de docente no encontrado.'], 404);
+        }
+
+        $data = $request->validate([
+            'asignacion_id' => 'required|integer',
+            'nombre'        => 'required|string|max:120',
+            'descripcion'   => 'nullable|string|max:500',
+            'portada_color' => 'nullable|string|max:20',
+        ]);
+
+        $asignacion = Asignacion::where('id', $data['asignacion_id'])
+            ->where('docente_id', $docente->id)
+            ->firstOrFail();
+
+        $clase = ClaseVirtual::create([
+            'asignacion_id' => $asignacion->id,
+            'nombre'        => $data['nombre'],
+            'descripcion'   => $data['descripcion'] ?? null,
+            'portada_color' => $data['portada_color'] ?? '#1e3a6e',
+            'activo'        => true,
+        ]);
+
+        $clase->load('asignacion.asignatura');
+
+        return response()->json(['ok' => true, 'clase' => $this->mapClase($clase)], 201);
     }
 
     /** GET /api/v1/classroom/{claseVirtual}/materiales */

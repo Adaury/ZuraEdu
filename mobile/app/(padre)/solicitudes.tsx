@@ -7,15 +7,30 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
-import { solicitudesApi, classroomApi } from '../../services/api'
+import { solicitudesApi } from '../../services/api'
 import { Colors } from '../../constants/Colors'
 
+const ACCENT     = Colors.roles.padre
 const EMPTY_FORM = { tipo: '', asunto: '', descripcion: '', fecha_evento: '', estudiante_id: 0 }
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function tipoIcon(tipo: string): string {
+  const map: Record<string, string> = {
+    justificacion_ausencia: 'calendar-outline',
+    cita_docente:           'people-outline',
+    cita_direccion:         'business-outline',
+    solicitar_documento:    'document-text-outline',
+    actualizar_datos:       'create-outline',
+    otro:                   'ellipsis-horizontal-circle-outline',
+  }
+  return map[tipo] ?? 'document-outline'
+}
 
 export default function SolicitudesPadre() {
   const qc = useQueryClient()
   const [createVisible, setCreateVisible] = useState(false)
-  const [detailId, setDetailId]           = useState<number | null>(null)
+  const [detailId,      setDetailId]      = useState<number | null>(null)
   const [form, setForm]                   = useState(EMPTY_FORM)
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
@@ -23,29 +38,11 @@ export default function SolicitudesPadre() {
     queryFn:  () => solicitudesApi.index().then(r => r.data),
   })
 
-  const { data: clData } = useQuery({
-    queryKey: ['classroom-padre'],
-    queryFn:  () => classroomApi.index().then(r => r.data),
-  })
-
   const { data: detailData, isLoading: detailLoading } = useQuery({
     queryKey: ['solicitud-rep', detailId],
     queryFn:  () => solicitudesApi.show(detailId!).then(r => r.data),
     enabled:  !!detailId,
   })
-
-  const hijos: { id: number; nombre: string }[] = React.useMemo(() => {
-    const clases = clData?.aulas ?? clData?.clases ?? clData ?? []
-    const seen   = new Set<number>()
-    const list: { id: number; nombre: string }[] = []
-    for (const c of clases) {
-      if (c.estudiante_id && !seen.has(c.estudiante_id)) {
-        seen.add(c.estudiante_id)
-        list.push({ id: c.estudiante_id, nombre: c.estudiante ?? c.nombre_estudiante ?? `Hijo #${c.estudiante_id}` })
-      }
-    }
-    return list
-  }, [clData])
 
   const mutation = useMutation({
     mutationFn: (payload: any) => solicitudesApi.store(payload),
@@ -60,20 +57,22 @@ export default function SolicitudesPadre() {
     },
   })
 
-  const tipos      = data?.tipos ?? {}
-  const solicitudes = data?.solicitudes ?? []
-  const stats      = data?.stats ?? {}
-  const detail     = detailData?.solicitud
+  // El backend devuelve hijos directamente en la respuesta del index
+  const tipos:      Record<string, string>         = data?.tipos       ?? {}
+  const hijos:      { id: number; nombre: string }[] = data?.hijos     ?? []
+  const solicitudes: any[]                         = data?.solicitudes ?? []
+  const stats:       any                           = data?.stats        ?? {}
+  const detail                                     = detailData?.solicitud
 
   const submit = () => {
-    if (!form.tipo)              return Alert.alert('Atención', 'Selecciona un tipo de solicitud.')
-    if (!form.asunto.trim())     return Alert.alert('Atención', 'Escribe un asunto.')
+    if (!form.tipo)               return Alert.alert('Atención', 'Selecciona un tipo de solicitud.')
+    if (!form.asunto.trim())      return Alert.alert('Atención', 'Escribe un asunto.')
     if (!form.descripcion.trim()) return Alert.alert('Atención', 'Escribe una descripción.')
     mutation.mutate({
-      tipo:         form.tipo,
-      asunto:       form.asunto,
-      descripcion:  form.descripcion,
-      fecha_evento: form.fecha_evento || undefined,
+      tipo:          form.tipo,
+      asunto:        form.asunto.trim(),
+      descripcion:   form.descripcion.trim(),
+      fecha_evento:  form.fecha_evento || undefined,
       estudiante_id: form.estudiante_id || undefined,
     })
   }
@@ -81,7 +80,7 @@ export default function SolicitudesPadre() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.safe}>
-        <ActivityIndicator style={{ marginTop: 60 }} color={Colors.roles.padre} />
+        <ActivityIndicator style={{ marginTop: 60 }} color={ACCENT} />
       </SafeAreaView>
     )
   }
@@ -90,172 +89,249 @@ export default function SolicitudesPadre() {
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.roles.padre} />}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={ACCENT} />}
       >
+        <Text style={styles.pageTitle}>Mis Solicitudes</Text>
+
         {/* Stats */}
         <View style={styles.statsRow}>
-          <StatCard value={stats.pendientes ?? 0}  label="Pendientes" color={Colors.amber} />
-          <StatCard value={stats.en_proceso ?? 0}  label="En proceso"  color={Colors.blue}  />
-          <StatCard value={stats.aprobadas ?? 0}   label="Aprobadas"   color={Colors.green} />
-          <StatCard value={stats.total ?? 0}        label="Total"       color={Colors.text}  />
+          <StatCard value={stats.pendientes ?? 0} label="Pendientes" color={Colors.amber} />
+          <StatCard value={stats.en_proceso  ?? 0} label="En proceso"  color={Colors.blue}  />
+          <StatCard value={stats.aprobadas   ?? 0} label="Aprobadas"   color={Colors.green} />
+          <StatCard value={stats.total       ?? 0} label="Total"       color={Colors.text}  />
         </View>
 
-        <TouchableOpacity style={styles.newBtn} onPress={() => setCreateVisible(true)}>
+        {/* Botón nueva */}
+        <TouchableOpacity style={[styles.newBtn, { backgroundColor: ACCENT }]} onPress={() => setCreateVisible(true)}>
           <Ionicons name="add-circle" size={18} color="#fff" />
           <Text style={styles.newBtnText}>Nueva Solicitud</Text>
         </TouchableOpacity>
 
+        {/* Lista */}
         {solicitudes.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="document-outline" size={52} color={Colors.border} />
             <Text style={styles.emptyText}>Aún no tienes solicitudes</Text>
+            <Text style={styles.emptySub}>Usa el botón de arriba para crear una</Text>
           </View>
         ) : solicitudes.map((sol: any) => (
-          <TouchableOpacity key={sol.id} style={styles.card} onPress={() => setDetailId(sol.id)}>
+          <TouchableOpacity key={sol.id} style={styles.card} onPress={() => setDetailId(sol.id)} activeOpacity={0.85}>
             <View style={styles.cardTop}>
-              <View style={[styles.badge, { backgroundColor: sol.estado_color + '22' }]}>
-                <Text style={[styles.badgeText, { color: sol.estado_color }]}>{sol.estado_label}</Text>
+              <View style={[styles.iconBox, { backgroundColor: ACCENT + '14' }]}>
+                <Ionicons name={tipoIcon(sol.tipo) as any} size={18} color={ACCENT} />
               </View>
-              <Text style={styles.cardDate}>{sol.creado_hace}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardAsunto} numberOfLines={1}>{sol.asunto}</Text>
+                <View style={styles.cardSubRow}>
+                  <Text style={styles.cardTipo}>{sol.tipo_label}</Text>
+                  {sol.estudiante && (
+                    <>
+                      <Text style={styles.cardDot}>·</Text>
+                      <Ionicons name="person-outline" size={11} color={Colors.muted} />
+                      <Text style={styles.cardTipo}>{sol.estudiante}</Text>
+                    </>
+                  )}
+                </View>
+              </View>
+              <View style={[styles.estadoBadge, { backgroundColor: sol.estado_color + '20' }]}>
+                <Text style={[styles.estadoText, { color: sol.estado_color }]}>{sol.estado_label}</Text>
+              </View>
             </View>
-            <Text style={styles.cardAsunto} numberOfLines={1}>{sol.asunto}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={styles.cardTipo}>{sol.tipo_label}</Text>
-              {sol.estudiante && (
-                <>
-                  <Text style={styles.cardDot}>·</Text>
-                  <Text style={styles.cardTipo}>{sol.estudiante}</Text>
-                </>
+
+            <View style={styles.cardMeta}>
+              {sol.fecha_evento && (
+                <View style={styles.metaChip}>
+                  <Ionicons name="calendar-outline" size={12} color={Colors.muted} />
+                  <Text style={styles.metaText}>{sol.fecha_evento}</Text>
+                </View>
+              )}
+              <View style={styles.metaChip}>
+                <Ionicons name="time-outline" size={12} color={Colors.muted} />
+                <Text style={styles.metaText}>{sol.creado_hace}</Text>
+              </View>
+              {sol.respuesta && (
+                <View style={[styles.metaChip, styles.respondidaChip]}>
+                  <Ionicons name="chatbubble-outline" size={11} color={Colors.green} />
+                  <Text style={[styles.metaText, { color: Colors.green }]}>Respondida</Text>
+                </View>
               )}
             </View>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      {/* ── Create modal ── */}
-      <Modal visible={createVisible} animationType="slide" presentationStyle="pageSheet">
+      {/* ── Modal crear solicitud ─────────────────────────────────────────── */}
+      <Modal
+        visible={createVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => { setCreateVisible(false); setForm(EMPTY_FORM) }}
+      >
         <SafeAreaView style={styles.safe}>
           <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => { setCreateVisible(false); setForm(EMPTY_FORM) }} style={{ padding: 4 }}>
+                <Ionicons name="close" size={22} color={Colors.text} />
+              </TouchableOpacity>
               <Text style={styles.modalTitle}>Nueva Solicitud</Text>
-              <TouchableOpacity onPress={() => { setCreateVisible(false); setForm(EMPTY_FORM) }}>
-                <Ionicons name="close" size={24} color={Colors.text} />
+              <TouchableOpacity
+                onPress={submit}
+                disabled={mutation.isPending}
+                style={[styles.modalSaveBtn, { backgroundColor: ACCENT }]}
+              >
+                {mutation.isPending
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={styles.modalSaveTxt}>Enviar</Text>
+                }
               </TouchableOpacity>
             </View>
+
             <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
-              <Text style={styles.fieldLabel}>Tipo de solicitud</Text>
-              <View style={styles.tiposGrid}>
-                {Object.entries(tipos).map(([key, label]: [string, any]) => (
-                  <TouchableOpacity
-                    key={key}
-                    style={[styles.tipoBtn, form.tipo === key && styles.tipoBtnActive]}
-                    onPress={() => setForm(f => ({ ...f, tipo: key }))}
-                  >
-                    <Text style={[styles.tipoBtnText, form.tipo === key && styles.tipoBtnTextActive]}>
-                      {label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+
+              {/* Tipo */}
+              <View>
+                <Text style={styles.fieldLabel}>Tipo de solicitud</Text>
+                <View style={styles.tiposGrid}>
+                  {Object.entries(tipos).map(([key, label]: [string, any]) => (
+                    <TouchableOpacity
+                      key={key}
+                      style={[styles.tipoBtn, form.tipo === key && { borderColor: ACCENT, backgroundColor: ACCENT + '10' }]}
+                      onPress={() => setForm(f => ({ ...f, tipo: key }))}
+                    >
+                      <Ionicons
+                        name={tipoIcon(key) as any}
+                        size={13}
+                        color={form.tipo === key ? ACCENT : Colors.muted}
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text style={[styles.tipoBtnText, form.tipo === key && { color: ACCENT }]}>{label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
 
+              {/* Hijo (solo si hay más de uno o si hay alguno) */}
               {hijos.length > 0 && (
-                <>
+                <View>
                   <Text style={styles.fieldLabel}>
                     ¿Para cuál hijo? <Text style={styles.optional}>(opcional)</Text>
                   </Text>
-                  <View style={styles.tiposGrid}>
+                  <View style={styles.hijosRow}>
                     <TouchableOpacity
-                      style={[styles.tipoBtn, form.estudiante_id === 0 && styles.tipoBtnActive]}
+                      style={[styles.hijoChip, form.estudiante_id === 0 && { borderColor: ACCENT, backgroundColor: ACCENT + '10' }]}
                       onPress={() => setForm(f => ({ ...f, estudiante_id: 0 }))}
                     >
-                      <Text style={[styles.tipoBtnText, form.estudiante_id === 0 && styles.tipoBtnTextActive]}>
-                        General
-                      </Text>
+                      <Ionicons name="people-outline" size={13} color={form.estudiante_id === 0 ? ACCENT : Colors.muted} />
+                      <Text style={[styles.hijoChipTxt, form.estudiante_id === 0 && { color: ACCENT }]}>General</Text>
                     </TouchableOpacity>
                     {hijos.map(h => (
                       <TouchableOpacity
                         key={h.id}
-                        style={[styles.tipoBtn, form.estudiante_id === h.id && styles.tipoBtnActive]}
+                        style={[styles.hijoChip, form.estudiante_id === h.id && { borderColor: ACCENT, backgroundColor: ACCENT + '10' }]}
                         onPress={() => setForm(f => ({ ...f, estudiante_id: h.id }))}
                       >
-                        <Text style={[styles.tipoBtnText, form.estudiante_id === h.id && styles.tipoBtnTextActive]}>
+                        <Ionicons name="person-outline" size={13} color={form.estudiante_id === h.id ? ACCENT : Colors.muted} />
+                        <Text style={[styles.hijoChipTxt, form.estudiante_id === h.id && { color: ACCENT }]}>
                           {h.nombre.split(' ')[0]}
                         </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
-                </>
+                </View>
               )}
 
-              <Text style={styles.fieldLabel}>Asunto</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Escribe el asunto..."
-                placeholderTextColor={Colors.muted}
-                value={form.asunto}
-                onChangeText={t => setForm(f => ({ ...f, asunto: t }))}
-                maxLength={200}
-              />
+              {/* Asunto */}
+              <View>
+                <Text style={styles.fieldLabel}>Asunto</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Escribe el asunto..."
+                  placeholderTextColor={Colors.muted}
+                  value={form.asunto}
+                  onChangeText={t => setForm(f => ({ ...f, asunto: t }))}
+                  maxLength={200}
+                />
+              </View>
 
-              <Text style={styles.fieldLabel}>Descripción</Text>
-              <TextInput
-                style={[styles.input, styles.textarea]}
-                placeholder="Describe tu solicitud detalladamente..."
-                placeholderTextColor={Colors.muted}
-                value={form.descripcion}
-                onChangeText={t => setForm(f => ({ ...f, descripcion: t }))}
-                multiline
-                numberOfLines={5}
-                textAlignVertical="top"
-                maxLength={3000}
-              />
+              {/* Descripción */}
+              <View>
+                <Text style={styles.fieldLabel}>Descripción</Text>
+                <TextInput
+                  style={[styles.input, styles.textarea]}
+                  placeholder="Describe tu solicitud detalladamente..."
+                  placeholderTextColor={Colors.muted}
+                  value={form.descripcion}
+                  onChangeText={t => setForm(f => ({ ...f, descripcion: t }))}
+                  multiline
+                  textAlignVertical="top"
+                  maxLength={3000}
+                />
+              </View>
 
-              <Text style={styles.fieldLabel}>Fecha del evento <Text style={styles.optional}>(opcional)</Text></Text>
-              <TextInput
-                style={styles.input}
-                placeholder="AAAA-MM-DD"
-                placeholderTextColor={Colors.muted}
-                value={form.fecha_evento}
-                onChangeText={t => setForm(f => ({ ...f, fecha_evento: t }))}
-              />
+              {/* Fecha del evento */}
+              <View>
+                <Text style={styles.fieldLabel}>
+                  Fecha del evento <Text style={styles.optional}>(opcional)</Text>
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="AAAA-MM-DD"
+                  placeholderTextColor={Colors.muted}
+                  value={form.fecha_evento}
+                  onChangeText={t => setForm(f => ({ ...f, fecha_evento: t }))}
+                />
+              </View>
 
-              <TouchableOpacity style={styles.submitBtn} onPress={submit} disabled={mutation.isPending}>
-                {mutation.isPending
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.submitBtnText}>Enviar Solicitud</Text>
-                }
-              </TouchableOpacity>
             </ScrollView>
           </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
 
-      {/* ── Detail modal ── */}
-      <Modal visible={!!detailId} animationType="slide" presentationStyle="pageSheet">
+      {/* ── Modal detalle ─────────────────────────────────────────────────── */}
+      <Modal
+        visible={!!detailId}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setDetailId(null)}
+      >
         <SafeAreaView style={styles.safe}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Detalle</Text>
-            <TouchableOpacity onPress={() => setDetailId(null)}>
-              <Ionicons name="close" size={24} color={Colors.text} />
+            <TouchableOpacity onPress={() => setDetailId(null)} style={{ padding: 4 }}>
+              <Ionicons name="close" size={22} color={Colors.text} />
             </TouchableOpacity>
+            <Text style={styles.modalTitle}>Detalle</Text>
+            <View style={{ width: 60 }} />
           </View>
+
           {detailLoading || !detail ? (
-            <ActivityIndicator style={{ marginTop: 40 }} color={Colors.roles.padre} />
+            <ActivityIndicator style={{ marginTop: 40 }} color={ACCENT} />
           ) : (
             <ScrollView contentContainerStyle={styles.modalContent}>
-              <View style={[styles.badge, { backgroundColor: detail.estado_color + '22', alignSelf: 'flex-start' }]}>
-                <Text style={[styles.badgeText, { color: detail.estado_color }]}>{detail.estado_label}</Text>
+
+              {/* Encabezado */}
+              <View style={styles.detailHeader}>
+                <View style={[styles.detailIconBox, { backgroundColor: ACCENT + '14' }]}>
+                  <Ionicons name={tipoIcon(detail.tipo) as any} size={28} color={ACCENT} />
+                </View>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <View style={[styles.estadoBadge, { alignSelf: 'flex-start', backgroundColor: detail.estado_color + '20' }]}>
+                    <Text style={[styles.estadoText, { color: detail.estado_color }]}>{detail.estado_label}</Text>
+                  </View>
+                  <Text style={styles.detailAsunto}>{detail.asunto}</Text>
+                  <View style={styles.cardSubRow}>
+                    <Text style={styles.detailTipo}>{detail.tipo_label}</Text>
+                    {detail.estudiante && (
+                      <>
+                        <Text style={styles.cardDot}>·</Text>
+                        <Ionicons name="person-outline" size={12} color={Colors.muted} />
+                        <Text style={styles.detailTipo}>{detail.estudiante}</Text>
+                      </>
+                    )}
+                  </View>
+                </View>
               </View>
-              <Text style={styles.detailAsunto}>{detail.asunto}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <Text style={styles.detailTipo}>{detail.tipo_label}</Text>
-                {detail.estudiante && (
-                  <>
-                    <Text style={styles.cardDot}>·</Text>
-                    <Text style={styles.detailTipo}>{detail.estudiante}</Text>
-                  </>
-                )}
-              </View>
+
+              {/* Meta */}
               <View style={styles.metaRow}>
                 {detail.fecha_evento && (
                   <View style={styles.metaChip}>
@@ -268,21 +344,38 @@ export default function SolicitudesPadre() {
                   <Text style={styles.metaText}>{detail.creado_hace}</Text>
                 </View>
               </View>
+
               <View style={styles.divider} />
+
+              {/* Descripción */}
               <Text style={styles.fieldLabel}>Descripción</Text>
               <Text style={styles.detailBody}>{detail.descripcion}</Text>
-              {detail.respuesta && (
+
+              {/* Respuesta */}
+              {detail.respuesta ? (
                 <>
                   <View style={styles.divider} />
                   <Text style={styles.fieldLabel}>Respuesta de la institución</Text>
-                  <View style={styles.respuestaBox}>
+                  <View style={[styles.respuestaBox, { borderLeftColor: detail.estado_color }]}>
                     <Text style={styles.detailBody}>{detail.respuesta}</Text>
                     {detail.respondido_en && (
-                      <Text style={[styles.metaText, { marginTop: 6 }]}>{detail.respondido_en}</Text>
+                      <Text style={[styles.metaText, { marginTop: 8 }]}>
+                        Respondido: {new Date(detail.respondido_en).toLocaleDateString('es-DO', {
+                          day: '2-digit', month: 'long', year: 'numeric',
+                        })}
+                      </Text>
                     )}
                   </View>
                 </>
+              ) : (
+                <View style={styles.pendienteBox}>
+                  <Ionicons name="hourglass-outline" size={20} color={Colors.amber} />
+                  <Text style={[styles.metaText, { color: Colors.amber }]}>
+                    En espera de respuesta de la institución
+                  </Text>
+                </View>
               )}
+
             </ScrollView>
           )}
         </SafeAreaView>
@@ -301,44 +394,73 @@ function StatCard({ value, label, color }: { value: number; label: string; color
 }
 
 const styles = StyleSheet.create({
-  safe:             { flex: 1, backgroundColor: Colors.bg },
-  content:          { padding: 16, gap: 12, paddingBottom: 32 },
-  statsRow:         { flexDirection: 'row', gap: 8 },
-  statCard:         { flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 12, alignItems: 'center', shadowColor: '#000', shadowOpacity: .04, shadowRadius: 6, elevation: 2 },
-  statVal:          { fontSize: 22, fontWeight: '900' },
-  statLbl:          { fontSize: 10, fontWeight: '600', color: Colors.muted, marginTop: 2, textAlign: 'center' },
-  newBtn:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.roles.padre, borderRadius: 14, paddingVertical: 13 },
-  newBtnText:       { color: '#fff', fontWeight: '700', fontSize: 15 },
-  empty:            { alignItems: 'center', paddingVertical: 48, gap: 12 },
-  emptyText:        { fontSize: 15, color: Colors.muted, fontWeight: '600' },
-  card:             { backgroundColor: '#fff', borderRadius: 14, padding: 14, gap: 4, shadowColor: '#000', shadowOpacity: .04, shadowRadius: 6, elevation: 2 },
-  cardTop:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  badge:            { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeText:        { fontSize: 11, fontWeight: '700' },
-  cardDate:         { fontSize: 11, color: Colors.muted },
-  cardAsunto:       { fontSize: 15, fontWeight: '700', color: Colors.text },
-  cardTipo:         { fontSize: 12, color: Colors.muted },
-  cardDot:          { fontSize: 12, color: Colors.muted },
-  modalHeader:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  modalTitle:       { fontSize: 18, fontWeight: '800', color: Colors.text },
-  modalContent:     { padding: 16, gap: 14, paddingBottom: 40 },
-  fieldLabel:       { fontSize: 13, fontWeight: '700', color: Colors.text },
-  optional:         { fontSize: 12, color: Colors.muted, fontWeight: '400' },
-  tiposGrid:        { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tipoBtn:          { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7 },
-  tipoBtnActive:    { borderColor: Colors.roles.padre, backgroundColor: Colors.roles.padre + '12' },
-  tipoBtnText:      { fontSize: 13, color: Colors.muted, fontWeight: '600' },
-  tipoBtnTextActive:{ color: Colors.roles.padre },
-  input:            { backgroundColor: '#fff', borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: Colors.text },
-  textarea:         { minHeight: 110, textAlignVertical: 'top' },
-  submitBtn:        { backgroundColor: Colors.roles.padre, borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
-  submitBtnText:    { color: '#fff', fontWeight: '800', fontSize: 16 },
-  detailAsunto:     { fontSize: 20, fontWeight: '900', color: Colors.text },
-  detailTipo:       { fontSize: 13, color: Colors.muted },
-  metaRow:          { flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginTop: 4 },
-  metaChip:         { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText:         { fontSize: 12, color: Colors.muted },
-  divider:          { height: 1, backgroundColor: Colors.border },
-  detailBody:       { fontSize: 14, color: Colors.text, lineHeight: 21 },
-  respuestaBox:     { backgroundColor: Colors.green + '10', borderRadius: 12, padding: 12 },
+  safe:           { flex: 1, backgroundColor: Colors.bg },
+  content:        { padding: 16, gap: 12, paddingBottom: 40 },
+  pageTitle:      { fontSize: 22, fontWeight: '900', color: Colors.text, marginBottom: 4 },
+
+  statsRow:       { flexDirection: 'row', gap: 8 },
+  statCard:       { flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 12, alignItems: 'center',
+                    shadowColor: '#000', shadowOpacity: .04, shadowRadius: 6, elevation: 2 },
+  statVal:        { fontSize: 22, fontWeight: '900' },
+  statLbl:        { fontSize: 10, fontWeight: '600', color: Colors.muted, marginTop: 2, textAlign: 'center' },
+
+  newBtn:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    borderRadius: 14, paddingVertical: 13 },
+  newBtnText:     { color: '#fff', fontWeight: '700', fontSize: 15 },
+
+  empty:          { alignItems: 'center', paddingVertical: 48, gap: 8 },
+  emptyText:      { fontSize: 16, color: Colors.muted, fontWeight: '700' },
+  emptySub:       { fontSize: 13, color: Colors.muted },
+
+  card:           { backgroundColor: '#fff', borderRadius: 14, padding: 14, gap: 10,
+                    shadowColor: '#000', shadowOpacity: .04, shadowRadius: 6, elevation: 2 },
+  cardTop:        { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  iconBox:        { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  cardAsunto:     { fontSize: 14, fontWeight: '700', color: Colors.text },
+  cardSubRow:     { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
+  cardTipo:       { fontSize: 11, color: Colors.muted },
+  cardDot:        { fontSize: 11, color: Colors.muted },
+  estadoBadge:    { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  estadoText:     { fontSize: 11, fontWeight: '700' },
+  cardMeta:       { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  metaChip:       { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText:       { fontSize: 12, color: Colors.muted },
+  respondidaChip: { backgroundColor: Colors.green + '14', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+
+  // Modal
+  modalHeader:    { flexDirection: 'row', alignItems: 'center', gap: 12,
+                    padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: '#fff' },
+  modalTitle:     { flex: 1, fontSize: 17, fontWeight: '800', color: Colors.text },
+  modalSaveBtn:   { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 },
+  modalSaveTxt:   { color: '#fff', fontWeight: '700', fontSize: 14 },
+  modalContent:   { padding: 16, gap: 16, paddingBottom: 40 },
+
+  fieldLabel:     { fontSize: 13, fontWeight: '700', color: Colors.text, marginBottom: 6 },
+  optional:       { fontSize: 12, color: Colors.muted, fontWeight: '400' },
+  input:          { backgroundColor: '#fff', borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12,
+                    paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: Colors.text },
+  textarea:       { minHeight: 110, textAlignVertical: 'top' },
+
+  tiposGrid:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tipoBtn:        { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: Colors.border,
+                    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7 },
+  tipoBtnText:    { fontSize: 12, color: Colors.muted, fontWeight: '600' },
+
+  hijosRow:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  hijoChip:       { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1.5,
+                    borderColor: Colors.border, borderRadius: 99, paddingHorizontal: 12, paddingVertical: 7 },
+  hijoChipTxt:    { fontSize: 13, fontWeight: '600', color: Colors.muted },
+
+  // Detalle
+  detailHeader:   { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
+  detailIconBox:  { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  detailAsunto:   { fontSize: 18, fontWeight: '900', color: Colors.text },
+  detailTipo:     { fontSize: 13, color: Colors.muted },
+  metaRow:        { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
+  divider:        { height: 1, backgroundColor: Colors.border },
+  detailBody:     { fontSize: 14, color: Colors.text, lineHeight: 22 },
+  respuestaBox:   { borderLeftWidth: 3, borderRadius: 10, backgroundColor: Colors.green + '08',
+                    padding: 14, gap: 4 },
+  pendienteBox:   { flexDirection: 'row', alignItems: 'center', gap: 8,
+                    backgroundColor: Colors.amber + '12', borderRadius: 10, padding: 12 },
 })

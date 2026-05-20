@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Events\NotificationCreated;
 use App\Jobs\EnviarNotificacionJob;
+use App\Services\PushNotificationService;
 use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -128,6 +129,12 @@ class Notificacion extends Model
             'datos'   => $datos ?: null,
         ]);
         Cache::forget("user_{$userId}_notif_unread");
+
+        // Push notification al dispositivo móvil
+        try {
+            PushNotificationService::sendToUser($userId, $titulo, $mensaje, array_merge($datos, ['tipo' => $tipo]));
+        } catch (\Throwable) {}
+
         try {
             NotificationCreated::dispatch(
                 $notif->user_id,

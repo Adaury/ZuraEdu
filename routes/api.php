@@ -66,6 +66,8 @@ Route::prefix('v1')->group(function () {
             Route::post('refresh-token',    [AuthApiController::class, 'refreshToken'])->name('api.auth.refresh');
             Route::patch('change-password', [AuthApiController::class, 'changePassword'])->name('api.auth.change-password');
             Route::patch('profile',         [AuthApiController::class, 'updateProfile'])->name('api.auth.profile');
+            Route::post('push-token',       [AuthApiController::class, 'registerPushToken'])->name('api.auth.push-token');
+            Route::delete('push-token',     [AuthApiController::class, 'removePushToken'])->name('api.auth.push-token.remove');
         });
     });
 
@@ -129,7 +131,8 @@ Route::prefix('v1')->group(function () {
             Route::get('asistencia/{id}',                    [DocenteApiController::class, 'consultarAsistencia'])->name('asistencia.consultar');
             Route::post('asistencia',                        [DocenteApiController::class, 'registrarAsistencia'])->name('asistencia.registrar');
             Route::get('calificaciones/{asignacion}',        [DocenteApiController::class, 'calificaciones'])->name('calificaciones');
-            Route::post('calificaciones/{asignacion}/guardar',[DocenteApiController::class, 'guardarCalificacion'])->name('calificaciones.guardar');
+            Route::post('calificaciones/{asignacion}/guardar',  [DocenteApiController::class, 'guardarCalificacion'])->name('calificaciones.guardar');
+            Route::patch('calificaciones/{asignacion}/publicar', [DocenteApiController::class, 'publicarCalificaciones'])->name('calificaciones.publicar');
             Route::get('observaciones',                      [DocenteApiController::class, 'observaciones'])->name('observaciones');
             Route::post('observaciones',                     [DocenteApiController::class, 'storeObservacion'])->name('observaciones.store');
             Route::get('tareas',                             [DocenteApiController::class, 'tareasDocente'])->name('tareas');

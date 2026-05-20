@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Events\NotificationCreated;
 use App\Models\Notificacion;
+use App\Services\PushNotificationService;
 use Illuminate\Support\Facades\Cache;
 
 class EnviarNotificacionJob extends TenantJob
@@ -40,6 +41,17 @@ class EnviarNotificacionJob extends TenantJob
         ]);
 
         Cache::forget("user_{$this->userId}_notif_unread");
+
+        // Push notification al dispositivo móvil
+        try {
+            PushNotificationService::sendToUser(
+                $this->userId,
+                $this->titulo,
+                $this->mensaje,
+                array_merge($this->datos, ['tipo' => $this->tipo]),
+            );
+        } catch (\Throwable) {}
+
         try {
             NotificationCreated::dispatch(
                 $notif->user_id,

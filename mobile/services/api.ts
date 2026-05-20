@@ -41,6 +41,10 @@ export const authApi = {
     api.patch('/auth/change-password', data),
   updateProfile: (data: { name: string; apellidos?: string; telefono?: string }) =>
     api.patch('/auth/profile', data),
+  registerPushToken: (token: string, platform: 'ios' | 'android' | 'unknown') =>
+    api.post('/auth/push-token', { token, platform }),
+  removePushToken: (token: string) =>
+    api.delete('/auth/push-token', { data: { token } }),
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -111,6 +115,8 @@ export const docenteApi = {
   calificaciones: (asignacionId: number) => api.get(`/docente/calificaciones/${asignacionId}`),
   guardarCalificacion: (asignacionId: number, data: { matricula_id: number; periodo_id: number; nota_final: number }) =>
     api.post(`/docente/calificaciones/${asignacionId}/guardar`, data),
+  publicarCalificaciones: (asignacionId: number, data: { periodo_id: number; publicado: boolean }) =>
+    api.patch(`/docente/calificaciones/${asignacionId}/publicar`, data),
   // Observaciones
   observaciones: (asignacionId: number) => api.get('/docente/observaciones', { params: { asignacion_id: asignacionId } }),
   storeObservacion: (data: { asignacion_id: number; estudiante_id: number; tipo: string; texto: string; privada?: boolean }) =>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\DeviceToken;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -77,6 +78,33 @@ class AuthApiController extends Controller
         $newToken = $user->createToken($device)->plainTextToken;
 
         return response()->json(['token' => $newToken]);
+    }
+
+    /** POST /api/v1/auth/push-token */
+    public function registerPushToken(Request $request)
+    {
+        $data = $request->validate([
+            'token'    => 'required|string|max:500',
+            'platform' => 'nullable|string|in:ios,android,unknown',
+        ]);
+
+        DeviceToken::register(
+            $request->user()->id,
+            $data['token'],
+            $data['platform'] ?? 'unknown',
+        );
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** DELETE /api/v1/auth/push-token */
+    public function removePushToken(Request $request)
+    {
+        $token = $request->input('token');
+        if ($token) {
+            DeviceToken::remove($request->user()->id, $token);
+        }
+        return response()->json(['ok' => true]);
     }
 
     /** PATCH /api/v1/auth/profile */

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { StatusBar } from 'expo-status-bar'
 import { AuthProvider, useAuth } from '../context/AuthContext'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 60_000 } },
@@ -14,6 +15,9 @@ function NavigationGuard() {
   const router   = useRouter()
   const segments = useSegments()
 
+  // Push notifications — se activan cuando hay sesión y se limpian al salir
+  usePushNotifications(user ? primaryRole : null)
+
   useEffect(() => {
     if (isLoading) return
 
@@ -22,7 +26,7 @@ function NavigationGuard() {
     if (!user && !inAuth) {
       router.replace('/login')
     } else if (user && inAuth) {
-      if (primaryRole === 'Docente')          router.replace('/(docente)/')
+      if (primaryRole === 'Docente')            router.replace('/(docente)/')
       else if (primaryRole === 'Representante') router.replace('/(padre)/')
       else                                      router.replace('/(estudiante)/')
     }

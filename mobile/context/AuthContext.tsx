@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
 import * as SecureStore from 'expo-secure-store'
+import * as Notifications from 'expo-notifications'
 import { authApi } from '../services/api'
 
 type Role = 'Estudiante' | 'Docente' | 'Representante' | 'Administrador' | 'Director' | string
@@ -19,14 +20,19 @@ interface AuthContextType {
   primaryRole: Role | null
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  /** Registra el push token desde el hook de notificaciones para limpiarlo en logout. */
+  setPushToken: (token: string | null) => void
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser]       = useState<AuthUser | null>(null)
-  const [token, setToken]     = useState<string | null>(null)
+  const [user, setUser]         = useState<AuthUser | null>(null)
+  const [token, setToken]       = useState<string | null>(null)
   const [isLoading, setLoading] = useState(true)
+  const pushTokenRef            = useRef<string | null>(null)
+
+  const setPushToken = (t: string | null) => { pushTokenRef.current = t }
 
   // Determina el portal principal según roles
   const primaryRole: Role | null = user?.roles
@@ -64,6 +70,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = async () => {
+    // Limpiar push token del servidor antes de cerrar sesión
+    if (pushTokenRef.current) {
+      try { await authApi.removePushToken(pushTokenRef.current) } catch {}
+      pushTokenRef.current = null
+    }
+    try { await Notifications.setBadgeCountAsync(0) } catch {}
     try { await authApi.logout() } catch {}
     await SecureStore.deleteItemAsync('auth_token')
     await SecureStore.deleteItemAsync('auth_user')
@@ -72,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, primaryRole, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, primaryRole, login, logout, setPushToken }}>
       {children}
     </AuthContext.Provider>
   )

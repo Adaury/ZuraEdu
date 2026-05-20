@@ -197,9 +197,20 @@ class DocenteApiController extends Controller
 
         $sy = SchoolYear::actual();
 
+        // Pre-cargar todas las calificaciones del asignacion para calcular publicado por periodo
+        $todasLasCals = Calificacion::where('asignacion_id', $asignacionId)
+            ->get()
+            ->groupBy('periodo_id');
+
         $periodos = Periodo::when($sy, fn($q) => $q->where('school_year_id', $sy->id))
             ->orderBy('numero')->orderBy('id')->get()
-            ->map(fn($p) => ['id' => $p->id, 'nombre' => $p->nombre]);
+            ->map(fn($p) => [
+                'id'        => $p->id,
+                'nombre'    => $p->nombre,
+                'publicado' => $todasLasCals->has($p->id)
+                    && $todasLasCals[$p->id]->isNotEmpty()
+                    && $todasLasCals[$p->id]->every(fn($c) => $c->publicado),
+            ]);
 
         $matriculas = Matricula::where('grupo_id', $asignacion->grupo_id)
             ->where('estado', 'activa')
@@ -231,6 +242,33 @@ class DocenteApiController extends Controller
             'periodos'      => $periodos,
             'estudiantes'   => $matriculas,
         ]);
+    }
+
+    /** PATCH /api/v1/docente/calificaciones/{asignacion}/publicar
+     * Publica o despublica todas las calificaciones de un período.
+     */
+    public function publicarCalificaciones(Request $request, int $asignacionId)
+    {
+        $docente = $this->docenteOFail($request);
+        if (! $docente instanceof Docente) return $docente;
+
+        $asignacion = Asignacion::where('id', $asignacionId)
+            ->where('docente_id', $docente->id)
+            ->where('activo', true)
+            ->first();
+
+        if (! $asignacion) return response()->json(['message' => 'No autorizado.'], 403);
+
+        $data = $request->validate([
+            'periodo_id' => 'required|integer',
+            'publicado'  => 'required|boolean',
+        ]);
+
+        $count = Calificacion::where('asignacion_id', $asignacionId)
+            ->where('periodo_id', $data['periodo_id'])
+            ->update(['publicado' => $data['publicado']]);
+
+        return response()->json(['ok' => true, 'count' => $count, 'publicado' => $data['publicado']]);
     }
 
     /** POST /api/v1/docente/calificaciones/{asignacion}/guardar

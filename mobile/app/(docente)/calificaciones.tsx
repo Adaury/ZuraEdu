@@ -47,6 +47,21 @@ export default function CalificacionesDocente() {
     onError: () => Alert.alert('Error', 'No se pudo guardar la nota.'),
   })
 
+  const publicar = useMutation({
+    mutationFn: (vars: { periodo_id: number; publicado: boolean }) =>
+      docenteApi.publicarCalificaciones(asignacionSel!.asignacion_id, vars),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['docente-calificaciones', asignacionSel?.asignacion_id] })
+      Alert.alert(
+        vars.publicado ? 'Publicado' : 'Despublicado',
+        vars.publicado
+          ? 'Las calificaciones son visibles para estudiantes y representantes.'
+          : 'Las calificaciones quedaron como borrador.',
+      )
+    },
+    onError: () => Alert.alert('Error', 'No se pudo cambiar el estado de publicación.'),
+  })
+
   const commitEdit = (matriculaId: number) => {
     const val = parseFloat(editValue.replace(',', '.'))
     if (isNaN(val) || val < 0 || val > 100) {
@@ -82,19 +97,63 @@ export default function CalificacionesDocente() {
           </TouchableOpacity>
         </View>
 
-        {/* Tabs de períodos */}
+        {/* Tabs de períodos + botón publicar */}
         {!calLoading && periodos.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabsContent}>
-            {periodos.map((p: any) => (
+          <View style={styles.tabsRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={styles.tabsContent}>
+              {periodos.map((p: any) => (
+                <TouchableOpacity
+                  key={p.id}
+                  style={[styles.periodoTab, periodo?.id === p.id && { backgroundColor: ACCENT }]}
+                  onPress={() => { setPeriodo(p); setEditing(null) }}
+                >
+                  <Text style={[styles.periodoTabTxt, periodo?.id === p.id && { color: '#fff' }]}>{p.nombre}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Toggle publicar para el período seleccionado */}
+            {periodo && (
               <TouchableOpacity
-                key={p.id}
-                style={[styles.periodoTab, periodo?.id === p.id && { backgroundColor: ACCENT }]}
-                onPress={() => { setPeriodo(p); setEditing(null) }}
+                style={[
+                  styles.pubToggle,
+                  { backgroundColor: periodo.publicado ? Colors.green + '18' : Colors.muted + '14' },
+                ]}
+                onPress={() => {
+                  const next = !periodo.publicado
+                  Alert.alert(
+                    next ? 'Publicar calificaciones' : 'Despublicar calificaciones',
+                    next
+                      ? `¿Publicar todas las notas de ${periodo.nombre}? Serán visibles para estudiantes y representantes.`
+                      : `¿Marcar las notas de ${periodo.nombre} como borrador?`,
+                    [
+                      { text: 'Cancelar', style: 'cancel' },
+                      {
+                        text: next ? 'Publicar' : 'Despublicar',
+                        style: next ? 'default' : 'destructive',
+                        onPress: () => publicar.mutate({ periodo_id: periodo.id, publicado: next }),
+                      },
+                    ],
+                  )
+                }}
+                disabled={publicar.isPending}
               >
-                <Text style={[styles.periodoTabTxt, periodo?.id === p.id && { color: '#fff' }]}>{p.nombre}</Text>
+                {publicar.isPending
+                  ? <ActivityIndicator size="small" color={Colors.muted} />
+                  : <>
+                      <Ionicons
+                        name={periodo.publicado ? 'eye' : 'eye-off-outline'}
+                        size={15}
+                        color={periodo.publicado ? Colors.green : Colors.muted}
+                      />
+                      <Text style={[styles.pubToggleTxt, { color: periodo.publicado ? Colors.green : Colors.muted }]}>
+                        {periodo.publicado ? 'Publicado' : 'Borrador'}
+                      </Text>
+                    </>
+                }
               </TouchableOpacity>
-            ))}
-          </ScrollView>
+            )}
+          </View>
         )}
 
         <ScrollView contentContainerStyle={styles.content}>
@@ -231,11 +290,15 @@ const styles = StyleSheet.create({
   detTitle:     { fontSize: 16, fontWeight: '900', color: '#fff' },
   detSub:       { fontSize: 11, color: 'rgba(255,255,255,.8)', marginTop: 2 },
 
-  tabsScroll:   { flexGrow: 0, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: Colors.border },
-  tabsContent:  { paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  tabsRow:      { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
+                  borderBottomWidth: 1, borderBottomColor: Colors.border },
+  tabsContent:  { paddingLeft: 12, paddingRight: 4, paddingVertical: 10, gap: 8 },
   periodoTab:   { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 99,
                   borderWidth: 1.5, borderColor: Colors.border, backgroundColor: '#fff' },
   periodoTabTxt:{ fontSize: 12, fontWeight: '700', color: Colors.muted },
+  pubToggle:    { flexDirection: 'row', alignItems: 'center', gap: 5, marginRight: 10,
+                  paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10 },
+  pubToggleTxt: { fontSize: 11, fontWeight: '700' },
 
   estudRow:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12,
                   padding: 12, gap: 10, shadowColor: '#000', shadowOpacity: .03, shadowRadius: 4, elevation: 1 },

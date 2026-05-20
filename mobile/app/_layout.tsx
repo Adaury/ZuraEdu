@@ -26,9 +26,10 @@ function NavigationGuard() {
     if (!user && !inAuth) {
       router.replace('/login')
     } else if (user && inAuth) {
-      if (primaryRole === 'Docente')            router.replace('/(docente)/')
-      else if (primaryRole === 'Representante') router.replace('/(padre)/')
-      else                                      router.replace('/(estudiante)/')
+      if (primaryRole === 'Docente')                                          router.replace('/(docente)/')
+      else if (primaryRole === 'Representante')                               router.replace('/(padre)/')
+      else if (primaryRole === 'Administrador' || primaryRole === 'Director') router.replace('/(admin)/')
+      else                                                                    router.replace('/(estudiante)/')
     }
   }, [user, isLoading, primaryRole])
 
@@ -47,6 +48,7 @@ export default function RootLayout() {
             <Stack.Screen name="(estudiante)" />
             <Stack.Screen name="(padre)" />
             <Stack.Screen name="(docente)" />
+            <Stack.Screen name="(admin)" />
           </Stack>
         </AuthProvider>
       </QueryClientProvider>

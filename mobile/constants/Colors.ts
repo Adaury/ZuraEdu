@@ -23,5 +23,6 @@ export const Colors = {
     estudiante: '#3b82f6',
     padre:      '#8b5cf6',
     docente:    '#f59e0b',
+    admin:      '#1e3a6e',
   },
 }

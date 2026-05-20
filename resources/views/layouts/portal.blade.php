@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $__env->yieldContent('page-title') ?: $__env->yieldContent('title', 'Portal') }} — SGE</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
 
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="/vendor/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet">

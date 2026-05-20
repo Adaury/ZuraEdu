@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="ZuraEdu — Sistema académico completo con aula virtual. Notas, competencias, horarios y portal para padres en una sola plataforma.">
     <title>ZuraEdu — Sistema educativo inteligente</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
 
     {{-- Google Fonts --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">

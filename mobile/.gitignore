@@ -32,6 +32,12 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+
+# Firebase — nunca subir credenciales reales
+google-services.json
+google-play-key.json
+GoogleService-Info.plist
 
 # typescript
 *.tsbuildinfo

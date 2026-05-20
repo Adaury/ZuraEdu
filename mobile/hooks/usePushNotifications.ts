@@ -86,36 +86,41 @@ export function usePushNotifications(primaryRole: string | null) {
 }
 
 
-function routeFromRole(role: string | null): string {
-  if (role === 'Docente')       return '/(docente)/notificaciones'
-  if (role === 'Representante') return '/(padre)/notificaciones'
-  return '/(estudiante)/notificaciones'
-}
-
 function routeFromNotification(tipo: string | undefined, role: string | null): string {
+  const isAdmin = role === 'Administrador' || role === 'Director'
+
   const prefix = role === 'Docente'       ? '/(docente)'
                : role === 'Representante' ? '/(padre)'
+               : isAdmin                  ? '/(admin)'
                : '/(estudiante)'
 
   if (!tipo) return `${prefix}/notificaciones`
 
+  const isAdmin = role === 'Administrador' || role === 'Director'
+
   const map: Record<string, string> = {
-    nueva_nota:         `${prefix}/notas`,
-    ausencia:           `${prefix}/asistencia`,
-    nueva_calificacion: role === 'Docente' ? '/(docente)/calificaciones' : `${prefix}/notas`,
+    nueva_nota:         isAdmin ? `${prefix}/notificaciones` : `${prefix}/notas`,
+    ausencia:           isAdmin ? `${prefix}/notificaciones` : `${prefix}/asistencia`,
+    nueva_calificacion: role === 'Docente' ? '/(docente)/calificaciones'
+                      : isAdmin           ? `${prefix}/notificaciones`
+                      :                     `${prefix}/notas`,
     comunicado:         `${prefix}/comunicados`,
     nuevo_comunicado:   `${prefix}/comunicados`,
     mensaje:            `${prefix}/mensajes`,
     nuevo_mensaje:      `${prefix}/mensajes`,
-    tarea:              `${prefix}/tareas`,
-    nueva_tarea:        `${prefix}/tareas`,
-    encuesta:           `${prefix}/encuestas`,
-    nueva_encuesta:     `${prefix}/encuestas`,
-    pago:               `${prefix}/pagos`,
-    pago_vencido:       `${prefix}/pagos`,
-    observacion:        `${prefix}/observaciones`,
-    gamificacion:       role === 'Docente' ? '/(docente)/gamificacion' : `${prefix}/mis-puntos`,
-    puntos:             role === 'Docente' ? '/(docente)/gamificacion' : `${prefix}/mis-puntos`,
+    tarea:              isAdmin ? `${prefix}/notificaciones` : `${prefix}/tareas`,
+    nueva_tarea:        isAdmin ? `${prefix}/notificaciones` : `${prefix}/tareas`,
+    encuesta:           isAdmin ? `${prefix}/notificaciones` : `${prefix}/encuestas`,
+    nueva_encuesta:     isAdmin ? `${prefix}/notificaciones` : `${prefix}/encuestas`,
+    pago:               isAdmin ? `${prefix}/notificaciones` : `${prefix}/pagos`,
+    pago_vencido:       isAdmin ? `${prefix}/notificaciones` : `${prefix}/pagos`,
+    observacion:        isAdmin ? `${prefix}/notificaciones` : `${prefix}/observaciones`,
+    gamificacion:       role === 'Docente' ? '/(docente)/gamificacion'
+                      : isAdmin           ? `${prefix}/notificaciones`
+                      :                     `${prefix}/mis-puntos`,
+    puntos:             role === 'Docente' ? '/(docente)/gamificacion'
+                      : isAdmin           ? `${prefix}/notificaciones`
+                      :                     `${prefix}/mis-puntos`,
   }
 
   return map[tipo] ?? `${prefix}/notificaciones`

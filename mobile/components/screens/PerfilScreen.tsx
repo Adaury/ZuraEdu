@@ -4,7 +4,7 @@ import {
   TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../context/AuthContext'
 import { authApi } from '../../services/api'
@@ -20,8 +20,11 @@ const EMPTY_PWD = { current: '', nueva: '', confirmar: '' }
 
 export default function PerfilScreen() {
   const { user, logout } = useAuth()
-  const [showPwd, setShowPwd] = useState(false)
-  const [form, setForm]       = useState(EMPTY_PWD)
+  const qc = useQueryClient()
+  const [showPwd,   setShowPwd]   = useState(false)
+  const [showEdit,  setShowEdit]  = useState(false)
+  const [form,      setForm]      = useState(EMPTY_PWD)
+  const [editForm,  setEditForm]  = useState({ name: '', apellidos: '', telefono: '' })
 
   const { data } = useQuery({
     queryKey: ['me'],
@@ -44,6 +47,17 @@ export default function PerfilScreen() {
     },
   })
 
+  const updateProfileMutation = useMutation({
+    mutationFn: (payload: { name: string; apellidos?: string; telefono?: string }) =>
+      authApi.updateProfile(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['me'] })
+      setShowEdit(false)
+      Alert.alert('Éxito', 'Perfil actualizado correctamente.')
+    },
+    onError: () => Alert.alert('Error', 'No se pudo actualizar el perfil.'),
+  })
+
   const submit = () => {
     if (!form.current.trim())        return Alert.alert('Atención', 'Escribe tu contraseña actual.')
     if (form.nueva.length < 8)       return Alert.alert('Atención', 'La nueva contraseña debe tener al menos 8 caracteres.')
@@ -55,11 +69,12 @@ export default function PerfilScreen() {
     })
   }
 
-  const rol    = data?.role    ?? user?.role    ?? ''
-  const nombre = `${data?.name ?? user?.name ?? ''} ${data?.apellidos ?? ''}`.trim()
-  const email  = data?.email   ?? (user as any)?.email ?? ''
-  const inits  = nombre.split(' ').slice(0, 2).map((w: string) => w[0] ?? '').join('').toUpperCase()
-  const rc     = ROLE_COLORS[rol] ?? Colors.blue
+  const rol      = data?.role    ?? user?.role    ?? ''
+  const nombre   = `${data?.name ?? user?.name ?? ''} ${data?.apellidos ?? ''}`.trim()
+  const email    = data?.email   ?? (user as any)?.email ?? ''
+  const telefono = data?.telefono ?? ''
+  const inits    = nombre.split(' ').slice(0, 2).map((w: string) => w[0] ?? '').join('').toUpperCase()
+  const rc       = ROLE_COLORS[rol] ?? Colors.blue
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -80,11 +95,54 @@ export default function PerfilScreen() {
 
           {/* Info */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Información de cuenta</Text>
-            <InfoRow icon="person-outline"  label="Nombre" value={nombre} />
-            <InfoRow icon="mail-outline"    label="Email"  value={email}  />
-            <InfoRow icon="shield-outline"  label="Rol"    value={rol}    />
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+              <Text style={[styles.sectionTitle, { flex: 1 }]}>Información de cuenta</Text>
+              <TouchableOpacity
+                style={[styles.editInfoBtn, { backgroundColor: rc + '18' }]}
+                onPress={() => {
+                  setEditForm({
+                    name:      data?.name      ?? user?.name ?? '',
+                    apellidos: data?.apellidos ?? '',
+                    telefono:  data?.telefono  ?? '',
+                  })
+                  setShowEdit(v => !v)
+                }}
+              >
+                <Ionicons name={showEdit ? 'close' : 'pencil'} size={14} color={rc} />
+                <Text style={[styles.editInfoTxt, { color: rc }]}>{showEdit ? 'Cancelar' : 'Editar'}</Text>
+              </TouchableOpacity>
+            </View>
+            <InfoRow icon="person-outline"  label="Nombre"   value={nombre}   />
+            <InfoRow icon="mail-outline"    label="Email"    value={email}    />
+            {!!telefono && <InfoRow icon="call-outline" label="Teléfono" value={telefono} />}
+            <InfoRow icon="shield-outline"  label="Rol"      value={rol}      />
           </View>
+
+          {/* Editar info */}
+          {showEdit && (
+            <View style={styles.section}>
+              <EditField label="Nombre(s)"    value={editForm.name}      onChange={t => setEditForm(f => ({ ...f, name: t }))}      />
+              <EditField label="Apellido(s)"  value={editForm.apellidos} onChange={t => setEditForm(f => ({ ...f, apellidos: t }))} />
+              <EditField label="Teléfono"     value={editForm.telefono}  onChange={t => setEditForm(f => ({ ...f, telefono: t }))}  keyboardType="phone-pad" />
+              <TouchableOpacity
+                style={[styles.btn, { backgroundColor: rc }]}
+                onPress={() => {
+                  if (!editForm.name.trim()) return Alert.alert('Atención', 'El nombre es obligatorio.')
+                  updateProfileMutation.mutate({
+                    name:      editForm.name.trim(),
+                    apellidos: editForm.apellidos.trim() || undefined,
+                    telefono:  editForm.telefono.trim()  || undefined,
+                  })
+                }}
+                disabled={updateProfileMutation.isPending}
+              >
+                {updateProfileMutation.isPending
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.btnText}>Guardar cambios</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Cambiar contraseña */}
           <TouchableOpacity style={styles.section} onPress={() => setShowPwd(v => !v)} activeOpacity={0.85}>
@@ -146,6 +204,24 @@ function InfoRow({ icon, label, value }: { icon: string; label: string; value: s
   )
 }
 
+function EditField({
+  label, value, onChange, keyboardType,
+}: { label: string; value: string; onChange: (t: string) => void; keyboardType?: any }) {
+  return (
+    <View style={{ gap: 5 }}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TextInput
+        style={styles.editInput}
+        value={value}
+        onChangeText={onChange}
+        keyboardType={keyboardType ?? 'default'}
+        autoCapitalize="words"
+        placeholderTextColor={Colors.muted}
+      />
+    </View>
+  )
+}
+
 function PwdField({ label, value, onChange }: { label: string; value: string; onChange: (t: string) => void }) {
   const [show, setShow] = useState(false)
   return (
@@ -194,4 +270,8 @@ const styles = StyleSheet.create({
   btnText:        { color: '#fff', fontWeight: '800', fontSize: 15 },
   logoutBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fef2f2', borderRadius: 14, paddingVertical: 14 },
   logoutText:     { color: '#dc2626', fontWeight: '700', fontSize: 15 },
+  editInfoBtn:    { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99 },
+  editInfoTxt:    { fontSize: 12, fontWeight: '700' },
+  editInput:      { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12,
+                    paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: Colors.text, backgroundColor: '#fff' },
 })

@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, ActivityIndicator,
-  TouchableOpacity, Linking, RefreshControl,
+  TouchableOpacity, Linking, RefreshControl, TextInput,
+  Modal, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ionicons } from '@expo/vector-icons'
 import { classroomApi } from '../../services/api'
 import { Colors } from '../../constants/Colors'
@@ -18,6 +19,9 @@ const TIPO_COLOR: Record<string, string> = {
   evaluacion: Colors.red,
 }
 
+const TIPOS = ['anuncio', 'material', 'tarea', 'evaluacion'] as const
+type Tipo = typeof TIPOS[number]
+
 function tipoColor(tipo: string) { return TIPO_COLOR[tipo] ?? Colors.muted }
 
 function fechaCorta(iso: string | null) {
@@ -30,8 +34,13 @@ function diasRestantes(iso: string | null): number | null {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000)
 }
 
+const FORM_EMPTY = { titulo: '', tipo: 'material' as Tipo, contenido: '', url_externo: '', publicado: false }
+
 export default function ClassroomDocente() {
+  const qc = useQueryClient()
   const [claseSeleccionada, setClase] = useState<any | null>(null)
+  const [showForm, setShowForm]       = useState(false)
+  const [form, setForm]               = useState(FORM_EMPTY)
 
   const { data: listaData, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ['classroom-docente'],
@@ -40,11 +49,137 @@ export default function ClassroomDocente() {
 
   const clases: any[] = listaData?.clases ?? []
 
-  const { data: detalle, isLoading: detLoading } = useQuery({
+  const { data: detalle, isLoading: detLoading, refetch: detRefetch } = useQuery({
     queryKey:  ['classroom-mat-docente', claseSeleccionada?.id],
     queryFn:   () => classroomApi.materiales(claseSeleccionada!.id).then(r => r.data),
     enabled:   !!claseSeleccionada,
   })
+
+  const crearMaterial = useMutation({
+    mutationFn: () => classroomApi.storeMaterial(claseSeleccionada!.id, {
+      titulo:      form.titulo.trim(),
+      tipo:        form.tipo,
+      contenido:   form.contenido.trim() || undefined,
+      url_externo: form.url_externo.trim() || undefined,
+      publicado:   form.publicado,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['classroom-mat-docente', claseSeleccionada?.id] })
+      setShowForm(false)
+      setForm(FORM_EMPTY)
+    },
+    onError: () => Alert.alert('Error', 'No se pudo crear el material.'),
+  })
+
+  const togglePublicar = useMutation({
+    mutationFn: (materialId: number) => classroomApi.togglePublicar(materialId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['classroom-mat-docente', claseSeleccionada?.id] })
+    },
+    onError: () => Alert.alert('Error', 'No se pudo cambiar el estado.'),
+  })
+
+  const submitForm = () => {
+    if (!form.titulo.trim()) return Alert.alert('Atención', 'El título es obligatorio.')
+    crearMaterial.mutate()
+  }
+
+  // ── Modal crear material ────────────────────────────────────────────────
+  const FormModal = (
+    <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowForm(false)}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bg }} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowForm(false)} style={{ padding: 4 }}>
+              <Ionicons name="close" size={22} color={Colors.text} />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Nuevo material</Text>
+            <TouchableOpacity
+              onPress={submitForm}
+              disabled={crearMaterial.isPending}
+              style={[styles.modalSaveBtn, { backgroundColor: color }]}
+            >
+              {crearMaterial.isPending
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={styles.modalSaveTxt}>Crear</Text>
+              }
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled">
+            {/* Tipo */}
+            <View>
+              <Text style={styles.fieldLabel}>Tipo</Text>
+              <View style={styles.tipoRow}>
+                {TIPOS.map(t => (
+                  <TouchableOpacity
+                    key={t}
+                    style={[styles.tipoPill, form.tipo === t && { backgroundColor: tipoColor(t), borderColor: tipoColor(t) }]}
+                    onPress={() => setForm(f => ({ ...f, tipo: t }))}
+                  >
+                    <Text style={[styles.tipoPillTxt, form.tipo === t && { color: '#fff' }]}>
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Título */}
+            <View>
+              <Text style={styles.fieldLabel}>Título *</Text>
+              <TextInput
+                style={styles.input}
+                value={form.titulo}
+                onChangeText={t => setForm(f => ({ ...f, titulo: t }))}
+                placeholder="Título del material"
+                placeholderTextColor={Colors.muted}
+              />
+            </View>
+
+            {/* Contenido */}
+            <View>
+              <Text style={styles.fieldLabel}>Descripción / Instrucciones</Text>
+              <TextInput
+                style={[styles.input, { minHeight: 100 }]}
+                value={form.contenido}
+                onChangeText={t => setForm(f => ({ ...f, contenido: t }))}
+                placeholder="Instrucciones o descripción..."
+                placeholderTextColor={Colors.muted}
+                multiline
+                textAlignVertical="top"
+              />
+            </View>
+
+            {/* URL */}
+            <View>
+              <Text style={styles.fieldLabel}>Enlace externo</Text>
+              <TextInput
+                style={styles.input}
+                value={form.url_externo}
+                onChangeText={t => setForm(f => ({ ...f, url_externo: t }))}
+                placeholder="https://..."
+                placeholderTextColor={Colors.muted}
+                keyboardType="url"
+                autoCapitalize="none"
+              />
+            </View>
+
+            {/* Publicar */}
+            <TouchableOpacity
+              style={styles.checkRow}
+              onPress={() => setForm(f => ({ ...f, publicado: !f.publicado }))}
+            >
+              <View style={[styles.checkbox, form.publicado && { backgroundColor: color, borderColor: color }]}>
+                {form.publicado && <Ionicons name="checkmark" size={14} color="#fff" />}
+              </View>
+              <Text style={styles.checkLabel}>Publicar inmediatamente</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </Modal>
+  )
 
   // ── Vista detalle ──────────────────────────────────────────────────────
   if (claseSeleccionada) {
@@ -55,6 +190,7 @@ export default function ClassroomDocente() {
 
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
+        {FormModal}
         <View style={[styles.detHeader, { backgroundColor: acento }]}>
           <TouchableOpacity onPress={() => setClase(null)} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={20} color="#fff" />
@@ -63,15 +199,24 @@ export default function ClassroomDocente() {
             <Text style={styles.detTitle} numberOfLines={1}>{claseSeleccionada.nombre}</Text>
             <Text style={styles.detSub}>{claseSeleccionada.asignatura}</Text>
           </View>
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() => { setForm(FORM_EMPTY); setShowForm(true) }}
+          >
+            <Ionicons name="add" size={20} color="#fff" />
+          </TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={<RefreshControl refreshing={false} onRefresh={detRefetch} tintColor={color} />}
+        >
           {detLoading && <ActivityIndicator color={color} style={{ marginTop: 40 }} />}
 
           {!detLoading && materiales.length === 0 && (
             <View style={styles.centered}>
               <Ionicons name="documents-outline" size={44} color={Colors.muted} />
-              <Text style={styles.emptyText}>No hay materiales en esta aula.</Text>
+              <Text style={styles.emptyText}>No hay materiales. Toca + para crear uno.</Text>
             </View>
           )}
 
@@ -80,7 +225,7 @@ export default function ClassroomDocente() {
             const dias = diasRestantes(m.fecha_limite)
 
             return (
-              <View key={m.id} style={[styles.materialCard, { borderLeftColor: tc, opacity: m.publicado ? 1 : 0.7 }]}>
+              <View key={m.id} style={[styles.materialCard, { borderLeftColor: tc, opacity: m.publicado ? 1 : 0.75 }]}>
                 <View style={styles.materialHeader}>
                   <View style={[styles.tipoBadge, { backgroundColor: tc + '20' }]}>
                     <Text style={[styles.tipoText, { color: tc }]}>
@@ -95,6 +240,21 @@ export default function ClassroomDocente() {
                   {m.puntos != null && (
                     <Text style={styles.puntos}>{m.puntos} pts</Text>
                   )}
+                  {/* Toggle publicar */}
+                  <TouchableOpacity
+                    style={[styles.pubBtn, { backgroundColor: m.publicado ? Colors.green + '18' : Colors.amber + '18' }]}
+                    onPress={() => togglePublicar.mutate(m.id)}
+                    disabled={togglePublicar.isPending && togglePublicar.variables === m.id}
+                  >
+                    {togglePublicar.isPending && togglePublicar.variables === m.id
+                      ? <ActivityIndicator size="small" color={Colors.muted} />
+                      : <Ionicons
+                          name={m.publicado ? 'eye' : 'eye-off'}
+                          size={14}
+                          color={m.publicado ? Colors.green : Colors.amber}
+                        />
+                    }
+                  </TouchableOpacity>
                 </View>
 
                 <Text style={styles.materialTitulo}>{m.titulo}</Text>
@@ -201,6 +361,8 @@ const styles = StyleSheet.create({
   detHeader:         { flexDirection: 'row', alignItems: 'center', gap: 12,
                        paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14 },
   backBtn:           { padding: 4 },
+  addBtn:            { width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(255,255,255,.2)',
+                       alignItems: 'center', justifyContent: 'center' },
   detTitle:          { fontSize: 16, fontWeight: '900', color: '#fff' },
   detSub:            { fontSize: 11, color: 'rgba(255,255,255,.8)', marginTop: 2 },
 
@@ -209,7 +371,9 @@ const styles = StyleSheet.create({
   materialHeader:    { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
   tipoBadge:         { borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3 },
   tipoText:          { fontSize: 11, fontWeight: '700' },
-  puntos:            { fontSize: 11, fontWeight: '700', color: Colors.muted, marginLeft: 'auto' },
+  puntos:            { fontSize: 11, fontWeight: '700', color: Colors.muted },
+  pubBtn:            { marginLeft: 'auto', width: 28, height: 28, borderRadius: 8,
+                       alignItems: 'center', justifyContent: 'center' },
   materialTitulo:    { fontSize: 14, fontWeight: '800', color: Colors.text },
   materialContenido: { fontSize: 12, color: Colors.muted, lineHeight: 18 },
 
@@ -225,4 +389,22 @@ const styles = StyleSheet.create({
   urlText:           { fontSize: 12, color: Colors.indigo, fontWeight: '600' },
 
   emptyText:         { fontSize: 13, color: Colors.muted, textAlign: 'center' },
+
+  // Modal
+  modalHeader:       { flexDirection: 'row', alignItems: 'center', padding: 16,
+                       borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: '#fff', gap: 12 },
+  modalTitle:        { flex: 1, fontSize: 16, fontWeight: '800', color: Colors.text },
+  modalSaveBtn:      { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 },
+  modalSaveTxt:      { color: '#fff', fontWeight: '700', fontSize: 14 },
+  fieldLabel:        { fontSize: 12, fontWeight: '700', color: Colors.muted, marginBottom: 6 },
+  input:             { backgroundColor: '#fff', borderRadius: 12, padding: 12, fontSize: 14,
+                       color: Colors.text, borderWidth: 1, borderColor: Colors.border },
+  tipoRow:           { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tipoPill:          { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 99,
+                       paddingHorizontal: 14, paddingVertical: 6 },
+  tipoPillTxt:       { fontSize: 12, fontWeight: '600', color: Colors.muted },
+  checkRow:          { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  checkbox:          { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: Colors.border,
+                       alignItems: 'center', justifyContent: 'center' },
+  checkLabel:        { fontSize: 14, fontWeight: '600', color: Colors.text },
 })

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Asignacion;
 use App\Models\Asistencia;
+use App\Models\Calificacion;
 use App\Models\ClaseVirtual;
 use App\Models\Docente;
 use App\Models\EntregaTarea;
@@ -196,6 +197,10 @@ class DocenteApiController extends Controller
 
         $sy = SchoolYear::actual();
 
+        $periodos = Periodo::when($sy, fn($q) => $q->where('school_year_id', $sy->id))
+            ->orderBy('numero')->orderBy('id')->get()
+            ->map(fn($p) => ['id' => $p->id, 'nombre' => $p->nombre]);
+
         $matriculas = Matricula::where('grupo_id', $asignacion->grupo_id)
             ->where('estado', 'activa')
             ->when($sy, fn($q) => $q->where('school_year_id', $sy->id))
@@ -210,10 +215,11 @@ class DocenteApiController extends Controller
                     ? "{$m->estudiante->apellidos}, {$m->estudiante->nombres}"
                     : '—',
                 'notas'        => $m->calificaciones->map(fn($c) => [
+                    'periodo_id' => $c->periodo_id,
                     'periodo'    => $c->periodo?->nombre ?? "P{$c->periodo_id}",
                     'nota_final' => $c->nota_final,
-                    'indicador'  => $c->indicador,
-                ])->sortBy('periodo')->values(),
+                    'indicador'  => $c->letra,
+                ])->sortBy('periodo_id')->values(),
             ])
             ->sortBy('nombre')->values();
 
@@ -222,7 +228,56 @@ class DocenteApiController extends Controller
             'asignatura'    => $asignacion->asignatura?->nombre,
             'color'         => $asignacion->asignatura?->color ?? '#64748b',
             'grupo'         => $asignacion->grupo?->nombre_completo,
+            'periodos'      => $periodos,
             'estudiantes'   => $matriculas,
+        ]);
+    }
+
+    /** POST /api/v1/docente/calificaciones/{asignacion}/guardar
+     * Guarda o actualiza la nota_final de un estudiante en un período.
+     */
+    public function guardarCalificacion(Request $request, int $asignacionId)
+    {
+        $docente = $this->docenteOFail($request);
+        if (! $docente instanceof Docente) return $docente;
+
+        $asignacion = Asignacion::where('id', $asignacionId)
+            ->where('docente_id', $docente->id)
+            ->where('activo', true)
+            ->first();
+
+        if (! $asignacion) return response()->json(['message' => 'No autorizado.'], 403);
+
+        $data = $request->validate([
+            'matricula_id' => 'required|integer',
+            'periodo_id'   => 'required|integer',
+            'nota_final'   => 'required|numeric|min:0|max:100',
+        ]);
+
+        $sy = SchoolYear::actual();
+
+        $matricula = Matricula::where('id', $data['matricula_id'])
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('estado', 'activa')
+            ->when($sy, fn($q) => $q->where('school_year_id', $sy->id))
+            ->first();
+
+        if (! $matricula) return response()->json(['message' => 'Matrícula no encontrada.'], 404);
+
+        $cal = Calificacion::firstOrNew([
+            'matricula_id'  => $data['matricula_id'],
+            'asignacion_id' => $asignacionId,
+            'periodo_id'    => $data['periodo_id'],
+        ]);
+
+        $cal->nota_final     = round($data['nota_final'], 2);
+        $cal->modificado_por = $request->user()->id;
+        $cal->save();
+
+        return response()->json([
+            'ok'         => true,
+            'nota_final' => $cal->nota_final,
+            'indicador'  => $cal->letra,
         ]);
     }
 

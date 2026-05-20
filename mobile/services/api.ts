@@ -39,6 +39,8 @@ export const authApi = {
   me:     () => api.get('/auth/me'),
   changePassword: (data: { current_password: string; new_password: string; new_password_confirmation: string }) =>
     api.patch('/auth/change-password', data),
+  updateProfile: (data: { name: string; apellidos?: string; telefono?: string }) =>
+    api.patch('/auth/profile', data),
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -95,6 +97,10 @@ export const pagosApi = {
 export const classroomApi = {
   index:                   () => api.get('/classroom'),
   materiales: (id: number) => api.get(`/classroom/${id}/materiales`),
+  storeMaterial: (claseId: number, data: { titulo: string; tipo: string; contenido?: string; url_externo?: string; fecha_limite?: string; puntos?: number; publicado?: boolean }) =>
+    api.post(`/classroom/${claseId}/materiales`, data),
+  togglePublicar: (materialId: number) =>
+    api.patch(`/classroom/materiales/${materialId}/publicar`),
 }
 
 // ── Docente ───────────────────────────────────────────────────────────────────
@@ -103,6 +109,8 @@ export const docenteApi = {
   consultarAsistencia: (id: number)=> api.get(`/docente/asistencia/${id}`),
   registrarAsistencia: (data: any) => api.post('/docente/asistencia', data),
   calificaciones: (asignacionId: number) => api.get(`/docente/calificaciones/${asignacionId}`),
+  guardarCalificacion: (asignacionId: number, data: { matricula_id: number; periodo_id: number; nota_final: number }) =>
+    api.post(`/docente/calificaciones/${asignacionId}/guardar`, data),
   // Observaciones
   observaciones: (asignacionId: number) => api.get('/docente/observaciones', { params: { asignacion_id: asignacionId } }),
   storeObservacion: (data: { asignacion_id: number; estudiante_id: number; tipo: string; texto: string; privada?: boolean }) =>

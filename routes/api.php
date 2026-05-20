@@ -65,6 +65,7 @@ Route::prefix('v1')->group(function () {
             Route::get('me',                [AuthApiController::class, 'me'])->name('api.auth.me');
             Route::post('refresh-token',    [AuthApiController::class, 'refreshToken'])->name('api.auth.refresh');
             Route::patch('change-password', [AuthApiController::class, 'changePassword'])->name('api.auth.change-password');
+            Route::patch('profile',         [AuthApiController::class, 'updateProfile'])->name('api.auth.profile');
         });
     });
 
@@ -116,8 +117,10 @@ Route::prefix('v1')->group(function () {
 
         // Classroom (LMS)
         Route::prefix('classroom')->name('api.classroom.')->group(function () {
-            Route::get('/',                          [ClassroomApiController::class, 'index'])->name('index');
-            Route::get('{claseVirtual}/materiales',  [ClassroomApiController::class, 'materiales'])->name('materiales');
+            Route::get('/',                                    [ClassroomApiController::class, 'index'])->name('index');
+            Route::get('{claseVirtual}/materiales',            [ClassroomApiController::class, 'materiales'])->name('materiales');
+            Route::post('{claseVirtual}/materiales',           [ClassroomApiController::class, 'storeMaterial'])->name('materiales.store');
+            Route::patch('materiales/{material}/publicar',     [ClassroomApiController::class, 'togglePublicar'])->name('materiales.publicar');
         });
 
         // Docente — gestión de grupos, asistencia, calificaciones, observaciones y tareas
@@ -126,6 +129,7 @@ Route::prefix('v1')->group(function () {
             Route::get('asistencia/{id}',                    [DocenteApiController::class, 'consultarAsistencia'])->name('asistencia.consultar');
             Route::post('asistencia',                        [DocenteApiController::class, 'registrarAsistencia'])->name('asistencia.registrar');
             Route::get('calificaciones/{asignacion}',        [DocenteApiController::class, 'calificaciones'])->name('calificaciones');
+            Route::post('calificaciones/{asignacion}/guardar',[DocenteApiController::class, 'guardarCalificacion'])->name('calificaciones.guardar');
             Route::get('observaciones',                      [DocenteApiController::class, 'observaciones'])->name('observaciones');
             Route::post('observaciones',                     [DocenteApiController::class, 'storeObservacion'])->name('observaciones.store');
             Route::get('tareas',                             [DocenteApiController::class, 'tareasDocente'])->name('tareas');

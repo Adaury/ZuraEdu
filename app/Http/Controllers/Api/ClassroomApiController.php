@@ -140,6 +140,79 @@ class ClassroomApiController extends Controller
         ]);
     }
 
+    /** POST /api/v1/classroom/{claseVirtual}/materiales
+     * Crea un nuevo material en el aula (solo docente propietario).
+     */
+    public function storeMaterial(Request $request, ClaseVirtual $claseVirtual)
+    {
+        $user = $request->user();
+        if (! $user->hasRole('Docente')) return response()->json(['message' => 'No autorizado.'], 403);
+
+        $docente = Docente::where('user_id', $user->id)->first();
+        if (! $docente || $claseVirtual->asignacion?->docente_id !== $docente->id) {
+            return response()->json(['message' => 'No autorizado.'], 403);
+        }
+
+        $data = $request->validate([
+            'titulo'       => 'required|string|max:255',
+            'tipo'         => 'required|in:anuncio,material,tarea,evaluacion',
+            'contenido'    => 'nullable|string|max:5000',
+            'url_externo'  => 'nullable|url|max:500',
+            'fecha_limite' => 'nullable|date',
+            'puntos'       => 'nullable|numeric|min:0|max:100',
+            'publicado'    => 'boolean',
+        ]);
+
+        $material = MaterialClase::create([
+            'clase_virtual_id' => $claseVirtual->id,
+            'titulo'           => $data['titulo'],
+            'tipo'             => $data['tipo'],
+            'contenido'        => $data['contenido'] ?? null,
+            'url_externo'      => $data['url_externo'] ?? null,
+            'fecha_limite'     => $data['fecha_limite'] ?? null,
+            'puntos'           => $data['puntos'] ?? null,
+            'publicado'        => $data['publicado'] ?? false,
+        ]);
+
+        return response()->json([
+            'ok'       => true,
+            'material' => [
+                'id'           => $material->id,
+                'titulo'       => $material->titulo,
+                'tipo'         => $material->tipo,
+                'contenido'    => $material->contenido,
+                'url_externo'  => $material->url_externo,
+                'fecha_limite' => $material->fecha_limite?->toIso8601String(),
+                'puntos'       => $material->puntos,
+                'publicado'    => $material->publicado,
+                'es_tarea'     => $material->esTareaOEvaluacion(),
+                'vencido'      => $material->estaVencido(),
+                'archivos'     => [],
+                'entrega'      => null,
+            ],
+        ], 201);
+    }
+
+    /** PATCH /api/v1/classroom/materiales/{material}/publicar
+     * Alterna el estado publicado del material (solo docente propietario).
+     */
+    public function togglePublicar(Request $request, MaterialClase $material)
+    {
+        $user = $request->user();
+        if (! $user->hasRole('Docente')) return response()->json(['message' => 'No autorizado.'], 403);
+
+        $docente = Docente::where('user_id', $user->id)->first();
+        $clase   = $material->claseVirtual;
+
+        if (! $docente || ! $clase || $clase->asignacion?->docente_id !== $docente->id) {
+            return response()->json(['message' => 'No autorizado.'], 403);
+        }
+
+        $material->update(['publicado' => ! $material->publicado]);
+
+        return response()->json(['ok' => true, 'publicado' => $material->publicado]);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────
 
     private function mapClase(ClaseVirtual $c): array

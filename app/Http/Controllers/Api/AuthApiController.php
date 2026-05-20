@@ -79,6 +79,28 @@ class AuthApiController extends Controller
         return response()->json(['token' => $newToken]);
     }
 
+    /** PATCH /api/v1/auth/profile */
+    public function updateProfile(Request $request)
+    {
+        $data = $request->validate([
+            'name'      => 'required|string|max:100',
+            'apellidos' => 'nullable|string|max:100',
+            'telefono'  => 'nullable|string|max:20',
+        ]);
+
+        $user = $request->user();
+        $user->update(array_filter($data, fn($v) => $v !== null));
+
+        return response()->json([
+            'id'        => $user->id,
+            'name'      => $user->name,
+            'apellidos' => $user->apellidos,
+            'email'     => $user->email,
+            'telefono'  => $user->telefono,
+            'role'      => $user->roles->first()?->name ?? 'Usuario',
+        ]);
+    }
+
     /** PATCH /api/v1/auth/change-password */
     public function changePassword(Request $request)
     {

@@ -270,11 +270,6 @@ try { $moduleTransport = \App\Helpers\Setting::get('transporte','0');        } c
     <span style="background:#6366f1;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $notifEst }}</span>
     @endif
 </a>
-<a href="{{ route('portal.estudiante.mis-documentos') }}"
-   class="prt-sidebar-link {{ $ak === 'mis-documentos' ? 'active' : '' }}">
-    <i class="bi bi-folder2-open"></i>Mis Documentos
-</a>
-
 {{-- ── DIRECCIÓN ── --}}
 @if(auth()->user()->hasAnyRole(['Administrador','Director','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']))
 <div class="prt-sidebar-section mt-2">Dirección</div>

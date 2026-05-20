@@ -43,7 +43,6 @@ const SECCIONES = [
       { label: 'Mis Puntos',  icon: 'trophy',        route: '/(estudiante)/mis-puntos',  color: '#f59e0b'     },
       { label: 'Pagos',       icon: 'card',          route: '/(estudiante)/pagos',       color: Colors.green  },
       { label: 'Solicitudes', icon: 'document-text', route: '/(estudiante)/solicitudes', color: Colors.indigo },
-      { label: 'Documentos',  icon: 'folder-open',   route: '/(estudiante)/documentos',  color: Colors.blue   },
       { label: 'Cafetería',   icon: 'cafe',          route: '/(estudiante)/cafeteria',   color: '#7c3aed'     },
       { label: 'Transporte',  icon: 'bus',           route: '/(estudiante)/transporte',  color: '#0369a1'     },
       { label: 'Calendario',  icon: 'calendar',      route: '/(estudiante)/calendario',  color: Colors.amber  },

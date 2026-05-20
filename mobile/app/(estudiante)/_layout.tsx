@@ -1,17 +1,25 @@
-import { Tabs } from 'expo-router'
+import { Tabs, useRouter } from 'expo-router'
+import { TouchableOpacity } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useQuery } from '@tanstack/react-query'
 import { Colors } from '../../constants/Colors'
 import { mensajesApi, notificacionesApi } from '../../services/api'
 
 export default function EstudianteLayout() {
-  const color = Colors.roles.estudiante
+  const color  = Colors.roles.estudiante
+  const router = useRouter()
 
   const { data: msgs }   = useQuery({ queryKey: ['mensajes-estudiante'], queryFn: () => mensajesApi.index().then(r => r.data),       staleTime: 30_000, refetchInterval: 60_000 })
   const { data: notifs } = useQuery({ queryKey: ['notificaciones'],       queryFn: () => notificacionesApi.index().then(r => r.data), staleTime: 30_000, refetchInterval: 60_000 })
 
   const msgBadge   = (msgs?.no_leidos   ?? 0) > 0 ? msgs!.no_leidos   : undefined
   const notifBadge = (notifs?.no_leidas ?? 0) > 0 ? notifs!.no_leidas : undefined
+
+  const BackBtn = () => (
+    <TouchableOpacity onPress={() => router.back()} style={{ paddingLeft: 12 }}>
+      <Ionicons name="chevron-back" size={26} color="#fff" />
+    </TouchableOpacity>
+  )
 
   return (
     <Tabs
@@ -23,6 +31,7 @@ export default function EstudianteLayout() {
         headerStyle:             { backgroundColor: Colors.primary },
         headerTintColor:         '#fff',
         headerTitleStyle:        { fontWeight: '800', fontSize: 17 },
+        headerLeft:              () => router.canGoBack() ? <BackBtn /> : undefined,
       }}
     >
       <Tabs.Screen name="index"        options={{ title: 'Inicio',     tabBarIcon: ({ color, size }) => <Ionicons name="home"             size={size} color={color} /> }} />

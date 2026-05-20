@@ -2,14 +2,10 @@
 
 namespace App\Models;
 
-use App\Traits\BelongsToTenant;
-
 use Illuminate\Database\Eloquent\Model;
 
 class PuntoEstudiante extends Model
 {
-    use BelongsToTenant;
-
     protected $table = 'puntos_estudiante';
 
     public const CATEGORIAS = [

@@ -155,6 +155,7 @@ class InstrumentoController extends Controller
         $user       = Auth::user();
 
         $query = InstrumentoEvaluacion::with(['docente', 'asignacion.asignatura', 'asignacion.grupo.grado', 'asignacion.grupo.seccion'])
+            ->withCount('criterios')
             ->where('school_year_id', $schoolYear?->id)
             ->latest();
 
@@ -204,7 +205,7 @@ class InstrumentoController extends Controller
             $sheet->setCellValue('C' . $row, $instr->asignacion?->asignatura?->nombre);
             $sheet->setCellValue('D' . $row, $instr->asignacion?->grupo?->nombre_completo);
             $sheet->setCellValue('E' . $row, $tipo);
-            $sheet->setCellValue('F' . $row, $instr->criterios_count ?? $instr->criterios()->count());
+            $sheet->setCellValue('F' . $row, $instr->criterios_count);
             $sheet->setCellValue('G' . $row, $instr->created_at?->format('d/m/Y'));
             $sheet->getStyle("A{$row}:G{$row}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
                 ->getStartColor()->setRGB($bg);

@@ -871,17 +871,24 @@ class RendimientoController extends Controller
                 ->where('activo', true)
                 ->get();
 
+            // Pre-cargar todas las calificaciones en 1 query en lugar de N×4
+            $allCalifs = CalificacionAcademica::where('school_year_id', $schoolYear->id)
+                ->whereIn('asignacion_id', $asignaciones->pluck('id'))
+                ->get([
+                    'asignacion_id',
+                    'avg_comp1_p1','avg_comp2_p1','avg_comp3_p1','avg_comp4_p1',
+                    'avg_comp1_p2','avg_comp2_p2','avg_comp3_p2','avg_comp4_p2',
+                    'avg_comp1_p3','avg_comp2_p3','avg_comp3_p3','avg_comp4_p3',
+                    'avg_comp1_p4','avg_comp2_p4','avg_comp3_p4','avg_comp4_p4',
+                ])
+                ->groupBy('asignacion_id');
+
             foreach ($asignaciones as $asig) {
                 $nombre = $asig->asignatura?->nombre ?? 'S/N';
                 $promedios = [];
+                $rows = $allCalifs->get($asig->id, collect());
 
                 for ($p = 1; $p <= 4; $p++) {
-                    // Promedio del grupo para esta asignatura en este período
-                    // Nota período = promedio de los 4 avg_compC_pP no nulos
-                    $rows = CalificacionAcademica::where('school_year_id', $schoolYear->id)
-                        ->where('asignacion_id', $asig->id)
-                        ->get(['avg_comp1_p' . $p, 'avg_comp2_p' . $p, 'avg_comp3_p' . $p, 'avg_comp4_p' . $p]);
-
                     $sumaGrupo = 0;
                     $cntGrupo  = 0;
                     foreach ($rows as $row) {
@@ -957,11 +964,20 @@ class RendimientoController extends Controller
 
             $p = $periodo;
 
+            // Pre-cargar calificaciones en 1 query en lugar de 1 por asignatura
+            $califsPorAsig = CalificacionAcademica::where('school_year_id', $schoolYear->id)
+                ->whereIn('asignacion_id', $asignaciones->pluck('id'))
+                ->get([
+                    'asignacion_id',
+                    'avg_comp1_p1','avg_comp2_p1','avg_comp3_p1','avg_comp4_p1',
+                    'avg_comp1_p2','avg_comp2_p2','avg_comp3_p2','avg_comp4_p2',
+                    'avg_comp1_p3','avg_comp2_p3','avg_comp3_p3','avg_comp4_p3',
+                    'avg_comp1_p4','avg_comp2_p4','avg_comp3_p4','avg_comp4_p4',
+                ])
+                ->groupBy('asignacion_id');
+
             foreach ($asignaciones as $asig) {
-                $rows = CalificacionAcademica::where('school_year_id', $schoolYear->id)
-                    ->where('asignacion_id', $asig->id)
-                    ->get(['avg_comp1_p' . $p, 'avg_comp2_p' . $p,
-                           'avg_comp3_p' . $p, 'avg_comp4_p' . $p]);
+                $rows = $califsPorAsig->get($asig->id, collect());
 
                 $sumaGrupo = 0;
                 $cntGrupo  = 0;

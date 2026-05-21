@@ -242,7 +242,7 @@ class ProyectoController extends Controller
         $proyecto->load(['tutor', 'schoolYear']);
 
         $inst     = ConfigInstitucional::get('nombre_institucion', config('app.name'));
-        $dir      = ConfigInstitucional::get('director_nombre', '');
+        $dir      = ConfigInstitucional::get('nombre_director', '');
         $cod      = ConfigInstitucional::get('codigo_centro', '');
         $logoPath = ConfigInstitucional::get('logo_path');
         $logoUrl  = $logoPath ? public_path('storage/' . $logoPath) : null;

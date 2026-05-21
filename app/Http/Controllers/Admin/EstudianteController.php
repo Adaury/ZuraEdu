@@ -1262,7 +1262,7 @@ class EstudianteController extends Controller
             ]),
         ])->orderBy('apellidos')->orderBy('nombres')->get();
 
-        $inst = \App\Models\ConfigInstitucional::first()?->nombre ?? 'Institución';
+        $inst = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.estudiantes.representantes_pdf', compact(
             'representantes', 'sy', 'inst'
@@ -1300,7 +1300,7 @@ class EstudianteController extends Controller
         ->when($buscar, fn($q) => $q->where(fn($s) => $s
             ->where('nombres', 'like', "%{$buscar}%")
             ->orWhere('apellidos', 'like', "%{$buscar}%")
-            ->orWhere('matricula', 'like', "%{$buscar}%")
+            ->orWhere('numero_matricula', 'like', "%{$buscar}%")
         ))
         ->when($ciclo, function ($q) use ($ciclo) {
             $q->whereHas('matriculas.grupo.grado', fn($s) => $s->where('ciclo', $ciclo));
@@ -1336,7 +1336,7 @@ class EstudianteController extends Controller
             $rep       = $est->representantes->first();
 
             $sheet->setCellValue("A{$row}", $i + 1);
-            $sheet->setCellValue("B{$row}", $est->matricula ?? '');
+            $sheet->setCellValue("B{$row}", $est->numero_matricula ?? '');
             $sheet->setCellValue("C{$row}", $est->apellidos ?? $est->apellido ?? '');
             $sheet->setCellValue("D{$row}", $est->nombres   ?? $est->nombre  ?? '');
             $sheet->setCellValue("E{$row}", $est->cedula ?? '');
@@ -1383,7 +1383,7 @@ class EstudianteController extends Controller
         ->when($buscar, fn($q) => $q->where(fn($s) => $s
             ->where('nombres', 'like', "%{$buscar}%")
             ->orWhere('apellidos', 'like', "%{$buscar}%")
-            ->orWhere('matricula', 'like', "%{$buscar}%")
+            ->orWhere('numero_matricula', 'like', "%{$buscar}%")
         ))
         ->when($ciclo, function ($q) use ($ciclo) {
             $q->whereHas('matriculas.grupo.grado', fn($s) => $s->where('ciclo', $ciclo));

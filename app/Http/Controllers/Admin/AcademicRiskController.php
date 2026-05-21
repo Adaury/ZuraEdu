@@ -67,7 +67,7 @@ class AcademicRiskController extends Controller
             $query->whereHas('estudiante', fn($q) =>
                 $q->where('nombres', 'like', "%{$search}%")
                   ->orWhere('apellidos', 'like', "%{$search}%")
-                  ->orWhere('matricula', 'like', "%{$search}%")
+                  ->orWhere('numero_matricula', 'like', "%{$search}%")
             );
         }
 

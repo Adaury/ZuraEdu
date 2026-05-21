@@ -230,24 +230,28 @@ class InscripcionController extends Controller
         $errores    = 0;
 
         DB::transaction(function () use ($data, $schoolYear, $grupoId, &$creados, &$errores) {
+            $inscripciones = Inscripcion::whereIn('id', $data['ids'])->get()->keyBy('id');
+
+            $estudiantesIds = $inscripciones->pluck('estudiante_id')->unique();
+            $yaMatriculados = Matricula::where('school_year_id', $schoolYear?->id)
+                ->whereIn('estudiante_id', $estudiantesIds)
+                ->pluck('estudiante_id')
+                ->flip();
+
+            $baseOrden = Matricula::where('grupo_id', $grupoId)->count();
+
             foreach ($data['ids'] as $id) {
-                $inscripcion = Inscripcion::find($id);
+                $inscripcion = $inscripciones->get($id);
                 if (! $inscripcion || $inscripcion->estado !== 'pendiente') continue;
 
-                $yaExiste = Matricula::where('school_year_id', $schoolYear?->id)
-                    ->where('estudiante_id', $inscripcion->estudiante_id)
-                    ->exists();
-
-                if ($yaExiste) { $errores++; continue; }
-
-                $numeroOrden = Matricula::where('grupo_id', $grupoId)->count() + $creados + 1;
+                if ($yaMatriculados->has($inscripcion->estudiante_id)) { $errores++; continue; }
 
                 $matricula = Matricula::create([
                     'school_year_id'  => $schoolYear->id,
                     'estudiante_id'   => $inscripcion->estudiante_id,
                     'grupo_id'        => $grupoId,
                     'fecha_matricula' => today(),
-                    'numero_orden'    => $numeroOrden,
+                    'numero_orden'    => $baseOrden + $creados + 1,
                     'estado'          => 'activa',
                 ]);
 

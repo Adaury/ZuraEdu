@@ -74,14 +74,14 @@ class SolicitudesEstudianteAdminController extends Controller
         try {
             $user = $solicitud->estudiante?->user;
             if ($user) {
-                Notificacion::create([
-                    'user_id' => $user->id,
-                    'titulo'  => 'Respuesta a tu solicitud',
-                    'cuerpo'  => "Tu solicitud \"{$solicitud->asunto}\" cambió a: "
-                                 . (SolicitudEstudiante::estados()[$request->estado]['label'] ?? $request->estado),
-                    'tipo'    => 'info',
-                    'url'     => route('portal.estudiante.solicitudes.show', $solicitud),
-                ]);
+                Notificacion::enviar(
+                    $user->id,
+                    'info',
+                    'Respuesta a tu solicitud',
+                    "Tu solicitud \"{$solicitud->asunto}\" cambió a: "
+                        . (SolicitudEstudiante::estados()[$request->estado]['label'] ?? $request->estado),
+                    ['url' => route('portal.estudiante.solicitudes.show', $solicitud)],
+                );
             }
         } catch (\Throwable) {}
 

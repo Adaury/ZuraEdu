@@ -251,7 +251,7 @@ class PagoController extends Controller
             ->activos()->orderBy('id')->get();
 
         // Matriculas con al menos un pago vencido
-        $q = Matricula::with(['estudiante', 'grupo.grado', 'grupo.seccion'])
+        $q = Matricula::with(['estudiante', 'grupo.grado', 'grupo.seccion', 'pagos'])
             ->where('school_year_id', $syActual?->id)
             ->whereHas('pagos', fn($p) => $p->where('estado', 'vencido'));
 
@@ -696,14 +696,12 @@ class PagoController extends Controller
         }
 
         $enviados = 0;
+        $mon      = Setting::get('payments_currency', 'DOP');
 
         foreach ($matriculas as $matricula) {
-            $matricula->load('estudiante.representantes');
-
             $pagosVencidos = $matricula->pagos->where('estado', 'vencido');
             $total         = $pagosVencidos->sum('monto');
             $cuotas        = $pagosVencidos->count();
-            $mon           = Setting::get('payments_currency', 'DOP');
 
             $nombreEst = $matricula->estudiante->nombre_completo ?? $matricula->estudiante->nombres ?? '';
             $msg       = "Recordatorio: {$nombreEst} tiene {$cuotas} cuota(s) vencida(s) por {$mon} " . number_format($total, 2) . ". Por favor regularice su situación.";
@@ -738,7 +736,7 @@ class PagoController extends Controller
     // ── Helpers privados ──────────────────────────────────────────────────
     private function getDeudoresQuery(Request $request, $syActual)
     {
-        $q = Matricula::with(['estudiante', 'grupo.grado', 'grupo.seccion'])
+        $q = Matricula::with(['estudiante.representantes', 'grupo.grado', 'grupo.seccion', 'pagos'])
             ->where('school_year_id', $syActual?->id)
             ->whereHas('pagos', fn($p) => $p->where('estado', 'vencido'));
 

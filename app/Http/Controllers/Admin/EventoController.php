@@ -212,23 +212,24 @@ class EventoController extends Controller
         $hoy = now()->toDateString();
         $insertados = 0;
 
+        $yaInscritos = InscripcionEvento::where('evento_id', $evento->id)
+            ->whereIn('estudiante_id', $ids)
+            ->pluck('estudiante_id')
+            ->flip();
+
         $estudiantesInscritos = collect();
 
         foreach ($ids as $estudianteId) {
-            $existe = InscripcionEvento::where('evento_id', $evento->id)
-                ->where('estudiante_id', $estudianteId)
-                ->exists();
+            if ($yaInscritos->has($estudianteId)) continue;
 
-            if (!$existe) {
-                InscripcionEvento::create([
-                    'evento_id'        => $evento->id,
-                    'estudiante_id'    => $estudianteId,
-                    'fecha_inscripcion' => $hoy,
-                    'asistio'          => false,
-                ]);
-                $insertados++;
-                $estudiantesInscritos->push($estudianteId);
-            }
+            InscripcionEvento::create([
+                'evento_id'         => $evento->id,
+                'estudiante_id'     => $estudianteId,
+                'fecha_inscripcion' => $hoy,
+                'asistio'           => false,
+            ]);
+            $insertados++;
+            $estudiantesInscritos->push($estudianteId);
         }
 
         if ($estudiantesInscritos->isNotEmpty()) {

@@ -41,7 +41,19 @@ class CalendarioController extends Controller
     {
         $schoolYear = SchoolYear::actual();
 
+        $user   = Auth::user();
+        $roles  = $user->getRoleNames()->toArray();
+        $rolMap = [
+            'Docente'                   => 'docentes',
+            'Coordinador Académico'     => 'coordinadores',
+            'Coordinador Primer Ciclo'  => 'coordinadores',
+            'Coordinador Segundo Ciclo' => 'coordinadores',
+            'Personal Administrativo'   => 'administrativos',
+        ];
+        $aplica = collect($roles)->map(fn($r) => $rolMap[$r] ?? 'todos')->first() ?? 'todos';
+
         $eventos = CalendarioAcademico::when($schoolYear, fn($q) => $q->delAnio($schoolYear->id))
+            ->paraRol($aplica)
             ->where('activo', true)
             ->get()
             ->map(fn($e) => [

@@ -424,7 +424,7 @@ class CalificacionController extends Controller
 
             $matriculas = Matricula::with(['estudiante.representantes'])
                 ->where('grupo_id', $asignacion->grupo_id)
-                ->where('activo', true)
+                ->where('estado', 'activa')
                 ->get();
 
             // Pre-cargar todas las calificaciones del período en una sola query (evita N+1)
@@ -589,7 +589,7 @@ class CalificacionController extends Controller
             $promedios[$asig->id]['general'] = $general->count() ? round($general->avg(), 1) : null;
         }
 
-        $inst = \App\Models\ConfigInstitucional::first()?->nombre ?? 'Institución';
+        $inst = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.calificaciones.progreso_pdf', compact(
             'grupo', 'periodos', 'asignaciones', 'promedios', 'schoolYear', 'inst'

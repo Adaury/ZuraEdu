@@ -146,12 +146,14 @@ class ComunicadoController extends Controller
                             ->where('estado', 'activa')
                             ->pluck('estudiante_id');
 
-                        $userIds = User::whereHas('estudiante', fn($q) => $q->whereIn('id', $estudianteIds))
-                            ->orWhereHas('representante', function ($q) use ($estudianteIds) {
-                                $q->whereHas('estudiantes', fn($s) => $s->whereIn('estudiante_id', $estudianteIds));
-                            })
-                            ->where('activo', true)
-                            ->pluck('id');
+                        $userIds = User::where(fn($q) => $q
+                            ->whereHas('estudiante', fn($s) => $s->whereIn('id', $estudianteIds))
+                            ->orWhereHas('representante', fn($r) =>
+                                $r->whereHas('estudiantes', fn($s) => $s->whereIn('estudiante_id', $estudianteIds))
+                            )
+                        )
+                        ->where('activo', true)
+                        ->pluck('id');
                     }
                     break;
             }
@@ -250,7 +252,7 @@ class ComunicadoController extends Controller
             $row = $i + 2;
             $ws->setCellValue("A{$row}", $i + 1);
             $ws->setCellValue("B{$row}", $com->titulo);
-            $ws->setCellValue("C{$row}", $com->destinatario ?? 'todos');
+            $ws->setCellValue("C{$row}", $com->tipo_destinatarios ?? 'todos');
             $ws->setCellValue("D{$row}", $com->autor?->name ?? '—');
             $ws->setCellValue("E{$row}", $com->publicado ? 'Sí' : 'No');
             $ws->setCellValue("F{$row}", $com->published_at?->format('d/m/Y') ?? '—');

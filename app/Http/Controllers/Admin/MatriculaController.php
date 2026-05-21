@@ -472,7 +472,7 @@ class MatriculaController extends Controller
             $sheet->setCellValue("B{$row}", $m->numero_orden ?? '');
             $sheet->setCellValue("C{$row}", $est->apellidos ?? $est->apellido ?? '');
             $sheet->setCellValue("D{$row}", $est->nombres   ?? $est->nombre  ?? '');
-            $sheet->setCellValue("E{$row}", $est->matricula ?? '');
+            $sheet->setCellValue("E{$row}", $est->numero_matricula ?? '');
             $sheet->setCellValue("F{$row}", $est->cedula ?? '');
             $sheet->setCellValue("G{$row}", $est->fecha_nacimiento ? \Carbon\Carbon::parse($est->fecha_nacimiento)->format('d/m/Y') : '');
             $sheet->setCellValue("H{$row}", $grp ? ($grp->grado->nombre ?? '') . ' ' . ($grp->seccion->nombre ?? '') : '');

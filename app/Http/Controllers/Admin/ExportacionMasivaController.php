@@ -188,7 +188,7 @@ class ExportacionMasivaController extends Controller
                 $m->numero_orden ?? '',
                 $est?->apellidos ?? '',
                 $est?->nombres   ?? '',
-                $est?->matricula ?? $est?->numero_matricula ?? '',
+                $est?->numero_matricula ?? '',
                 $est?->cedula    ?? '',
                 $est?->fecha_nacimiento
                     ? \Carbon\Carbon::parse($est->fecha_nacimiento)->format('d/m/Y')

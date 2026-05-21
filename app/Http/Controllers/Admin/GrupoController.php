@@ -184,7 +184,7 @@ class GrupoController extends Controller
     {
         $grupo->load([
             'grado', 'seccion', 'schoolYear',
-            'matriculas' => fn($q) => $q->with('estudiante')
+            'matriculas' => fn($q) => $q->with(['estudiante.representantes'])
                 ->whereIn('estado', ['activa'])
                 ->orderBy('numero_orden'),
         ]);
@@ -219,7 +219,7 @@ class GrupoController extends Controller
             $est = $mat->estudiante;
             $rep = $est->representantes->first();
             $ws->setCellValue("A{$row}", $mat->numero_orden ?? ($i + 1));
-            $ws->setCellValue("B{$row}", $est->matricula ?? '—');
+            $ws->setCellValue("B{$row}", $est->numero_matricula ?? '—');
             $ws->setCellValue("C{$row}", $est->apellidos ?? $est->apellido ?? '—');
             $ws->setCellValue("D{$row}", $est->nombres   ?? $est->nombre  ?? '—');
             $ws->setCellValue("E{$row}", $est->cedula ?? '—');
@@ -333,7 +333,7 @@ class GrupoController extends Controller
             $row = $i + 4;
             $est = $mat->estudiante;
             $ws->setCellValue("A{$row}", $i + 1);
-            $ws->setCellValue("B{$row}", $est?->matricula ?? '');
+            $ws->setCellValue("B{$row}", $est?->numero_matricula ?? '');
             $ws->setCellValue("C{$row}", $est?->apellidos ?? $est?->apellido ?? '');
             $ws->setCellValue("D{$row}", $est?->nombres   ?? $est?->nombre   ?? '');
 

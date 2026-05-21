@@ -31,22 +31,29 @@ class GamificacionController extends Controller
         // Ranking: total de puntos por matrícula en el grupo seleccionado
         $ranking = collect();
         if ($grupoId) {
-            $ranking = Matricula::with(['estudiante', 'grupo.grado', 'grupo.seccion'])
+            $matriculas = Matricula::with(['estudiante', 'grupo.grado', 'grupo.seccion'])
                 ->where('grupo_id', $grupoId)
                 ->where('estado', 'activa')
                 ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
-                ->get()
-                ->map(function (Matricula $m) {
-                    $total    = PuntoEstudiante::where('matricula_id', $m->id)->sum('puntos');
-                    $insignias = InsigniaEstudiante::where('matricula_id', $m->id)->count();
-                    return [
-                        'matricula'  => $m,
-                        'total'      => $total,
-                        'insignias'  => $insignias,
-                    ];
-                })
-                ->sortByDesc('total')
-                ->values();
+                ->get();
+
+            $matIds = $matriculas->pluck('id');
+
+            $puntosPorMat   = PuntoEstudiante::whereIn('matricula_id', $matIds)
+                ->selectRaw('matricula_id, SUM(puntos) as total')
+                ->groupBy('matricula_id')
+                ->pluck('total', 'matricula_id');
+
+            $insigniasPorMat = InsigniaEstudiante::whereIn('matricula_id', $matIds)
+                ->selectRaw('matricula_id, COUNT(*) as total')
+                ->groupBy('matricula_id')
+                ->pluck('total', 'matricula_id');
+
+            $ranking = $matriculas->map(fn($m) => [
+                'matricula' => $m,
+                'total'     => (int) ($puntosPorMat[$m->id]    ?? 0),
+                'insignias' => (int) ($insigniasPorMat[$m->id] ?? 0),
+            ])->sortByDesc('total')->values();
         }
 
         // Estadísticas globales del año
@@ -162,12 +169,19 @@ class GamificacionController extends Controller
 
         $posicion = null;
         if ($matricula->grupo_id) {
-            $ranking = Matricula::where('grupo_id', $matricula->grupo_id)
+            $grupoMats = Matricula::where('grupo_id', $matricula->grupo_id)
                 ->where('estado', 'activa')
                 ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
-                ->get()
-                ->map(fn($m) => ['id' => $m->id, 'total' => PuntoEstudiante::where('matricula_id', $m->id)->sum('puntos')])
+                ->pluck('id');
+
+            $puntosPorMat = PuntoEstudiante::whereIn('matricula_id', $grupoMats)
+                ->selectRaw('matricula_id, SUM(puntos) as total')
+                ->groupBy('matricula_id')
+                ->pluck('total', 'matricula_id');
+
+            $ranking = $grupoMats->map(fn($id) => ['id' => $id, 'total' => (int) ($puntosPorMat[$id] ?? 0)])
                 ->sortByDesc('total')->values();
+
             $idx = $ranking->search(fn($r) => $r['id'] === $matricula->id);
             $posicion = $idx !== false ? $idx + 1 : null;
         }
@@ -198,22 +212,22 @@ class GamificacionController extends Controller
 
         $ranking = collect();
         if ($grupoId) {
-            $ranking = Matricula::with(['estudiante', 'grupo.grado', 'grupo.seccion'])
+            $matriculas = Matricula::with(['estudiante', 'grupo.grado', 'grupo.seccion'])
                 ->where('grupo_id', $grupoId)
                 ->where('estado', 'activa')
                 ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
-                ->get()
-                ->map(function (Matricula $m) {
-                    return [
-                        'matricula'  => $m,
-                        'total'      => PuntoEstudiante::where('matricula_id', $m->id)->sum('puntos'),
-                        'insignias'  => InsigniaEstudiante::where('matricula_id', $m->id)->count(),
-                    ];
-                })
-                ->sortByDesc('total')->values();
+                ->get();
+            $matIds = $matriculas->pluck('id');
+            $puntosPorMat    = PuntoEstudiante::whereIn('matricula_id', $matIds)->selectRaw('matricula_id, SUM(puntos) as total')->groupBy('matricula_id')->pluck('total', 'matricula_id');
+            $insigniasPorMat = InsigniaEstudiante::whereIn('matricula_id', $matIds)->selectRaw('matricula_id, COUNT(*) as total')->groupBy('matricula_id')->pluck('total', 'matricula_id');
+            $ranking = $matriculas->map(fn($m) => [
+                'matricula' => $m,
+                'total'     => (int) ($puntosPorMat[$m->id]    ?? 0),
+                'insignias' => (int) ($insigniasPorMat[$m->id] ?? 0),
+            ])->sortByDesc('total')->values();
         }
 
-        $config = \App\Models\ConfigInstitucional::first();
+        $config = (object)['nombre_centro' => \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'))];
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.gamificacion.ranking_pdf', compact('ranking', 'grupo', 'schoolYear', 'config'))
             ->setPaper('a4', 'portrait');
@@ -235,17 +249,19 @@ class GamificacionController extends Controller
 
         $ranking = collect();
         if ($grupoId) {
-            $ranking = Matricula::with(['estudiante', 'grupo.grado', 'grupo.seccion'])
+            $matriculas = Matricula::with(['estudiante', 'grupo.grado', 'grupo.seccion'])
                 ->where('grupo_id', $grupoId)
                 ->where('estado', 'activa')
                 ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
-                ->get()
-                ->map(fn($m) => [
-                    'matricula' => $m,
-                    'total'     => PuntoEstudiante::where('matricula_id', $m->id)->sum('puntos'),
-                    'insignias' => InsigniaEstudiante::where('matricula_id', $m->id)->count(),
-                ])
-                ->sortByDesc('total')->values();
+                ->get();
+            $matIds = $matriculas->pluck('id');
+            $puntosPorMat    = PuntoEstudiante::whereIn('matricula_id', $matIds)->selectRaw('matricula_id, SUM(puntos) as total')->groupBy('matricula_id')->pluck('total', 'matricula_id');
+            $insigniasPorMat = InsigniaEstudiante::whereIn('matricula_id', $matIds)->selectRaw('matricula_id, COUNT(*) as total')->groupBy('matricula_id')->pluck('total', 'matricula_id');
+            $ranking = $matriculas->map(fn($m) => [
+                'matricula' => $m,
+                'total'     => (int) ($puntosPorMat[$m->id]    ?? 0),
+                'insignias' => (int) ($insigniasPorMat[$m->id] ?? 0),
+            ])->sortByDesc('total')->values();
         }
 
         $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();

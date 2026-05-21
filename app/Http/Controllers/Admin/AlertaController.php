@@ -82,7 +82,7 @@ class AlertaController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $inst = \App\Models\ConfigInstitucional::first()?->nombre ?? 'Institución';
+        $inst = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.alertas.alertas_pdf', compact('alertas', 'inst'))
             ->setPaper('letter', 'portrait');

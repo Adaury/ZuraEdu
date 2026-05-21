@@ -248,7 +248,7 @@ class BibliotecaController extends Controller
         $totalVencidos  = $prestamos->where('estado', 'vencido')->count();
         $totalDevueltos = $prestamos->where('estado', 'devuelto')->count();
 
-        $config = \App\Models\ConfigInstitucional::first();
+        $config = (object)['nombre_centro' => \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'))];
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.biblioteca.reporte_pdf', compact(
             'prestamos', 'estado', 'totalActivos', 'totalVencidos', 'totalDevueltos', 'config'
@@ -368,7 +368,7 @@ class BibliotecaController extends Controller
     public function catalogoPdf()
     {
         $libros = Libro::orderBy('categoria')->orderBy('titulo')->get();
-        $config = \App\Models\ConfigInstitucional::first();
+        $config = (object)['nombre_centro' => \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'))];
 
         $totalLibros      = $libros->count();
         $totalEjemplares  = $libros->sum('cantidad_total');

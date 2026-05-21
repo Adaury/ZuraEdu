@@ -350,6 +350,9 @@ class AsistenciaController extends Controller
             'estado'        => 'required|in:presente,ausente,tarde,excusa,retiro',
         ]);
 
+        $asignacion = Asignacion::findOrFail($request->asignacion_id);
+        $this->authorize('ingresarAsistencia', $asignacion);
+
         $record = Asistencia::updateOrCreate(
             [
                 'asignacion_id' => $request->asignacion_id,
@@ -375,6 +378,7 @@ class AsistenciaController extends Controller
         ]);
 
         $asignacion = Asignacion::findOrFail($request->asignacion_id);
+        $this->authorize('ingresarAsistencia', $asignacion);
         $matriculas = $asignacion->grupo->matriculas()->activas()->pluck('id');
 
         foreach ($matriculas as $mid) {
@@ -1064,10 +1068,13 @@ class AsistenciaController extends Controller
         try {
             $matriculaIds = array_keys($asistencias);
 
+            $todosPorMatricula = Asistencia::where('asignacion_id', $asignacion->id)
+                ->whereIn('matricula_id', $matriculaIds)
+                ->get()
+                ->groupBy('matricula_id');
+
             foreach ($matriculaIds as $matriculaId) {
-                $registros = Asistencia::where('matricula_id', $matriculaId)
-                    ->where('asignacion_id', $asignacion->id)
-                    ->get();
+                $registros = $todosPorMatricula->get($matriculaId, collect());
 
                 $total    = $registros->count();
                 if ($total < 5) continue; // No alertar con pocos registros

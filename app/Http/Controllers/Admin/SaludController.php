@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\BoletinConfig;
 use App\Models\ConfigInstitucional;
 use App\Models\Estudiante;
 use App\Models\FichaSalud;
 use App\Models\IncidenteMedico;
+use App\Models\SchoolYear;
 use Illuminate\Http\Request;
 
 class SaludController extends Controller
@@ -251,7 +253,7 @@ class SaludController extends Controller
         $ficha      = FichaSalud::where('estudiante_id', $estudiante->id)->first();
         $incidentes = $estudiante->incidentesMedicos()->latest('fecha')->get();
         $inst       = ConfigInstitucional::get('nombre_institucion', config('app.name'));
-        $config     = ConfigInstitucional::first();
+        $config     = BoletinConfig::getOrCreate(SchoolYear::actual()?->id ?? 0);
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
             'admin.salud.ficha_pdf',

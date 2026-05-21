@@ -9,7 +9,6 @@ use App\Models\Matricula;
 use App\Models\Asignacion;
 use App\Models\CalificacionAcademica;
 use App\Models\BoletinConfig;
-use App\Models\Asistencia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -450,14 +449,6 @@ class ReportesController extends Controller
             $regs   = $calAc[$m->id] ?? collect();
             $pcts   = [];
             foreach ([1,2,3,4] as $p) {
-                // pct_asistencia viene de CalificacionAcademica — usar promedio de las asig del grupo en ese período
-                // Aquí promediamos pct_asistencia de todas las asig del estudiante en ese período
-                $asigIds = $regs->pluck('asignacion_id')->unique();
-                $asistPeriodo = Asistencia::whereIn('matricula_id', [$m->id])
-                    ->whereIn('asignacion_id', $asigIds)
-                    ->whereMonth('fecha', now()->month) // aproximación — el período no tiene mes exacto aquí
-                    ->get();
-                // Usamos pct_asistencia de CalificacionAcademica si está guardado
                 $pcts["P{$p}"] = $regs->whereNotNull("asist_p{$p}")->avg(fn($r) => $r->{"asist_p{$p}"});
             }
 

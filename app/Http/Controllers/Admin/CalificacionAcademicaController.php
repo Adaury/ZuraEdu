@@ -63,9 +63,15 @@ class CalificacionAcademicaController extends Controller
         $matriculas = $asignacion->grupo
             ->matriculas()->activas()->with('estudiante')->orderBy('numero_orden')->get();
 
+        $existentes = CalificacionAcademica::where('asignacion_id', $asignacion->id)
+            ->where('school_year_id', $schoolYear->id)
+            ->whereIn('matricula_id', $matriculas->pluck('id'))
+            ->get()
+            ->keyBy('matricula_id');
+
         $registros = [];
         foreach ($matriculas as $m) {
-            $registros[$m->id] = CalificacionAcademica::firstOrNew([
+            $registros[$m->id] = $existentes->get($m->id) ?? new CalificacionAcademica([
                 'matricula_id'   => $m->id,
                 'asignacion_id'  => $asignacion->id,
                 'school_year_id' => $schoolYear->id,
@@ -257,15 +263,16 @@ class CalificacionAcademicaController extends Controller
                     ->where('estado', 'activa')
                     ->get();
 
+                $calMap = CalificacionAcademica::where('asignacion_id', $asignacion->id)
+                    ->where('school_year_id', $request->school_year_id)
+                    ->whereIn('matricula_id', $matriculas->pluck('id'))
+                    ->pluck('nota_final', 'matricula_id');
+
                 foreach ($matriculas as $matricula) {
                     $estudiante = $matricula->estudiante;
                     if (! $estudiante) continue;
 
-                    $cal = CalificacionAcademica::where('asignacion_id', $asignacion->id)
-                        ->where('school_year_id', $request->school_year_id)
-                        ->where('matricula_id', $matricula->id)
-                        ->first();
-                    $nota = $cal ? ($cal->nota_final ?? 0) : 0;
+                    $nota = $calMap[$matricula->id] ?? 0;
                     $nombreEstudiante = trim($estudiante->nombres . ' ' . $estudiante->apellidos);
 
                     foreach ($estudiante->representantes as $rep) {
@@ -405,7 +412,7 @@ class CalificacionAcademicaController extends Controller
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
 
-            fputcsv($out, ['POLITÉCNICO SALESIANO ARQUIDES CALDERÓN (PSAC)']);
+            fputcsv($out, [\App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'))]);
             fputcsv($out, ['Planilla de Calificaciones — Área Académica']);
             fputcsv($out, ['Asignatura:', $asignacion->asignatura->nombre, 'Grupo:', $asignacion->grupo->nombre_completo, 'Año:', $schoolYear->nombre]);
             fputcsv($out, ['Docente:', $asignacion->docente?->nombre_completo ?? '—']);

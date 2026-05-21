@@ -75,13 +75,14 @@ class SolicitudesAdminController extends Controller
         $userId = $solicitud->representante?->user_id;
         if ($userId) {
             $estadoLabel = SolicitudRepresentante::estados()[$data['estado']]['label'] ?? $data['estado'];
-            Notificacion::create([
-                'user_id' => $userId,
-                'tipo'    => 'solicitud',
-                'titulo'  => "Solicitud {$estadoLabel}: {$solicitud->asunto}",
-                'mensaje' => $data['respuesta'],
-                'leida'   => false,
-            ]);
+            try {
+                Notificacion::enviar(
+                    $userId,
+                    'solicitud',
+                    "Solicitud {$estadoLabel}: {$solicitud->asunto}",
+                    $data['respuesta'],
+                );
+            } catch (\Throwable) {}
         }
 
         $tid = tenant_id();

@@ -14,6 +14,7 @@ class Equipo extends Model
     protected $table = 'equipos';
 
     protected $fillable = [
+        'tenant_id',
         'nombre',
         'tipo',
         'codigo',

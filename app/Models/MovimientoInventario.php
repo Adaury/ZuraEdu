@@ -14,6 +14,7 @@ class MovimientoInventario extends Model
     protected $table = 'movimientos_inventario';
 
     protected $fillable = [
+        'tenant_id',
         'articulo_id',
         'tipo',
         'cantidad',

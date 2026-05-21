@@ -14,6 +14,7 @@ class PrestamoEquipo extends Model
     protected $table = 'prestamos_equipo';
 
     protected $fillable = [
+        'tenant_id',
         'equipo_id',
         'usuario_id',
         'fecha_prestamo',

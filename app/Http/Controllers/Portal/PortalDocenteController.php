@@ -510,7 +510,7 @@ class PortalDocenteController extends Controller
         });
 
         $asignacion->load(['asignatura', 'grupo.grado', 'grupo.seccion']);
-        $inst = \App\Models\ConfigInstitucional::first()?->nombre ?? 'Institución';
+        $inst = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('portal.docente.estudiantes_pdf', compact(
             'docente', 'asignacion', 'matriculas', 'schoolYear', 'inst'
@@ -1540,7 +1540,7 @@ class PortalDocenteController extends Controller
             ->get();
 
         $asignacion->load(['asignatura', 'grupo.grado', 'grupo.seccion']);
-        $inst = \App\Models\ConfigInstitucional::first()?->nombre ?? 'Institución';
+        $inst = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('portal.docente.observaciones_pdf', compact(
             'docente', 'asignacion', 'observaciones', 'schoolYear', 'inst'
@@ -1685,7 +1685,7 @@ class PortalDocenteController extends Controller
             ->orderBy('orden')->orderByDesc('created_at')->get();
 
         $asignacion->load(['asignatura', 'grupo.grado', 'grupo.seccion']);
-        $inst = \App\Models\ConfigInstitucional::first()?->nombre ?? 'Institución';
+        $inst = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('portal.docente.recursos_pdf', compact(
             'docente', 'asignacion', 'recursos', 'inst'
@@ -3427,7 +3427,7 @@ class PortalDocenteController extends Controller
             $est = $mat->estudiante;
             $col = 1;
             $ws->setCellValue([$col++, $row], $i + 1);
-            $ws->setCellValue([$col++, $row], $est?->matricula ?? '');
+            $ws->setCellValue([$col++, $row], $est?->numero_matricula ?? '');
             $ws->setCellValue([$col++, $row], $est?->apellidos ?? $est?->apellido ?? '');
             $ws->setCellValue([$col++, $row], $est?->nombres   ?? $est?->nombre   ?? '');
 
@@ -3991,7 +3991,7 @@ class PortalDocenteController extends Controller
             $presentes = 0; $total = $fechas->count();
 
             $ws->setCellValue("A{$row}", $i + 1);
-            $ws->setCellValue("B{$row}", $est?->matricula ?? '');
+            $ws->setCellValue("B{$row}", $est?->numero_matricula ?? '');
             $ws->setCellValue("C{$row}", $est?->apellidos ?? $est?->apellido ?? '');
             $ws->setCellValue("D{$row}", $est?->nombres   ?? $est?->nombre   ?? '');
 

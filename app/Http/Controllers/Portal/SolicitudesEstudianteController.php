@@ -82,13 +82,13 @@ class SolicitudesEstudianteController extends Controller
 
         try {
             foreach (User::role(['Administrador', 'Director'])->get() as $admin) {
-                Notificacion::create([
-                    'user_id' => $admin->id,
-                    'titulo'  => 'Nueva solicitud de estudiante',
-                    'cuerpo'  => "El/la estudiante {$estudiante->nombre_completo} envió una solicitud: {$sol->asunto}.",
-                    'tipo'    => 'info',
-                    'url'     => route('admin.solicitudes-est.show', $sol),
-                ]);
+                Notificacion::enviar(
+                    $admin->id,
+                    'info',
+                    'Nueva solicitud de estudiante',
+                    "El/la estudiante {$estudiante->nombre_completo} envió una solicitud: {$sol->asunto}.",
+                    ['url' => route('admin.solicitudes-est.show', $sol)],
+                );
             }
         } catch (\Throwable) {}
 

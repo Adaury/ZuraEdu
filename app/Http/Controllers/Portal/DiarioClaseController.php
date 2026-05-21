@@ -134,7 +134,7 @@ class DiarioClaseController extends Controller
             ->orderBy('fecha')
             ->get();
 
-        $inst = \App\Models\ConfigInstitucional::first()?->nombre ?? 'Institución';
+        $inst = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('portal.docente.diario_clase_pdf', compact(
             'docente', 'asignacion', 'entradas', 'anio', 'mes', 'inst'

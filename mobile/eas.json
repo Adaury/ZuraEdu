@@ -24,6 +24,9 @@
       },
       "android": {
         "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
       }
     },
     "production": {
@@ -33,6 +36,9 @@
       },
       "android": {
         "buildType": "app-bundle"
+      },
+      "ios": {
+        "credentialsSource": "remote"
       }
     }
   },
@@ -45,7 +51,8 @@
       "ios": {
         "appleId": "correo@zuraedu.com",
         "ascAppId": "XXXXXXXXXX",
-        "appleTeamId": "XXXXXXXXXX"
+        "appleTeamId": "XXXXXXXXXX",
+        "language": "es-419"
       }
     }
   }

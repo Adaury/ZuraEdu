@@ -112,6 +112,20 @@
             </div>
         </div>
 
+        {{-- Costo unitario --}}
+        <div class="mb-4">
+            <label class="form-label-custom">Costo Unitario (RD$)</label>
+            <div class="input-group">
+                <span class="input-group-text" style="border-radius:9px 0 0 9px; background:#f3f4f6; border-color:#d1d5db; font-size:.85rem; color:#6b7280;">RD$</span>
+                <input type="number" name="costo_unitario" class="form-control form-control-custom"
+                       style="border-radius:0 9px 9px 0;"
+                       value="{{ old('costo_unitario', $articulo->costo_unitario ?? '') }}"
+                       step="0.01" min="0"
+                       placeholder="0.00">
+            </div>
+            <div style="font-size:.74rem; color:#9ca3af; margin-top:.2rem;">Opcional. Permite calcular el valor total del inventario.</div>
+        </div>
+
         {{-- Ubicación --}}
         <div class="mb-4">
             <label class="form-label-custom">Ubicación</label>

@@ -21,7 +21,12 @@ class ArticuloInventario extends Model
         'cantidad_disponible',
         'ubicacion',
         'descripcion',
+        'costo_unitario',
         'estado',
+    ];
+
+    protected $casts = [
+        'costo_unitario' => 'decimal:2',
     ];
 
     // ── Constantes ────────────────────────────────────────────────────────
@@ -59,6 +64,16 @@ class ArticuloInventario extends Model
     public function getEstadoInfoAttribute(): array
     {
         return self::ESTADOS[$this->estado] ?? self::ESTADOS['bueno'];
+    }
+
+    public function getValorTotalAttribute(): float
+    {
+        return (float) ($this->costo_unitario ?? 0) * $this->cantidad_total;
+    }
+
+    public function getValorDisponibleAttribute(): float
+    {
+        return (float) ($this->costo_unitario ?? 0) * $this->cantidad_disponible;
     }
 
     // ── Relaciones ────────────────────────────────────────────────────────

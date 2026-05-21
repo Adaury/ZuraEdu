@@ -63,6 +63,7 @@ tbody tr:nth-child(even) td { background: #f8fafc; }
     $totalDisponibles = $articulos->sum('cantidad_disponible');
     $totalUnidades    = $articulos->sum('cantidad_total');
     $enMalEstado      = $articulos->where('estado', 'malo')->count();
+    $valorTotal       = $articulos->sum(fn($a) => ($a->costo_unitario ?? 0) * $a->cantidad_total);
 
     $categorias = \App\Models\ArticuloInventario::CATEGORIAS;
     $estados    = \App\Models\ArticuloInventario::ESTADOS;
@@ -79,16 +80,22 @@ tbody tr:nth-child(even) td { background: #f8fafc; }
     </div>
     <div class="stat-box">
         <div class="stat-val" style="color:#065f46;">{{ $totalDisponibles }}</div>
-        <div class="stat-lbl">Unidades Disponibles</div>
+        <div class="stat-lbl">Disponibles</div>
     </div>
     <div class="stat-box">
         <div class="stat-val" style="color:#1d4ed8;">{{ $totalUnidades }}</div>
-        <div class="stat-lbl">Unidades Totales</div>
+        <div class="stat-lbl">Totales</div>
     </div>
     <div class="stat-box">
         <div class="stat-val" style="color:#991b1b;">{{ $enMalEstado }}</div>
-        <div class="stat-lbl">En Mal Estado</div>
+        <div class="stat-lbl">Mal Estado</div>
     </div>
+    @if($valorTotal > 0)
+    <div class="stat-box" style="background:#1e3a6e; border-color:#1e3a6e;">
+        <div class="stat-val" style="color:#fff; font-size:10px;">RD${{ number_format($valorTotal, 2) }}</div>
+        <div class="stat-lbl" style="color:rgba(255,255,255,.7);">Valor Total</div>
+    </div>
+    @endif
 </div>
 
 {{-- Chips por categoría --}}
@@ -117,11 +124,13 @@ tbody tr:nth-child(even) td { background: #f8fafc; }
 <table>
     <thead>
         <tr>
-            <th style="width:24px;">#</th>
-            <th style="width:220px;">Artículo</th>
-            <th style="width:80px;">Estado</th>
-            <th style="width:110px;">Disponible / Total</th>
-            <th style="width:110px;">Ubicación</th>
+            <th style="width:22px;">#</th>
+            <th style="width:180px;">Artículo</th>
+            <th style="width:72px;">Estado</th>
+            <th style="width:100px;">Disponible / Total</th>
+            <th style="width:80px;">Costo U.</th>
+            <th style="width:85px;">Valor Total</th>
+            <th style="width:90px;">Ubicación</th>
             <th>Descripción</th>
         </tr>
     </thead>
@@ -151,16 +160,38 @@ tbody tr:nth-child(even) td { background: #f8fafc; }
                     <span style="color:#9ca3af;">/ {{ $art->cantidad_total }}</span>
                 </div>
             </td>
+            <td style="color:#374151; text-align:right;">
+                {{ $art->costo_unitario ? 'RD$' . number_format($art->costo_unitario, 2) : '—' }}
+            </td>
+            <td style="font-weight:700; color:#1e3a6e; text-align:right;">
+                {{ $art->costo_unitario ? 'RD$' . number_format($art->valor_total, 2) : '—' }}
+            </td>
             <td style="color:#6b7280;">{{ $art->ubicacion ?? '—' }}</td>
-            <td style="color:#374151;">{{ $art->descripcion ? \Illuminate\Support\Str::limit($art->descripcion, 80) : '—' }}</td>
+            <td style="color:#374151;">{{ $art->descripcion ? \Illuminate\Support\Str::limit($art->descripcion, 60) : '—' }}</td>
         </tr>
         @endforeach
+        @if($items->sum('costo_unitario') > 0)
+        <tr>
+            <td colspan="5" style="text-align:right; font-weight:800; color:#1e3a6e; font-size:8.5px;">Subtotal categoría:</td>
+            <td style="font-weight:800; color:#1e3a6e; text-align:right;">
+                RD${{ number_format($items->sum(fn($a) => ($a->costo_unitario ?? 0) * $a->cantidad_total), 2) }}
+            </td>
+            <td colspan="2"></td>
+        </tr>
+        @endif
     </tbody>
 </table>
 @endforeach
 
+@if($valorTotal > 0)
+<div style="margin-top:12px; background:#1e3a6e; border-radius:6px; padding:8px 14px; display:flex; justify-content:space-between; align-items:center;">
+    <span style="font-size:9px; font-weight:700; color:rgba(255,255,255,.8); text-transform:uppercase; letter-spacing:.04em;">Valor Total del Inventario</span>
+    <span style="font-size:14px; font-weight:800; color:#fff;">RD${{ number_format($valorTotal, 2) }}</span>
+</div>
+@endif
+
 @if($totalMalo > 0)
-<div style="margin-top:12px; background:#fff1f2; border:1px solid #fecdd3; border-radius:6px; padding:7px 12px; font-size:8px; color:#991b1b;">
+<div style="margin-top:8px; background:#fff1f2; border:1px solid #fecdd3; border-radius:6px; padding:7px 12px; font-size:8px; color:#991b1b;">
     <strong>Atención:</strong> {{ $totalMalo }} artículo{{ $totalMalo !== 1 ? 's' : '' }} se encuentran en mal estado y pueden requerir reposición o mantenimiento.
 </div>
 @endif

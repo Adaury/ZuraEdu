@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ArticuloInventario;
 use App\Models\MovimientoInventario;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class InventarioController extends Controller
@@ -40,6 +41,8 @@ class InventarioController extends Controller
         $totalCategorias   = ArticuloInventario::distinct('categoria')->count('categoria');
         $enMalEstado       = ArticuloInventario::where('estado', 'malo')->count();
         $totalDisponibles  = ArticuloInventario::sum('cantidad_disponible');
+        $valorTotalInventario = (float) ArticuloInventario::whereNotNull('costo_unitario')
+            ->sum(DB::raw('costo_unitario * cantidad_total'));
 
         // Conteo por categoría para chips
         $porCategoria = ArticuloInventario::selectRaw('categoria, count(*) as total')
@@ -52,7 +55,7 @@ class InventarioController extends Controller
         return view('admin.inventario.index', compact(
             'articulos', 'categorias', 'estados',
             'totalArticulos', 'totalCategorias', 'enMalEstado', 'totalDisponibles',
-            'porCategoria'
+            'valorTotalInventario', 'porCategoria'
         ));
     }
 
@@ -72,6 +75,7 @@ class InventarioController extends Controller
             'cantidad_disponible' => 'required|integer|min:0',
             'ubicacion'           => 'nullable|string|max:200',
             'descripcion'         => 'nullable|string|max:1000',
+            'costo_unitario'      => 'nullable|numeric|min:0',
             'estado'              => 'required|in:' . implode(',', array_keys(ArticuloInventario::ESTADOS)),
         ]);
 
@@ -97,6 +101,7 @@ class InventarioController extends Controller
             'cantidad_disponible' => 'required|integer|min:0',
             'ubicacion'           => 'nullable|string|max:200',
             'descripcion'         => 'nullable|string|max:1000',
+            'costo_unitario'      => 'nullable|numeric|min:0',
             'estado'              => 'required|in:' . implode(',', array_keys(ArticuloInventario::ESTADOS)),
         ]);
 
@@ -182,7 +187,7 @@ class InventarioController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
             'admin.inventario.reporte_pdf',
             compact('articulos', 'porCategoria', 'totalMalo', 'inst')
-        )->setPaper('letter', 'landscape');
+        )->setPaper('legal', 'landscape');
 
         return $pdf->download('inventario_' . now()->format('Ymd') . '.pdf');
     }
@@ -263,13 +268,14 @@ class InventarioController extends Controller
             'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
         ];
 
-        $headers = ['#', 'Artículo', 'Categoría', 'Estado', 'Cant. Total', 'Disponible', 'Ubicación', 'Descripción', 'Movimientos (último mes)'];
+        $headers = ['#', 'Artículo', 'Categoría', 'Estado', 'Cant. Total', 'Disponible', 'Costo Unit. (RD$)', 'Valor Total (RD$)', 'Ubicación', 'Descripción', 'Movimientos (último mes)'];
         foreach ($headers as $i => $h) {
             $cell = chr(65 + $i) . '1';
             $sheet->setCellValue($cell, $h);
         }
-        $sheet->getStyle('A1:I1')->applyFromArray($hdrStyle);
+        $sheet->getStyle('A1:K1')->applyFromArray($hdrStyle);
 
+        $valorTotalXls = 0;
         foreach ($articulos as $i => $art) {
             $row = $i + 2;
             $sheet->setCellValue("A{$row}", $i + 1);
@@ -278,23 +284,35 @@ class InventarioController extends Controller
             $sheet->setCellValue("D{$row}", $art->estado_info['label']);
             $sheet->setCellValue("E{$row}", $art->cantidad_total);
             $sheet->setCellValue("F{$row}", $art->cantidad_disponible);
-            $sheet->setCellValue("G{$row}", $art->ubicacion ?? '');
-            $sheet->setCellValue("H{$row}", $art->descripcion ?? '');
+            $sheet->setCellValue("G{$row}", $art->costo_unitario ? (float) $art->costo_unitario : '');
+            $valorArt = ($art->costo_unitario ?? 0) * $art->cantidad_total;
+            $sheet->setCellValue("H{$row}", $valorArt > 0 ? $valorArt : '');
+            $valorTotalXls += $valorArt;
+            $sheet->setCellValue("I{$row}", $art->ubicacion ?? '');
+            $sheet->setCellValue("J{$row}", $art->descripcion ?? '');
 
-            // Resumen de movimientos del último mes
             $movResumen = $art->movimientos->map(function ($m) {
                 return $m->tipo_info['sign'] . $m->cantidad . ' (' . $m->motivo . ')';
             })->implode(' | ');
-            $sheet->setCellValue("I{$row}", $movResumen ?: 'Sin movimientos');
+            $sheet->setCellValue("K{$row}", $movResumen ?: 'Sin movimientos');
 
             if ($i % 2 === 1) {
-                $sheet->getStyle("A{$row}:I{$row}")
+                $sheet->getStyle("A{$row}:K{$row}")
                     ->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
                     ->getStartColor()->setRGB('f0f4ff');
             }
         }
 
-        foreach (range('A', 'I') as $col) {
+        // Fila de totales
+        $totalRow = count($articulos) + 2;
+        $sheet->setCellValue("A{$totalRow}", 'TOTAL');
+        $sheet->setCellValue("H{$totalRow}", $valorTotalXls > 0 ? $valorTotalXls : '');
+        $sheet->getStyle("A{$totalRow}:K{$totalRow}")->getFont()->setBold(true);
+        $sheet->getStyle("A{$totalRow}:K{$totalRow}")->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setRGB('dbeafe');
+
+        foreach (range('A', 'K') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 

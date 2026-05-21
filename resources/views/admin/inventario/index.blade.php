@@ -69,7 +69,7 @@
 
 {{-- Tarjetas resumen --}}
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-2">
         <div class="stat-card">
             <div class="stat-icon" style="background:#dbeafe;"><i class="bi bi-archive text-primary"></i></div>
             <div>
@@ -78,16 +78,16 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-2">
         <div class="stat-card">
-            <div class="stat-icon" style="background:#ede9fe;"><i class="bi bi-grid text-purple" style="color:#7c3aed;"></i></div>
+            <div class="stat-icon" style="background:#ede9fe;"><i class="bi bi-grid" style="color:#7c3aed;"></i></div>
             <div>
                 <div class="stat-label">Categorías</div>
                 <div class="stat-value">{{ $totalCategorias }}</div>
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-2">
         <div class="stat-card">
             <div class="stat-icon" style="background:#d1fae5;"><i class="bi bi-check2-circle text-success"></i></div>
             <div>
@@ -96,12 +96,23 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-2">
         <div class="stat-card">
             <div class="stat-icon" style="background:#fee2e2;"><i class="bi bi-exclamation-triangle text-danger"></i></div>
             <div>
                 <div class="stat-label">En Mal Estado</div>
                 <div class="stat-value" style="color:#991b1b;">{{ $enMalEstado }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="stat-card" style="background:linear-gradient(135deg,#1e3a6e 0%,#2d5299 100%); border:none;">
+            <div class="stat-icon" style="background:rgba(255,255,255,.15);"><i class="bi bi-currency-dollar" style="color:#fff;"></i></div>
+            <div>
+                <div class="stat-label" style="color:rgba(255,255,255,.7);">Valor Total Inventario</div>
+                <div class="stat-value" style="color:#fff; font-size:1.2rem;">
+                    RD${{ number_format($valorTotalInventario, 2) }}
+                </div>
             </div>
         </div>
     </div>
@@ -175,6 +186,7 @@
                 <th>Categoría</th>
                 <th>Estado</th>
                 <th>Disponible / Total</th>
+                <th>Costo U. / Valor</th>
                 <th>Ubicación</th>
                 <th>Acciones</th>
             </tr>
@@ -216,6 +228,14 @@
                         </div>
                         <span style="color:#9ca3af; font-size:.75rem;">/ {{ $art->cantidad_total }}</span>
                     </div>
+                </td>
+                <td style="font-size:.82rem;">
+                    @if($art->costo_unitario)
+                    <div style="font-weight:600; color:#374151;">RD${{ number_format($art->costo_unitario, 2) }}</div>
+                    <div style="color:#9ca3af; font-size:.74rem;">= RD${{ number_format($art->valor_total, 2) }}</div>
+                    @else
+                    <span style="color:#d1d5db;">—</span>
+                    @endif
                 </td>
                 <td style="color:#6b7280; font-size:.82rem;">
                     {{ $art->ubicacion ?? '—' }}

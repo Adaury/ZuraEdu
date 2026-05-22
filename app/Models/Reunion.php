@@ -15,6 +15,7 @@ class Reunion extends Model
     protected $table = 'reuniones';
 
     protected $fillable = [
+        'tenant_id',
         'titulo',
         'tipo',
         'fecha',

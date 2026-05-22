@@ -13,6 +13,51 @@ use Illuminate\Support\Str;
 
 class ReunionController extends Controller
 {
+    // ── Dashboard ─────────────────────────────────────────────────────────
+    public function dashboard()
+    {
+        $total       = Reunion::count();
+        $programadas = Reunion::where('estado', 'programada')->count();
+        $realizadas  = Reunion::where('estado', 'realizada')->count();
+        $canceladas  = Reunion::where('estado', 'cancelada')->count();
+
+        $esteMes  = Reunion::whereMonth('fecha', now()->month)
+                           ->whereYear('fecha', now()->year)->count();
+
+        // Por tipo
+        $porTipo = collect(Reunion::tiposLabel())->mapWithKeys(function ($label, $tipo) {
+            return [$tipo => Reunion::where('tipo', $tipo)->count()];
+        })->filter(fn($cnt) => $cnt > 0)->sortDesc();
+
+        // Acuerdos pendientes (no cumplidos)
+        $acuerdosPendientes = AcuerdoReunion::where('cumplido', false)->count();
+        $acuerdosVencidos   = AcuerdoReunion::where('cumplido', false)
+            ->where('fecha_limite', '<', now()->toDateString())
+            ->whereNotNull('fecha_limite')
+            ->count();
+
+        // Próximas reuniones programadas
+        $proximas = Reunion::with('convocante')
+            ->where('estado', 'programada')
+            ->where('fecha', '>=', now())
+            ->orderBy('fecha')
+            ->limit(5)
+            ->get();
+
+        // Últimas reuniones
+        $recientes = Reunion::with('convocante')
+            ->withCount('acuerdos')
+            ->latest('fecha')
+            ->limit(8)
+            ->get();
+
+        return view('admin.reuniones.dashboard', compact(
+            'total', 'programadas', 'realizadas', 'canceladas', 'esteMes',
+            'porTipo', 'acuerdosPendientes', 'acuerdosVencidos',
+            'proximas', 'recientes'
+        ));
+    }
+
     // ── Index ─────────────────────────────────────────────────────────────
     public function index(Request $request)
     {

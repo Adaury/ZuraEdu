@@ -14,6 +14,7 @@ class AcuerdoReunion extends Model
     protected $table = 'acuerdos_reunion';
 
     protected $fillable = [
+        'tenant_id',
         'reunion_id',
         'descripcion',
         'responsable',

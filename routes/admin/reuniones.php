@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Route;
 // ── Actas de Reuniones ────────────────────────────────────────────────────
 Route::prefix('reuniones')->name('reuniones.')->group(function () {
 
+    Route::get('/dashboard',      [ReunionController::class, 'dashboard'])     ->name('dashboard');
+
     Route::get('/',               [ReunionController::class, 'index'])         ->name('index');
     Route::get('/crear',          [ReunionController::class, 'create'])        ->name('create');
     Route::get('/lista/excel',    [ReunionController::class, 'listaExcel'])    ->name('lista-excel');

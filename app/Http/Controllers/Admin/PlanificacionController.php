@@ -36,6 +36,59 @@ class PlanificacionController extends Controller
         return SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
     }
 
+    // ── Dashboard ─────────────────────────────────────────────────────────
+
+    public function dashboard()
+    {
+        try {
+            $schoolYear = $this->schoolYear();
+        } catch (\Throwable) {
+            $schoolYear = null;
+        }
+
+        $baseQuery = fn() => $schoolYear
+            ? Planificacion::where('school_year_id', $schoolYear->id)
+            : Planificacion::query();
+
+        $total         = ($baseQuery)()->count();
+        $publicadas    = ($baseQuery)()->where('publicado', true)->count();
+        $borradores    = $total - $publicadas;
+        $porRa         = ($baseQuery)()->where('tipo', 'ra')->count();
+        $porActividad  = ($baseQuery)()->where('tipo', 'actividad')->count();
+
+        // Cumplimiento: asignaciones técnicas con/sin planificación
+        $asignaciones = $schoolYear
+            ? \App\Models\Asignacion::with(['docente', 'asignatura', 'grupo'])
+                ->where('school_year_id', $schoolYear->id)
+                ->where('area', 'tecnica')
+                ->where('activo', true)
+                ->get()
+            : collect();
+
+        $conPlan    = $schoolYear
+            ? ($baseQuery)()->pluck('asignacion_id')->unique()
+            : collect();
+
+        $sinPlan = $asignaciones->filter(fn($a) => ! $conPlan->contains($a->id));
+        $pctCumplimiento = $asignaciones->count() > 0
+            ? round($conPlan->count() / $asignaciones->count() * 100)
+            : 0;
+
+        // Últimas planificaciones
+        $ultimas = ($baseQuery)()
+            ->with(['asignacion.asignatura', 'asignacion.grupo', 'asignacion.docente'])
+            ->latest()
+            ->limit(8)
+            ->get();
+
+        return view('admin.planificacion.dashboard', compact(
+            'schoolYear', 'total', 'publicadas', 'borradores',
+            'porRa', 'porActividad',
+            'asignaciones', 'conPlan', 'sinPlan', 'pctCumplimiento',
+            'ultimas'
+        ));
+    }
+
     // ── Listado ───────────────────────────────────────────────────────────
 
     public function index(Request $request)

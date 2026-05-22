@@ -218,6 +218,7 @@ Route::post('homepage', [HomepageController::class, 'update'])->name('homepage.u
 
 // ── Planificaciones Área Técnica ──────────────────────────────────────────
 Route::prefix('planificacion')->name('planificacion.')->group(function () {
+    Route::get('/dashboard',                       [PlanificacionController::class, 'dashboard'])->name('dashboard');
     Route::get('/',                                [PlanificacionController::class, 'index'])->name('index');
     Route::get('/nueva/ra',                        [PlanificacionController::class, 'createRa'])->name('create-ra');
     Route::post('/nueva/ra',                       [PlanificacionController::class, 'storeRa'])->name('store-ra');

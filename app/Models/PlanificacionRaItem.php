@@ -13,6 +13,7 @@ class PlanificacionRaItem extends Model
     protected $table = 'planificacion_ra_items';
 
     protected $fillable = [
+        'tenant_id',
         'planificacion_id', 'orden',
         'ra_codigo', 'ra_descripcion', 'nivel_taxonomico',
         'elementos_capacidad', 'fechas',

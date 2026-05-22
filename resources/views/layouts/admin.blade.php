@@ -2243,7 +2243,7 @@ if (auth()->check()) {
                 @endif
                 @if($showSegTecnica)
                 <li class="nav-item">
-                    <a href="{{ route('admin.planificacion.index') }}" class="{{ request()->routeIs('admin.planificacion*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.planificacion.dashboard') }}" class="{{ request()->routeIs('admin.planificacion*') ? 'active' : '' }}">
                         <i class="bi bi-journal-text"></i>Planificaciones Técnicas
                     </a>
                 </li>

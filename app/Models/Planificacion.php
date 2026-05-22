@@ -13,6 +13,7 @@ class Planificacion extends Model
     protected $table = 'planificaciones';
 
     protected $fillable = [
+        'tenant_id',
         'asignacion_id', 'school_year_id', 'tipo',
         'familia_profesional', 'denominacion', 'modulo_nombre',
         'mf_codigo', 'uc_codigo', 'sesion', 'nivel',

@@ -13,6 +13,7 @@ class PlanificacionActividad extends Model
     protected $table = 'planificacion_actividades';
 
     protected $fillable = [
+        'tenant_id',
         'planificacion_id',
         'ra_codigo', 'ra_descripcion',
         'actividad_numero', 'objetivo',

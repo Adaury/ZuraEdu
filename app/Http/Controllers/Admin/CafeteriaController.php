@@ -12,6 +12,41 @@ use Illuminate\Validation\Rule;
 class CafeteriaController extends Controller
 {
     // ══════════════════════════════════════════════════════════════════════
+    //  DASHBOARD
+    // ══════════════════════════════════════════════════════════════════════
+
+    public function dashboard()
+    {
+        $hoy = today();
+
+        $totalVentasHoy    = VentaCafeteria::whereDate('created_at', $hoy)->where('tipo', 'venta')->sum('monto');
+        $totalRecargasHoy  = VentaCafeteria::whereDate('created_at', $hoy)->where('tipo', 'recarga')->sum('monto');
+        $totalVentasMes    = VentaCafeteria::whereMonth('created_at', now()->month)
+                                           ->whereYear('created_at', now()->year)
+                                           ->where('tipo', 'venta')->sum('monto');
+        $productosActivos  = ProductoCafeteria::where('activo', true)->count();
+
+        // Estudiantes con saldo bajo (< 50 RD$) — se obtiene del saldo_nuevo de la última transacción por estudiante
+        $saldosBajos = VentaCafeteria::selectRaw('estudiante_id, saldo_nuevo')
+            ->whereIn('id', function ($sub) {
+                $sub->selectRaw('MAX(id)')->from('ventas_cafeteria')->groupBy('estudiante_id');
+            })
+            ->where('saldo_nuevo', '<', 50)
+            ->where('saldo_nuevo', '>=', 0)
+            ->count();
+
+        $ultimosMovimientos = VentaCafeteria::with(['estudiante', 'producto'])
+            ->latest()->take(10)->get();
+
+        $categorias = ProductoCafeteria::CATEGORIAS;
+
+        return view('admin.cafeteria.dashboard', compact(
+            'totalVentasHoy', 'totalRecargasHoy', 'totalVentasMes',
+            'productosActivos', 'saldosBajos', 'ultimosMovimientos', 'categorias'
+        ));
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
     //  PRODUCTOS
     // ══════════════════════════════════════════════════════════════════════
 
@@ -199,6 +234,32 @@ class CafeteriaController extends Controller
         ]);
 
         return back()->with('success', 'Recarga aplicada. Nuevo saldo: ' . number_format($saldoNuevo, 2));
+    }
+
+    public function registrarAjuste(Request $request)
+    {
+        $data = $request->validate([
+            'estudiante_id' => 'required|exists:estudiantes,id',
+            'monto'         => 'required|numeric',
+            'descripcion'   => 'required|string|max:200',
+        ]);
+
+        $saldoAnterior = VentaCafeteria::saldoEstudiante((int) $data['estudiante_id']);
+        $monto         = (float) $data['monto'];
+        $saldoNuevo    = $saldoAnterior + $monto;
+
+        VentaCafeteria::create([
+            'estudiante_id'  => $data['estudiante_id'],
+            'producto_id'    => null,
+            'descripcion'    => $data['descripcion'],
+            'tipo'           => 'ajuste',
+            'monto'          => abs($monto),
+            'saldo_anterior' => $saldoAnterior,
+            'saldo_nuevo'    => $saldoNuevo,
+            'created_by_id'  => auth()->id(),
+        ]);
+
+        return back()->with('success', 'Ajuste registrado. Nuevo saldo: RD$' . number_format($saldoNuevo, 2));
     }
 
     // ── Balance por estudiante ─────────────────────────────────────────────

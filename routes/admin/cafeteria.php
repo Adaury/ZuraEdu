@@ -5,6 +5,9 @@ use App\Http\Controllers\Admin\CafeteriaController;
 // ── Módulo de Cafetería / Canteen ─────────────────────────────────────────
 Route::prefix('cafeteria')->name('cafeteria.')->group(function () {
 
+    // ── Dashboard ──────────────────────────────────────────────────────────
+    Route::get('/',                              [CafeteriaController::class, 'dashboard'])->name('dashboard');
+
     // ── Productos ──────────────────────────────────────────────────────────
     Route::prefix('productos')->name('productos.')->group(function () {
         Route::get('/',                          [CafeteriaController::class, 'indexProductos'])->name('index');
@@ -19,6 +22,7 @@ Route::prefix('cafeteria')->name('cafeteria.')->group(function () {
     Route::get('/ventas',                        [CafeteriaController::class, 'ventas'])->name('ventas');
     Route::post('/ventas/registrar',             [CafeteriaController::class, 'registrarVenta'])->name('ventas.store');
     Route::post('/recargas/registrar',           [CafeteriaController::class, 'registrarRecarga'])->name('recargas.store');
+    Route::post('/ajustes/registrar',            [CafeteriaController::class, 'registrarAjuste'])->name('ajustes.store');
 
     // ── Balance por estudiante ─────────────────────────────────────────────
     Route::get('/balance/{estudiante}',          [CafeteriaController::class, 'balanceEstudiante'])->name('balance');

@@ -15,10 +15,12 @@ class ProductoCafeteria extends Model
     protected $table = 'productos_cafeteria';
 
     protected $fillable = [
+        'tenant_id',
         'nombre',
         'precio',
         'categoria',
         'activo',
+        'descripcion',
     ];
 
     protected $casts = [

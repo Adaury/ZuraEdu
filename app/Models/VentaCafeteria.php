@@ -15,6 +15,7 @@ class VentaCafeteria extends Model
     protected $table = 'ventas_cafeteria';
 
     protected $fillable = [
+        'tenant_id',
         'estudiante_id',
         'producto_id',
         'descripcion',

@@ -2672,7 +2672,7 @@ if (auth()->check()) {
             <ul class="list-unstyled mb-0">
                 @if($isAdmin || $isDir || $isSecre)
                 <li class="nav-item">
-                    <a href="{{ route('admin.cafeteria.ventas') }}" class="{{ request()->routeIs('admin.cafeteria*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.cafeteria.dashboard') }}" class="{{ request()->routeIs('admin.cafeteria*') ? 'active' : '' }}">
                         <i class="bi bi-shop"></i>Cafetería
                     </a>
                 </li>

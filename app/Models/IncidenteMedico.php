@@ -13,16 +13,20 @@ class IncidenteMedico extends Model
     protected $table = 'incidentes_medicos';
 
     protected $fillable = [
+        'tenant_id',
         'estudiante_id',
         'fecha',
+        'hora',
         'tipo',
         'descripcion',
         'accion_tomada',
         'remitido_a',
+        'notificado_representante',
     ];
 
     protected $casts = [
-        'fecha' => 'date',
+        'fecha'                   => 'date',
+        'notificado_representante' => 'boolean',
     ];
 
     // ── Constantes ────────────────────────────────────────────────────────

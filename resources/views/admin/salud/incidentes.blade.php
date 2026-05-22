@@ -114,12 +114,13 @@
             <table class="table table-sm table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th class="ps-3">Fecha</th>
+                        <th class="ps-3">Fecha / Hora</th>
                         <th>Estudiante</th>
                         <th>Tipo</th>
                         <th>Descripción</th>
                         <th>Acción tomada</th>
                         <th>Remitido a</th>
+                        <th>Notificado</th>
                         <th class="text-end pe-3">Acciones</th>
                     </tr>
                 </thead>
@@ -127,7 +128,12 @@
                     @forelse($incidentes as $inc)
                     @php $ti = $inc->tipo_info; @endphp
                     <tr>
-                        <td class="ps-3 small text-nowrap">{{ $inc->fecha->format('d/m/Y') }}</td>
+                        <td class="ps-3 small text-nowrap">
+                            {{ $inc->fecha->format('d/m/Y') }}
+                            @if($inc->hora)
+                            <div class="text-muted" style="font-size:.72rem;">{{ \Carbon\Carbon::parse($inc->hora)->format('H:i') }}</div>
+                            @endif
+                        </td>
                         <td>
                             <a href="{{ route('admin.salud.ficha', $inc->estudiante) }}"
                                class="text-decoration-none fw-semibold small">
@@ -147,21 +153,38 @@
                             {{ Str::limit($inc->accion_tomada, 60) }}
                         </td>
                         <td class="small text-muted">{{ $inc->remitido_a ?? '—' }}</td>
+                        <td>
+                            @if($inc->notificado_representante)
+                            <span class="badge bg-success" style="font-size:.68rem;">
+                                <i class="bi bi-check-lg me-1"></i>Sí
+                            </span>
+                            @else
+                            <span class="badge bg-warning text-dark" style="font-size:.68rem;">
+                                <i class="bi bi-bell-slash me-1"></i>No
+                            </span>
+                            @endif
+                        </td>
                         <td class="text-end pe-3">
-                            <form action="{{ route('admin.salud.incidentes.eliminar', $inc) }}"
-                                  method="POST" class="d-inline"
-                                  onsubmit="return confirm('¿Eliminar este incidente?')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2"
-                                        title="Eliminar">
-                                    <i class="bi bi-trash3"></i>
-                                </button>
-                            </form>
+                            <div class="d-flex justify-content-end gap-1">
+                                <a href="{{ route('admin.salud.incidentes.editar', $inc) }}"
+                                   class="btn btn-outline-secondary btn-sm py-0 px-2" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form action="{{ route('admin.salud.incidentes.eliminar', $inc) }}"
+                                      method="POST" class="d-inline"
+                                      onsubmit="return confirm('¿Eliminar este incidente?')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2"
+                                            title="Eliminar">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">
+                        <td colspan="8" class="text-center text-muted py-4">
                             <i class="bi bi-clipboard2-x fs-3 d-block mb-2 text-secondary"></i>
                             No se encontraron incidentes con los filtros seleccionados.
                         </td>

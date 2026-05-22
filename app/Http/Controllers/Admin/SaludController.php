@@ -13,6 +13,36 @@ use Illuminate\Http\Request;
 
 class SaludController extends Controller
 {
+    // ── Dashboard Salud Escolar ───────────────────────────────────────────
+
+    public function dashboard()
+    {
+        $tipos = IncidenteMedico::TIPOS;
+
+        $totalIncidentes  = IncidenteMedico::count();
+        $incidentesMes    = IncidenteMedico::whereMonth('fecha', now()->month)
+                                           ->whereYear('fecha', now()->year)
+                                           ->count();
+        $conteosTipo      = IncidenteMedico::selectRaw('tipo, count(*) as total')
+                                           ->groupBy('tipo')
+                                           ->pluck('total', 'tipo');
+        $totalFichas      = FichaSalud::count();
+        $noNotificados    = IncidenteMedico::where('notificado_representante', false)->count();
+        $ultimos          = IncidenteMedico::with('estudiante')
+                                           ->latest('fecha')->latest('id')
+                                           ->take(8)->get();
+        $incidentesPorMes = IncidenteMedico::selectRaw('MONTH(fecha) as mes, COUNT(*) as total')
+                                           ->whereYear('fecha', now()->year)
+                                           ->groupBy('mes')
+                                           ->pluck('total', 'mes');
+
+        return view('admin.salud.dashboard', compact(
+            'tipos', 'totalIncidentes', 'incidentesMes',
+            'conteosTipo', 'totalFichas', 'noNotificados',
+            'ultimos', 'incidentesPorMes'
+        ));
+    }
+
     // ── Ficha de Salud ────────────────────────────────────────────────────
 
     /**
@@ -127,19 +157,53 @@ class SaludController extends Controller
     public function guardarIncidente(Request $request)
     {
         $data = $request->validate([
-            'estudiante_id' => 'required|exists:estudiantes,id',
-            'fecha'         => 'required|date',
-            'tipo'          => 'required|in:accidente,enfermedad,alergia,otro',
-            'descripcion'   => 'required|string|max:3000',
-            'accion_tomada' => 'required|string|max:3000',
-            'remitido_a'    => 'nullable|string|max:150',
+            'estudiante_id'            => 'required|exists:estudiantes,id',
+            'fecha'                    => 'required|date',
+            'hora'                     => 'nullable|date_format:H:i',
+            'tipo'                     => 'required|in:accidente,enfermedad,alergia,otro',
+            'descripcion'              => 'required|string|max:3000',
+            'accion_tomada'            => 'required|string|max:3000',
+            'remitido_a'               => 'nullable|string|max:150',
+            'notificado_representante' => 'boolean',
         ]);
+
+        $data['notificado_representante'] = $request->boolean('notificado_representante');
 
         IncidenteMedico::create($data);
 
         return redirect()
             ->route('admin.salud.incidentes')
             ->with('success', 'Incidente médico registrado correctamente.');
+    }
+
+    public function editarIncidente(IncidenteMedico $incidente)
+    {
+        $estudiantes = Estudiante::activos()->orderBy('apellidos')->get();
+        $tipos       = IncidenteMedico::TIPOS;
+
+        return view('admin.salud.incidente_create', compact('incidente', 'estudiantes', 'tipos'));
+    }
+
+    public function actualizarIncidente(Request $request, IncidenteMedico $incidente)
+    {
+        $data = $request->validate([
+            'estudiante_id'            => 'required|exists:estudiantes,id',
+            'fecha'                    => 'required|date',
+            'hora'                     => 'nullable|date_format:H:i',
+            'tipo'                     => 'required|in:accidente,enfermedad,alergia,otro',
+            'descripcion'              => 'required|string|max:3000',
+            'accion_tomada'            => 'required|string|max:3000',
+            'remitido_a'               => 'nullable|string|max:150',
+            'notificado_representante' => 'boolean',
+        ]);
+
+        $data['notificado_representante'] = $request->boolean('notificado_representante');
+
+        $incidente->update($data);
+
+        return redirect()
+            ->route('admin.salud.incidentes')
+            ->with('success', 'Incidente actualizado correctamente.');
     }
 
     /**

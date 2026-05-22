@@ -13,6 +13,7 @@ class FichaSalud extends Model
     protected $table = 'fichas_salud';
 
     protected $fillable = [
+        'tenant_id',
         'estudiante_id',
         'tipo_sangre',
         'alergias',

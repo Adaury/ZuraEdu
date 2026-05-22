@@ -4,6 +4,11 @@ use App\Http\Controllers\Admin\SaludController;
 
 // ── Salud Escolar ──────────────────────────────────────────────────────────
 
+// Dashboard
+Route::get('salud',
+    [SaludController::class, 'dashboard'])
+    ->name('salud.dashboard');
+
 // Ficha de salud por estudiante
 Route::get('salud/{estudiante}/ficha',
     [SaludController::class, 'ficha'])
@@ -30,6 +35,14 @@ Route::get('salud/incidentes/crear',
 Route::post('salud/incidentes',
     [SaludController::class, 'guardarIncidente'])
     ->name('salud.incidentes.guardar');
+
+Route::get('salud/incidentes/{incidente}/editar',
+    [SaludController::class, 'editarIncidente'])
+    ->name('salud.incidentes.editar');
+
+Route::put('salud/incidentes/{incidente}',
+    [SaludController::class, 'actualizarIncidente'])
+    ->name('salud.incidentes.actualizar');
 
 Route::delete('salud/incidentes/{incidente}',
     [SaludController::class, 'eliminarIncidente'])

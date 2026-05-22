@@ -15,6 +15,49 @@ use Illuminate\Support\Facades\Mail;
 
 class ComunicadoController extends Controller
 {
+    // ── Dashboard ─────────────────────────────────────────────────────────
+    public function dashboard()
+    {
+        $total      = Comunicado::count();
+        $activos    = Comunicado::where('activo', true)->count();
+        $publicados = Comunicado::publicados()->count();
+        $inactivos  = $total - $activos;
+
+        // Por tipo de destinatarios
+        $porTipo = Comunicado::selectRaw('tipo_destinatarios, count(*) as total')
+            ->groupBy('tipo_destinatarios')
+            ->pluck('total', 'tipo_destinatarios');
+
+        // Internos vs externos
+        $internos  = Comunicado::where('es_interno', true)->count();
+        $externos  = $total - $internos;
+
+        // Total lecturas únicas
+        $totalLecturas = \App\Models\ComunicadoLectura::count();
+
+        // Comunicados recientes con lecturas
+        $recientes = Comunicado::with(['autor', 'lecturas'])
+            ->withCount('lecturas')
+            ->latest()
+            ->limit(8)
+            ->get();
+
+        // Comunicados más leídos
+        $masLeidos = Comunicado::withCount('lecturas')
+            ->orderByDesc('lecturas_count')
+            ->limit(5)
+            ->get();
+
+        // Últimos 30 días
+        $recientes30 = Comunicado::whereDate('created_at', '>=', now()->subDays(30))->count();
+
+        return view('admin.comunicados.dashboard', compact(
+            'total', 'activos', 'publicados', 'inactivos',
+            'porTipo', 'internos', 'externos',
+            'totalLecturas', 'recientes', 'masLeidos', 'recientes30'
+        ));
+    }
+
     // ── List (admin) ──────────────────────────────────────────────────────
     public function index()
     {

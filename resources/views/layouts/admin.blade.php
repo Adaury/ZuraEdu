@@ -2531,7 +2531,7 @@ if (auth()->check()) {
                 </li>
                 @if($isAdmin || $isDir || $isCoord)
                 <li class="nav-item">
-                    <a href="{{ route('admin.comunicados.index') }}" class="{{ request()->routeIs('admin.comunicados.index') || request()->routeIs('admin.comunicados.create') || request()->routeIs('admin.comunicados.edit') ? 'active' : '' }}">
+                    <a href="{{ route('admin.comunicados.dashboard') }}" class="{{ request()->routeIs('admin.comunicados*') ? 'active' : '' }}">
                         <i class="bi bi-megaphone-fill"></i>Gestionar Comunicados
                     </a>
                 </li>

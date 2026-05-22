@@ -12,7 +12,7 @@ class Comunicado extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'titulo', 'cuerpo', 'autor_id', 'tipo_destinatarios',
+        'tenant_id', 'titulo', 'cuerpo', 'autor_id', 'tipo_destinatarios',
         'grupo_id', 'published_at', 'activo', 'es_interno',
     ];
 

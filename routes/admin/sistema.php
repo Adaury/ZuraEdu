@@ -33,6 +33,7 @@ Route::prefix('mensajes')->name('mensajes.')->group(function () {
 });
 
 // ── Comunicados ───────────────────────────────────────────────────────────
+Route::get('comunicados/dashboard',        [ComunicadoController::class, 'dashboard'])->name('comunicados.dashboard');
 Route::get('comunicados/lista/pdf',        [ComunicadoController::class, 'listaPdf'])->name('comunicados.lista-pdf');
 Route::get('comunicados/lista/excel',      [ComunicadoController::class, 'listaExcel'])->name('comunicados.lista-excel');
 Route::get('comunicados/mis',           [ComunicadoController::class, 'misComunicados'])->name('comunicados.mis');

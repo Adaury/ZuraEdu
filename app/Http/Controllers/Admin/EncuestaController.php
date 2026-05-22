@@ -6,10 +6,42 @@ use App\Http\Controllers\Controller;
 use App\Models\Encuesta;
 use App\Models\PreguntaEncuesta;
 use App\Models\OpcionPregunta;
+use App\Models\RespuestaEncuesta;
 use Illuminate\Http\Request;
 
 class EncuestaController extends Controller
 {
+    // ── Dashboard ─────────────────────────────────────────────────────────
+    public function dashboard()
+    {
+        $totalEncuestas    = Encuesta::count();
+        $encuestasActivas  = Encuesta::activas()->count();
+        $encuestasCerradas = Encuesta::where('activo', false)
+            ->orWhere(fn($q) => $q->whereNotNull('fecha_cierre')->where('fecha_cierre', '<', today()))
+            ->count();
+        $totalRespuestas   = RespuestaEncuesta::distinct('user_id')->count('user_id');
+
+        $porAudiencia = Encuesta::selectRaw('dirigida_a, count(*) as total')
+            ->groupBy('dirigida_a')
+            ->get()
+            ->keyBy('dirigida_a');
+
+        $ultimasEncuestas = Encuesta::withCount(['preguntas', 'respuestas'])
+            ->latest()
+            ->limit(8)
+            ->get();
+
+        $masRespondidas = Encuesta::withCount('respuestas')
+            ->orderByDesc('respuestas_count')
+            ->limit(5)
+            ->get();
+
+        return view('admin.encuestas.dashboard', compact(
+            'totalEncuestas', 'encuestasActivas', 'encuestasCerradas',
+            'totalRespuestas', 'porAudiencia', 'ultimasEncuestas', 'masRespondidas'
+        ));
+    }
+
     // ── Index ─────────────────────────────────────────────────────────────
     public function index()
     {

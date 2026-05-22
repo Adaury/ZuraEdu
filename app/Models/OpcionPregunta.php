@@ -15,6 +15,7 @@ class OpcionPregunta extends Model
     protected $table = 'opciones_pregunta';
 
     protected $fillable = [
+        'tenant_id',
         'pregunta_id',
         'texto',
         'orden',

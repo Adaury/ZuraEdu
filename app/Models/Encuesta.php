@@ -12,6 +12,7 @@ class Encuesta extends Model
     use BelongsToTenant;
 
     protected $fillable = [
+        'tenant_id',
         'titulo',
         'descripcion',
         'dirigida_a',

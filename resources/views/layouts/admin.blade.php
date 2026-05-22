@@ -2541,7 +2541,7 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.encuestas.index') }}" class="{{ request()->routeIs('admin.encuestas*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.encuestas.dashboard') }}" class="{{ request()->routeIs('admin.encuestas*') ? 'active' : '' }}">
                         <i class="bi bi-patch-question"></i>Encuestas
                     </a>
                 </li>

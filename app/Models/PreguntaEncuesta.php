@@ -15,6 +15,7 @@ class PreguntaEncuesta extends Model
     protected $table = 'preguntas_encuesta';
 
     protected $fillable = [
+        'tenant_id',
         'encuesta_id',
         'texto',
         'tipo',

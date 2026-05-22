@@ -14,6 +14,7 @@ class RespuestaEncuesta extends Model
     protected $table = 'respuestas_encuesta';
 
     protected $fillable = [
+        'tenant_id',
         'encuesta_id',
         'pregunta_id',
         'user_id',

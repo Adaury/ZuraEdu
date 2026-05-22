@@ -14,6 +14,7 @@ class Libro extends Model
     protected $table = 'libros';
 
     protected $fillable = [
+        'tenant_id',
         'titulo',
         'autor',
         'isbn',

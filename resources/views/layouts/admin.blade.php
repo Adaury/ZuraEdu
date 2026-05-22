@@ -2687,7 +2687,7 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.biblioteca.index') }}" class="{{ request()->routeIs('admin.biblioteca.index') || request()->routeIs('admin.biblioteca.libros*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.biblioteca.dashboard') }}" class="{{ request()->routeIs('admin.biblioteca.dashboard') || request()->routeIs('admin.biblioteca.index') || request()->routeIs('admin.biblioteca.libros*') ? 'active' : '' }}">
                         <i class="bi bi-book-half"></i>Biblioteca
                     </a>
                 </li>

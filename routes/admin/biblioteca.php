@@ -5,6 +5,9 @@ use App\Http\Controllers\Admin\BibliotecaController;
 // ── Módulo de Biblioteca Escolar ──────────────────────────────────────────
 Route::prefix('biblioteca')->name('biblioteca.')->group(function () {
 
+    // ── Dashboard ─────────────────────────────────────────────────────────
+    Route::get('/dashboard',                      [BibliotecaController::class, 'dashboard'])->name('dashboard');
+
     // ── Libros ────────────────────────────────────────────────────────────
     Route::get('/',                              [BibliotecaController::class, 'index'])->name('index');
     Route::get('/catalogo/pdf',                  [BibliotecaController::class, 'catalogoPdf'])->name('catalogo.pdf');

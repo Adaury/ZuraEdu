@@ -14,6 +14,7 @@ class PrestamoBiblioteca extends Model
     protected $table = 'prestamos_biblioteca';
 
     protected $fillable = [
+        'tenant_id',
         'libro_id',
         'estudiante_id',
         'fecha_prestamo',

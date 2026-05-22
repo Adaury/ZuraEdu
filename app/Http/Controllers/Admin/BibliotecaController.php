@@ -13,6 +13,37 @@ use Illuminate\Support\Facades\DB;
 class BibliotecaController extends Controller
 {
     // ══════════════════════════════════════════════════════════════════════
+    //  DASHBOARD
+    // ══════════════════════════════════════════════════════════════════════
+
+    public function dashboard()
+    {
+        $totalLibros      = Libro::count();
+        $totalEjemplares  = Libro::sum('cantidad_total');
+        $totalDisponibles = Libro::sum('cantidad_disponible');
+        $prestamosActivos = PrestamoBiblioteca::activos()->count();
+        $prestamosVencidos = PrestamoBiblioteca::vencidos()->count();
+        $librosAgotados   = Libro::where('cantidad_disponible', 0)->count();
+
+        $porCategoria = Libro::select('categoria', DB::raw('count(*) as total'))
+            ->groupBy('categoria')
+            ->orderByDesc('total')
+            ->limit(6)
+            ->get();
+
+        $ultimosPrestamos = PrestamoBiblioteca::with(['libro', 'estudiante'])
+            ->orderByDesc('fecha_prestamo')
+            ->limit(8)
+            ->get();
+
+        return view('admin.biblioteca.dashboard', compact(
+            'totalLibros', 'totalEjemplares', 'totalDisponibles',
+            'prestamosActivos', 'prestamosVencidos', 'librosAgotados',
+            'porCategoria', 'ultimosPrestamos'
+        ));
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
     //  LIBROS
     // ══════════════════════════════════════════════════════════════════════
 

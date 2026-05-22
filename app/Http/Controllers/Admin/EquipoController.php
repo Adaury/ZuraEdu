@@ -13,6 +13,38 @@ use Illuminate\Support\Facades\DB;
 class EquipoController extends Controller
 {
     // ══════════════════════════════════════════════════════════════════════
+    //  DASHBOARD
+    // ══════════════════════════════════════════════════════════════════════
+
+    public function dashboard()
+    {
+        $totalEquipos       = Equipo::count();
+        $totalDisponibles   = Equipo::where('estado', 'disponible')->count();
+        $totalPrestados     = Equipo::where('estado', 'prestado')->count();
+        $totalMantenimiento = Equipo::where('estado', 'mantenimiento')->count();
+        $totalBaja          = Equipo::where('estado', 'baja')->count();
+        $prestamosActivos   = PrestamoEquipo::activos()->count();
+        $prestamosVencidos  = PrestamoEquipo::vencidos()->count();
+
+        $porTipo = Equipo::select('tipo', DB::raw('count(*) as total'))
+            ->groupBy('tipo')
+            ->orderByDesc('total')
+            ->get();
+
+        $ultimosPrestamos = PrestamoEquipo::with(['equipo', 'usuario'])
+            ->orderByDesc('fecha_prestamo')
+            ->limit(8)
+            ->get();
+
+        return view('admin.equipos.dashboard', compact(
+            'totalEquipos', 'totalDisponibles', 'totalPrestados',
+            'totalMantenimiento', 'totalBaja',
+            'prestamosActivos', 'prestamosVencidos',
+            'porTipo', 'ultimosPrestamos'
+        ));
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
     //  EQUIPOS
     // ══════════════════════════════════════════════════════════════════════
 
@@ -63,11 +95,15 @@ class EquipoController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'nombre'      => 'required|string|max:200',
-            'tipo'        => 'required|in:laptop,tablet,proyector,camara,otro',
-            'codigo'      => 'nullable|string|max:60|unique:equipos,codigo',
-            'estado'      => 'required|in:disponible,prestado,mantenimiento,baja',
-            'descripcion' => 'nullable|string|max:1000',
+            'nombre'            => 'required|string|max:200',
+            'tipo'              => 'required|in:laptop,tablet,proyector,camara,otro',
+            'marca'             => 'nullable|string|max:100',
+            'modelo'            => 'nullable|string|max:100',
+            'codigo'            => 'nullable|string|max:60|unique:equipos,codigo',
+            'estado'            => 'required|in:disponible,prestado,mantenimiento,baja',
+            'descripcion'       => 'nullable|string|max:1000',
+            'ubicacion'         => 'nullable|string|max:150',
+            'anio_adquisicion'  => 'nullable|integer|min:2000|max:' . date('Y'),
         ]);
 
         Equipo::create($data);
@@ -86,11 +122,15 @@ class EquipoController extends Controller
     public function update(Request $request, Equipo $equipo)
     {
         $data = $request->validate([
-            'nombre'      => 'required|string|max:200',
-            'tipo'        => 'required|in:laptop,tablet,proyector,camara,otro',
-            'codigo'      => 'nullable|string|max:60|unique:equipos,codigo,' . $equipo->id,
-            'estado'      => 'required|in:disponible,prestado,mantenimiento,baja',
-            'descripcion' => 'nullable|string|max:1000',
+            'nombre'            => 'required|string|max:200',
+            'tipo'              => 'required|in:laptop,tablet,proyector,camara,otro',
+            'marca'             => 'nullable|string|max:100',
+            'modelo'            => 'nullable|string|max:100',
+            'codigo'            => 'nullable|string|max:60|unique:equipos,codigo,' . $equipo->id,
+            'estado'            => 'required|in:disponible,prestado,mantenimiento,baja',
+            'descripcion'       => 'nullable|string|max:1000',
+            'ubicacion'         => 'nullable|string|max:150',
+            'anio_adquisicion'  => 'nullable|integer|min:2000|max:' . date('Y'),
         ]);
 
         $equipo->update($data);

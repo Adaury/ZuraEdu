@@ -72,6 +72,58 @@
                         @error('codigo') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
+                    {{-- Marca --}}
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            Marca <span class="text-muted small">(opcional)</span>
+                        </label>
+                        <input type="text" name="marca"
+                               class="form-control @error('marca') is-invalid @enderror"
+                               value="{{ old('marca', $equipo->marca ?? '') }}"
+                               maxlength="100"
+                               placeholder="Ej: Dell, HP, Apple">
+                        @error('marca') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
+                    {{-- Modelo --}}
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            Modelo <span class="text-muted small">(opcional)</span>
+                        </label>
+                        <input type="text" name="modelo"
+                               class="form-control @error('modelo') is-invalid @enderror"
+                               value="{{ old('modelo', $equipo->modelo ?? '') }}"
+                               maxlength="100"
+                               placeholder="Ej: Inspiron 15, iPad Pro">
+                        @error('modelo') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
+                    {{-- Ubicación --}}
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold">
+                            Ubicación <span class="text-muted small">(opcional)</span>
+                        </label>
+                        <input type="text" name="ubicacion"
+                               class="form-control @error('ubicacion') is-invalid @enderror"
+                               value="{{ old('ubicacion', $equipo->ubicacion ?? '') }}"
+                               maxlength="150"
+                               placeholder="Ej: Aula de Informática, Dirección">
+                        @error('ubicacion') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
+                    {{-- Año adquisición --}}
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">
+                            Año de adquisición <span class="text-muted small">(opcional)</span>
+                        </label>
+                        <input type="number" name="anio_adquisicion"
+                               class="form-control @error('anio_adquisicion') is-invalid @enderror"
+                               value="{{ old('anio_adquisicion', $equipo->anio_adquisicion ?? '') }}"
+                               min="2000" max="{{ date('Y') }}"
+                               placeholder="{{ date('Y') }}">
+                        @error('anio_adquisicion') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
                     {{-- Estado --}}
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Estado <span class="text-danger">*</span></label>
@@ -94,7 +146,7 @@
                         <textarea name="descripcion"
                                   class="form-control @error('descripcion') is-invalid @enderror"
                                   rows="3" maxlength="1000"
-                                  placeholder="Características, modelo, observaciones...">{{ old('descripcion', $equipo->descripcion ?? '') }}</textarea>
+                                  placeholder="Observaciones adicionales...">{{ old('descripcion', $equipo->descripcion ?? '') }}</textarea>
                         @error('descripcion') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                 </div>

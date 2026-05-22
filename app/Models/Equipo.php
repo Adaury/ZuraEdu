@@ -17,9 +17,13 @@ class Equipo extends Model
         'tenant_id',
         'nombre',
         'tipo',
+        'marca',
+        'modelo',
         'codigo',
         'estado',
         'descripcion',
+        'ubicacion',
+        'anio_adquisicion',
     ];
 
     // ── Tipos de equipo ───────────────────────────────────────────────────

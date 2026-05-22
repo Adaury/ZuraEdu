@@ -2677,7 +2677,7 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.equipos.index') }}" class="{{ request()->routeIs('admin.equipos.index') || request()->routeIs('admin.equipos.create') || request()->routeIs('admin.equipos.edit') ? 'active' : '' }}">
+                    <a href="{{ route('admin.equipos.dashboard') }}" class="{{ request()->routeIs('admin.equipos.dashboard') || request()->routeIs('admin.equipos.index') || request()->routeIs('admin.equipos.create') || request()->routeIs('admin.equipos.edit') ? 'active' : '' }}">
                         <i class="bi bi-laptop"></i>Equipos
                     </a>
                 </li>

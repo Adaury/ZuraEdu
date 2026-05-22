@@ -5,6 +5,9 @@ use App\Http\Controllers\Admin\EquipoController;
 // ── Módulo de Préstamos de Equipos ────────────────────────────────────────
 Route::prefix('equipos')->name('equipos.')->group(function () {
 
+    // ── Dashboard ─────────────────────────────────────────────────────────
+    Route::get('/dashboard',              [EquipoController::class, 'dashboard'])->name('dashboard');
+
     // ── Equipos ───────────────────────────────────────────────────────────
     Route::get('/',                       [EquipoController::class, 'index'])->name('index');
     Route::get('/crear',                  [EquipoController::class, 'create'])->name('create');

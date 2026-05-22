@@ -180,8 +180,9 @@ class SaludController extends Controller
     {
         $estudiantes = Estudiante::activos()->orderBy('apellidos')->get();
         $tipos       = IncidenteMedico::TIPOS;
+        $estudiante  = null;
 
-        return view('admin.salud.incidente_create', compact('incidente', 'estudiantes', 'tipos'));
+        return view('admin.salud.incidente_create', compact('incidente', 'estudiantes', 'tipos', 'estudiante'));
     }
 
     public function actualizarIncidente(Request $request, IncidenteMedico $incidente)

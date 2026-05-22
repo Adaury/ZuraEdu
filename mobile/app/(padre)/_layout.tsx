@@ -65,6 +65,9 @@ export default function PadreLayout() {
       <Tabs.Screen name="resultados-evaluacion" options={{ title: 'Evaluaciones',    tabBarIcon: ({ color, size }) => <Ionicons name="ribbon-outline"          size={size} color={color} />, href: null }} />
       <Tabs.Screen name="reconocimientos"        options={{ title: 'Reconocimientos', tabBarIcon: ({ color, size }) => <Ionicons name="trophy-outline"            size={size} color={color} />, href: null }} />
       <Tabs.Screen name="salud"                  options={{ title: 'Salud',           tabBarIcon: ({ color, size }) => <Ionicons name="heart-half-outline"        size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="proyectos"              options={{ title: 'Proyectos',       tabBarIcon: ({ color, size }) => <Ionicons name="flask-outline"               size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="eventos"                options={{ title: 'Eventos',         tabBarIcon: ({ color, size }) => <Ionicons name="calendar-number-outline"     size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="biblioteca"             options={{ title: 'Biblioteca',      tabBarIcon: ({ color, size }) => <Ionicons name="library-outline"             size={size} color={color} />, href: null }} />
     </Tabs>
   )
 }

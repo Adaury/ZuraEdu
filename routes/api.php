@@ -251,5 +251,23 @@ Route::prefix('v1')->group(function () {
 
         // Reuniones del docente
         Route::get('docente/mis-reuniones',         [\App\Http\Controllers\Api\ReunionesApiController::class, 'misReuniones'])->name('api.docente.mis-reuniones');
+
+        // Proyectos escolares
+        Route::prefix('proyectos')->name('api.proyectos.')->group(function () {
+            Route::get('/',                         [\App\Http\Controllers\Api\ProyectosApiController::class, 'misProyectos'])->name('index');
+            Route::get('hijo/{estudiante}',         [\App\Http\Controllers\Api\ProyectosApiController::class, 'hijoProyectos'])->name('hijo');
+        });
+
+        // Eventos institucionales
+        Route::prefix('eventos')->name('api.eventos.')->group(function () {
+            Route::get('/',                         [\App\Http\Controllers\Api\EventosApiController::class, 'index'])->name('index');
+            Route::post('{evento}/inscribirse',     [\App\Http\Controllers\Api\EventosApiController::class, 'inscribirse'])->name('inscribirse');
+        });
+
+        // Biblioteca — préstamos
+        Route::prefix('biblioteca')->name('api.biblioteca.')->group(function () {
+            Route::get('mis-prestamos',             [\App\Http\Controllers\Api\BibliotecaApiController::class, 'misPrestamos'])->name('mis-prestamos');
+            Route::get('hijo/{estudiante}/prestamos', [\App\Http\Controllers\Api\BibliotecaApiController::class, 'hijoPrestamos'])->name('hijo');
+        });
     });
 });

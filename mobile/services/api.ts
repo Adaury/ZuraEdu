@@ -273,3 +273,21 @@ export const evaluacionesDocenteApi = {
 export const reunionesDocenteApi = {
   index: () => api.get('/docente/mis-reuniones'),
 }
+
+// ── Proyectos Escolares ───────────────────────────────────────────────────────
+export const proyectosApi = {
+  index:              () => api.get('/proyectos'),
+  hijo: (id: number) => api.get(`/proyectos/hijo/${id}`),
+}
+
+// ── Eventos Institucionales ───────────────────────────────────────────────────
+export const eventosApi = {
+  index:                    () => api.get('/eventos'),
+  inscribirse: (id: number) => api.post(`/eventos/${id}/inscribirse`, {}),
+}
+
+// ── Biblioteca — Préstamos ────────────────────────────────────────────────────
+export const bibliotecaApi = {
+  misPrestamos:              () => api.get('/biblioteca/mis-prestamos'),
+  hijo:          (id: number) => api.get(`/biblioteca/hijo/${id}/prestamos`),
+}

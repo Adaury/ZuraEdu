@@ -2557,7 +2557,7 @@ if (auth()->check()) {
             <div class="nav-section-title">Pagos y Colegiaturas</div>
             <ul class="list-unstyled mb-0">
                 <li class="nav-item">
-                    <a href="{{ route('admin.pagos.index') }}" class="{{ request()->routeIs('admin.pagos.index') ? 'active' : '' }}">
+                    <a href="{{ route('admin.pagos.dashboard') }}" class="{{ request()->routeIs('admin.pagos.dashboard') || request()->routeIs('admin.pagos.index') ? 'active' : '' }}">
                         <i class="bi bi-cash-coin"></i>Gestión de Pagos
                     </a>
                 </li>

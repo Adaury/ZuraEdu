@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\PagoController;
 
 // ── Módulo de Pagos / Colegiaturas ────────────────────────────────────────
 Route::prefix('pagos')->name('pagos.')->group(function () {
+    Route::get('/dashboard',                     [PagoController::class, 'dashboard'])->name('dashboard');
     Route::get('/',                              [PagoController::class, 'index'])->name('index');
     Route::get('/nuevo',                         [PagoController::class, 'create'])->name('create');
     Route::post('/',                             [PagoController::class, 'store'])->name('store');

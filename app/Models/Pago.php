@@ -14,6 +14,7 @@ class Pago extends Model
     protected $table = 'pagos';
 
     protected $fillable = [
+        'tenant_id',
         'matricula_id',
         'concepto',
         'monto',

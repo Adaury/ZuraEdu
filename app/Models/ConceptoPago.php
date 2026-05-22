@@ -11,7 +11,7 @@ class ConceptoPago extends Model
 
     protected $table = 'concepto_pagos';
 
-    protected $fillable = ['nombre', 'monto_defecto', 'tipo', 'activo', 'descripcion'];
+    protected $fillable = ['tenant_id', 'nombre', 'monto_defecto', 'tipo', 'activo', 'descripcion'];
 
     protected $casts = [
         'monto_defecto' => 'decimal:2',

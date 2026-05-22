@@ -20,6 +20,59 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 class PagoController extends Controller
 {
+    // ── Dashboard financiero ──────────────────────────────────────────────
+    public function dashboard()
+    {
+        Pago::sincronizarVencidos();
+
+        $syActual = SchoolYear::actual();
+        $syId     = $syActual?->id;
+
+        $base = fn() => Pago::whereHas('matricula', fn($m) => $m->where('school_year_id', $syId));
+
+        $totalPagado    = ($base)()->where('estado', 'pagado')->sum('monto');
+        $totalPendiente = ($base)()->where('estado', 'pendiente')->sum('monto');
+        $totalVencido   = ($base)()->where('estado', 'vencido')->sum('monto');
+        $countPagados   = ($base)()->where('estado', 'pagado')->count();
+        $countPendientes= ($base)()->where('estado', 'pendiente')->count();
+        $countVencidos  = ($base)()->where('estado', 'vencido')->count();
+
+        // Recaudación mensual (últimos 8 meses)
+        $cobrosMes = Pago::whereHas('matricula', fn($m) => $m->where('school_year_id', $syId))
+            ->where('estado', 'pagado')
+            ->whereNotNull('fecha_pago')
+            ->selectRaw("DATE_FORMAT(fecha_pago, '%Y-%m') as mes, SUM(monto) as total")
+            ->groupBy('mes')
+            ->orderBy('mes')
+            ->limit(8)
+            ->pluck('total', 'mes');
+
+        // Top deudores (mayor monto vencido)
+        $topDeudores = Pago::with(['matricula.estudiante'])
+            ->whereHas('matricula', fn($m) => $m->where('school_year_id', $syId))
+            ->where('estado', 'vencido')
+            ->selectRaw('matricula_id, SUM(monto) as deuda_total, COUNT(*) as cuotas')
+            ->groupBy('matricula_id')
+            ->orderByDesc('deuda_total')
+            ->limit(6)
+            ->get();
+
+        // Últimos pagos registrados
+        $ultimosPagos = Pago::with(['matricula.estudiante'])
+            ->whereHas('matricula', fn($m) => $m->where('school_year_id', $syId))
+            ->where('estado', 'pagado')
+            ->latest('fecha_pago')
+            ->limit(6)
+            ->get();
+
+        return view('admin.pagos.dashboard', compact(
+            'syActual',
+            'totalPagado', 'totalPendiente', 'totalVencido',
+            'countPagados', 'countPendientes', 'countVencidos',
+            'cobrosMes', 'topDeudores', 'ultimosPagos'
+        ));
+    }
+
     // ── Índice general ────────────────────────────────────────────────────
     public function index(Request $request)
     {

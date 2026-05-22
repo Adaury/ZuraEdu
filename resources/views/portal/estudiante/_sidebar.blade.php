@@ -110,6 +110,21 @@
    class="prt-sidebar-link {{ $ak === 'proyectos' ? 'active' : '' }}">
     <i class="bi bi-lightbulb-fill"></i>Proyectos
 </a>
+@php
+try { $reconocimientosModule = !app()->bound('tenant') || (app()->bound('tenant') && app('tenant')?->can('reconocimientos')); } catch(\Exception $e){ $reconocimientosModule = true; }
+$reconocimientosCount = 0;
+try {
+    $__est = auth()->user()->estudiante ?? null;
+    if ($__est) $reconocimientosCount = \App\Models\Reconocimiento::where('estudiante_id', $__est->id)->count();
+} catch(\Exception $e) {}
+@endphp
+@if($reconocimientosModule && $reconocimientosCount > 0)
+<a href="{{ route('portal.estudiante.mis-reconocimientos') }}"
+   class="prt-sidebar-link {{ $ak === 'reconocimientos' ? 'active' : '' }}">
+    <i class="bi bi-trophy-fill" style="{{ $ak === 'reconocimientos' ? '' : 'color:#d97706;' }}"></i>Mis Reconocimientos
+    <span style="background:#d97706;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $reconocimientosCount }}</span>
+</a>
+@endif
 <a href="{{ route('portal.estudiante.encuestas') }}"
    class="prt-sidebar-link {{ $ak === 'encuestas' ? 'active' : '' }}">
     <i class="bi bi-clipboard-check-fill"></i>Encuestas

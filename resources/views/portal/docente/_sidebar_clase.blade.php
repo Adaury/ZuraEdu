@@ -48,6 +48,30 @@ $ak  = $activeKey ?? '';
     <i class="bi bi-trophy-fill" style="color:#f59e0b;"></i>Gamificación
 </a>
 @endif
+@php
+try { $evDocFeature = !app()->bound('tenant') || (app()->bound('tenant') && app('tenant')?->can('evaluaciones_docentes')); } catch(\Exception $e){ $evDocFeature = false; }
+if ($evDocFeature) {
+    try {
+        $misEvsCount = \App\Models\EvaluacionDocente::where('docente_id', auth()->user()->docente?->id ?? 0)->count();
+    } catch(\Exception $e){ $misEvsCount = 0; }
+}
+@endphp
+@if(!empty($evDocFeature) && !empty($misEvsCount) && $misEvsCount > 0)
+<a href="{{ route('portal.docente.mis-evaluaciones') }}"
+   class="prt-sidebar-link {{ $ak === 'mis-evaluaciones' ? 'active' : '' }}"
+   style="{{ $ak === 'mis-evaluaciones' ? '' : 'color:#6366f1;' }}">
+    <i class="bi bi-clipboard2-check-fill"></i>Mis Evaluaciones
+</a>
+@endif
+@php
+try { $reunionesFeature = !app()->bound('tenant') || (app()->bound('tenant') && app('tenant')?->can('reuniones')); } catch(\Exception $e){ $reunionesFeature = false; }
+@endphp
+@if(!empty($reunionesFeature))
+<a href="{{ route('portal.docente.mis-reuniones') }}"
+   class="prt-sidebar-link {{ $ak === 'mis-reuniones' ? 'active' : '' }}">
+    <i class="bi bi-journal-text"></i>Mis Reuniones
+</a>
+@endif
 <a href="{{ route('portal.docente.rubricas.index') }}"
    class="prt-sidebar-link {{ $ak === 'rubricas' ? 'active' : '' }}"
    style="{{ $ak === 'rubricas' ? '' : 'color:#ec4899;' }}">

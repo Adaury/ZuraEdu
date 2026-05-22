@@ -82,6 +82,20 @@
     <i class="bi bi-lightbulb-fill"></i>Proyectos
 </a>
 @php
+try { $reconocimientosPadre = !app()->bound('tenant') || (app()->bound('tenant') && app('tenant')?->can('reconocimientos')); } catch(\Exception $e){ $reconocimientosPadre = true; }
+try { $saludPadre = true; } catch(\Exception $e){ $saludPadre = true; }
+@endphp
+@if($reconocimientosPadre)
+<a href="{{ route('portal.padre.hijo.reconocimientos', $estudiante) }}"
+   class="prt-sidebar-link {{ $ak === 'reconocimientos' ? 'active' : '' }}">
+    <i class="bi bi-trophy-fill" style="{{ $ak === 'reconocimientos' ? '' : 'color:#d97706;' }}"></i>Reconocimientos
+</a>
+@endif
+<a href="{{ route('portal.padre.hijo.salud', $estudiante) }}"
+   class="prt-sidebar-link {{ $ak === 'salud' ? 'active' : '' }}">
+    <i class="bi bi-heart-pulse-fill" style="{{ $ak === 'salud' ? '' : 'color:#dc2626;' }}"></i>Salud Escolar
+</a>
+@php
 try { $moduleCafeteria = \App\Helpers\Setting::get('cafeteria','0');  } catch(\Exception $e){ $moduleCafeteria = '0'; }
 try { $moduleTransport = \App\Helpers\Setting::get('transporte','0'); } catch(\Exception $e){ $moduleTransport = '0'; }
 @endphp

@@ -4785,4 +4785,34 @@ class PortalDocenteController extends Controller
             );
         }
     }
+
+    // ── Mis Evaluaciones de Desempeño ─────────────────────────────────────
+    public function misEvaluaciones()
+    {
+        $docente = $this->getDocente();
+
+        $evaluaciones = \App\Models\EvaluacionDocente::with('evaluador')
+            ->where('docente_id', $docente->id)
+            ->latest()
+            ->get();
+
+        return view('portal.docente.mis_evaluaciones', compact('docente', 'evaluaciones'));
+    }
+
+    // ── Mis Reuniones ─────────────────────────────────────────────────────
+    public function misReuniones()
+    {
+        $docente = $this->getDocente();
+        $user    = auth()->user();
+
+        $reuniones = \App\Models\Reunion::with('acuerdos')
+            ->where(function ($q) use ($user) {
+                $q->where('convocante_id', $user->id)
+                  ->orWhere('tipo', 'reunion_docentes');
+            })
+            ->orderByDesc('fecha')
+            ->get();
+
+        return view('portal.docente.mis_reuniones', compact('docente', 'reuniones'));
+    }
 }

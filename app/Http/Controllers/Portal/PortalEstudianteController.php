@@ -2173,4 +2173,18 @@ class PortalEstudianteController extends Controller
 
         return view('portal.estudiante.mi_riesgo', compact('estudiante', 'schoolYear', 'matricula', 'score'));
     }
+
+    // ── Mis Reconocimientos ────────────────────────────────────────────────
+    public function misReconocimientos()
+    {
+        $estudiante = $this->getEstudiante();
+        $schoolYear = SchoolYear::actual();
+
+        $reconocimientos = \App\Models\Reconocimiento::with('tipo', 'emitidoPor')
+            ->where('estudiante_id', $estudiante->id)
+            ->latest('fecha')
+            ->get();
+
+        return view('portal.estudiante.reconocimientos', compact('estudiante', 'schoolYear', 'reconocimientos'));
+    }
 }

@@ -2175,4 +2175,36 @@ class PortalPadreController extends Controller
 
         return view('portal.padre.hijo_riesgo', compact('estudiante', 'schoolYear', 'matricula', 'score'));
     }
+
+    // ── Reconocimientos del Hijo ───────────────────────────────────────────
+    public function reconocimientosHijo(\App\Models\Estudiante $estudiante)
+    {
+        $representante = $this->getRepresentante();
+        if (! $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists()) {
+            abort(403);
+        }
+
+        $reconocimientos = \App\Models\Reconocimiento::with('tipo', 'emitidoPor')
+            ->where('estudiante_id', $estudiante->id)
+            ->latest('fecha')
+            ->get();
+
+        return view('portal.padre.reconocimientos_hijo', compact('estudiante', 'reconocimientos'));
+    }
+
+    // ── Salud del Hijo ────────────────────────────────────────────────────
+    public function saludHijo(\App\Models\Estudiante $estudiante)
+    {
+        $representante = $this->getRepresentante();
+        if (! $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists()) {
+            abort(403);
+        }
+
+        $ficha     = \App\Models\FichaSalud::where('estudiante_id', $estudiante->id)->first();
+        $incidentes = \App\Models\IncidenteMedico::where('estudiante_id', $estudiante->id)
+            ->latest('fecha')
+            ->get();
+
+        return view('portal.padre.salud_hijo', compact('estudiante', 'ficha', 'incidentes'));
+    }
 }

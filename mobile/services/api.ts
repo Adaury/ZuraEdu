@@ -252,3 +252,24 @@ export const solicitudesApi = {
     api.post('/solicitudes', data),
   show: (id: number) => api.get(`/solicitudes/${id}`),
 }
+
+// ── Reconocimientos (Estudiante y Representante) ───────────────────────────────
+export const reconocimientosApi = {
+  index:              () => api.get('/reconocimientos'),
+  hijo: (id: number) => api.get(`/reconocimientos/hijo/${id}`),
+}
+
+// ── Salud Escolar (Representante ve la ficha de su hijo) ───────────────────────
+export const saludApi = {
+  hijo: (id: number) => api.get(`/salud/hijo/${id}`),
+}
+
+// ── Evaluaciones de Desempeño Docente ─────────────────────────────────────────
+export const evaluacionesDocenteApi = {
+  index: () => api.get('/docente/mis-evaluaciones'),
+}
+
+// ── Reuniones del Docente ─────────────────────────────────────────────────────
+export const reunionesDocenteApi = {
+  index: () => api.get('/docente/mis-reuniones'),
+}

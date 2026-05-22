@@ -39,6 +39,8 @@ const SECCIONES = [
     items: [
       { label: 'Mensajes',       icon: 'mail',           route: '/(docente)/mensajes',       color: Colors.purple },
       { label: 'Comunicados',    icon: 'megaphone',      route: '/(docente)/comunicados',    color: Colors.red    },
+      { label: 'Mis Eval.',      icon: 'clipboard',      route: '/(docente)/evaluaciones',   color: Colors.indigo },
+      { label: 'Reuniones',      icon: 'journal',        route: '/(docente)/reuniones',      color: Colors.green  },
       { label: 'Solicitudes',    icon: 'document-text',  route: '/(docente)/solicitudes',    color: Colors.amber  },
       { label: 'Notificaciones', icon: 'notifications',  route: '/(docente)/notificaciones', color: Colors.blue   },
       { label: 'Calendario',     icon: 'calendar',       route: '/(docente)/calendario',     color: Colors.amber  },

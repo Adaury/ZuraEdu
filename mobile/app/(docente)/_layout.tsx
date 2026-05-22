@@ -59,6 +59,8 @@ export default function DocenteLayout() {
       <Tabs.Screen name="instrumentos"     options={{ title: 'Instrumentos',   tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline"          size={size} color={color} />, href: null }} />
       <Tabs.Screen name="riesgo"            options={{ title: 'Riesgo',         tabBarIcon: ({ color, size }) => <Ionicons name="analytics-outline"     size={size} color={color} />, href: null }} />
       <Tabs.Screen name="solicitudes"       options={{ title: 'Solicitudes',    tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline"  size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="evaluaciones"      options={{ title: 'Mis Eval.',      tabBarIcon: ({ color, size }) => <Ionicons name="clipboard-outline"       size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="reuniones"         options={{ title: 'Reuniones',      tabBarIcon: ({ color, size }) => <Ionicons name="journal-outline"         size={size} color={color} />, href: null }} />
     </Tabs>
   )
 }

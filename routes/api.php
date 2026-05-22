@@ -234,5 +234,22 @@ Route::prefix('v1')->group(function () {
             Route::post('/',                          [SolicitudesApiController::class, 'store'])->name('store');
             Route::get('{id}',                        [SolicitudesApiController::class, 'show'])->name('show');
         });
+
+        // Reconocimientos (Estudiante ve los suyos; Representante ve los de su hijo)
+        Route::prefix('reconocimientos')->name('api.reconocimientos.')->group(function () {
+            Route::get('/',                         [\App\Http\Controllers\Api\ReconocimientosApiController::class, 'misReconocimientos'])->name('index');
+            Route::get('hijo/{estudiante}',         [\App\Http\Controllers\Api\ReconocimientosApiController::class, 'hijoReconocimientos'])->name('hijo');
+        });
+
+        // Salud (Representante ve la ficha de salud de su hijo)
+        Route::prefix('salud')->name('api.salud.')->group(function () {
+            Route::get('hijo/{estudiante}',         [\App\Http\Controllers\Api\SaludApiController::class, 'saludHijo'])->name('hijo');
+        });
+
+        // Evaluaciones de desempeño docente
+        Route::get('docente/mis-evaluaciones',      [\App\Http\Controllers\Api\EvaluacionesDocenteApiController::class, 'misEvaluaciones'])->name('api.docente.mis-evaluaciones');
+
+        // Reuniones del docente
+        Route::get('docente/mis-reuniones',         [\App\Http\Controllers\Api\ReunionesApiController::class, 'misReuniones'])->name('api.docente.mis-reuniones');
     });
 });

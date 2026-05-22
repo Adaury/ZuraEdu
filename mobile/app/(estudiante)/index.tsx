@@ -40,8 +40,9 @@ const SECCIONES = [
     items: [
       { label: 'Classroom',   icon: 'easel',         route: '/(estudiante)/classroom',   color: '#0ea5e9'     },
       { label: 'Tutor IA',    icon: 'sparkles',      route: '/(estudiante)/tutor',       color: '#6366f1'     },
-      { label: 'Mis Puntos',  icon: 'trophy',        route: '/(estudiante)/mis-puntos',  color: '#f59e0b'     },
-      { label: 'Pagos',       icon: 'card',          route: '/(estudiante)/pagos',       color: Colors.green  },
+      { label: 'Mis Puntos',   icon: 'trophy',        route: '/(estudiante)/mis-puntos',        color: '#f59e0b'     },
+      { label: 'Reconocim.',  icon: 'ribbon',        route: '/(estudiante)/reconocimientos',   color: '#d97706'     },
+      { label: 'Pagos',       icon: 'card',          route: '/(estudiante)/pagos',             color: Colors.green  },
       { label: 'Solicitudes', icon: 'document-text', route: '/(estudiante)/solicitudes', color: Colors.indigo },
       { label: 'Cafetería',   icon: 'cafe',          route: '/(estudiante)/cafeteria',   color: '#7c3aed'     },
       { label: 'Transporte',  icon: 'bus',           route: '/(estudiante)/transporte',  color: '#0369a1'     },

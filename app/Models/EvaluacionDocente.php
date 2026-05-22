@@ -15,6 +15,7 @@ class EvaluacionDocente extends Model
     protected $table = 'evaluaciones_docentes';
 
     protected $fillable = [
+        'tenant_id',
         'docente_id',
         'evaluador_id',
         'periodo_evaluado',

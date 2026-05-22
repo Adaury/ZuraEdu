@@ -13,6 +13,49 @@ use Illuminate\Http\Request;
 
 class SeguimientoSocialController extends Controller
 {
+    // ── Dashboard ─────────────────────────────────────────────────────────────
+
+    public function dashboard()
+    {
+        $total          = CasoSeguimiento::count();
+        $abiertos       = CasoSeguimiento::abiertos()->count();
+        $cerrados       = CasoSeguimiento::where('estado', 'cerrado')->count();
+        $criticos       = CasoSeguimiento::criticos()->abiertos()->count();
+
+        $esteMes = CasoSeguimiento::whereMonth('fecha_apertura', now()->month)
+                                  ->whereYear('fecha_apertura', now()->year)->count();
+
+        // Por tipo
+        $porTipo = collect(CasoSeguimiento::TIPOS)->mapWithKeys(function ($label, $tipo) {
+            return [$tipo => CasoSeguimiento::where('tipo', $tipo)->count()];
+        })->filter(fn($cnt) => $cnt > 0)->sortDesc();
+
+        // Por nivel de riesgo (casos abiertos)
+        $porRiesgo = collect(CasoSeguimiento::NIVELES_RIESGO)->mapWithKeys(function ($info, $nivel) {
+            return [$nivel => CasoSeguimiento::abiertos()->where('nivel_riesgo', $nivel)->count()];
+        });
+
+        // Casos críticos activos
+        $casosCriticos = CasoSeguimiento::with(['estudiante', 'responsable'])
+            ->criticos()
+            ->abiertos()
+            ->latest('fecha_apertura')
+            ->limit(5)
+            ->get();
+
+        // Recientes
+        $recientes = CasoSeguimiento::with(['estudiante', 'responsable'])
+            ->withCount('intervenciones')
+            ->latest('fecha_apertura')
+            ->limit(8)
+            ->get();
+
+        return view('admin.seguimiento_social.dashboard', compact(
+            'total', 'abiertos', 'cerrados', 'criticos', 'esteMes',
+            'porTipo', 'porRiesgo', 'casosCriticos', 'recientes'
+        ));
+    }
+
     // ── Index ─────────────────────────────────────────────────────────────────
 
     public function index(Request $request)

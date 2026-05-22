@@ -15,6 +15,7 @@ class CasoSeguimiento extends Model
     protected $table = 'casos_seguimiento';
 
     protected $fillable = [
+        'tenant_id',
         'estudiante_id',
         'tipo',
         'descripcion',

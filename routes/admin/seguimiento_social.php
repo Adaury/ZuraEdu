@@ -5,6 +5,8 @@ use App\Http\Controllers\Admin\SeguimientoSocialController;
 // ── Seguimiento Social ────────────────────────────────────────────────────────
 Route::prefix('seguimiento-social')->name('seguimiento-social.')->group(function () {
 
+    Route::get('/dashboard',                   [SeguimientoSocialController::class, 'dashboard'])->name('dashboard');
+
     Route::get('/',                            [SeguimientoSocialController::class, 'index'])->name('index');
     Route::get('/crear',                       [SeguimientoSocialController::class, 'create'])->name('create');
     Route::get('/lista/excel',                 [SeguimientoSocialController::class, 'listaExcel'])->name('lista-excel');

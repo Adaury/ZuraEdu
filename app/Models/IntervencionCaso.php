@@ -14,6 +14,7 @@ class IntervencionCaso extends Model
     protected $table = 'intervenciones_caso';
 
     protected $fillable = [
+        'tenant_id',
         'caso_id',
         'descripcion',
         'tipo_intervencion',

@@ -10,6 +10,38 @@ use Illuminate\Support\Facades\Storage;
 
 class GaleriaController extends Controller
 {
+    // ── Dashboard ─────────────────────────────────────────────────────────
+    public function dashboard()
+    {
+        $totalAlbumes  = Album::count();
+        $activos       = Album::activos()->count();
+        $totalFotos    = FotoAlbum::count();
+        $albumesRecien = Album::withCount('fotos')
+            ->latest()
+            ->limit(6)
+            ->get();
+
+        // Álbumes con más fotos
+        $albumesMasFotos = Album::withCount('fotos')
+            ->orderByDesc('fotos_count')
+            ->limit(5)
+            ->get();
+
+        // Fotos subidas este mes
+        $fotosEsteMes = FotoAlbum::whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->count();
+
+        // Fotos subidas este año
+        $fotosAnio = FotoAlbum::whereYear('created_at', now()->year)->count();
+
+        return view('admin.galeria.dashboard', compact(
+            'totalAlbumes', 'activos', 'totalFotos',
+            'albumesRecien', 'albumesMasFotos',
+            'fotosEsteMes', 'fotosAnio'
+        ));
+    }
+
     // ── Index ─────────────────────────────────────────────────────────────
     public function index()
     {

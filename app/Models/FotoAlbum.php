@@ -15,6 +15,7 @@ class FotoAlbum extends Model
     protected $table = 'fotos_album';
 
     protected $fillable = [
+        'tenant_id',
         'album_id',
         'ruta',
         'titulo',

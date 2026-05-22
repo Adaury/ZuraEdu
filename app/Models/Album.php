@@ -15,6 +15,7 @@ class Album extends Model
     protected $table = 'albumes';
 
     protected $fillable = [
+        'tenant_id',
         'titulo',
         'descripcion',
         'portada',

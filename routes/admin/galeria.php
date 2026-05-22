@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('galeria')->name('galeria.')->group(function () {
 
+    Route::get('/dashboard',                                 [GaleriaController::class, 'dashboard'])->name('dashboard');
     Route::get('/',                                         [GaleriaController::class, 'index'])->name('index');
     Route::get('/crear',                                    [GaleriaController::class, 'create'])->name('create');
     Route::post('/',                                        [GaleriaController::class, 'store'])->name('store');

@@ -2717,7 +2717,7 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.galeria.index') }}" class="{{ request()->routeIs('admin.galeria*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.galeria.dashboard') }}" class="{{ request()->routeIs('admin.galeria*') ? 'active' : '' }}">
                         <i class="bi bi-images"></i>Galería
                     </a>
                 </li>

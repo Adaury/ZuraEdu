@@ -15,6 +15,44 @@ use Illuminate\Http\Request;
 class BecaController extends Controller
 {
     /* ════════════════════════════════════════════════════════════════════
+     *  DASHBOARD
+     * ════════════════════════════════════════════════════════════════════ */
+
+    public function dashboard()
+    {
+        $totalBecas     = Beca::count();
+        $becasActivas   = Beca::activas()->count();
+        $totalBecados   = BecaEstudiante::activas()->count();
+        $totalBeneficiados = BecaEstudiante::distinct('matricula_id')->count('matricula_id');
+
+        // Por tipo
+        $porcentajeBecas  = Beca::where('tipo', 'porcentaje')->count();
+        $montoFijoBecas   = Beca::where('tipo', 'monto_fijo')->count();
+
+        // Becas con más beneficiarios
+        $becasMasBecados = Beca::withCount(['asignacionesActivas as becados_count'])
+            ->orderByDesc('becados_count')
+            ->limit(5)
+            ->get();
+
+        // Asignaciones recientes
+        $recientes = BecaEstudiante::with(['beca', 'matricula.estudiante'])
+            ->activas()
+            ->latest()
+            ->limit(8)
+            ->get();
+
+        // Descuento total mensual estimado (basado en una cuota hipotética)
+        $becasLista = Beca::with('asignacionesActivas')->activas()->get();
+
+        return view('admin.becas.dashboard', compact(
+            'totalBecas', 'becasActivas', 'totalBecados', 'totalBeneficiados',
+            'porcentajeBecas', 'montoFijoBecas',
+            'becasMasBecados', 'recientes', 'becasLista'
+        ));
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
      *  CRUD DE BECAS
      * ════════════════════════════════════════════════════════════════════ */
 

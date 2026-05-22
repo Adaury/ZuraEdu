@@ -5,6 +5,9 @@ use App\Http\Controllers\Admin\BecaController;
 // ── Módulo de Becas y Descuentos ──────────────────────────────────────────
 Route::prefix('becas')->name('becas.')->group(function () {
 
+    // Dashboard
+    Route::get('/dashboard',   [BecaController::class, 'dashboard'])->name('dashboard');
+
     // CRUD de becas
     Route::get('/',            [BecaController::class, 'index'])->name('index');
     Route::get('/nueva',       [BecaController::class, 'create'])->name('create');

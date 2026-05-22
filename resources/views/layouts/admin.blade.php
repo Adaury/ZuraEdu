@@ -2570,7 +2570,7 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.becas.index') }}" class="{{ request()->routeIs('admin.becas*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.becas.dashboard') }}" class="{{ request()->routeIs('admin.becas*') ? 'active' : '' }}">
                         <i class="bi bi-award"></i>Becas y Descuentos
                     </a>
                 </li>

@@ -14,6 +14,7 @@ class Beca extends Model
     protected $table = 'becas';
 
     protected $fillable = [
+        'tenant_id',
         'nombre',
         'descripcion',
         'tipo',

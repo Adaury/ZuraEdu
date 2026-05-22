@@ -15,7 +15,7 @@ class NominaEmpleado extends Model
     protected $table = 'nomina_empleados';
 
     protected $fillable = [
-        'user_id', 'cargo', 'cedula', 'cuenta_bancaria', 'banco',
+        'tenant_id', 'user_id', 'cargo', 'cedula', 'cuenta_bancaria', 'banco',
         'salario_base', 'tss_porcentaje', 'exento_isr',
         'tipo_contrato', 'horas_semana', 'fecha_ingreso', 'activo', 'notas',
     ];

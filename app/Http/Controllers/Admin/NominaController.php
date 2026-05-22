@@ -14,6 +14,68 @@ use Illuminate\Support\Str;
 
 class NominaController extends Controller
 {
+    // ── Dashboard ─────────────────────────────────────────────────────────
+    public function dashboard()
+    {
+        $mesPrev = now()->subMonth()->format('Y-m');
+        $mesAct  = now()->format('Y-m');
+
+        // Empleados
+        $totalEmpleados  = NominaEmpleado::count();
+        $activos         = NominaEmpleado::activos()->count();
+        $inactivos       = $totalEmpleados - $activos;
+        $masaSalarial    = NominaEmpleado::activos()->sum('salario_base');
+
+        // Contrato
+        $porContrato = NominaEmpleado::activos()
+            ->selectRaw('tipo_contrato, count(*) as total')
+            ->groupBy('tipo_contrato')
+            ->pluck('total', 'tipo_contrato');
+
+        // Mes actual
+        $pagosActual   = PagoNomina::where('mes', $mesAct)->get();
+        $totalPagadoMes = $pagosActual->where('pagado', true)->sum('salario_neto');
+        $totalNetoPendiente = $pagosActual->where('pagado', false)->sum('salario_neto');
+        $countPagados   = $pagosActual->where('pagado', true)->count();
+        $countPendientes = $activos - $countPagados;
+
+        // Totales acumulados año en curso
+        $pagosAnio = PagoNomina::where('mes', 'like', now()->year . '-%')
+            ->where('pagado', true)->get();
+        $totalAnual = $pagosAnio->sum('salario_neto');
+
+        // Evolución mensual (últimos 6 meses)
+        $evolucion = collect(range(5, 0))->map(function ($i) {
+            $mes   = now()->subMonths($i)->format('Y-m');
+            $label = PagoNomina::MESES[now()->subMonths($i)->format('m')] ?? $mes;
+            $neto  = PagoNomina::where('mes', $mes)->where('pagado', true)->sum('salario_neto');
+            return ['mes' => $label, 'neto' => (float) $neto];
+        });
+
+        // Top 5 empleados por salario
+        $topSalarios = NominaEmpleado::with('user')
+            ->activos()
+            ->orderByDesc('salario_base')
+            ->limit(5)
+            ->get();
+
+        // Últimos pagos
+        $ultimosPagos = PagoNomina::with(['empleado.user'])
+            ->where('pagado', true)
+            ->orderByDesc('fecha_pago')
+            ->limit(8)
+            ->get();
+
+        return view('admin.nomina.dashboard', compact(
+            'totalEmpleados', 'activos', 'inactivos', 'masaSalarial',
+            'porContrato',
+            'totalPagadoMes', 'totalNetoPendiente', 'countPagados', 'countPendientes',
+            'totalAnual', 'evolucion',
+            'topSalarios', 'ultimosPagos',
+            'mesAct', 'mesPrev'
+        ));
+    }
+
     // ── Index ──────────────────────────────────────────────────────────────
     public function index(Request $request)
     {

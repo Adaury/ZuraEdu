@@ -2729,7 +2729,7 @@ if (auth()->check()) {
                 </li>
                 @if($isAdmin || $isDir)
                 <li class="nav-item">
-                    <a href="{{ route('admin.nomina.index') }}" class="{{ request()->routeIs('admin.nomina*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.nomina.dashboard') }}" class="{{ request()->routeIs('admin.nomina*') ? 'active' : '' }}">
                         <i class="bi bi-cash-stack"></i>Nómina de Empleados
                     </a>
                 </li>

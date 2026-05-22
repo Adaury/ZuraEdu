@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\NominaController;
 
 // ── Módulo de Nómina ──────────────────────────────────────────────────────
 Route::prefix('nomina')->name('nomina.')->group(function () {
+    Route::get('/dashboard',                           [NominaController::class, 'dashboard'])->name('dashboard');
     Route::get('/',                                    [NominaController::class, 'index'])->name('index');
     Route::get('/nuevo',                               [NominaController::class, 'create'])->name('create');
     Route::post('/',                                   [NominaController::class, 'store'])->name('store');

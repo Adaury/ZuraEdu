@@ -14,7 +14,7 @@ class PagoNomina extends Model
     protected $table = 'pagos_nomina';
 
     protected $fillable = [
-        'nomina_empleado_id', 'mes',
+        'tenant_id', 'nomina_empleado_id', 'mes',
         'salario_bruto', 'desc_tss', 'desc_isr', 'desc_otros', 'notas_deducciones',
         'horas_extra', 'bonificacion', 'otros_ingresos',
         'deducciones', 'salario_neto',

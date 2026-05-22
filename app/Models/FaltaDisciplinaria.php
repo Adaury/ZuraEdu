@@ -14,6 +14,7 @@ class FaltaDisciplinaria extends Model
     protected $table = 'faltas_disciplinarias';
 
     protected $fillable = [
+        'tenant_id',
         'estudiante_id',
         'docente_id',
         'tipo',

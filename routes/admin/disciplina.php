@@ -9,6 +9,11 @@ Route::get('disciplina/{estudiante}/expediente-pdf',
     [DisciplinaController::class, 'expedientePdf'])
     ->name('disciplina.expediente-pdf');
 
+// Dashboard
+Route::get('disciplina/dashboard',
+    [DisciplinaController::class, 'dashboard'])
+    ->name('disciplina.dashboard');
+
 // Excel / PDF lista
 Route::get('disciplina/lista/excel',
     [DisciplinaController::class, 'listaExcel'])

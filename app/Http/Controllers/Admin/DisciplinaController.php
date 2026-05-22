@@ -15,6 +15,52 @@ use Illuminate\Http\Request;
 
 class DisciplinaController extends Controller
 {
+    // ── Dashboard ─────────────────────────────────────────────────────────
+
+    public function dashboard()
+    {
+        $total       = FaltaDisciplinaria::count();
+        $pendientes  = FaltaDisciplinaria::pendientes()->count();
+        $resueltos   = FaltaDisciplinaria::resueltos()->count();
+
+        // Por tipo
+        $porTipo = collect(FaltaDisciplinaria::TIPOS)->mapWithKeys(function ($info, $tipo) {
+            return [$tipo => FaltaDisciplinaria::porTipo($tipo)->count()];
+        });
+
+        // Suspensiones activas (no resueltas)
+        $suspensionesActivas = FaltaDisciplinaria::porTipo('suspension')->pendientes()->count();
+
+        // Tendencia: últimos 30 días vs 30 días anteriores
+        $ahora   = now()->toDateString();
+        $hace30  = now()->subDays(30)->toDateString();
+        $hace60  = now()->subDays(60)->toDateString();
+        $recientes30  = FaltaDisciplinaria::whereDate('fecha', '>=', $hace30)->count();
+        $anteriores30 = FaltaDisciplinaria::whereDate('fecha', '>=', $hace60)->whereDate('fecha', '<', $hace30)->count();
+
+        // Estudiantes con más faltas
+        $topEstudiantes = FaltaDisciplinaria::with('estudiante')
+            ->selectRaw('estudiante_id, count(*) as total_faltas')
+            ->groupBy('estudiante_id')
+            ->orderByDesc('total_faltas')
+            ->limit(5)
+            ->get();
+
+        // Últimas faltas
+        $ultimasFaltas = FaltaDisciplinaria::with(['estudiante', 'docente'])
+            ->orderByDesc('fecha')
+            ->orderByDesc('id')
+            ->limit(8)
+            ->get();
+
+        return view('admin.disciplina.dashboard', compact(
+            'total', 'pendientes', 'resueltos',
+            'porTipo', 'suspensionesActivas',
+            'recientes30', 'anteriores30',
+            'topEstudiantes', 'ultimasFaltas'
+        ));
+    }
+
     // ── Index ─────────────────────────────────────────────────────────────
 
     public function index(Request $request)

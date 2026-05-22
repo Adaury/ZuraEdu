@@ -2295,7 +2295,7 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.disciplina.index') }}" class="{{ request()->routeIs('admin.disciplina*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.disciplina.dashboard') }}" class="{{ request()->routeIs('admin.disciplina*') ? 'active' : '' }}">
                         <i class="bi bi-shield-exclamation"></i>Disciplina
                     </a>
                 </li>

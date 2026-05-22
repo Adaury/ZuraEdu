@@ -15,6 +15,54 @@ use Illuminate\Http\Request;
 
 class EventoController extends Controller
 {
+    // ── Dashboard ─────────────────────────────────────────────────────────
+
+    public function dashboard()
+    {
+        $total    = Evento::count();
+        $activos  = Evento::activos()->count();
+        $proximos = Evento::activos()
+            ->where('fecha_inicio', '>=', now()->toDateString())
+            ->orderBy('fecha_inicio')
+            ->count();
+        $pasados  = Evento::where('fecha_inicio', '<', now()->toDateString())->count();
+        $totalInscritos = InscripcionEvento::count();
+        $conAsistencia  = InscripcionEvento::where('asistio', true)->count();
+
+        // Por tipo
+        $tipos = ['academico','deportivo','cultural','social','otro'];
+        $porTipo = Evento::selectRaw('tipo, count(*) as total')
+            ->groupBy('tipo')
+            ->pluck('total', 'tipo');
+
+        // Próximos eventos (próximos 30 días)
+        $eventosProximos = Evento::withCount('inscripciones')
+            ->activos()
+            ->where('fecha_inicio', '>=', now()->toDateString())
+            ->where('fecha_inicio', '<=', now()->addDays(30)->toDateString())
+            ->orderBy('fecha_inicio')
+            ->limit(5)
+            ->get();
+
+        // Eventos más inscritos
+        $masInscritos = Evento::withCount('inscripciones')
+            ->orderByDesc('inscripciones_count')
+            ->limit(5)
+            ->get();
+
+        // Recientes
+        $recientes = Evento::withCount('inscripciones')
+            ->latest()
+            ->limit(8)
+            ->get();
+
+        return view('admin.eventos.dashboard', compact(
+            'total', 'activos', 'proximos', 'pasados',
+            'totalInscritos', 'conAsistencia',
+            'porTipo', 'eventosProximos', 'masInscritos', 'recientes'
+        ));
+    }
+
     // ── Index ─────────────────────────────────────────────────────────────
 
     public function index(Request $request)

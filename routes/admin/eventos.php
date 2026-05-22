@@ -5,6 +5,9 @@ use App\Http\Controllers\Admin\EventoController;
 // ── Eventos Extracurriculares ──────────────────────────────────────────────
 Route::prefix('eventos')->name('eventos.')->group(function () {
 
+    // Dashboard
+    Route::get('dashboard', [EventoController::class, 'dashboard'])->name('dashboard');
+
     // Lista Excel / PDF de todos los eventos
     Route::get('lista/excel', [EventoController::class, 'listaExcel'])->name('lista-excel');
     Route::get('lista/pdf',   [EventoController::class, 'listaPdf'])->name('lista-pdf');

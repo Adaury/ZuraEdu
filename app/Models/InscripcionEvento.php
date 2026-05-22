@@ -15,6 +15,7 @@ class InscripcionEvento extends Model
     protected $table = 'inscripciones_evento';
 
     protected $fillable = [
+        'tenant_id',
         'evento_id',
         'estudiante_id',
         'fecha_inscripcion',

@@ -2723,7 +2723,7 @@ if (auth()->check()) {
                 </li>
                 @endif
                 <li class="nav-item">
-                    <a href="{{ route('admin.eventos.index') }}" class="{{ request()->routeIs('admin.eventos*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.eventos.dashboard') }}" class="{{ request()->routeIs('admin.eventos*') ? 'active' : '' }}">
                         <i class="bi bi-calendar-event-fill"></i>Eventos
                     </a>
                 </li>

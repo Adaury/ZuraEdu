@@ -13,6 +13,7 @@ class Evento extends Model
     use HasFactory;
 
     protected $fillable = [
+        'tenant_id',
         'nombre',
         'descripcion',
         'tipo',

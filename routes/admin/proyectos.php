@@ -5,6 +5,9 @@ use App\Http\Controllers\Admin\ProyectoController;
 // ── Módulo de Proyectos Escolares ─────────────────────────────────────────────
 Route::prefix('proyectos')->name('proyectos.')->group(function () {
 
+    // Dashboard
+    Route::get('/dashboard',                 [ProyectoController::class, 'dashboard'])->name('dashboard');
+
     // CRUD principal
     Route::get('/',                          [ProyectoController::class, 'index'])->name('index');
     Route::get('/lista/excel',               [ProyectoController::class, 'listaExcel'])->name('lista-excel');

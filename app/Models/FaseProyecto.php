@@ -15,6 +15,7 @@ class FaseProyecto extends Model
     protected $table = 'fases_proyecto';
 
     protected $fillable = [
+        'tenant_id',
         'proyecto_id',
         'nombre',
         'descripcion',

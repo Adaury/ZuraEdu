@@ -15,6 +15,7 @@ class IntegranteProyecto extends Model
     protected $table = 'integrantes_proyecto';
 
     protected $fillable = [
+        'tenant_id',
         'proyecto_id',
         'estudiante_id',
         'rol',

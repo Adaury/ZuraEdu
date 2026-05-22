@@ -15,6 +15,54 @@ use Illuminate\Http\Request;
 
 class ProyectoController extends Controller
 {
+    // ── Dashboard ─────────────────────────────────────────────────────────────
+
+    public function dashboard()
+    {
+        $schoolYear = SchoolYear::actual();
+
+        $total      = ProyectoEscolar::count();
+        $activos    = ProyectoEscolar::whereIn('estado', ['planificacion', 'desarrollo'])->count();
+        $finalizados = ProyectoEscolar::where('estado', 'finalizado')->count();
+        $presentados = ProyectoEscolar::where('estado', 'presentado')->count();
+
+        $esteAnio   = ProyectoEscolar::when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))->count();
+
+        // Por estado
+        $porEstado = collect(ProyectoEscolar::ESTADOS)->mapWithKeys(function ($label, $estado) {
+            return [$estado => ProyectoEscolar::where('estado', $estado)->count()];
+        });
+
+        // Por área
+        $porArea = collect(ProyectoEscolar::AREAS)->mapWithKeys(function ($label, $area) {
+            return [$area => ProyectoEscolar::where('area', $area)->count()];
+        })->filter(fn($cnt) => $cnt > 0)->sortDesc();
+
+        // Fases vencidas no completadas
+        $fasesVencidas = FaseProyecto::where('completada', false)
+            ->where('fecha_limite', '<', now()->toDateString())
+            ->count();
+
+        // Proyectos con más integrantes
+        $topProyectos = ProyectoEscolar::with('tutor')
+            ->withCount('integrantes')
+            ->orderByDesc('integrantes_count')
+            ->limit(5)
+            ->get();
+
+        // Últimos proyectos
+        $recientes = ProyectoEscolar::with(['tutor', 'schoolYear'])
+            ->withCount('integrantes')
+            ->latest()
+            ->limit(8)
+            ->get();
+
+        return view('admin.proyectos.dashboard', compact(
+            'total', 'activos', 'finalizados', 'presentados', 'esteAnio',
+            'porEstado', 'porArea', 'fasesVencidas', 'topProyectos', 'recientes', 'schoolYear'
+        ));
+    }
+
     // ── Index ─────────────────────────────────────────────────────────────────
 
     public function index(Request $request)

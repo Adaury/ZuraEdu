@@ -15,6 +15,7 @@ class ProyectoEscolar extends Model
     protected $table = 'proyectos_escolares';
 
     protected $fillable = [
+        'tenant_id',
         'titulo',
         'descripcion',
         'area',

@@ -13,6 +13,43 @@ use Illuminate\Http\Request;
 
 class ReconocimientoController extends Controller
 {
+    // ── Dashboard ─────────────────────────────────────────────────────────
+
+    public function dashboard()
+    {
+        $total      = Reconocimiento::count();
+        $entregados = Reconocimiento::entregados()->count();
+        $pendientes = Reconocimiento::pendientes()->count();
+        $esteMes    = Reconocimiento::whereMonth('fecha', now()->month)
+                          ->whereYear('fecha', now()->year)->count();
+
+        // Por tipo
+        $porTipo = TipoReconocimiento::withCount('reconocimientos')
+            ->orderByDesc('reconocimientos_count')
+            ->get();
+
+        // Estudiantes con más reconocimientos
+        $topEstudiantes = Reconocimiento::with('estudiante')
+            ->selectRaw('estudiante_id, count(*) as total_rec')
+            ->groupBy('estudiante_id')
+            ->orderByDesc('total_rec')
+            ->limit(5)
+            ->get();
+
+        // Últimos reconocimientos
+        $recientes = Reconocimiento::with(['estudiante', 'tipo', 'emitidoPor'])
+            ->latest('fecha')
+            ->limit(8)
+            ->get();
+
+        $tipos = TipoReconocimiento::all();
+
+        return view('admin.reconocimientos.dashboard', compact(
+            'total', 'entregados', 'pendientes', 'esteMes',
+            'porTipo', 'topEstudiantes', 'recientes', 'tipos'
+        ));
+    }
+
     // ── Index / listado ───────────────────────────────────────────────────
 
     public function index(Request $request)

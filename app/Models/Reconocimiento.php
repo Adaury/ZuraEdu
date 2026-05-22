@@ -12,6 +12,7 @@ class Reconocimiento extends Model
     use BelongsToTenant;
 
     protected $fillable = [
+        'tenant_id',
         'estudiante_id',
         'tipo_id',
         'titulo',

@@ -14,6 +14,7 @@ class TipoReconocimiento extends Model
     protected $table = 'tipos_reconocimiento';
 
     protected $fillable = [
+        'tenant_id',
         'nombre',
         'descripcion',
         'icono',

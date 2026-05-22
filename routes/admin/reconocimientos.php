@@ -5,6 +5,9 @@ use App\Http\Controllers\Admin\ReconocimientoController;
 // ── Módulo de Diplomas y Reconocimientos ──────────────────────────────────────
 Route::prefix('reconocimientos')->name('reconocimientos.')->group(function () {
 
+    // Dashboard
+    Route::get('/dashboard',             [ReconocimientoController::class, 'dashboard'])->name('dashboard');
+
     // CRUD principal
     Route::get('/',                      [ReconocimientoController::class, 'index'])->name('index');
     Route::get('/nuevo',                 [ReconocimientoController::class, 'create'])->name('create');

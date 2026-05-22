@@ -14,6 +14,7 @@ class RespuestaTicket extends Model
     protected $table = 'respuestas_ticket';
 
     protected $fillable = [
+        'tenant_id',
         'ticket_id',
         'user_id',
         'mensaje',

@@ -2931,7 +2931,7 @@ if (auth()->check()) {
             <div class="nav-section-title">Soporte</div>
             <ul class="list-unstyled mb-0">
                 <li class="nav-item">
-                    <a href="{{ route('admin.soporte.index') }}" class="{{ request()->routeIs('admin.soporte*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.soporte.dashboard') }}" class="{{ request()->routeIs('admin.soporte*') ? 'active' : '' }}">
                         <i class="bi bi-headset"></i>Tickets de Soporte
                     </a>
                 </li>

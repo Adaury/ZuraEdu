@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\TicketController;
 
 // ── Tickets de Soporte Interno ────────────────────────────────────────────
 Route::prefix('soporte')->name('soporte.')->group(function () {
+    Route::get('/dashboard',                    [TicketController::class, 'dashboard'])->name('dashboard');
     Route::get('/',                             [TicketController::class, 'index'])->name('index');
     Route::get('/crear',                        [TicketController::class, 'create'])->name('create');
     Route::post('/',                            [TicketController::class, 'store'])->name('store');

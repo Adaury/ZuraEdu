@@ -15,6 +15,7 @@ class TicketSoporte extends Model
     protected $table = 'tickets_soporte';
 
     protected $fillable = [
+        'tenant_id',
         'solicitante_id',
         'asignado_a_id',
         'titulo',

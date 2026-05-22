@@ -17,6 +17,65 @@ class TicketController extends Controller
         return auth()->user()->hasAnyRole(['Administrador', 'Director', 'Coordinador Académico']);
     }
 
+    // ── Dashboard ─────────────────────────────────────────────────────────
+    public function dashboard()
+    {
+        $esAdmin = $this->esAdmin();
+        $userId  = auth()->id();
+
+        $base = fn() => $esAdmin
+            ? TicketSoporte::query()
+            : TicketSoporte::delSolicitante($userId);
+
+        $totalAbiertos  = ($base)()->conEstado('abierto')->count();
+        $totalEnProceso = ($base)()->conEstado('en_proceso')->count();
+        $totalResueltos = ($base)()->conEstado('resuelto')->count();
+        $totalCerrados  = ($base)()->conEstado('cerrado')->count();
+        $total          = $totalAbiertos + $totalEnProceso + $totalResueltos + $totalCerrados;
+
+        $porCategoria = ($base)()
+            ->selectRaw('categoria, count(*) as total')
+            ->groupBy('categoria')
+            ->orderByDesc('total')
+            ->get();
+
+        $porPrioridad = ($base)()
+            ->whereIn('estado', ['abierto', 'en_proceso'])
+            ->selectRaw('prioridad, count(*) as total')
+            ->groupBy('prioridad')
+            ->orderByDesc('total')
+            ->get();
+
+        $urgentes = ($base)()
+            ->with(['solicitante', 'asignadoA'])
+            ->conPrioridad('urgente')
+            ->whereIn('estado', ['abierto', 'en_proceso'])
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        $recientes = ($base)()
+            ->with(['solicitante', 'asignadoA'])
+            ->latest()
+            ->limit(8)
+            ->get();
+
+        $sinAsignar = $esAdmin
+            ? TicketSoporte::whereNull('asignado_a_id')
+                ->whereIn('estado', ['abierto', 'en_proceso'])
+                ->count()
+            : 0;
+
+        $agentes = $esAdmin ? User::role(['Administrador', 'Director', 'Coordinador Académico'])->get() : collect();
+
+        return view('admin.soporte.dashboard', compact(
+            'esAdmin', 'total',
+            'totalAbiertos', 'totalEnProceso', 'totalResueltos', 'totalCerrados',
+            'porCategoria', 'porPrioridad',
+            'urgentes', 'recientes', 'sinAsignar', 'agentes'
+        ));
+    }
+
     // ── Listado ───────────────────────────────────────────────────────────
     public function index(Request $request)
     {

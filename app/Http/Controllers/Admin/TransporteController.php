@@ -11,6 +11,44 @@ use Illuminate\Http\Request;
 
 class TransporteController extends Controller
 {
+    // ── DASHBOARD ─────────────────────────────────────────────────────────────
+
+    public function dashboard()
+    {
+        $totalRutas    = RutaTransporte::count();
+        $rutasActivas  = RutaTransporte::activos()->count();
+        $totalParadas  = ParadaRuta::count();
+        $totalInscritos = EstudianteRuta::distinct('estudiante_id')->count('estudiante_id');
+
+        // Capacidad total vs ocupada
+        $capacidadTotal = RutaTransporte::activos()->sum('capacidad');
+        $ocupacionTotal = EstudianteRuta::whereHas('ruta', fn($q) => $q->where('activo', true))->count();
+        $pctOcupacion   = $capacidadTotal > 0 ? round($ocupacionTotal / $capacidadTotal * 100) : 0;
+
+        // Por tipo de servicio
+        $porTipo = EstudianteRuta::selectRaw('tipo, count(*) as total')
+            ->groupBy('tipo')
+            ->pluck('total', 'tipo');
+
+        // Rutas con su ocupación
+        $rutas = RutaTransporte::withCount('estudiantesRuta')
+            ->activos()
+            ->orderByDesc('estudiantes_ruta_count')
+            ->limit(8)
+            ->get();
+
+        // Rutas con disponibilidad baja (>= 80% ocupadas)
+        $rutasCriticas = $rutas->filter(function ($r) {
+            return $r->capacidad > 0 && ($r->estudiantes_ruta_count / $r->capacidad) >= 0.8;
+        });
+
+        return view('admin.transporte.dashboard', compact(
+            'totalRutas', 'rutasActivas', 'totalParadas', 'totalInscritos',
+            'capacidadTotal', 'ocupacionTotal', 'pctOcupacion',
+            'porTipo', 'rutas', 'rutasCriticas'
+        ));
+    }
+
     // ── INDEX ────────────────────────────────────────────────────────────────
 
     public function index(Request $request)

@@ -2712,7 +2712,7 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.transporte.index') }}" class="{{ request()->routeIs('admin.transporte*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.transporte.dashboard') }}" class="{{ request()->routeIs('admin.transporte*') ? 'active' : '' }}">
                         <i class="bi bi-bus-front"></i>Transporte Escolar
                     </a>
                 </li>

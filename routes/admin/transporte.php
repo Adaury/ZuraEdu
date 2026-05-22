@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\TransporteController;
 // ── Módulo de Transporte Escolar ──────────────────────────────────────────────
 Route::prefix('transporte')->name('transporte.')->group(function () {
 
+    Route::get('/dashboard',                                  [TransporteController::class, 'dashboard'])->name('dashboard');
     Route::get('/',                                           [TransporteController::class, 'index'])->name('index');
     Route::get('/lista/excel',                                [TransporteController::class, 'listaExcel'])->name('lista-excel');
     Route::get('/lista/pdf',                                  [TransporteController::class, 'listaPdf'])->name('lista-pdf');

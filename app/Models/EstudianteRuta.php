@@ -15,6 +15,7 @@ class EstudianteRuta extends Model
     protected $table = 'estudiantes_ruta';
 
     protected $fillable = [
+        'tenant_id',
         'ruta_id',
         'estudiante_id',
         'tipo',

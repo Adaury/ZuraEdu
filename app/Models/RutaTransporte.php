@@ -15,12 +15,16 @@ class RutaTransporte extends Model
     protected $table = 'rutas_transporte';
 
     protected $fillable = [
+        'tenant_id',
         'nombre',
         'descripcion',
         'conductor',
+        'telefono_conductor',
         'vehiculo',
         'capacidad',
         'activo',
+        'horario_salida',
+        'horario_regreso',
     ];
 
     protected $casts = [

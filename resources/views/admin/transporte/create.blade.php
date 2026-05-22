@@ -83,6 +83,19 @@
                                       dark:text-white placeholder-gray-400">
                     </div>
 
+                    {{-- Teléfono conductor --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                            Teléfono del Conductor
+                        </label>
+                        <input type="text" name="telefono_conductor" value="{{ old('telefono_conductor', $ruta->telefono_conductor) }}"
+                               maxlength="30"
+                               placeholder="Ej. 809-000-0000"
+                               class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700
+                                      text-sm px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                                      dark:text-white placeholder-gray-400">
+                    </div>
+
                     {{-- Vehículo --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
@@ -94,6 +107,28 @@
                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700
                                       text-sm px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent
                                       dark:text-white placeholder-gray-400">
+                    </div>
+
+                    {{-- Horario salida --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                            Horario de Salida (ida)
+                        </label>
+                        <input type="time" name="horario_salida" value="{{ old('horario_salida', $ruta->horario_salida) }}"
+                               class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700
+                                      text-sm px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                                      dark:text-white">
+                    </div>
+
+                    {{-- Horario regreso --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                            Horario de Regreso (vuelta)
+                        </label>
+                        <input type="time" name="horario_regreso" value="{{ old('horario_regreso', $ruta->horario_regreso) }}"
+                               class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700
+                                      text-sm px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                                      dark:text-white">
                     </div>
                 </div>
 

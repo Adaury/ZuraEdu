@@ -15,6 +15,7 @@ class ParadaRuta extends Model
     protected $table = 'paradas_ruta';
 
     protected $fillable = [
+        'tenant_id',
         'ruta_id',
         'nombre',
         'orden',

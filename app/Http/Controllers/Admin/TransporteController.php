@@ -45,12 +45,15 @@ class TransporteController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'nombre'      => 'required|string|max:120',
-            'descripcion' => 'nullable|string|max:500',
-            'conductor'   => 'nullable|string|max:120',
-            'vehiculo'    => 'nullable|string|max:120',
-            'capacidad'   => 'required|integer|min:1|max:200',
-            'activo'      => 'boolean',
+            'nombre'             => 'required|string|max:120',
+            'descripcion'        => 'nullable|string|max:500',
+            'conductor'          => 'nullable|string|max:120',
+            'telefono_conductor' => 'nullable|string|max:30',
+            'vehiculo'           => 'nullable|string|max:120',
+            'capacidad'          => 'required|integer|min:1|max:200',
+            'activo'             => 'boolean',
+            'horario_salida'     => 'nullable|date_format:H:i',
+            'horario_regreso'    => 'nullable|date_format:H:i',
         ]);
 
         $data['activo'] = $request->boolean('activo', true);
@@ -98,12 +101,15 @@ class TransporteController extends Controller
     public function update(Request $request, RutaTransporte $ruta)
     {
         $data = $request->validate([
-            'nombre'      => 'required|string|max:120',
-            'descripcion' => 'nullable|string|max:500',
-            'conductor'   => 'nullable|string|max:120',
-            'vehiculo'    => 'nullable|string|max:120',
-            'capacidad'   => 'required|integer|min:1|max:200',
-            'activo'      => 'boolean',
+            'nombre'             => 'required|string|max:120',
+            'descripcion'        => 'nullable|string|max:500',
+            'conductor'          => 'nullable|string|max:120',
+            'telefono_conductor' => 'nullable|string|max:30',
+            'vehiculo'           => 'nullable|string|max:120',
+            'capacidad'          => 'required|integer|min:1|max:200',
+            'activo'             => 'boolean',
+            'horario_salida'     => 'nullable|date_format:H:i',
+            'horario_regreso'    => 'nullable|date_format:H:i',
         ]);
 
         $data['activo'] = $request->boolean('activo', true);

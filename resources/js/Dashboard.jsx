@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react'
+import React, { useMemo, Component } from 'react'
 import { motion } from 'framer-motion'
 import ReactApexChart from 'react-apexcharts'
 import {
@@ -15,14 +15,13 @@ const isDark = () =>
 
 const palette = ['#3b82f6', '#22c55e', '#ef4444', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6']
 
-const baseChart = (type, extra = {}) => ({
+const baseChart = (type) => ({
   chart: {
     type,
     background: 'transparent',
     toolbar: { show: false },
     fontFamily: 'inherit',
     animations: { enabled: true, easing: 'easeinout', speed: 600 },
-    ...extra,
   },
   colors: palette,
   theme: { mode: isDark() ? 'dark' : 'light' },
@@ -37,7 +36,48 @@ const fmtMoney = (v) =>
   v == null ? '—' : `$${Number(v).toLocaleString('es-DO', { maximumFractionDigits: 0 })}`
 
 const semColor = (p) => p >= 80 ? '#22c55e' : p >= 70 ? '#f59e0b' : '#ef4444'
-const semLabel = (p) => p >= 80 ? 'Verde' : p >= 70 ? 'Amarillo' : 'Rojo'
+
+// ── Error Boundary ───────────────────────────────────────────────────────────
+
+class ChartErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null } }
+  static getDerivedStateFromError(e) { return { error: e } }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: '1.5rem', textAlign: 'center', color: '#9ca3af', fontSize: '.8rem' }}>
+          <AlertTriangle size={20} style={{ marginBottom: 4 }} />
+          <div>Error al renderizar la gráfica</div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
+// ── Safe Chart wrapper ────────────────────────────────────────────────────────
+
+function SafeChart({ options, series, type, height }) {
+  const hasSeries = Array.isArray(series)
+    ? series.some(s => (Array.isArray(s) ? s : s?.data ?? []).some(v => v > 0))
+    : series > 0
+
+  if (!hasSeries) {
+    return (
+      <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#9ca3af', fontSize: '.8rem', flexDirection: 'column', gap: 4 }}>
+        <BarChart3 size={24} style={{ opacity: .4 }} />
+        <span>Sin datos disponibles</span>
+      </div>
+    )
+  }
+
+  return (
+    <ChartErrorBoundary>
+      <ReactApexChart options={options} series={series} type={type} height={height} />
+    </ChartErrorBoundary>
+  )
+}
 
 // ── KPI Card ─────────────────────────────────────────────────────────────────
 
@@ -110,7 +150,7 @@ function ChartCard({ title, icon: Icon, children, delay = 0, style = {} }) {
 
 // ── Tabla Grupos ──────────────────────────────────────────────────────────────
 
-function TablaGrupos({ grupos, title, icon: Icon, delay, tipo }) {
+function TablaGrupos({ grupos, title, icon: Icon, delay }) {
   return (
     <ChartCard title={title} icon={Icon} delay={delay}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.8rem' }}>
@@ -163,6 +203,10 @@ export default function Dashboard({ data = {} }) {
     schoolYear,
   } = data
 
+  // Defensive: ensure tendenciaAsistencia.data exists
+  const tendData = tendenciaAsistencia?.data ?? { presente: [], tardanza: [], ausente: [] }
+  const tendLabels = tendenciaAsistencia?.labels ?? []
+
   // ── KPI cards config ──────────────────────────────────────────────────────
   const kpis = [
     {
@@ -212,99 +256,106 @@ export default function Dashboard({ data = {} }) {
     },
   ]
 
-  // ── Chart options ─────────────────────────────────────────────────────────
+  // ── Chart configs (options WITHOUT series) ────────────────────────────────
 
-  const chartAsistencia = useMemo(() => ({
+  const optsAsistencia = useMemo(() => ({
     ...baseChart('area'),
-    series: [
-      { name: 'Presente', data: tendenciaAsistencia.data.presente },
-      { name: 'Tardanza', data: tendenciaAsistencia.data.tardanza },
-      { name: 'Ausente',  data: tendenciaAsistencia.data.ausente },
-    ],
     colors: ['#22c55e', '#f59e0b', '#ef4444'],
-    xaxis: { categories: tendenciaAsistencia.labels, labels: { style: { fontSize: '11px' } } },
+    xaxis: { categories: tendLabels, labels: { style: { fontSize: '11px' } } },
     yaxis: { labels: { style: { fontSize: '11px' } } },
     stroke: { curve: 'smooth', width: 2 },
     fill: { type: 'gradient', gradient: { opacityFrom: 0.5, opacityTo: 0.05, shadeIntensity: 1 } },
     dataLabels: { enabled: false },
     legend: { position: 'top', fontSize: '12px' },
-  }), [tendenciaAsistencia])
+  }), [tendLabels])
 
-  const chartDesempeno = useMemo(() => ({
+  const seriesAsistencia = useMemo(() => [
+    { name: 'Presente', data: tendData.presente ?? [] },
+    { name: 'Tardanza', data: tendData.tardanza ?? [] },
+    { name: 'Ausente',  data: tendData.ausente ?? [] },
+  ], [tendData])
+
+  const desempenoVals = useMemo(() => Object.values(distribucionDesempeno).map(Number), [distribucionDesempeno])
+  const desempenoLabels = useMemo(() => Object.keys(distribucionDesempeno), [distribucionDesempeno])
+  const desempenoTotal = desempenoVals.reduce((a, b) => a + b, 0)
+
+  const optsDesempeno = useMemo(() => ({
     ...baseChart('donut'),
-    series: Object.values(distribucionDesempeno),
-    labels: Object.keys(distribucionDesempeno),
+    labels: desempenoLabels,
     colors: ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444'],
-    plotOptions: { pie: { donut: { size: '65%', labels: { show: true, total: { show: true, label: 'Promedio', fontSize: '13px', fontWeight: 700 } } } } },
-    dataLabels: { enabled: true, formatter: (v) => `${Number(v).toFixed(1)}%` },
+    plotOptions: { pie: { donut: { size: '65%', labels: { show: true, total: { show: true, label: 'Total', fontSize: '13px', fontWeight: 700 } } } } },
+    dataLabels: { enabled: true, formatter: (v) => isFinite(v) ? `${Number(v).toFixed(1)}%` : '—' },
     legend: { position: 'bottom', fontSize: '11px' },
-  }), [distribucionDesempeno])
+  }), [desempenoLabels])
 
-  const chartPromediosGrado = useMemo(() => ({
+  const gradoVals = useMemo(() => Object.values(promediosPorGrado).map(Number), [promediosPorGrado])
+  const gradoKeys = useMemo(() => Object.keys(promediosPorGrado), [promediosPorGrado])
+
+  const optsPromediosGrado = useMemo(() => ({
     ...baseChart('bar'),
-    series: [{ name: 'Promedio', data: Object.values(promediosPorGrado) }],
-    xaxis: { categories: Object.keys(promediosPorGrado), labels: { style: { fontSize: '11px' } } },
+    xaxis: { categories: gradoKeys, labels: { style: { fontSize: '11px' } } },
     yaxis: { min: 0, max: 100, labels: { style: { fontSize: '11px' } } },
     plotOptions: { bar: { borderRadius: 6, columnWidth: '50%', distributed: true } },
-    colors: Object.values(promediosPorGrado).map(v => semColor(v)),
+    colors: gradoVals.length > 0 ? gradoVals.map(v => semColor(v)) : palette,
     dataLabels: { enabled: true, style: { fontSize: '11px', fontWeight: 700 } },
     legend: { show: false },
-  }), [promediosPorGrado])
+  }), [gradoKeys, gradoVals])
 
-  const chartMatriculas = useMemo(() => ({
+  const matriculaVals = useMemo(() => Object.values(matriculasPorGrado).map(Number), [matriculasPorGrado])
+  const matriculaKeys = useMemo(() => Object.keys(matriculasPorGrado), [matriculasPorGrado])
+
+  const optsMatriculas = useMemo(() => ({
     ...baseChart('bar'),
-    series: [{ name: 'Matrículas', data: Object.values(matriculasPorGrado) }],
-    xaxis: { categories: Object.keys(matriculasPorGrado), labels: { style: { fontSize: '11px' } } },
+    xaxis: { categories: matriculaKeys, labels: { style: { fontSize: '11px' } } },
     plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: '55%' } },
     colors: ['#8b5cf6'],
     dataLabels: { enabled: true, style: { fontSize: '11px' } },
     legend: { show: false },
-  }), [matriculasPorGrado])
+  }), [matriculaKeys])
 
   const asigData = useMemo(() => {
     const arr = Array.isArray(promediosPorAsignatura) ? promediosPorAsignatura : Object.values(promediosPorAsignatura)
     return arr.slice(0, 15)
   }, [promediosPorAsignatura])
 
-  const chartAsignaturas = useMemo(() => ({
+  const asigVals = asigData.map(a => parseFloat(a.promedio))
+
+  const optsAsignaturas = useMemo(() => ({
     ...baseChart('bar'),
-    series: [{ name: 'Promedio', data: asigData.map(a => parseFloat(a.promedio)) }],
     xaxis: {
       categories: asigData.map(a => a.nombre?.length > 22 ? a.nombre.substring(0, 22) + '…' : a.nombre),
       labels: { style: { fontSize: '10px' } },
     },
     yaxis: { min: 0, max: 100, labels: { style: { fontSize: '10px' } } },
     plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '60%', distributed: true } },
-    colors: asigData.map(a => semColor(parseFloat(a.promedio))),
+    colors: asigVals.length > 0 ? asigVals.map(v => semColor(v)) : palette,
     dataLabels: { enabled: true, style: { fontSize: '10px', fontWeight: 700 } },
     legend: { show: false },
     annotations: {
       xaxis: [{ x: 70, borderColor: '#ef4444', strokeDashArray: 4, label: { text: 'Mín. 70', style: { fontSize: '10px', color: '#ef4444' } } }],
     },
-  }), [asigData])
+  }), [asigData, asigVals])
 
   const riesgoLabels = Object.keys(riesgoData.riesgoPorGrado || {})
-  const riesgoVals   = Object.values(riesgoData.riesgoPorGrado || {})
+  const riesgoVals   = Object.values(riesgoData.riesgoPorGrado || {}).map(Number)
 
-  const chartRiesgo = useMemo(() => ({
+  const optsRiesgo = useMemo(() => ({
     ...baseChart('bar'),
-    series: [{ name: 'En Riesgo', data: riesgoVals }],
     xaxis: { categories: riesgoLabels, labels: { style: { fontSize: '11px' } } },
     plotOptions: { bar: { borderRadius: 6, columnWidth: '50%', distributed: true } },
-    colors: riesgoVals.map(v => v >= 5 ? '#dc2626' : v >= 2 ? '#f59e0b' : '#22c55e'),
+    colors: riesgoVals.length > 0 ? riesgoVals.map(v => v >= 5 ? '#dc2626' : v >= 2 ? '#f59e0b' : '#22c55e') : palette,
     dataLabels: { enabled: true, style: { fontSize: '11px', fontWeight: 700 } },
     legend: { show: false },
-  }), [riesgoData])
+  }), [riesgoLabels, riesgoVals])
 
-  const chartDocentes = useMemo(() => ({
+  const optsDocentes = useMemo(() => ({
     ...baseChart('donut'),
-    series: [statsDocentes.con_notas || 0, statsDocentes.sin_notas || 0],
     labels: ['Con notas publicadas', 'Sin notas aún'],
     colors: ['#22c55e', '#e5e7eb'],
     plotOptions: { pie: { donut: { size: '60%', labels: { show: true, total: { show: true, label: 'Total', fontSize: '13px' } } } } },
     dataLabels: { enabled: false },
     legend: { position: 'bottom', fontSize: '11px' },
-  }), [statsDocentes])
+  }), [])
 
   // ── Pagos mini-stats ──────────────────────────────────────────────────────
   const pagosItems = statsPagos ? [
@@ -330,12 +381,12 @@ export default function Dashboard({ data = {} }) {
       <div className="row g-3 mb-4">
         <div className="col-lg-8">
           <ChartCard title="Tendencia de Asistencia — Últimos 6 Meses" icon={CalendarCheck} delay={0.1}>
-            <ReactApexChart options={chartAsistencia} series={chartAsistencia.series} type="area" height={280} />
+            <SafeChart options={optsAsistencia} series={seriesAsistencia} type="area" height={280} />
           </ChartCard>
         </div>
         <div className="col-lg-4">
           <ChartCard title="Distribución del Desempeño" icon={BarChart3} delay={0.15}>
-            <ReactApexChart options={chartDesempeno} series={chartDesempeno.series} type="donut" height={280} />
+            <SafeChart options={optsDesempeno} series={desempenoTotal > 0 ? desempenoVals : []} type="donut" height={280} />
           </ChartCard>
         </div>
       </div>
@@ -344,12 +395,12 @@ export default function Dashboard({ data = {} }) {
       <div className="row g-3 mb-4">
         <div className="col-lg-6">
           <ChartCard title="Promedio por Grado" icon={BarChart3} delay={0.2}>
-            <ReactApexChart options={chartPromediosGrado} series={chartPromediosGrado.series} type="bar" height={260} />
+            <SafeChart options={optsPromediosGrado} series={[{ name: 'Promedio', data: gradoVals }]} type="bar" height={260} />
           </ChartCard>
         </div>
         <div className="col-lg-6">
           <ChartCard title="Matrículas Activas por Grado" icon={Users} delay={0.22}>
-            <ReactApexChart options={chartMatriculas} series={chartMatriculas.series} type="bar" height={260} />
+            <SafeChart options={optsMatriculas} series={[{ name: 'Matrículas', data: matriculaVals }]} type="bar" height={260} />
           </ChartCard>
         </div>
       </div>
@@ -358,12 +409,12 @@ export default function Dashboard({ data = {} }) {
       <div className="row g-3 mb-4">
         <div className="col-lg-7">
           <ChartCard title="Promedio por Asignatura" icon={BookOpen} delay={0.25}>
-            <ReactApexChart options={chartAsignaturas} series={chartAsignaturas.series} type="bar" height={Math.max(260, asigData.length * 28)} />
+            <SafeChart options={optsAsignaturas} series={[{ name: 'Promedio', data: asigVals }]} type="bar" height={Math.max(260, asigData.length * 28)} />
           </ChartCard>
         </div>
         <div className="col-lg-5">
           <ChartCard title="Riesgo Académico por Grado" icon={AlertTriangle} delay={0.27}>
-            <ReactApexChart options={chartRiesgo} series={chartRiesgo.series} type="bar" height={260} />
+            <SafeChart options={optsRiesgo} series={[{ name: 'En Riesgo', data: riesgoVals }]} type="bar" height={260} />
             <div style={{ textAlign: 'center', marginTop: 8, fontSize: '.78rem', color: isDark() ? '#94a3b8' : '#6b7280' }}>
               Total en riesgo: <strong style={{ color: '#ef4444' }}>{riesgoData.totalEnRiesgo}</strong> estudiantes (≥ 2 materias &lt; 70)
             </div>
@@ -374,10 +425,10 @@ export default function Dashboard({ data = {} }) {
       {/* ── Top / Bottom grupos ── */}
       <div className="row g-3 mb-4">
         <div className="col-lg-6">
-          <TablaGrupos grupos={topGrupos} title="Top 5 Grupos — Mayor Promedio" icon={Award} delay={0.3} tipo="top" />
+          <TablaGrupos grupos={topGrupos} title="Top 5 Grupos — Mayor Promedio" icon={Award} delay={0.3} />
         </div>
         <div className="col-lg-6">
-          <TablaGrupos grupos={bottomGrupos} title="Grupos que Necesitan Atención" icon={AlertTriangle} delay={0.32} tipo="bottom" />
+          <TablaGrupos grupos={bottomGrupos} title="Grupos que Necesitan Atención" icon={AlertTriangle} delay={0.32} />
         </div>
       </div>
 
@@ -386,7 +437,11 @@ export default function Dashboard({ data = {} }) {
         {statsDocentes.activos > 0 && (
           <div className="col-lg-4">
             <ChartCard title="Estado de Notas — Docentes" icon={GraduationCap} delay={0.35}>
-              <ReactApexChart options={chartDocentes} series={chartDocentes.series} type="donut" height={220} />
+              <SafeChart
+                options={optsDocentes}
+                series={[statsDocentes.con_notas || 0, statsDocentes.sin_notas || 0]}
+                type="donut" height={220}
+              />
             </ChartCard>
           </div>
         )}

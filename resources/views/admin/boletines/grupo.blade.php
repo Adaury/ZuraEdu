@@ -373,7 +373,7 @@
                     <i class="bi bi-file-earmark-bar-graph"></i>
                 </a>
                 @php
-                    $telRep = $matricula->representantes()->first()?->telefono
+                    $telRep = $matricula->estudiante?->representantes()->first()?->telefono
                         ?? $matricula->estudiante?->tutor_telefono ?? null;
                     if ($telRep) {
                         $msgWA2 = urlencode("📋 *Boletín de Calificaciones*\n\nEstudiante: " . ($matricula->estudiante?->nombres . ' ' . $matricula->estudiante?->apellidos) . "\nPeríodo: {$periodo->nombre}\nPromedio: " . ($promGen ? number_format($promGen,1) : '—') . "\n\n_" . ($boletinConfig?->nombre_institucion ?? 'Centro Educativo') . "_");

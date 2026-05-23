@@ -338,7 +338,7 @@
 @php
     $est = $matricula->estudiante;
     $ranking = $rankingGrupo ?? [];
-    $telRepresentante = $matricula->representantes()->first()?->telefono
+    $telRepresentante = $matricula->estudiante?->representantes()->first()?->telefono
         ?? $matricula->estudiante?->tutor_telefono ?? null;
     $nombreEst = $est?->nombres . ' ' . $est?->apellidos;
     $msgWA = urlencode("📋 *Boletín de Calificaciones*\n\nEstudiante: {$nombreEst}\nPeríodo: {$periodo->nombre}\nGrupo: {$matricula->grupo?->nombre_completo}\nPromedio: " . ($promedioGeneral ? number_format($promedioGeneral,1) : '—') . "\n\n_" . ($boletinConfig?->nombre_institucion ?? 'Centro Educativo') . "_");

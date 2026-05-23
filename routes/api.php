@@ -269,5 +269,14 @@ Route::prefix('v1')->group(function () {
             Route::get('mis-prestamos',             [\App\Http\Controllers\Api\BibliotecaApiController::class, 'misPrestamos'])->name('mis-prestamos');
             Route::get('hijo/{estudiante}/prestamos', [\App\Http\Controllers\Api\BibliotecaApiController::class, 'hijoPrestamos'])->name('hijo');
         });
+
+        // Carnet+ — Identidad digital y control de acceso
+        Route::prefix('carnet')->name('api.carnet.')->group(function () {
+            Route::get('mi-carnet',                   [\App\Http\Controllers\Api\CarnetApiController::class, 'miCarnet'])->name('mi-carnet');
+            Route::get('hijo/{estudiante}',           [\App\Http\Controllers\Api\CarnetApiController::class, 'hijoCarnet'])->name('hijo');
+            Route::get('historial',                   [\App\Http\Controllers\Api\CarnetApiController::class, 'historial'])->name('historial');
+            Route::get('historial-hijo/{estudiante}', [\App\Http\Controllers\Api\CarnetApiController::class, 'historialHijo'])->name('historial-hijo');
+            Route::post('scan',                       [\App\Http\Controllers\Api\CarnetApiController::class, 'scan'])->name('scan');
+        });
     });
 });

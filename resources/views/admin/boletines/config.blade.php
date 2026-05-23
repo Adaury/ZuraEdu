@@ -442,6 +442,105 @@
         </div>
     </div>
 
+    {{-- ─── BLOQUE 5: DISEÑO DEL BOLETÍN ─────────────────── --}}
+    <div class="cfg-card">
+        <div class="cfg-card-header">
+            <div class="cfg-icon" style="background:#7c3aed;"><i class="bi bi-palette"></i></div>
+            <div>
+                <h6>Diseño del Boletín</h6>
+                <small>Colores, tamaño de logo y tipografía del PDF</small>
+            </div>
+        </div>
+        <div class="cfg-body">
+            {{-- Colores --}}
+            <div class="mb-3">
+                <label class="form-label">Colores institucionales</label>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="color" name="color_primario"
+                                   id="colorPrimario"
+                                   value="{{ old('color_primario', $boletinConfig->color_primario ?? '#1e3a6e') }}"
+                                   style="width:40px;height:36px;border-radius:6px;border:1.5px solid #e5e7eb;cursor:pointer;padding:2px;flex-shrink:0;">
+                            <div>
+                                <div style="font-size:.78rem;font-weight:700;color:#374151;">Principal</div>
+                                <div style="font-size:.7rem;color:#9ca3af;" id="txtColorPrimario">{{ $boletinConfig->color_primario ?? '#1e3a6e' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="color" name="color_secundario"
+                                   id="colorSecundario"
+                                   value="{{ old('color_secundario', $boletinConfig->color_secundario ?? '#c0392b') }}"
+                                   style="width:40px;height:36px;border-radius:6px;border:1.5px solid #e5e7eb;cursor:pointer;padding:2px;flex-shrink:0;">
+                            <div>
+                                <div style="font-size:.78rem;font-weight:700;color:#374151;">Acento</div>
+                                <div style="font-size:.7rem;color:#9ca3af;" id="txtColorSecundario">{{ $boletinConfig->color_secundario ?? '#c0392b' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-hint mt-1">Principal: encabezado y bordes &nbsp;·&nbsp; Acento: barra de título</div>
+            </div>
+
+            {{-- Dimensiones del logo --}}
+            <div class="mb-3">
+                <label class="form-label">Dimensiones del logo en PDF</label>
+                <div class="row g-2">
+                    <div class="col-3">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text" style="font-size:.78rem;">Ancho</span>
+                            <input type="number" name="logo_ancho"
+                                   class="form-control form-control-sm"
+                                   value="{{ old('logo_ancho', $boletinConfig->logo_ancho ?? 68) }}"
+                                   min="20" max="200" placeholder="68">
+                            <span class="input-group-text" style="font-size:.78rem;">px</span>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text" style="font-size:.78rem;">Alto</span>
+                            <input type="number" name="logo_alto"
+                                   class="form-control form-control-sm"
+                                   value="{{ old('logo_alto', $boletinConfig->logo_alto ?? 58) }}"
+                                   min="20" max="200" placeholder="58">
+                            <span class="input-group-text" style="font-size:.78rem;">px</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-hint mt-1">Tamaño del logo en el PDF impreso</div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Tamaño de fuente --}}
+            <div class="mb-3">
+                <label class="form-label">Tamaño de fuente del PDF</label>
+                @php $fActual = old('tamano_fuente', $boletinConfig->tamano_fuente ?? '9pt'); @endphp
+                <select name="tamano_fuente" class="form-select form-select-sm" style="max-width:200px;">
+                    <option value="8pt"  {{ $fActual === '8pt'  ? 'selected' : '' }}>Pequeño (8pt)</option>
+                    <option value="9pt"  {{ $fActual === '9pt'  ? 'selected' : '' }}>Normal (9pt)</option>
+                    <option value="10pt" {{ $fActual === '10pt' ? 'selected' : '' }}>Mediano (10pt)</option>
+                    <option value="11pt" {{ $fActual === '11pt' ? 'selected' : '' }}>Grande (11pt)</option>
+                </select>
+            </div>
+
+            {{-- Foto del estudiante --}}
+            <div class="toggle-row mb-0">
+                <div class="toggle-info">
+                    <h6><i class="bi bi-person-bounding-box text-muted me-2"></i>Foto del Estudiante</h6>
+                    <small>Incluir columna de foto en la ficha del boletín</small>
+                </div>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" role="switch"
+                           name="mostrar_foto_estudiante" value="1"
+                           {{ old('mostrar_foto_estudiante', $boletinConfig->mostrar_foto_estudiante ?? false) ? 'checked' : '' }}>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- ─── GUARDAR ─────────────────────────────────────── --}}
     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
         <a href="{{ route('admin.boletines.index') }}" class="btn btn-outline-secondary px-4">
@@ -495,105 +594,6 @@
                         <i class="bi bi-cloud-upload me-1"></i>Subir Logo
                     </button>
                 </form>
-            </div>
-        </div>
-
-        {{-- ─── Diseño del Boletín ─────────────────────────── --}}
-        <div class="cfg-card">
-            <div class="cfg-card-header">
-                <div class="cfg-icon" style="background:#7c3aed;"><i class="bi bi-palette"></i></div>
-                <div>
-                    <h6>Diseño del Boletín</h6>
-                    <small>Colores, tamaño de logo y tipografía del PDF</small>
-                </div>
-            </div>
-            <div class="cfg-body">
-
-                {{-- Colores --}}
-                <div class="mb-3">
-                    <label class="form-label">Colores institucionales</label>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <div class="d-flex align-items-center gap-2">
-                                <input type="color" name="color_primario" form="frmConfig"
-                                       id="colorPrimario"
-                                       value="{{ old('color_primario', $boletinConfig->color_primario ?? '#1e3a6e') }}"
-                                       style="width:40px;height:36px;border-radius:6px;border:1.5px solid #e5e7eb;cursor:pointer;padding:2px;flex-shrink:0;">
-                                <div>
-                                    <div style="font-size:.78rem;font-weight:700;color:#374151;">Principal</div>
-                                    <div style="font-size:.7rem;color:#9ca3af;" id="txtColorPrimario">{{ $boletinConfig->color_primario ?? '#1e3a6e' }}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="d-flex align-items-center gap-2">
-                                <input type="color" name="color_secundario" form="frmConfig"
-                                       id="colorSecundario"
-                                       value="{{ old('color_secundario', $boletinConfig->color_secundario ?? '#c0392b') }}"
-                                       style="width:40px;height:36px;border-radius:6px;border:1.5px solid #e5e7eb;cursor:pointer;padding:2px;flex-shrink:0;">
-                                <div>
-                                    <div style="font-size:.78rem;font-weight:700;color:#374151;">Acento</div>
-                                    <div style="font-size:.7rem;color:#9ca3af;" id="txtColorSecundario">{{ $boletinConfig->color_secundario ?? '#c0392b' }}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-hint mt-1">Principal: encabezado y bordes &nbsp;·&nbsp; Acento: barra de título</div>
-                </div>
-
-                {{-- Dimensiones del logo --}}
-                <div class="mb-3">
-                    <label class="form-label">Dimensiones del logo en PDF</label>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text" style="font-size:.78rem;">Ancho</span>
-                                <input type="number" name="logo_ancho" form="frmConfig"
-                                       class="form-control form-control-sm"
-                                       value="{{ old('logo_ancho', $boletinConfig->logo_ancho ?? 68) }}"
-                                       min="20" max="200" placeholder="68">
-                                <span class="input-group-text" style="font-size:.78rem;">px</span>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text" style="font-size:.78rem;">Alto</span>
-                                <input type="number" name="logo_alto" form="frmConfig"
-                                       class="form-control form-control-sm"
-                                       value="{{ old('logo_alto', $boletinConfig->logo_alto ?? 58) }}"
-                                       min="20" max="200" placeholder="58">
-                                <span class="input-group-text" style="font-size:.78rem;">px</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-hint mt-1">Tamaño del logo en el PDF impreso</div>
-                </div>
-
-                {{-- Tamaño de fuente --}}
-                <div class="mb-3">
-                    <label class="form-label">Tamaño de fuente del PDF</label>
-                    @php $fActual = old('tamano_fuente', $boletinConfig->tamano_fuente ?? '9pt'); @endphp
-                    <select name="tamano_fuente" form="frmConfig" class="form-select form-select-sm">
-                        <option value="8pt"  {{ $fActual === '8pt'  ? 'selected' : '' }}>Pequeño (8pt)</option>
-                        <option value="9pt"  {{ $fActual === '9pt'  ? 'selected' : '' }}>Normal (9pt)</option>
-                        <option value="10pt" {{ $fActual === '10pt' ? 'selected' : '' }}>Mediano (10pt)</option>
-                        <option value="11pt" {{ $fActual === '11pt' ? 'selected' : '' }}>Grande (11pt)</option>
-                    </select>
-                </div>
-
-                {{-- Foto del estudiante --}}
-                <div class="toggle-row mb-0">
-                    <div class="toggle-info">
-                        <h6><i class="bi bi-person-bounding-box text-muted me-2"></i>Foto del Estudiante</h6>
-                        <small>Incluir columna de foto en la ficha del boletín</small>
-                    </div>
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox" role="switch" form="frmConfig"
-                               name="mostrar_foto_estudiante" value="1"
-                               {{ old('mostrar_foto_estudiante', $boletinConfig->mostrar_foto_estudiante ?? false) ? 'checked' : '' }}>
-                    </div>
-                </div>
-
             </div>
         </div>
 

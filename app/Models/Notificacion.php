@@ -46,6 +46,7 @@ class Notificacion extends Model
         'zura_boletin'     => 'bi-file-earmark-text',
         'boletin'          => 'bi-file-earmark-text',
         'asistencia'       => 'bi-calendar-check',
+        'carnet_acceso'    => 'bi-person-badge-fill',
     ];
 
     const COLORES = [

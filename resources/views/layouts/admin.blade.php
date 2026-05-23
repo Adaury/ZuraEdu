@@ -2247,6 +2247,11 @@ if (auth()->check()) {
                     </a>
                 </li>
                 @endif
+                <li class="nav-item">
+                    <a href="{{ route('admin.carnet.index') }}" class="{{ request()->routeIs('admin.carnet*') ? 'active' : '' }}">
+                        <i class="bi bi-person-badge-fill"></i>Carnet+
+                    </a>
+                </li>
                 @endif
                 @if($showSegTecnica)
                 <li class="nav-item">

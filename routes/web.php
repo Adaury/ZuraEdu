@@ -644,6 +644,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.acc
     Route::middleware('tenant.feature:gamificacion')->group(function () {
         require __DIR__ . '/admin/gamificacion.php';
     });
+    require __DIR__ . '/admin/carnet.php';
 
     // ── Plan Premium: módulos avanzados ───────────────────────────────────────
     Route::middleware('tenant.feature:pagos')->group(function () {
@@ -691,6 +692,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.acc
 
 // ── Galería pública ───────────────────────────────────────────────────────
 Route::get('/galeria', [\App\Http\Controllers\Admin\GaleriaController::class, 'galeriaPublica'])->name('galeria.publica');
+
+// ── Carnet+ verificación QR pública (escaneo externo sin login) ───────────
+Route::get('/checkin/scan/{qrToken}', [\App\Http\Controllers\Admin\CarnetCheckinController::class, 'scanPublico'])
+    ->name('carnet.scan.publico')
+    ->middleware('throttle:30,1');
 
 // ── PWA — manifest, iconos e offline ─────────────────────────────────────
 Route::get('/pwa/manifest.json', [\App\Http\Controllers\PwaController::class, 'manifest'])->name('pwa.manifest');

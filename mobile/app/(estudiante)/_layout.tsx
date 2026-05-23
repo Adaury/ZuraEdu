@@ -42,10 +42,11 @@ export default function EstudianteLayout() {
       }}
     >
       <Tabs.Screen name="index"        options={{ title: 'Inicio',     tabBarIcon: ({ color, size }) => <Ionicons name="home"             size={size} color={color} />, headerLeft: renderNoBack }} />
-      <Tabs.Screen name="classroom"    options={{ title: 'Classroom',  tabBarIcon: ({ color, size }) => <Ionicons name="easel"            size={size} color={color} />, headerLeft: renderNoBack }} />
       <Tabs.Screen name="notas"        options={{ title: 'Notas',      tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart"        size={size} color={color} />, headerLeft: renderNoBack }} />
       <Tabs.Screen name="asistencia"   options={{ title: 'Asistencia', tabBarIcon: ({ color, size }) => <Ionicons name="calendar"         size={size} color={color} />, headerLeft: renderNoBack }} />
+      <Tabs.Screen name="carnet"       options={{ title: 'Mi Carnet',  tabBarIcon: ({ color, size }) => <Ionicons name="card"             size={size} color={color} />, headerLeft: renderNoBack }} />
       <Tabs.Screen name="tutor"        options={{ title: 'Tutor IA',   tabBarIcon: ({ color, size }) => <Ionicons name="sparkles"         size={size} color={color} />, headerLeft: renderNoBack }} />
+      <Tabs.Screen name="classroom"    options={{ title: 'Classroom',  tabBarIcon: ({ color, size }) => <Ionicons name="easel"            size={size} color={color} />, href: null }} />
       <Tabs.Screen name="riesgo"       options={{ title: 'Mi Estado',  tabBarIcon: ({ color, size }) => <Ionicons name="shield-checkmark" size={size} color={color} />, href: null }} />
       <Tabs.Screen name="horario"      options={{ title: 'Horario',    tabBarIcon: ({ color, size }) => <Ionicons name="time"             size={size} color={color} />, href: null }} />
       <Tabs.Screen name="pagos"        options={{ title: 'Pagos',      tabBarIcon: ({ color, size }) => <Ionicons name="card"             size={size} color={color} />, href: null }} />
@@ -69,7 +70,7 @@ export default function EstudianteLayout() {
       <Tabs.Screen name="proyectos"              options={{ title: 'Proyectos',       tabBarIcon: ({ color, size }) => <Ionicons name="flask-outline"               size={size} color={color} />, href: null }} />
       <Tabs.Screen name="eventos"                options={{ title: 'Eventos',         tabBarIcon: ({ color, size }) => <Ionicons name="calendar-number-outline"     size={size} color={color} />, href: null }} />
       <Tabs.Screen name="biblioteca"             options={{ title: 'Biblioteca',      tabBarIcon: ({ color, size }) => <Ionicons name="library-outline"             size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="carnet"               options={{ title: 'Mi Carnet',       tabBarIcon: ({ color, size }) => <Ionicons name="card-outline"                size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="carnet"               options={{ href: null }} />
       <Tabs.Screen name="carnet-historial"     options={{ title: 'Accesos',         tabBarIcon: ({ color, size }) => <Ionicons name="time-outline"                size={size} color={color} />, href: null }} />
     </Tabs>
   )

@@ -43,7 +43,8 @@ export default function DocenteLayout() {
       <Tabs.Screen name="classroom"      options={{ title: 'Mis Aulas',  tabBarIcon: ({ color, size }) => <Ionicons name="easel"           size={size} color={color} />, headerLeft: renderNoBack }} />
       <Tabs.Screen name="grupos"         options={{ title: 'Mis Grupos', tabBarIcon: ({ color, size }) => <Ionicons name="people"          size={size} color={color} />, headerLeft: renderNoBack }} />
       <Tabs.Screen name="asistencia"     options={{ title: 'Asistencia', tabBarIcon: ({ color, size }) => <Ionicons name="calendar-number" size={size} color={color} />, headerLeft: renderNoBack }} />
-      <Tabs.Screen name="qr"             options={{ title: 'QR Scan',    tabBarIcon: ({ color, size }) => <Ionicons name="qr-code"         size={size} color={color} />, headerLeft: renderNoBack }} />
+      <Tabs.Screen name="carnet"         options={{ title: 'Carnet+',    tabBarIcon: ({ color, size }) => <Ionicons name="card"             size={size} color={color} />, headerLeft: renderNoBack }} />
+      <Tabs.Screen name="qr"             options={{ title: 'QR Scan',    tabBarIcon: ({ color, size }) => <Ionicons name="qr-code"         size={size} color={color} />, href: null }} />
       <Tabs.Screen name="calificaciones" options={{ title: 'Notas',      tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart"       size={size} color={color} />, href: null }} />
       <Tabs.Screen name="horario"        options={{ title: 'Horario',    tabBarIcon: ({ color, size }) => <Ionicons name="time"            size={size} color={color} />, href: null }} />
       <Tabs.Screen name="mensajes"       options={{ title: 'Mensajes',   tabBarIcon: ({ color, size }) => <Ionicons name="mail-outline"    size={size} color={color} />, href: null, tabBarBadge: msgBadge }} />
@@ -61,7 +62,7 @@ export default function DocenteLayout() {
       <Tabs.Screen name="solicitudes"       options={{ title: 'Solicitudes',    tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline"  size={size} color={color} />, href: null }} />
       <Tabs.Screen name="evaluaciones"      options={{ title: 'Mis Eval.',      tabBarIcon: ({ color, size }) => <Ionicons name="clipboard-outline"       size={size} color={color} />, href: null }} />
       <Tabs.Screen name="reuniones"         options={{ title: 'Reuniones',      tabBarIcon: ({ color, size }) => <Ionicons name="journal-outline"         size={size} color={color} />, href: null }} />
-      <Tabs.Screen name="carnet"           options={{ title: 'Carnet+',        tabBarIcon: ({ color, size }) => <Ionicons name="card-outline"            size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="carnet"           options={{ href: null }} />
       <Tabs.Screen name="carnet-scan"      options={{ title: 'Scan Carnet',    tabBarIcon: ({ color, size }) => <Ionicons name="qr-code-outline"         size={size} color={color} />, href: null }} />
     </Tabs>
   )

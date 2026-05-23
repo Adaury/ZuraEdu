@@ -291,3 +291,11 @@ export const bibliotecaApi = {
   misPrestamos:              () => api.get('/biblioteca/mis-prestamos'),
   hijo:          (id: number) => api.get(`/biblioteca/hijo/${id}/prestamos`),
 }
+
+// ── Carnet+ ───────────────────────────────────────────────────────────────────
+export const carnetApi = {
+  miCarnet:               () => api.get('/carnet/mi-carnet'),
+  hijo:          (id: number) => api.get(`/carnet/hijo/${id}`),
+  historial:              () => api.get('/carnet/historial'),
+  historialHijo: (id: number) => api.get(`/carnet/historial-hijo/${id}`),
+}

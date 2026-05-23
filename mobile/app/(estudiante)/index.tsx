@@ -50,6 +50,7 @@ const SECCIONES = [
       { label: 'Proyectos',   icon: 'flask',         route: '/(estudiante)/proyectos',   color: Colors.green  },
       { label: 'Eventos',     icon: 'ribbon',        route: '/(estudiante)/eventos',     color: Colors.purple },
       { label: 'Biblioteca',  icon: 'library',       route: '/(estudiante)/biblioteca',  color: Colors.indigo },
+      { label: 'Mi Carnet',   icon: 'card',          route: '/(estudiante)/carnet',      color: '#1e3a6e'     },
       { label: 'Perfil',      icon: 'person-circle', route: '/(estudiante)/perfil',      color: Colors.muted  },
     ],
   },

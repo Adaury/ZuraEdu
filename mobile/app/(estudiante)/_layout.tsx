@@ -69,6 +69,8 @@ export default function EstudianteLayout() {
       <Tabs.Screen name="proyectos"              options={{ title: 'Proyectos',       tabBarIcon: ({ color, size }) => <Ionicons name="flask-outline"               size={size} color={color} />, href: null }} />
       <Tabs.Screen name="eventos"                options={{ title: 'Eventos',         tabBarIcon: ({ color, size }) => <Ionicons name="calendar-number-outline"     size={size} color={color} />, href: null }} />
       <Tabs.Screen name="biblioteca"             options={{ title: 'Biblioteca',      tabBarIcon: ({ color, size }) => <Ionicons name="library-outline"             size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="carnet"               options={{ title: 'Mi Carnet',       tabBarIcon: ({ color, size }) => <Ionicons name="card-outline"                size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="carnet-historial"     options={{ title: 'Accesos',         tabBarIcon: ({ color, size }) => <Ionicons name="time-outline"                size={size} color={color} />, href: null }} />
     </Tabs>
   )
 }

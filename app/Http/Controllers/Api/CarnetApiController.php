@@ -96,6 +96,58 @@ class CarnetApiController extends Controller
         return response()->json(['accesos' => $accesos]);
     }
 
+    // ── Docente: accesos de hoy de sus grupos ────────────────────────────────
+
+    public function grupoHoy(Request $request)
+    {
+        $user       = $request->user();
+        $schoolYear = \App\Models\SchoolYear::actual();
+
+        $grupoIds = \App\Models\Asignacion::where('user_id', $user->id)
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->pluck('grupo_id')
+            ->unique();
+
+        $estudianteIds = \App\Models\Matricula::activas()
+            ->whereIn('grupo_id', $grupoIds)
+            ->pluck('estudiante_id')
+            ->unique();
+
+        $carnetIds = CarnetIdentidad::whereHas('matricula', fn($q) => $q->whereIn('estudiante_id', $estudianteIds))
+            ->pluck('id');
+
+        $accesos = CarnetAcceso::with(['carnet.user', 'zona'])
+            ->whereIn('carnet_identidad_id', $carnetIds)
+            ->whereDate('created_at', today())
+            ->orderByDesc('created_at')
+            ->get();
+
+        $entradas   = $accesos->where('tipo_evento', 'entrada');
+        $presentes  = $entradas->where('estado', 'presente')->count();
+        $tardanzas  = $entradas->where('estado', 'tardanza')->count();
+        $conEntrada = $entradas->pluck('carnet_identidad_id')->unique()->count();
+        $total      = $estudianteIds->count();
+
+        return response()->json([
+            'total'     => $total,
+            'entradas'  => $conEntrada,
+            'presentes' => $presentes,
+            'tardanzas' => $tardanzas,
+            'ausentes'  => max(0, $total - $conEntrada),
+            'accesos'   => $accesos->map(fn($a) => [
+                'id'            => $a->id,
+                'nombre'        => $a->carnet?->user?->name ?? '—',
+                'numero_carnet' => $a->carnet?->numero_carnet,
+                'tipo_evento'   => $a->tipo_evento,
+                'estado'        => $a->estado,
+                'estado_label'  => $a->estado_badge['label'],
+                'estado_color'  => $a->estado_badge['color'],
+                'zona'          => $a->zona?->nombre,
+                'hora'          => $a->hora,
+            ]),
+        ]);
+    }
+
     // ── Escaneo desde app (portero/seguridad) ─────────────────────────────────
 
     public function scan(Request $request)

@@ -298,4 +298,7 @@ export const carnetApi = {
   hijo:          (id: number) => api.get(`/carnet/hijo/${id}`),
   historial:              () => api.get('/carnet/historial'),
   historialHijo: (id: number) => api.get(`/carnet/historial-hijo/${id}`),
+  scan: (data: { qr_token: string; tipo_evento?: string; zona_id?: number }) =>
+    api.post('/carnet/scan', data),
+  grupoHoy: () => api.get('/docente/carnet'),
 }

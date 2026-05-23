@@ -146,6 +146,7 @@ Route::prefix('v1')->group(function () {
             Route::get('plan-evaluacion',                    [DocenteApiController::class, 'planEvaluacion'])->name('plan-evaluacion');
             Route::get('instrumentos',                       [DocenteApiController::class, 'instrumentos'])->name('instrumentos');
             Route::get('riesgo',                             [DocenteApiController::class, 'riesgoGrupo'])->name('riesgo');
+            Route::get('carnet',                             [\App\Http\Controllers\Api\CarnetApiController::class, 'grupoHoy'])->name('carnet');
         });
 
         // Mensajería interna

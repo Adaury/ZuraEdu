@@ -17,6 +17,7 @@ const SECCIONES = [
     items: [
       { label: 'Asistencia',     icon: 'calendar-number', route: '/(docente)/asistencia',     color: Colors.blue   },
       { label: 'QR Scan',        icon: 'qr-code',         route: '/(docente)/qr',             color: Colors.amber  },
+      { label: 'Carnet+',       icon: 'card',            route: '/(docente)/carnet',         color: '#1e3a6e'     },
       { label: 'Calificaciones', icon: 'bar-chart',       route: '/(docente)/calificaciones', color: Colors.green  },
       { label: 'Classroom',      icon: 'easel',           route: '/(docente)/classroom',      color: '#0ea5e9'     },
       { label: 'Horario',        icon: 'time',            route: '/(docente)/horario',        color: Colors.indigo },

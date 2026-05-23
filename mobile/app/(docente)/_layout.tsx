@@ -61,6 +61,8 @@ export default function DocenteLayout() {
       <Tabs.Screen name="solicitudes"       options={{ title: 'Solicitudes',    tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline"  size={size} color={color} />, href: null }} />
       <Tabs.Screen name="evaluaciones"      options={{ title: 'Mis Eval.',      tabBarIcon: ({ color, size }) => <Ionicons name="clipboard-outline"       size={size} color={color} />, href: null }} />
       <Tabs.Screen name="reuniones"         options={{ title: 'Reuniones',      tabBarIcon: ({ color, size }) => <Ionicons name="journal-outline"         size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="carnet"           options={{ title: 'Carnet+',        tabBarIcon: ({ color, size }) => <Ionicons name="card-outline"            size={size} color={color} />, href: null }} />
+      <Tabs.Screen name="carnet-scan"      options={{ title: 'Scan Carnet',    tabBarIcon: ({ color, size }) => <Ionicons name="qr-code-outline"         size={size} color={color} />, href: null }} />
     </Tabs>
   )
 }

@@ -50,7 +50,7 @@ class CarnetController extends Controller
         $creados = 0;
         foreach ($matriculas as $mat) {
             $user = $mat->estudiante?->user;
-            if (! $user) continue;
+            if (! $user || ! $user->id) continue;
 
             $carnet = CarnetQrService::obtenerOCrear($user, 'estudiante', $mat->id);
             // Actualizar matricula_id si ya existía sin él

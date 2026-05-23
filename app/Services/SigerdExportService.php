@@ -100,26 +100,52 @@ class SigerdExportService
             }
         }
         if ($formato === 'csv') return $this->csvResponse($headers, $rows, $filename . '.csv');
-        return Pdf::loadView('admin.sigerd.exports.nomina_pdf', ['matriculas' => $matriculas])->download($filename . '.pdf');
+
+        // Construir filas estructuradas para el PDF
+        $filasPdf = [];
+        foreach ($asignaciones as $asig) {
+            $filasAsig = [];
+            foreach ($matriculas as $m) {
+                $cal = $calMap->get($m->id . '_' . $asig->id);
+                $filasAsig[] = [
+                    'estudiante' => $m->estudiante,
+                    'cedula'     => $m->estudiante?->cedula ?? '',
+                    'nombre'     => ($m->estudiante?->apellidos ?? '') . ', ' . ($m->estudiante?->nombres ?? ''),
+                    'p1' => $cal ? round((((float)$cal->avg_comp1_p1 + (float)$cal->avg_comp2_p1 + (float)$cal->avg_comp3_p1 + (float)$cal->avg_comp4_p1) / 4), 2) : null,
+                    'p2' => $cal ? round((((float)$cal->avg_comp1_p2 + (float)$cal->avg_comp2_p2 + (float)$cal->avg_comp3_p2 + (float)$cal->avg_comp4_p2) / 4), 2) : null,
+                    'p3' => $cal ? round((((float)$cal->avg_comp1_p3 + (float)$cal->avg_comp2_p3 + (float)$cal->avg_comp3_p3 + (float)$cal->avg_comp4_p3) / 4), 2) : null,
+                    'p4' => $cal ? round((((float)$cal->avg_comp1_p4 + (float)$cal->avg_comp2_p4 + (float)$cal->avg_comp3_p4 + (float)$cal->avg_comp4_p4) / 4), 2) : null,
+                    'nota_final' => $cal?->nota_final,
+                    'situacion'  => $cal?->situacion ?? '',
+                ];
+            }
+            $filasPdf[] = ['asignacion' => $asig, 'filas' => $filasAsig];
+        }
+        return Pdf::loadView('admin.sigerd.exports.calificaciones_pdf', [
+            'filasPdf' => $filasPdf, 'sy' => $sy,
+        ])->setPaper('letter', 'landscape')->download($filename . '.pdf');
     }
 
     public function exportarDocentes(SchoolYear $sy, string $formato)
     {
         set_time_limit(300);
-        $asignaciones = Asignacion::with(['docente', 'asignatura', 'grupo.grado', 'grupo.seccion'])
+        $asignacionesGrupo = Asignacion::with(['docente', 'asignatura', 'grupo.grado', 'grupo.seccion'])
             ->where('school_year_id', $sy->id)->get()->groupBy('docente_id');
         $headers = ['No.', 'Cedula', 'Nombres', 'Apellidos', 'Especialidad', 'Titulo Academico', 'Cargo', 'Asignatura(s)', 'Grado/Grupo'];
-        $rows = []; $idx = 1;
-        foreach ($asignaciones as $docenteId => $group) {
-            $docente = $group->first()?->docente;
-            $asignaturas = $group->pluck('asignatura.nombre')->unique()->filter()->implode(', , ');
-            $grupos = $group->map(fn ($a) => $a->grupo?->nombre_completo ?? '')->unique()->filter()->implode(', , ');
-            $rows[] = [$idx++, $docente?->cedula??'', $docente?->nombres??'', $docente?->apellidos??'', $docente?->especialidad??'', $docente?->titulo_academico??'', $docente?->cargo??'', $asignaturas, $grupos];
+        $rows = []; $idx = 1; $docenteRows = [];
+        foreach ($asignacionesGrupo as $docenteId => $group) {
+            $docente     = $group->first()?->docente;
+            $asignaturas = $group->pluck('asignatura.nombre')->unique()->filter()->implode(', ');
+            $grupos      = $group->map(fn ($a) => $a->grupo?->nombre_completo ?? '')->unique()->filter()->implode(', ');
+            $rows[]       = [$idx++, $docente?->cedula??'', $docente?->nombres??'', $docente?->apellidos??'', $docente?->especialidad??'', $docente?->titulo_academico??'', $docente?->cargo??'', $asignaturas, $grupos];
+            $docenteRows[] = compact('docente', 'asignaturas', 'grupos');
         }
         $filename = 'SIGERD_Docentes_' . date('Ymd_His');
         return match ($formato) {
             'csv'   => $this->csvResponse($headers, $rows, $filename . '.csv'),
-            'pdf'   => Pdf::loadView('admin.sigerd.exports.nomina_pdf', ['matriculas' => collect()])->download($filename . '.pdf'),
+            'pdf'   => Pdf::loadView('admin.sigerd.exports.docentes_pdf', [
+                            'docenteRows' => $docenteRows, 'sy' => $sy,
+                       ])->download($filename . '.pdf'),
             default => $this->excelResponse($headers, $rows, 'Docentes', $filename . '.xlsx'),
         };
     }
@@ -131,8 +157,7 @@ class SigerdExportService
             ->where('school_year_id', $sy->id)->where('estado', 'activa')
             ->when($grupoId, fn ($q, $id) => $q->where('grupo_id', $id))->get();
 
-        // Bulk-load asistencias: 1 query en lugar de N (1 por matricula)
-        $matIds = $matriculas->pluck('id');
+        $matIds  = $matriculas->pluck('id');
         $asisMap = Asistencia::whereIn('matricula_id', $matIds)
             ->whereBetween('fecha', [$desde, $hasta])
             ->selectRaw('matricula_id, estado, COUNT(*) as total')
@@ -141,21 +166,24 @@ class SigerdExportService
             ->groupBy('matricula_id');
 
         $headers = ['No.', 'RNE', 'Nombres', 'Apellidos', 'Grado', 'Seccion', 'Total Dias', 'Presentes', 'Tardanzas', 'Ausentes', 'Justificados', '% Asistencia'];
-        $rows = [];
+        $rows = []; $filasPdf = [];
         foreach ($matriculas as $i => $m) {
             $stats = $asisMap->get($m->id, collect())->keyBy('estado');
-            $pres  = (int)($stats->get('presente')?->total ?? 0);
-            $tard  = (int)($stats->get('tardanza')?->total ?? 0);
-            $ause  = (int)($stats->get('ausente')?->total ?? 0);
+            $pres  = (int)($stats->get('presente')?->total   ?? 0);
+            $tard  = (int)($stats->get('tardanza')?->total   ?? 0);
+            $ause  = (int)($stats->get('ausente')?->total    ?? 0);
             $just  = (int)($stats->get('justificado')?->total ?? 0);
             $total = $pres + $tard + $ause + $just;
             $pct   = $total > 0 ? round(($pres + $tard + $just) * 100 / $total, 2) : 0;
-            $rows[] = [$i+1, $m->estudiante?->cedula??'', $m->estudiante?->nombres??'', $m->estudiante?->apellidos??'', $m->grupo?->grado?->nombre??'', $m->grupo?->seccion?->nombre??'', $total, $pres, $tard, $ause, $just, $pct.'%'];
+            $rows[]      = [$i+1, $m->estudiante?->cedula??'', $m->estudiante?->nombres??'', $m->estudiante?->apellidos??'', $m->grupo?->grado?->nombre??'', $m->grupo?->seccion?->nombre??'', $total, $pres, $tard, $ause, $just, $pct.'%'];
+            $filasPdf[]  = ['matricula' => $m, 'pres' => $pres, 'tard' => $tard, 'ause' => $ause, 'just' => $just, 'total' => $total, 'pct' => $pct];
         }
         $filename = 'SIGERD_Asistencia_' . date('Ymd_His');
         return match ($formato) {
             'csv'   => $this->csvResponse($headers, $rows, $filename . '.csv'),
-            'pdf'   => Pdf::loadView('admin.sigerd.exports.nomina_pdf', ['matriculas' => $matriculas])->download($filename . '.pdf'),
+            'pdf'   => Pdf::loadView('admin.sigerd.exports.asistencia_pdf', [
+                            'filasPdf' => $filasPdf, 'desde' => $desde, 'hasta' => $hasta, 'sy' => $sy,
+                       ])->download($filename . '.pdf'),
             default => $this->excelResponse($headers, $rows, 'Asistencia', $filename . '.xlsx'),
         };
     }

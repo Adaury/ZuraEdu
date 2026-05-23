@@ -2240,6 +2240,13 @@ if (auth()->check()) {
                         <i class="bi bi-file-earmark-text"></i>Boletines
                     </a>
                 </li>
+                @if(!$isDocente)
+                <li class="nav-item">
+                    <a href="{{ route('admin.boletines.config') }}" class="{{ request()->routeIs('admin.boletines.config*') ? 'active' : '' }}" style="padding-left:2.1rem;font-size:.82rem;opacity:.85;">
+                        <i class="bi bi-gear" style="font-size:.8rem;"></i>Config. Boletín
+                    </a>
+                </li>
+                @endif
                 @endif
                 @if($showSegTecnica)
                 <li class="nav-item">

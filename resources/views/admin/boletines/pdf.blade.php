@@ -1,5 +1,5 @@
 @php
-$colorPrimario = ($boletinConfig && $boletinConfig->color_primario)  ? $boletinConfig->color_primario  : '{{ $colorPrimario }}';
+$colorPrimario = ($boletinConfig && $boletinConfig->color_primario)  ? $boletinConfig->color_primario  : '#1e3a6e';
 $colorSecund   = ($boletinConfig && $boletinConfig->color_secundario) ? $boletinConfig->color_secundario : '#c0392b';
 $logoAncho     = ($boletinConfig && $boletinConfig->logo_ancho)   ? (int)$boletinConfig->logo_ancho   : 68;
 $logoAlto      = ($boletinConfig && $boletinConfig->logo_alto)    ? (int)$boletinConfig->logo_alto    : 58;

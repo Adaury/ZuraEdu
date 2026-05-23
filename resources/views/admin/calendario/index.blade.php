@@ -187,12 +187,13 @@
 @endsection
 
 @push('scripts')
+@php $canEditCalendario = Auth::user()->hasAnyRole(['Administrador','Director','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']); @endphp
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/locales/es.global.min.js'></script>
 <script>
 const API_URL   = @json(route('admin.calendario.api'));
 const EDIT_BASE = @json(url('admin/calendario'));
-const CAN_EDIT  = @json(Auth::user()->hasAnyRole(['Administrador','Director','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']));
+const CAN_EDIT  = @json($canEditCalendario);
 
 let fc;
 

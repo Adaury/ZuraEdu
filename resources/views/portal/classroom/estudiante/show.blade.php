@@ -61,8 +61,9 @@ $tab   = request('tab', 'muro');
 @endif
 
 {{-- Tabs --}}
+@php $classTabs = [['muro','bi-layout-text-sidebar-reverse','Muro'],['tareas','bi-list-task','Mis Tareas'],['recursos','bi-folder-fill','Recursos'],['chat','bi-chat-dots-fill','Chat']]; @endphp
 <ul class="nav nav-pills mb-4 gap-1 flex-wrap" style="background:#F1F5F9;border-radius:12px;padding:6px;">
-    @foreach([['muro','bi-layout-text-sidebar-reverse','Muro'],['tareas','bi-list-task','Mis Tareas'],['recursos','bi-folder-fill','Recursos'],['chat','bi-chat-dots-fill','Chat']] as [$t,$i,$l])
+    @foreach($classTabs as [$t,$i,$l])
     <li class="nav-item">
         <a class="nav-link classroom-tab-link {{ $tab===$t?'active shadow-sm':'text-muted' }}"
            href="#" data-tab="{{ $t }}"
@@ -171,7 +172,7 @@ $esTarea = $material->esTareaOEvaluacion();
                     @php $vencido = $material->estaVencido(); @endphp
                     <span class="{{ $vencido && !$entrega ? 'text-danger fw-semibold' : '' }}">
                         <i class="bi bi-calendar-event me-1"></i>{{ $material->fecha_limite->format('d/m/Y H:i') }}
-                        @if($vencido && !$entrega) — Vencido@endif
+                        {{ ($vencido && !$entrega) ? ' — Vencido' : '' }}
                     </span>
                     @endif
                     @if($material->puntos)<span><i class="bi bi-star me-1"></i>{{ $material->puntos }} pts</span>@endif

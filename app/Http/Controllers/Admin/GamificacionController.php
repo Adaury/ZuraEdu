@@ -401,7 +401,7 @@ class GamificacionController extends Controller
 
         // Insignia: sin_faltas
         $sinFaltas = ! DB::table('faltas_disciplinarias')
-            ->where('matricula_id', $matricula->id)
+            ->where('estudiante_id', $matricula->estudiante_id)
             ->exists();
 
         if ($sinFaltas) {

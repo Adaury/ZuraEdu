@@ -79,8 +79,8 @@
 </style>
 
 @push('scripts')
-<script>
-window.__EJECUTIVO_DATA__ = @json([
+@php
+$__ejecutivoData = [
     'totalEstudiantes'      => $totalEstudiantes,
     'totalDocentes'         => $totalDocentes,
     'promedioInstitucional' => $promedioInstitucional,
@@ -104,7 +104,10 @@ window.__EJECUTIVO_DATA__ = @json([
     'preMatriculaStats'=> $preMatriculaStats,
     'disciplinaPorTipo'=> $disciplinaPorTipo,
     'schoolYear'       => $schoolYear ? ['nombre' => $schoolYear->nombre] : null,
-]);
+];
+@endphp
+<script>
+window.__EJECUTIVO_DATA__ = @json($__ejecutivoData);
 </script>
 @vite('resources/js/ejecutivo.jsx')
 @endpush

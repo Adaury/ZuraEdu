@@ -211,6 +211,9 @@
            class="btn btn-danger btn-sm">
             <i class="bi bi-file-earmark-zip me-1"></i>Descargar ZIP PDF
         </a>
+        <a href="{{ route('admin.boletines.config') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-gear me-1"></i>Configurar
+        </a>
         <a href="{{ route('admin.boletines.index') }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i>Volver
         </a>

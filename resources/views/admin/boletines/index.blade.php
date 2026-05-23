@@ -77,6 +77,12 @@
         <span class="badge rounded-pill px-3 py-2" style="background:#dbeafe;color:#1d4ed8;font-size:.78rem;border:1px solid #93c5fd;">
             <i class="bi bi-eye-slash me-1"></i>Vista Docente — solo tus grupos
         </span>
+        @else
+        <a href="{{ route('admin.boletines.config') }}"
+           class="btn btn-sm btn-outline-secondary"
+           style="border-radius:8px;font-size:.82rem;font-weight:600;">
+            <i class="bi bi-gear me-1"></i>Configurar Diseño
+        </a>
         @endif
     </div>
 </div>

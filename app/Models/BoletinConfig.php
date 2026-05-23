@@ -19,6 +19,14 @@ class BoletinConfig extends Model
         'codigo',
         'lema',
         'logo',
+        // Diseño
+        'color_primario',
+        'color_secundario',
+        'logo_ancho',
+        'logo_alto',
+        'tamano_fuente',
+        'mostrar_foto_estudiante',
+        // Info institucional
         'nivel_educativo',
         'regional',
         'distrito',
@@ -38,8 +46,9 @@ class BoletinConfig extends Model
     ];
 
     protected $casts = [
-        'mostrar_indicadores' => 'boolean',
-        'mostrar_asistencia'  => 'boolean',
+        'mostrar_indicadores'     => 'boolean',
+        'mostrar_asistencia'      => 'boolean',
+        'mostrar_foto_estudiante' => 'boolean',
     ];
 
     public function schoolYear()
@@ -52,12 +61,18 @@ class BoletinConfig extends Model
         return static::firstOrCreate(
             ['school_year_id' => $schoolYearId],
             [
-                'nombre_institucion'  => '',
-                'nivel_educativo'     => 'Nivel Secundario',
-                'titulo_director'     => 'Lic.',
-                'titulo_encargado'    => 'Lic.',
-                'mostrar_indicadores' => true,
-                'mostrar_asistencia'  => true,
+                'nombre_institucion'      => '',
+                'nivel_educativo'         => 'Nivel Secundario',
+                'titulo_director'         => 'Lic.',
+                'titulo_encargado'        => 'Lic.',
+                'mostrar_indicadores'     => true,
+                'mostrar_asistencia'      => true,
+                'color_primario'          => '#1e3a6e',
+                'color_secundario'        => '#c0392b',
+                'logo_ancho'              => 68,
+                'logo_alto'               => 58,
+                'tamano_fuente'           => '9pt',
+                'mostrar_foto_estudiante' => false,
             ]
         );
     }

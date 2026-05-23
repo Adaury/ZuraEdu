@@ -1,3 +1,10 @@
+@php
+$colorPrimario = ($boletinConfig && $boletinConfig->color_primario)  ? $boletinConfig->color_primario  : '{{ $colorPrimario }}';
+$colorSecund   = ($boletinConfig && $boletinConfig->color_secundario) ? $boletinConfig->color_secundario : '#c0392b';
+$logoAncho     = ($boletinConfig && $boletinConfig->logo_ancho)   ? (int)$boletinConfig->logo_ancho   : 52;
+$logoAlto      = ($boletinConfig && $boletinConfig->logo_alto)    ? (int)$boletinConfig->logo_alto    : 52;
+$tamanoFuente  = ($boletinConfig && $boletinConfig->tamano_fuente)? $boletinConfig->tamano_fuente     : '9pt';
+@endphp
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -5,27 +12,27 @@
 <title>Boletín Anual — {{ $matricula->estudiante?->nombres }} {{ $matricula->estudiante?->apellidos }}</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:8.5pt; color:#1a1a2e; background:#fff; line-height:1.3; }
+body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:{{ $tamanoFuente }}; color:#1a1a2e; background:#fff; line-height:1.3; }
 @page { size:letter landscape; margin:.9cm 1.2cm; }
 
 /* ── Encabezado ── */
-.hdr { border:2.5px solid #1e3a6e; margin-bottom:6px; }
-.hdr-top { background:#1e3a6e;color:#fff;text-align:center;font-size:6.5pt;font-weight:700;letter-spacing:.15em;text-transform:uppercase;padding:2.5px 0; }
+.hdr { border:2.5px solid {{ $colorPrimario }}; margin-bottom:6px; }
+.hdr-top { background:{{ $colorPrimario }};color:#fff;text-align:center;font-size:6.5pt;font-weight:700;letter-spacing:.15em;text-transform:uppercase;padding:2.5px 0; }
 .hdr-body { width:100%;border-collapse:collapse; }
 .hdr-body td { padding:6px 10px;vertical-align:middle; }
 .hdr-logo { width:70px;text-align:center;border-right:1px solid #e5e7eb; }
-.logo-abbr { width:52px;height:52px;background:#1e3a6e;color:#fff;border-radius:5px;font-size:13pt;font-weight:900;display:inline-block;text-align:center;line-height:52px; }
+.logo-abbr { width:{{ $logoAncho }}px;height:{{ $logoAlto }}px;background:{{ $colorPrimario }};color:#fff;border-radius:5px;font-size:13pt;font-weight:900;display:inline-block;text-align:center;line-height:{{ $logoAlto }}px; }
 .hdr-center { text-align:center; }
-.inst-name { font-size:13pt;font-weight:900;color:#1e3a6e;line-height:1.15; }
+.inst-name { font-size:13pt;font-weight:900;color:{{ $colorPrimario }};line-height:1.15; }
 .inst-sub { font-size:7pt;color:#4b5563;margin-top:1px; }
 .hdr-right { width:160px;border-left:1px solid #e5e7eb;text-align:right; }
 
 /* ── Barra roja ── */
-.title-bar { background:#c0392b;color:#fff;text-align:center;font-size:9pt;font-weight:900;letter-spacing:.16em;text-transform:uppercase;padding:4px 0;margin-bottom:6px; }
+.title-bar { background:{{ $colorSecund }};color:#fff;text-align:center;font-size:9pt;font-weight:900;letter-spacing:.16em;text-transform:uppercase;padding:4px 0;margin-bottom:6px; }
 
 /* ── Ficha estudiante ── */
-.ficha { border:1.5px solid #1e3a6e;margin-bottom:6px; }
-.ficha-hd { background:#eef3fb;border-bottom:1px solid #c7d6f0;padding:2.5px 8px;font-size:6pt;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#1e3a6e; }
+.ficha { border:1.5px solid {{ $colorPrimario }};margin-bottom:6px; }
+.ficha-hd { background:#eef3fb;border-bottom:1px solid #c7d6f0;padding:2.5px 8px;font-size:6pt;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:{{ $colorPrimario }}; }
 .ficha-body { width:100%;border-collapse:collapse; }
 .ficha-body td { padding:3.5px 8px;border-right:1px dashed #e5e7eb;vertical-align:top; }
 .ficha-body td:last-child { border-right:0; }
@@ -34,9 +41,9 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:8.5pt; color:#1a1a2
 
 /* ── Tabla anual ── */
 .anual-table { width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:6px;border:1px solid #c7d6f0; }
-.anual-table thead th { background:#1e3a6e;color:#fff;padding:4px 5px;text-align:center;font-size:7pt;font-weight:800;border:1px solid rgba(255,255,255,.2); }
+.anual-table thead th { background:{{ $colorPrimario }};color:#fff;padding:4px 5px;text-align:center;font-size:7pt;font-weight:800;border:1px solid rgba(255,255,255,.2); }
 .anual-table thead th.th-mat { text-align:left;padding-left:8px;min-width:130px; }
-.anual-table thead th.th-final { background:#c0392b; }
+.anual-table thead th.th-final { background:{{ $colorSecund }}; }
 .anual-table tbody td { padding:3.5px 5px;border:1px solid #e5e7eb;text-align:center;vertical-align:middle; }
 .anual-table tbody td.td-mat { text-align:left;padding-left:8px;font-weight:600; }
 .anual-table tbody tr:nth-child(even) td { background:#f9fbff; }
@@ -51,19 +58,19 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:8.5pt; color:#1a1a2
 .ind-p { background:#fef3c7;color:#92400e; }
 .ind-i { background:#fee2e2;color:#991b1b; }
 .ind-v { background:#f3f4f6;color:#9ca3af; }
-.prom-row td { background:#1e3a6e!important;color:#fff!important;font-weight:800;font-size:8pt;border:1px solid #0f1f3d; }
+.prom-row td { background:{{ $colorPrimario }}!important;color:#fff!important;font-weight:800;font-size:8pt;border:1px solid #0f1f3d; }
 .prom-row td.td-mat { color:#c7d6f0!important; }
-.prom-box { display:inline-block;background:#fff;color:#1e3a6e;border-radius:3px;padding:1px 8px;font-size:10pt;font-weight:900; }
+.prom-box { display:inline-block;background:#fff;color:{{ $colorPrimario }};border-radius:3px;padding:1px 8px;font-size:10pt;font-weight:900; }
 
 /* ── Sección estado ── */
-.estado-outer { width:100%;border-collapse:collapse;margin-bottom:6px;border:2px solid #1e3a6e; }
+.estado-outer { width:100%;border-collapse:collapse;margin-bottom:6px;border:2px solid {{ $colorPrimario }}; }
 .estado-outer td { padding:7px 12px;vertical-align:middle; }
 .estado-left { width:42%;border-right:1px solid #c7d6f0;text-align:center; }
 .estado-val { font-size:16pt;font-weight:900;display:block;line-height:1.1; }
 .estado-lbl { font-size:6pt;font-weight:800;text-transform:uppercase;letter-spacing:.12em;display:block;margin-bottom:2px; }
 
 /* ── Firmas ── */
-.firmas { width:100%;border-collapse:collapse;border:1.5px solid #1e3a6e;margin-top:6px; }
+.firmas { width:100%;border-collapse:collapse;border:1.5px solid {{ $colorPrimario }};margin-top:6px; }
 .firmas td { text-align:center;padding:4px 8px 6px;vertical-align:bottom;font-size:7.5pt;border-right:1px solid #e5e7eb; }
 .firmas td:last-child { border-right:0; }
 .firma-space { height:32px; }
@@ -75,7 +82,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:8.5pt; color:#1a1a2
 .footer-bar { text-align:center;font-size:6pt;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:3px;margin-top:6px; }
 
 /* ── Ranking badge ── */
-.ranking-badge { display:inline-block;background:#1e3a6e;color:#fff;border-radius:4px;padding:2px 8px;font-size:7.5pt;font-weight:800; }
+.ranking-badge { display:inline-block;background:{{ $colorPrimario }};color:#fff;border-radius:4px;padding:2px 8px;font-size:7.5pt;font-weight:800; }
 </style>
 </head>
 <body>
@@ -102,7 +109,7 @@ $verifyCode = strtoupper(substr(md5($matricula->id . ($periodos->last()?->id ?? 
         <tr>
             <td class="hdr-logo">
                 @if($boletinConfig?->logo)
-                    <img src="{{ asset('storage/'.$boletinConfig->logo) }}" style="max-width:52px;max-height:52px;object-fit:contain;">
+                    <img src="{{ asset('storage/'.$boletinConfig->logo) }}" style="max-width:{{ $logoAncho }}px;max-height:{{ $logoAlto }}px;object-fit:contain;">
                 @else
                     <div class="logo-abbr">PSA</div>
                 @endif
@@ -215,7 +222,7 @@ $verifyCode = strtoupper(substr(md5($matricula->id . ($periodos->last()?->id ?? 
 @endphp
 <table style="width:100%;border-collapse:collapse;margin-bottom:6px;border:1px solid #c7d6f0;">
     <tr>
-        <td style="background:#1e3a6e;color:#fff;font-size:7pt;font-weight:800;padding:4px 8px;text-transform:uppercase;letter-spacing:.1em;width:120px;">Asistencia Anual</td>
+        <td style="background:{{ $colorPrimario }};color:#fff;font-size:7pt;font-weight:800;padding:4px 8px;text-transform:uppercase;letter-spacing:.1em;width:120px;">Asistencia Anual</td>
         <td style="padding:4px 8px;border-right:1px solid #e5e7eb;">
             <strong>Días totales:</strong> {{ $asistenciaTotales['total'] }}
         </td>
@@ -277,10 +284,10 @@ $verifyCode = strtoupper(substr(md5($matricula->id . ($periodos->last()?->id ?? 
 @if($boletinObservaciones->isNotEmpty())
 <table style="width:100%;border-collapse:collapse;border:1px solid #c7d6f0;margin-bottom:6px;">
     <tr>
-        <td style="background:#1e3a6e;color:#fff;font-size:7pt;font-weight:800;padding:4px 8px;text-transform:uppercase;letter-spacing:.1em;width:120px;vertical-align:top;">Observaciones</td>
+        <td style="background:{{ $colorPrimario }};color:#fff;font-size:7pt;font-weight:800;padding:4px 8px;text-transform:uppercase;letter-spacing:.1em;width:120px;vertical-align:top;">Observaciones</td>
         <td style="padding:4px 8px;font-size:7.5pt;color:#374151;line-height:1.6;">
             @foreach($boletinObservaciones as $tipo => $items)
-            <strong style="color:#1e3a6e;">{{ match($tipo){'academica'=>'Académica','conducta'=>'Conducta','sugerencia'=>'Sugerencia',default=>'General'} }}:</strong>
+            <strong style="color:{{ $colorPrimario }};">{{ match($tipo){'academica'=>'Académica','conducta'=>'Conducta','sugerencia'=>'Sugerencia',default=>'General'} }}:</strong>
             @foreach($items as $obs){{ $obs->contenido }}@if(!$loop->last), @endif @endforeach&nbsp;
             @endforeach
         </td>
@@ -289,7 +296,7 @@ $verifyCode = strtoupper(substr(md5($matricula->id . ($periodos->last()?->id ?? 
 @endif
 
 {{-- ══ FIRMAS ══ --}}
-<div style="background:#1e3a6e;color:#fff;font-size:6.5pt;font-weight:800;text-transform:uppercase;letter-spacing:.14em;padding:3px 9px;">
+<div style="background:{{ $colorPrimario }};color:#fff;font-size:6.5pt;font-weight:800;text-transform:uppercase;letter-spacing:.14em;padding:3px 9px;">
     ✎ Certificamos la veracidad de la información
 </div>
 <table class="firmas">

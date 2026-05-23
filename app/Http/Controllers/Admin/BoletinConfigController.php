@@ -46,11 +46,19 @@ class BoletinConfigController extends Controller
             'observaciones_generales' => 'nullable|string|max:1000',
             'mostrar_indicadores'     => 'boolean',
             'mostrar_asistencia'      => 'boolean',
-            'logo'                    => 'nullable|image|mimes:png,jpg,jpeg|max:1024',
+            'logo'                    => 'nullable|image|mimes:png,jpg,jpeg|max:2048',
+            // Diseño
+            'color_primario'          => 'nullable|string|max:7',
+            'color_secundario'        => 'nullable|string|max:7',
+            'logo_ancho'              => 'nullable|integer|min:20|max:200',
+            'logo_alto'               => 'nullable|integer|min:20|max:200',
+            'tamano_fuente'           => 'nullable|in:8pt,9pt,10pt,11pt',
+            'mostrar_foto_estudiante' => 'boolean',
         ]);
 
-        $data['mostrar_indicadores'] = $request->boolean('mostrar_indicadores');
-        $data['mostrar_asistencia']  = $request->boolean('mostrar_asistencia');
+        $data['mostrar_indicadores']     = $request->boolean('mostrar_indicadores');
+        $data['mostrar_asistencia']      = $request->boolean('mostrar_asistencia');
+        $data['mostrar_foto_estudiante'] = $request->boolean('mostrar_foto_estudiante');
 
         $config = BoletinConfig::getOrCreate($schoolYear->id);
 

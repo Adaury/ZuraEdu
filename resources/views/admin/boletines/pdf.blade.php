@@ -1,3 +1,11 @@
+@php
+$colorPrimario = ($boletinConfig && $boletinConfig->color_primario)  ? $boletinConfig->color_primario  : '{{ $colorPrimario }}';
+$colorSecund   = ($boletinConfig && $boletinConfig->color_secundario) ? $boletinConfig->color_secundario : '#c0392b';
+$logoAncho     = ($boletinConfig && $boletinConfig->logo_ancho)   ? (int)$boletinConfig->logo_ancho   : 68;
+$logoAlto      = ($boletinConfig && $boletinConfig->logo_alto)    ? (int)$boletinConfig->logo_alto    : 58;
+$tamanoFuente  = ($boletinConfig && $boletinConfig->tamano_fuente)? $boletinConfig->tamano_fuente     : '9pt';
+$mostrarFoto   = $boletinConfig  ? (bool)$boletinConfig->mostrar_foto_estudiante : false;
+@endphp
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -10,7 +18,7 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
     font-family: 'DejaVu Sans', Arial, sans-serif;
-    font-size: 9pt;
+    font-size: {{ $tamanoFuente }};
     color: #1a1a2e;
     background: #fff;
     line-height: 1.35;
@@ -24,13 +32,13 @@ body {
    ENCABEZADO INSTITUCIONAL
 ═══════════════════════════════════════════════════ */
 .hdr-outer {
-    border: 2.5px solid #1e3a6e;
+    border: 2.5px solid {{ $colorPrimario }};
     border-radius: 4px;
     margin-bottom: 0;
     overflow: hidden;
 }
 .hdr-top {
-    background: #1e3a6e;
+    background: {{ $colorPrimario }};
     color: #fff;
     text-align: center;
     font-size: 7pt;
@@ -58,21 +66,21 @@ body {
     padding: 8px;
 }
 .logo-img {
-    height: 58px;
-    max-width: 68px;
+    height: {{ $logoAlto }}px;
+    max-width: {{ $logoAncho }}px;
     object-fit: contain;
 }
 .logo-abbr-box {
-    width: 58px;
-    height: 58px;
+    width: {{ $logoAncho }}px;
+    height: {{ $logoAlto }}px;
     border-radius: 6px;
-    background: #1e3a6e;
+    background: {{ $colorPrimario }};
     color: #fff;
     font-size: 14pt;
     font-weight: 900;
     display: inline-block;
     text-align: center;
-    line-height: 58px;
+    line-height: {{ $logoAlto }}px;
     letter-spacing: .03em;
 }
 .hdr-center-cell {
@@ -98,7 +106,7 @@ body {
 .inst-nombre {
     font-size: 14pt;
     font-weight: 900;
-    color: #1e3a6e;
+    color: {{ $colorPrimario }};
     line-height: 1.15;
     letter-spacing: .01em;
 }
@@ -127,19 +135,19 @@ body {
     vertical-align: middle;
 }
 .codigo-box {
-    border: 1.5px solid #1e3a6e;
+    border: 1.5px solid {{ $colorPrimario }};
     border-radius: 5px;
     padding: 5px 8px;
     margin-bottom: 6px;
 }
 .codigo-lbl { font-size: 6.5pt; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #6b7280; display: block; }
-.codigo-val { font-size: 10pt; font-weight: 900; color: #1e3a6e; display: block; }
+.codigo-val { font-size: 10pt; font-weight: 900; color: {{ $colorPrimario }}; display: block; }
 .anio-lbl   { font-size: 6.5pt; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #6b7280; display: block; margin-bottom: 1px; }
-.anio-val   { font-size: 9pt; font-weight: 900; color: #1e3a6e; display: block; }
+.anio-val   { font-size: 9pt; font-weight: 900; color: {{ $colorPrimario }}; display: block; }
 
 /* ─── Barra roja de título ─── */
 .title-bar {
-    background: #c0392b;
+    background: {{ $colorSecund }};
     color: #fff;
     text-align: center;
     font-size: 10pt;
@@ -148,15 +156,15 @@ body {
     text-transform: uppercase;
     padding: 5px 0 4px;
     margin-bottom: 7px;
-    border-left: 2.5px solid #1e3a6e;
-    border-right: 2.5px solid #1e3a6e;
+    border-left: 2.5px solid {{ $colorPrimario }};
+    border-right: 2.5px solid {{ $colorPrimario }};
 }
 
 /* ═══════════════════════════════════════════════════
    FICHA DEL ESTUDIANTE
 ═══════════════════════════════════════════════════ */
 .ficha-outer {
-    border: 1.5px solid #1e3a6e;
+    border: 1.5px solid {{ $colorPrimario }};
     border-radius: 3px;
     margin-bottom: 7px;
     overflow: hidden;
@@ -169,7 +177,7 @@ body {
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: .12em;
-    color: #1e3a6e;
+    color: {{ $colorPrimario }};
 }
 .ficha-body {
     display: block;
@@ -238,7 +246,7 @@ body {
     letter-spacing: .14em;
     text-transform: uppercase;
     color: #fff;
-    background: #1e3a6e;
+    background: {{ $colorPrimario }};
     padding: 3px 9px;
     margin-bottom: 0;
     margin-top: 6px;
@@ -261,14 +269,14 @@ body {
     font-weight: 800;
     padding: 5px 5px;
     text-align: center;
-    border: 1px solid #1e3a6e;
+    border: 1px solid {{ $colorPrimario }};
 }
 .notas-table thead th.th-mat {
     text-align: left;
     padding-left: 8px;
     min-width: 125px;
 }
-.notas-table thead th.th-prom { background: #c0392b; }
+.notas-table thead th.th-prom { background: {{ $colorSecund }}; }
 .notas-table tbody td {
     padding: 4px 5px;
     border: 1px solid #e5e7eb;
@@ -301,7 +309,7 @@ body {
 
 /* Fila promedio general */
 .prom-row td {
-    background: #1e3a6e !important;
+    background: {{ $colorPrimario }} !important;
     color: #fff !important;
     font-weight: 800;
     font-size: 8.5pt;
@@ -311,7 +319,7 @@ body {
 .prom-box {
     display: inline-block;
     background: #fff;
-    color: #1e3a6e;
+    color: {{ $colorPrimario }};
     border-radius: 3px;
     padding: 1px 8px;
     font-size: 10pt;
@@ -335,7 +343,7 @@ body {
     font-weight: 800;
     padding: 4px 5px;
     text-align: center;
-    border: 1px solid #1e3a6e;
+    border: 1px solid {{ $colorPrimario }};
 }
 .asist-table th.th-concepto { text-align: left; padding-left: 8px; min-width: 100px; }
 .asist-table td {
@@ -351,7 +359,7 @@ body {
     padding-left: 8px;
     color: #374151;
 }
-.asist-total { background: #eef3fb !important; font-weight: 800 !important; color: #1e3a6e !important; }
+.asist-total { background: #eef3fb !important; font-weight: 800 !important; color: {{ $colorPrimario }} !important; }
 .pct-green  { background: #d1fae5 !important; color: #065f46; font-weight: 800; }
 .pct-yellow { background: #fef3c7 !important; color: #92400e; font-weight: 800; }
 .pct-red    { background: #fee2e2 !important; color: #991b1b; font-weight: 800; }
@@ -373,7 +381,7 @@ body {
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: .09em;
-    color: #1e3a6e;
+    color: {{ $colorPrimario }};
     margin-bottom: 2px;
     margin-top: 4px;
 }
@@ -385,7 +393,7 @@ body {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 6px;
-    border: 2px solid #1e3a6e;
+    border: 2px solid {{ $colorPrimario }};
     border-radius: 4px;
 }
 .estado-table td { padding: 7px 11px; vertical-align: middle; }
@@ -421,7 +429,7 @@ body {
    SECCIÓN DE FIRMAS
 ═══════════════════════════════════════════════════ */
 .firma-section-hdr {
-    background: #1e3a6e;
+    background: {{ $colorPrimario }};
     color: #fff;
     font-size: 6.5pt;
     font-weight: 800;
@@ -432,7 +440,7 @@ body {
     margin-bottom: 0;
 }
 .firma-outer {
-    border: 1.5px solid #1e3a6e;
+    border: 1.5px solid {{ $colorPrimario }};
     border-top: 0;
 }
 .firma-table {
@@ -634,6 +642,7 @@ body {
                 <span class="f-label">Cédula / Pasaporte</span>
                 <span class="f-value" style="font-family:monospace;">{{ optional($matricula->estudiante)->cedula ?? '—' }}</span>
             </td>
+            @if($mostrarFoto)
             <td class="foto-cell" rowspan="3">
                 @if(optional($matricula->estudiante)->foto)
                     <img class="foto-img"
@@ -643,6 +652,7 @@ body {
                     <div class="foto-placeholder">Foto<br>Estudiante</div>
                 @endif
             </td>
+            @endif
         </tr>
         <tr>
             <td>

@@ -498,6 +498,105 @@
             </div>
         </div>
 
+        {{-- ─── Diseño del Boletín ─────────────────────────── --}}
+        <div class="cfg-card">
+            <div class="cfg-card-header">
+                <div class="cfg-icon" style="background:#7c3aed;"><i class="bi bi-palette"></i></div>
+                <div>
+                    <h6>Diseño del Boletín</h6>
+                    <small>Colores, tamaño de logo y tipografía del PDF</small>
+                </div>
+            </div>
+            <div class="cfg-body">
+
+                {{-- Colores --}}
+                <div class="mb-3">
+                    <label class="form-label">Colores institucionales</label>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="color" name="color_primario" form="frmConfig"
+                                       id="colorPrimario"
+                                       value="{{ old('color_primario', $boletinConfig->color_primario ?? '#1e3a6e') }}"
+                                       style="width:40px;height:36px;border-radius:6px;border:1.5px solid #e5e7eb;cursor:pointer;padding:2px;flex-shrink:0;">
+                                <div>
+                                    <div style="font-size:.78rem;font-weight:700;color:#374151;">Principal</div>
+                                    <div style="font-size:.7rem;color:#9ca3af;" id="txtColorPrimario">{{ $boletinConfig->color_primario ?? '#1e3a6e' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="color" name="color_secundario" form="frmConfig"
+                                       id="colorSecundario"
+                                       value="{{ old('color_secundario', $boletinConfig->color_secundario ?? '#c0392b') }}"
+                                       style="width:40px;height:36px;border-radius:6px;border:1.5px solid #e5e7eb;cursor:pointer;padding:2px;flex-shrink:0;">
+                                <div>
+                                    <div style="font-size:.78rem;font-weight:700;color:#374151;">Acento</div>
+                                    <div style="font-size:.7rem;color:#9ca3af;" id="txtColorSecundario">{{ $boletinConfig->color_secundario ?? '#c0392b' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-hint mt-1">Principal: encabezado y bordes &nbsp;·&nbsp; Acento: barra de título</div>
+                </div>
+
+                {{-- Dimensiones del logo --}}
+                <div class="mb-3">
+                    <label class="form-label">Dimensiones del logo en PDF</label>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text" style="font-size:.78rem;">Ancho</span>
+                                <input type="number" name="logo_ancho" form="frmConfig"
+                                       class="form-control form-control-sm"
+                                       value="{{ old('logo_ancho', $boletinConfig->logo_ancho ?? 68) }}"
+                                       min="20" max="200" placeholder="68">
+                                <span class="input-group-text" style="font-size:.78rem;">px</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text" style="font-size:.78rem;">Alto</span>
+                                <input type="number" name="logo_alto" form="frmConfig"
+                                       class="form-control form-control-sm"
+                                       value="{{ old('logo_alto', $boletinConfig->logo_alto ?? 58) }}"
+                                       min="20" max="200" placeholder="58">
+                                <span class="input-group-text" style="font-size:.78rem;">px</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-hint mt-1">Tamaño del logo en el PDF impreso</div>
+                </div>
+
+                {{-- Tamaño de fuente --}}
+                <div class="mb-3">
+                    <label class="form-label">Tamaño de fuente del PDF</label>
+                    @php $fActual = old('tamano_fuente', $boletinConfig->tamano_fuente ?? '9pt'); @endphp
+                    <select name="tamano_fuente" form="frmConfig" class="form-select form-select-sm">
+                        <option value="8pt"  {{ $fActual === '8pt'  ? 'selected' : '' }}>Pequeño (8pt)</option>
+                        <option value="9pt"  {{ $fActual === '9pt'  ? 'selected' : '' }}>Normal (9pt)</option>
+                        <option value="10pt" {{ $fActual === '10pt' ? 'selected' : '' }}>Mediano (10pt)</option>
+                        <option value="11pt" {{ $fActual === '11pt' ? 'selected' : '' }}>Grande (11pt)</option>
+                    </select>
+                </div>
+
+                {{-- Foto del estudiante --}}
+                <div class="toggle-row mb-0">
+                    <div class="toggle-info">
+                        <h6><i class="bi bi-person-bounding-box text-muted me-2"></i>Foto del Estudiante</h6>
+                        <small>Incluir columna de foto en la ficha del boletín</small>
+                    </div>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" role="switch" form="frmConfig"
+                               name="mostrar_foto_estudiante" value="1"
+                               {{ old('mostrar_foto_estudiante', $boletinConfig->mostrar_foto_estudiante ?? false) ? 'checked' : '' }}>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
         {{-- ─── Vista previa del encabezado ─────────────── --}}
         <div class="cfg-card">
             <div class="cfg-card-header">
@@ -509,7 +608,7 @@
             </div>
             <div class="cfg-body p-3">
                 <div class="preview-box">
-                    <div class="pv-hdr">República Dominicana · Ministerio de Educación (MINERD)</div>
+                    <div class="pv-hdr" id="pvHdrBar">República Dominicana · Ministerio de Educación (MINERD)</div>
                     <div class="pv-body">
                         <div class="pv-inst" id="pv-inst">
                             {{ $boletinConfig->nombre_institucion ?? 'Nombre del Centro' }}
@@ -524,7 +623,7 @@
                             {{ implode(' · ', array_filter([$boletinConfig->municipio ?? '', $boletinConfig->telefono ? 'Tel. '.($boletinConfig->telefono ?? '') : ''])) }}
                         </div>
                     </div>
-                    <div class="pv-title">&#9670; Boletín de Calificaciones &#9670;</div>
+                    <div class="pv-title" id="pvTitleBar">&#9670; Boletín de Calificaciones &#9670;</div>
                 </div>
 
                 <div class="mt-3 mb-0">
@@ -630,6 +729,41 @@
             reader.readAsDataURL(file);
         });
     }
+
+    // Color picker — actualiza vista previa en tiempo real
+    var cpPrimario = document.getElementById('colorPrimario');
+    if (cpPrimario) {
+        cpPrimario.addEventListener('input', function () {
+            var v = this.value;
+            var hdr  = document.getElementById('pvHdrBar');
+            var inst = document.getElementById('pv-inst');
+            var txt  = document.getElementById('txtColorPrimario');
+            if (hdr)  hdr.style.background = v;
+            if (inst) inst.style.color = v;
+            if (txt)  txt.textContent = v;
+        });
+    }
+    var cpSecundario = document.getElementById('colorSecundario');
+    if (cpSecundario) {
+        cpSecundario.addEventListener('input', function () {
+            var v   = this.value;
+            var bar = document.getElementById('pvTitleBar');
+            var txt = document.getElementById('txtColorSecundario');
+            if (bar) bar.style.background = v;
+            if (txt) txt.textContent = v;
+        });
+    }
+    // Inicializar preview con valores actuales al cargar
+    (function () {
+        var cpP  = document.getElementById('colorPrimario');
+        var cpS  = document.getElementById('colorSecundario');
+        var hdr  = document.getElementById('pvHdrBar');
+        var bar  = document.getElementById('pvTitleBar');
+        var inst = document.getElementById('pv-inst');
+        if (cpP && hdr)  hdr.style.background = cpP.value;
+        if (cpP && inst) inst.style.color      = cpP.value;
+        if (cpS && bar)  bar.style.background  = cpS.value;
+    })();
 })();
 </script>
 @endpush

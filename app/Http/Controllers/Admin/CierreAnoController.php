@@ -506,6 +506,181 @@ class CierreAnoController extends Controller
         return redirect()->route('admin.cierre-ano.index')->with('tab', 'boletines');
     }
 
+    // ── Gestión manual de promociones por grupo ───────────────────────────
+    public function promociones(Grupo $grupo)
+    {
+        $this->verificarAcceso();
+
+        $schoolYear = SchoolYear::find($grupo->school_year_id) ?? SchoolYear::actual();
+        $grupo->load(['grado', 'seccion', 'tutor', 'schoolYear']);
+
+        $asignaciones = Asignacion::with('asignatura')
+            ->where('grupo_id', $grupo->id)
+            ->where('school_year_id', $schoolYear?->id ?? $grupo->school_year_id)
+            ->where('activo', true)
+            ->get()
+            ->sortBy(fn ($a) => $a->asignatura?->nombre ?? '');
+
+        $matriculas = Matricula::where('grupo_id', $grupo->id)
+            ->where('school_year_id', $schoolYear?->id ?? $grupo->school_year_id)
+            ->whereIn('estado', ['activa', 'promovida', 'no_promovida'])
+            ->with(['estudiante', 'promocion'])
+            ->orderBy('numero_orden')
+            ->get();
+
+        $matIds        = $matriculas->pluck('id');
+        $asignacionIds = $asignaciones->pluck('id');
+        $periodos      = $this->getPeriodos($schoolYear);
+
+        $calAcMap = CalificacionAcademica::whereIn('asignacion_id', $asignacionIds)
+            ->whereIn('matricula_id', $matIds)
+            ->where('school_year_id', $schoolYear?->id ?? $grupo->school_year_id)
+            ->get()->groupBy('matricula_id');
+
+        $calLegMap = Calificacion::whereIn('asignacion_id', $asignacionIds)
+            ->whereIn('matricula_id', $matIds)
+            ->whereIn('periodo_id', $periodos->pluck('id'))
+            ->get()
+            ->groupBy(fn ($c) => $c->matricula_id . '_' . $c->asignacion_id);
+
+        $filas = [];
+        foreach ($matriculas as $matricula) {
+            $notasPorAsignacion = [];
+            foreach ($asignaciones as $asi) {
+                $nota   = null;
+                $calAc  = ($calAcMap->get($matricula->id) ?? collect())->firstWhere('asignacion_id', $asi->id);
+                if ($calAc && $calAc->nota_final !== null) {
+                    $nota = (float) $calAc->nota_final;
+                } else {
+                    $notasP = [];
+                    foreach ($periodos as $p) {
+                        $key = $matricula->id . '_' . $asi->id;
+                        $cal = ($calLegMap->get($key) ?? collect())->firstWhere('periodo_id', $p->id);
+                        if ($cal && $cal->nota_final !== null) $notasP[] = (float) $cal->nota_final;
+                    }
+                    if (count($notasP) > 0) $nota = round(array_sum($notasP) / count($notasP), 2);
+                }
+                $notasPorAsignacion[$asi->id] = $nota;
+            }
+
+            $notasValidas  = array_filter($notasPorAsignacion, fn ($n) => $n !== null);
+            $promedioFinal = count($notasValidas) > 0 ? round(array_sum($notasValidas) / count($notasValidas), 2) : null;
+            $autoEstado    = $this->determinarEstadoPromocion($promedioFinal);
+
+            $filas[] = [
+                'matricula'          => $matricula,
+                'notas_asignaciones' => $notasPorAsignacion,
+                'promedio_final'     => $promedioFinal,
+                'estado_auto'        => $autoEstado,
+                'estado_actual'      => $matricula->promocion?->estado ?? 'pendiente',
+                'observacion'        => $matricula->promocion?->observacion ?? '',
+            ];
+        }
+
+        return view('admin.cierre_ano.promociones', compact(
+            'grupo', 'schoolYear', 'asignaciones', 'periodos', 'filas'
+        ));
+    }
+
+    // ── Actualizar promoción individual ───────────────────────────────────
+    public function actualizarPromocion(Request $request, Matricula $matricula)
+    {
+        $this->verificarAcceso();
+
+        $request->validate([
+            'estado'      => 'required|in:promovido,no_promovido,condicionado,pendiente',
+            'observacion' => 'nullable|string|max:500',
+        ]);
+
+        $schoolYear = SchoolYear::find($matricula->school_year_id) ?? SchoolYear::actual();
+
+        Promocion::updateOrCreate(
+            ['matricula_id' => $matricula->id, 'school_year_id' => $schoolYear->id],
+            [
+                'estado'         => $request->estado,
+                'observacion'    => $request->observacion,
+                'decidido_por'   => auth()->id(),
+                'fecha_decision' => now()->toDateString(),
+            ]
+        );
+
+        $nuevoEstadoMatricula = match($request->estado) {
+            'promovido'    => 'promovida',
+            'no_promovido' => 'no_promovida',
+            default        => $matricula->estado,
+        };
+        $matricula->update(['estado' => $nuevoEstadoMatricula]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true, 'estado' => $request->estado]);
+        }
+
+        return back()->with('success', 'Promoción actualizada correctamente.');
+    }
+
+    // ── Reporte consolidado PDF de cierre ─────────────────────────────────
+    public function reportePdf(Request $request)
+    {
+        $this->verificarAcceso();
+
+        $schoolYear = SchoolYear::find($request->query('school_year_id')) ?? SchoolYear::actual();
+
+        if (! $schoolYear) {
+            return back()->with('error', 'No hay año escolar seleccionado.');
+        }
+
+        $grupos = Grupo::with(['grado', 'seccion', 'tutor'])
+            ->where('school_year_id', $schoolYear->id)
+            ->activos()
+            ->orderBy('grado_id')->orderBy('seccion_id')
+            ->get();
+
+        $matriculasPorGrupo = Matricula::whereIn('grupo_id', $grupos->pluck('id'))
+            ->where('school_year_id', $schoolYear->id)
+            ->whereIn('estado', ['activa', 'promovida', 'no_promovida'])
+            ->with(['promocion'])
+            ->get()->groupBy('grupo_id');
+
+        $resumen = [];
+        $totalesGlobales = ['total' => 0, 'promovidos' => 0, 'no_promovidos' => 0, 'condicionados' => 0, 'pendientes' => 0];
+
+        foreach ($grupos as $grupo) {
+            $mats = $matriculasPorGrupo->get($grupo->id, collect());
+            $ap   = $mats->filter(fn ($m) => $m->promocion?->estado === 'promovido')->count();
+            $rp   = $mats->filter(fn ($m) => $m->promocion?->estado === 'no_promovido')->count();
+            $cd   = $mats->filter(fn ($m) => $m->promocion?->estado === 'condicionado')->count();
+            $pd   = $mats->filter(fn ($m) => ! $m->promocion || $m->promocion->estado === 'pendiente')->count();
+            $prom = $mats->filter(fn ($m) => $m->promocion?->promedio_final !== null)->avg(fn ($m) => $m->promocion->promedio_final);
+
+            $resumen[] = [
+                'grupo'          => $grupo,
+                'total'          => $mats->count(),
+                'promovidos'     => $ap,
+                'no_promovidos'  => $rp,
+                'condicionados'  => $cd,
+                'pendientes'     => $pd,
+                'promedio_inst'  => $prom ? round($prom, 1) : null,
+                'pct_aprobacion' => $mats->count() > 0 ? round(($ap / $mats->count()) * 100, 1) : 0,
+            ];
+
+            $totalesGlobales['total']        += $mats->count();
+            $totalesGlobales['promovidos']   += $ap;
+            $totalesGlobales['no_promovidos'] += $rp;
+            $totalesGlobales['condicionados'] += $cd;
+            $totalesGlobales['pendientes']   += $pd;
+        }
+
+        $tid        = tenant_id() ?? 0;
+        $logoPath   = Cache::remember("t{$tid}_system_logo", 600, fn () => DB::table('system_settings')->where('key', 'system_logo')->value('value'));
+        $instNombre = Cache::remember("t{$tid}_system_name", 600, fn () => DB::table('system_settings')->where('key', 'system_name')->value('value') ?? 'Institución');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.cierre_ano.reporte_pdf', compact(
+            'schoolYear', 'resumen', 'totalesGlobales', 'logoPath', 'instNombre'
+        ))->setPaper('letter', 'portrait');
+
+        return $pdf->download('reporte_cierre_' . Str::slug($schoolYear->nombre) . '.pdf');
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────
 
     private function calcularPromedioFinal(int $matriculaId, $calAcBulk, $calBulk): ?float

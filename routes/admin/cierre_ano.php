@@ -23,6 +23,13 @@ Route::prefix('cierre-ano')->name('cierre-ano.')->group(function () {
     // Acta de Promoción PDF por grupo
     Route::get('/{grupo}/acta-pdf', [CierreAnoController::class, 'actaPdf'])->name('acta-pdf');
 
+    // Gestión manual de promociones por grupo
+    Route::get('/{grupo}/promociones', [CierreAnoController::class, 'promociones'])->name('promociones');
+    Route::post('/promocion/{matricula}', [CierreAnoController::class, 'actualizarPromocion'])->name('actualizar-promocion');
+
+    // Reporte consolidado PDF del cierre
+    Route::get('/reporte-pdf', [CierreAnoController::class, 'reportePdf'])->name('reporte-pdf');
+
     // Generación masiva de boletines en ZIP
     Route::match(['get', 'post'], '/boletines-masivos', [CierreAnoController::class, 'boletinesMasivos'])->name('boletines-masivos');
 });

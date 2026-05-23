@@ -250,10 +250,18 @@
                 {{ $schoolYear->fecha_fin?->format('d/m/Y') }}
             </small>
         </div>
-        <span class="badge bg-success fs-6 px-3 py-2">
-            <i class="bi bi-circle-fill me-1" style="font-size:.45rem;vertical-align:middle;"></i>
-            Año Activo
-        </span>
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('admin.cierre-ano.reporte-pdf', ['school_year_id' => $schoolYear->id]) }}"
+               target="_blank"
+               class="btn btn-sm btn-outline-danger py-1 px-3"
+               title="Descargar reporte consolidado PDF">
+                <i class="bi bi-file-earmark-pdf-fill me-1"></i>Reporte PDF
+            </a>
+            <span class="badge bg-success fs-6 px-3 py-2">
+                <i class="bi bi-circle-fill me-1" style="font-size:.45rem;vertical-align:middle;"></i>
+                Año Activo
+            </span>
+        </div>
     </div>
 
     {{-- Panel Preflight ─────────────────────────────────────────────────── --}}
@@ -408,7 +416,12 @@
                             </div>
                             @endif
                         </td>
-                        <td class="text-end">
+                        <td class="text-end" style="white-space:nowrap;">
+                            <a href="{{ route('admin.cierre-ano.promociones', $data['grupo']) }}"
+                               class="btn btn-sm btn-outline-primary py-1 px-2 me-1"
+                               title="Gestionar promociones del grupo">
+                                <i class="bi bi-pencil-square me-1"></i>Gestionar
+                            </a>
                             <a href="{{ route('admin.cierre-ano.acta-pdf', $data['grupo']) }}"
                                target="_blank"
                                class="btn btn-sm btn-outline-danger py-1 px-2"

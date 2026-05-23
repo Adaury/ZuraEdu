@@ -145,8 +145,10 @@ class PlanificacionController extends Controller
             ? Asignacion::with(['asignatura', 'grupo', 'docente'])->find($request->asignacion_id)
             : null;
 
+        $planificacion = null;
+
         return view('admin.planificacion.crear_ra', compact(
-            'asignaciones', 'asignacionSeleccionada', 'schoolYear'
+            'planificacion', 'asignaciones', 'asignacionSeleccionada', 'schoolYear'
         ));
     }
 
@@ -252,8 +254,10 @@ class PlanificacionController extends Controller
             ? Asignacion::with(['asignatura', 'grupo', 'docente'])->find($request->asignacion_id)
             : null;
 
+        $planificacion = null;
+
         return view('admin.planificacion.crear_actividad', compact(
-            'asignaciones', 'asignacionSeleccionada', 'schoolYear'
+            'planificacion', 'asignaciones', 'asignacionSeleccionada', 'schoolYear'
         ));
     }
 

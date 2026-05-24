@@ -11,19 +11,13 @@ class ComunicadosApiController extends Controller
     /** GET /api/v1/comunicados */
     public function index(Request $request)
     {
-        $items = Comunicado::where('publicado', true)
-            ->orderByDesc('created_at')
+        $user  = $request->user();
+        $items = Comunicado::publicados()
+            ->when($user, fn($q) => $q->paraUsuario($user))
+            ->orderByDesc('published_at')
             ->limit(30)
             ->get()
-            ->map(fn($c) => [
-                'id'          => $c->id,
-                'titulo'      => $c->titulo,
-                'contenido'   => $c->contenido,
-                'tipo'        => $c->tipo ?? 'general',
-                'importante'  => (bool) ($c->importante ?? false),
-                'fecha'       => $c->created_at?->toIso8601String(),
-                'adjunto_url' => $c->archivo ? asset('storage/'.$c->archivo) : null,
-            ]);
+            ->map(fn($c) => $this->format($c));
 
         return response()->json(['total' => $items->count(), 'items' => $items]);
     }
@@ -31,18 +25,23 @@ class ComunicadosApiController extends Controller
     /** GET /api/v1/comunicados/{comunicado} */
     public function show(Comunicado $comunicado)
     {
-        if (! $comunicado->publicado) {
+        if (! $comunicado->es_publicado) {
             return response()->json(['message' => 'No encontrado.'], 404);
         }
 
-        return response()->json([
-            'id'          => $comunicado->id,
-            'titulo'      => $comunicado->titulo,
-            'contenido'   => $comunicado->contenido,
-            'tipo'        => $comunicado->tipo ?? 'general',
-            'importante'  => (bool) ($comunicado->importante ?? false),
-            'fecha'       => $comunicado->created_at?->toIso8601String(),
-            'adjunto_url' => $comunicado->archivo ? asset('storage/'.$comunicado->archivo) : null,
-        ]);
+        return response()->json($this->format($comunicado));
+    }
+
+    private function format(Comunicado $c): array
+    {
+        return [
+            'id'          => $c->id,
+            'titulo'      => $c->titulo,
+            'contenido'   => $c->cuerpo,
+            'tipo'        => $c->tipo_destinatarios !== 'todos' ? $c->tipo_destinatarios : 'general',
+            'importante'  => false,
+            'fecha'       => $c->published_at?->toIso8601String() ?? $c->created_at?->toIso8601String(),
+            'adjunto_url' => null,
+        ];
     }
 }

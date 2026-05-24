@@ -28,7 +28,7 @@ class ClassroomApiController extends Controller
             $docente = Docente::where('user_id', $user->id)->first();
             if (! $docente) return response()->json(['clases' => []]);
 
-            $clases = ClaseVirtual::with('asignacion.asignatura')
+            $clases = ClaseVirtual::with(['asignacion.asignatura', 'asignacion.docente'])
                 ->whereHas('asignacion', fn($q) => $q
                     ->where('docente_id', $docente->id)
                     ->when($sy, fn($q) => $q->where('school_year_id', $sy->id))
@@ -48,7 +48,7 @@ class ClassroomApiController extends Controller
 
             if (! $mat) return response()->json(['clases' => []]);
 
-            $clases = ClaseVirtual::with('asignacion.asignatura')
+            $clases = ClaseVirtual::with(['asignacion.asignatura', 'asignacion.docente'])
                 ->whereHas('asignacion', fn($q) => $q->where('grupo_id', $mat->grupo_id))
                 ->where('activo', true)->get()
                 ->map(fn($c) => $this->mapClase($c));
@@ -68,7 +68,7 @@ class ClassroomApiController extends Controller
 
                 if (! $mat) return ['estudiante' => "{$est->nombres} {$est->apellidos}", 'clases' => []];
 
-                $clases = ClaseVirtual::with('asignacion.asignatura')
+                $clases = ClaseVirtual::with(['asignacion.asignatura', 'asignacion.docente'])
                     ->whereHas('asignacion', fn($q) => $q->where('grupo_id', $mat->grupo_id))
                     ->where('activo', true)->get()
                     ->map(fn($c) => $this->mapClase($c));

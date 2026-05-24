@@ -23,7 +23,7 @@ class CarnetApiController extends Controller
             ->first();
 
         if (! $carnet) {
-            return response()->json(['message' => 'No tienes carnet generado aún.'], 404);
+            return response()->json(['carnet' => null, 'risk' => null]);
         }
 
         return response()->json([
@@ -44,7 +44,7 @@ class CarnetApiController extends Controller
             ->first();
 
         if (! $carnet) {
-            return response()->json(['message' => 'El estudiante no tiene carnet generado.'], 404);
+            return response()->json(['carnet' => null, 'risk' => null]);
         }
 
         return response()->json([

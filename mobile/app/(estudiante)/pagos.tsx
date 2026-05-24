@@ -18,7 +18,7 @@ export default function PagosEstudiante() {
     queryFn:  () => pagosApi.index().then(r => r.data),
   })
 
-  const pagos: any[] = data?.data ?? data ?? []
+  const pagos: any[] = Array.isArray(data?.pagos) ? data.pagos : Array.isArray(data) ? data : []
   const resumen      = data?.resumen ?? {}
 
   const fmtMoney = (v: any) => {
@@ -62,7 +62,7 @@ export default function PagosEstudiante() {
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={[styles.monto, { color: cfg.color }]}>{fmtMoney(p.monto)}</Text>
                 <Text style={[styles.estado, { color: cfg.color }]}>
-                  {p.estado.charAt(0).toUpperCase() + p.estado.slice(1)}
+                  {p.estado ? p.estado.charAt(0).toUpperCase() + p.estado.slice(1) : ''}
                 </Text>
               </View>
             </View>

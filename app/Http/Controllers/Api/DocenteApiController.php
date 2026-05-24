@@ -18,8 +18,10 @@ use App\Models\Notificacion;
 use App\Models\Observacion;
 use App\Models\Periodo;
 use App\Models\PlanEvaluacionPeriodo;
+use App\Models\Representante;
 use App\Models\SchoolYear;
 use App\Models\Tarea;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -110,8 +112,10 @@ class DocenteApiController extends Controller
             return response()->json(['message' => 'Asignación no encontrada o no autorizada.'], 403);
         }
 
-        $guardados = 0;
-        DB::transaction(function () use ($data, $asignacion, &$guardados) {
+        $guardados   = 0;
+        $notificar   = []; // [matricula_id => estado]
+
+        DB::transaction(function () use ($data, $asignacion, &$guardados, &$notificar) {
             foreach ($data['registros'] as $reg) {
                 Asistencia::updateOrCreate(
                     [
@@ -121,9 +125,49 @@ class DocenteApiController extends Controller
                     ],
                     ['estado' => $reg['estado']]
                 );
+                $notificar[$reg['matricula_id']] = $reg['estado'];
                 $guardados++;
             }
         });
+
+        // Enviar push a representantes de cada estudiante
+        $asignatura = $asignacion->asignatura?->nombre ?? 'clase';
+        $fecha      = $data['fecha'];
+
+        $matriculaIds = array_keys($notificar);
+        $matriculas   = Matricula::with('estudiante.representantes.user')
+            ->whereIn('id', $matriculaIds)
+            ->get()
+            ->keyBy('id');
+
+        foreach ($notificar as $matriculaId => $estado) {
+            $matricula  = $matriculas->get($matriculaId);
+            $estudiante = $matricula?->estudiante;
+            if (! $estudiante) continue;
+
+            $nombre = trim("{$estudiante->nombres} {$estudiante->apellidos}");
+
+            [$titulo, $cuerpo] = match ($estado) {
+                'presente'  => ["✅ Asistencia registrada", "{$nombre} asistió a {$asignatura} el {$fecha}."],
+                'ausente'   => ["⚠️ Ausencia registrada",  "{$nombre} no asistió a {$asignatura} el {$fecha}."],
+                'tardanza'  => ["🕐 Tardanza registrada",  "{$nombre} llegó tarde a {$asignatura} el {$fecha}."],
+                default     => ["📋 Asistencia",           "{$nombre} — {$estado} en {$asignatura} el {$fecha}."],
+            };
+
+            $userIds = $estudiante->representantes
+                ->map(fn($r) => $r->user_id)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if (! empty($userIds)) {
+                PushNotificationService::sendToUsers($userIds, $titulo, $cuerpo, [
+                    'tipo'  => 'ausencia',
+                    'route' => '/(padre)/asistencia',
+                ]);
+            }
+        }
 
         return response()->json([
             'ok'       => true,

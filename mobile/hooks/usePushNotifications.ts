@@ -28,58 +28,55 @@ export function usePushNotifications(primaryRole: string | null) {
     let active = true
 
     async function setup() {
-      // Canal Android (necesario antes de pedir permisos)
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-          name:              'ZuraEdu',
-          importance:        Notifications.AndroidImportance.MAX,
-          vibrationPattern:  [0, 200, 150, 200],
-          lightColor:        '#1e3a6e',
-        })
-      }
-
-      // Solicitar permisos
-      const { status: existing } = await Notifications.getPermissionsAsync()
-      const { status: final } = existing !== 'granted'
-        ? await Notifications.requestPermissionsAsync()
-        : { status: existing }
-
-      if (final !== 'granted' || !active) return
-
-      // Obtener token Expo Push
       try {
+        if (Platform.OS === 'android') {
+          await Notifications.setNotificationChannelAsync('default', {
+            name:             'ZuraEdu',
+            importance:       Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 200, 150, 200],
+            lightColor:       '#1e3a6e',
+          })
+        }
+
+        const { status: existing } = await Notifications.getPermissionsAsync()
+        const { status: final } = existing !== 'granted'
+          ? await Notifications.requestPermissionsAsync()
+          : { status: existing }
+
+        if (final !== 'granted' || !active) return
+
         const result = await Notifications.getExpoPushTokenAsync()
         const token  = result.data
         if (!active) return
 
         registeredToken.current = token
         setPushToken(token)
-        const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'unknown'
+        const platform = Platform.OS === 'ios' ? 'ios' : 'android'
         await authApi.registerPushToken(token, platform)
       } catch {
-        // Expo Go sin EAS projectId, o simulator — no es un error crítico
+        // Expo Go / emulador sin soporte de notificaciones remotas — no es crítico
       }
     }
 
     setup()
 
-    // Listener: notificación recibida con la app abierta
-    receivedRef.current = Notifications.addNotificationReceivedListener(() => {
-      // La badge se actualiza automáticamente con shouldSetBadge: true
-    })
+    try {
+      receivedRef.current = Notifications.addNotificationReceivedListener(() => {})
+    } catch {}
 
-    // Listener: usuario toca la notificación → navegar a la pantalla correcta
-    responseRef.current = Notifications.addNotificationResponseReceivedListener(response => {
-      const data  = response.notification.request.content.data as Record<string, any>
-      const tipo  = data?.tipo as string | undefined
-      const route = data?.route ?? routeFromNotification(tipo, primaryRole)
-      try { router.push(route as any) } catch {}
-    })
+    try {
+      responseRef.current = Notifications.addNotificationResponseReceivedListener(response => {
+        const data  = response.notification.request.content.data as Record<string, any>
+        const tipo  = data?.tipo as string | undefined
+        const route = data?.route ?? routeFromNotification(tipo, primaryRole)
+        try { router.push(route as any) } catch {}
+      })
+    } catch {}
 
     return () => {
       active = false
-      receivedRef.current?.remove()
-      responseRef.current?.remove()
+      try { receivedRef.current?.remove() } catch {}
+      try { responseRef.current?.remove() } catch {}
     }
   }, [primaryRole])
 

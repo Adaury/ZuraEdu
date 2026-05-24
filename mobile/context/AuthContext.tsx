@@ -18,7 +18,7 @@ interface AuthContextType {
   token: string | null
   isLoading: boolean
   primaryRole: Role | null
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<AuthUser>
   logout: () => Promise<void>
   /** Registra el push token desde el hook de notificaciones para limpiarlo en logout. */
   setPushToken: (token: string | null) => void
@@ -52,33 +52,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           SecureStore.getItemAsync('auth_user'),
         ])
         if (storedToken && storedUser) {
+          const parsed = JSON.parse(storedUser)
+          if (parsed.role && !parsed.roles) parsed.roles = [parsed.role]
           setToken(storedToken)
-          setUser(JSON.parse(storedUser))
+          setUser(parsed)
         }
       } catch {}
       finally { setLoading(false) }
     })()
   }, [])
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<AuthUser> => {
     const { data } = await authApi.login(email, password)
     const { token: t, user: u } = data
-    await SecureStore.setItemAsync('auth_token', t)
-    await SecureStore.setItemAsync('auth_user', JSON.stringify(u))
+    if (!t || !u) throw new Error('Respuesta inválida del servidor.')
+    if (u.role && !u.roles) u.roles = [u.role]
+    try {
+      await SecureStore.setItemAsync('auth_token', t)
+      await SecureStore.setItemAsync('auth_user', JSON.stringify(u))
+    } catch {}
     setToken(t)
     setUser(u)
+    return u
   }
 
   const logout = async () => {
-    // Limpiar push token del servidor antes de cerrar sesión
     if (pushTokenRef.current) {
       try { await authApi.removePushToken(pushTokenRef.current) } catch {}
       pushTokenRef.current = null
     }
     try { await Notifications.setBadgeCountAsync(0) } catch {}
     try { await authApi.logout() } catch {}
-    await SecureStore.deleteItemAsync('auth_token')
-    await SecureStore.deleteItemAsync('auth_user')
+    try { await SecureStore.deleteItemAsync('auth_token') } catch {}
+    try { await SecureStore.deleteItemAsync('auth_user') } catch {}
     setToken(null)
     setUser(null)
   }

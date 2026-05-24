@@ -30,7 +30,10 @@ export default function CafeteriaPadre() {
   const totalGastado   = data?.total_gastado ?? 0
   const historial: any[]= data?.historial ?? []
 
-  const fmt = (v: number) => `RD$ ${Number(v).toLocaleString('es-DO', { minimumFractionDigits: 2 })}`
+  const fmt = (v: number) => {
+    const n = isNaN(Number(v)) ? 0 : Number(v)
+    return `RD$ ${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>

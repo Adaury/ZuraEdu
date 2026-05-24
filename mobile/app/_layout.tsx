@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Stack, useRouter, useSegments } from 'expo-router'
+import { Stack, useRouter, useSegments, usePathname } from 'expo-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { StatusBar } from 'expo-status-bar'
@@ -14,24 +14,27 @@ function NavigationGuard() {
   const { user, isLoading, primaryRole } = useAuth()
   const router   = useRouter()
   const segments = useSegments()
+  const pathname = usePathname()
 
-  // Push notifications — se activan cuando hay sesión y se limpian al salir
   usePushNotifications(user ? primaryRole : null)
 
   useEffect(() => {
     if (isLoading) return
 
-    const inAuth = segments[0] === 'login'
+    const inAuth = segments[0] === 'login' || pathname === '/login' || pathname === '/login/'
 
-    if (!user && !inAuth) {
-      router.replace('/login')
-    } else if (user && inAuth) {
-      if (primaryRole === 'Docente')                                          router.replace('/(docente)/')
-      else if (primaryRole === 'Representante')                               router.replace('/(padre)/')
-      else if (primaryRole === 'Administrador' || primaryRole === 'Director') router.replace('/(admin)/')
-      else                                                                    router.replace('/(estudiante)/')
-    }
-  }, [user, isLoading, primaryRole])
+    try {
+      if (!user && !inAuth) {
+        router.replace('/login')
+      } else if (user && inAuth) {
+        if (primaryRole === 'Docente')                                          router.replace('/(docente)')
+        else if (primaryRole === 'Representante')                               router.replace('/(padre)')
+        else if (primaryRole === 'Administrador' || primaryRole === 'Director') router.replace('/(admin)')
+        else                                                                    router.replace('/(estudiante)')
+      }
+    } catch {}
+
+  }, [user, isLoading, primaryRole, pathname])
 
   return null
 }

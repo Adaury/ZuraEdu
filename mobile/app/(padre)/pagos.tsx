@@ -35,7 +35,10 @@ export default function PagosPadre() {
   const pendiente = pagos.filter(p => p.estado === 'pendiente').reduce((s, p) => s + Number(p.monto), 0)
   const vencido   = pagos.filter(p => p.vencido).reduce((s, p) => s + (Number(p.monto) - Number(p.monto_pagado ?? 0)), 0)
 
-  const fmtMoney = (v: number) => `$${v.toLocaleString('es-DO')}`
+  const fmtMoney = (v: number) => {
+    const n = isNaN(v) ? 0 : v
+    return `$${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>

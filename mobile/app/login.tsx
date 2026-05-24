@@ -2,11 +2,12 @@ import React, { useState, useRef } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, KeyboardAvoidingView, Platform,
-  ScrollView, TextInput as RNTextInput,
+  ScrollView, TextInput as RNTextInput, Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
 import { useAuth } from '../context/AuthContext'
 import { Colors } from '../constants/Colors'
 
@@ -19,6 +20,7 @@ const ROLES = [
 
 export default function LoginScreen() {
   const { login } = useAuth()
+  const router    = useRouter()
 
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
@@ -36,9 +38,21 @@ export default function LoginScreen() {
 
     setLoading(true)
     try {
-      await login(email.trim().toLowerCase(), password)
+      const u = await login(email.trim().toLowerCase(), password)
+      const roles: string[] = u.roles ?? (u as any).role ? [(u as any).role] : []
+      const primary = roles.includes('Docente')       ? 'Docente'
+                    : roles.includes('Representante') ? 'Representante'
+                    : roles.includes('Administrador') ? 'Administrador'
+                    : roles.includes('Director')      ? 'Director'
+                    : 'Estudiante'
+      if (primary === 'Docente')        router.replace('/(docente)')
+      else if (primary === 'Representante') router.replace('/(padre)')
+      else if (primary === 'Administrador' || primary === 'Director') router.replace('/(admin)')
+      else router.replace('/(estudiante)')
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Credenciales incorrectas. Intenta de nuevo.'
+      const msg = err?.response?.data?.message
+              ?? err?.message
+              ?? 'Error de conexión. Verifica tu red.'
       setError(msg)
     } finally {
       setLoading(false)

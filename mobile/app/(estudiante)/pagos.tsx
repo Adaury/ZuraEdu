@@ -21,7 +21,11 @@ export default function PagosEstudiante() {
   const pagos: any[] = data?.data ?? data ?? []
   const resumen      = data?.resumen ?? {}
 
-  const fmtMoney = (v: any) => v != null ? `$${Number(v).toLocaleString('es-DO')}` : '—'
+  const fmtMoney = (v: any) => {
+    if (v == null) return '—'
+    const n = Number(v)
+    return `$${(isNaN(n) ? 0 : n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>

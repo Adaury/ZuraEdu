@@ -39,7 +39,9 @@ export default function LoginScreen() {
     setLoading(true)
     try {
       const u = await login(email.trim().toLowerCase(), password)
-      const roles: string[] = u.roles ?? (u as any).role ? [(u as any).role] : []
+      const roles: string[] = Array.isArray(u.roles) && u.roles.length > 0
+        ? u.roles
+        : (u as any).role ? [(u as any).role] : []
       const primary = roles.includes('Docente')       ? 'Docente'
                     : roles.includes('Representante') ? 'Representante'
                     : roles.includes('Administrador') ? 'Administrador'

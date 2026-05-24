@@ -237,6 +237,8 @@ Route::prefix('portal/estudiante')->name('portal.estudiante.')->middleware(['aut
     Route::post('/asistente/chat', [\App\Http\Controllers\Portal\AsistenteIAController::class, 'chatEstudiante'])->name('asistente.chat');
     // Mi Risk Score
     Route::get('/mi-riesgo', [PortalEstudianteController::class, 'miRiesgo'])->name('mi-riesgo');
+    // Mi Carnet+
+    Route::get('/mi-carnet', [PortalEstudianteController::class, 'miCarnet'])->name('mi-carnet');
 });
 
 // ── Portal Padre / Representante ──────────────────────────────────────────
@@ -289,6 +291,7 @@ Route::prefix('portal/padre')->name('portal.padre.')->middleware(['auth', 'activ
     Route::get('/hijo/{estudiante}/reconocimientos',  [PortalPadreController::class, 'reconocimientosHijo'])->name('hijo.reconocimientos');
     Route::get('/hijo/{estudiante}/salud',            [PortalPadreController::class, 'saludHijo'])->name('hijo.salud');
     Route::get('/hijo/{estudiante}/riesgo',           [PortalPadreController::class, 'riesgoHijo'])->name('hijo.riesgo');
+    Route::get('/hijo/{estudiante}/carnet',           [PortalPadreController::class, 'carnetHijo'])->name('hijo.carnet');
 
     Route::get('/calendario',     [PortalPadreController::class, 'calendario'])->name('calendario');
     Route::get('/calendario/api', [PortalPadreController::class, 'calendarioApi'])->name('calendario.api');
@@ -314,6 +317,7 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::get('/',                                               [PortalDocenteController::class, 'dashboard'])->name('dashboard');
     Route::get('/setup',                                          [DocenteSetupController::class, 'show'])->name('setup');
     Route::get('/horario',                                        [PortalDocenteController::class, 'horario'])->name('horario');
+    Route::get('/mi-carnet',                                      [PortalDocenteController::class, 'miCarnet'])->name('mi-carnet');
     Route::get('/horario/pdf',                                    [PortalDocenteController::class, 'horarioPdf'])->name('horario.pdf');
     Route::get('/horario/excel',                                  [PortalDocenteController::class, 'horarioExcel'])->name('horario.excel');
     Route::post('/setup',                                         [DocenteSetupController::class, 'store'])->name('setup.store');

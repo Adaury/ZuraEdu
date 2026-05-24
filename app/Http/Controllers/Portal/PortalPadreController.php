@@ -2176,6 +2176,36 @@ class PortalPadreController extends Controller
         return view('portal.padre.hijo_riesgo', compact('estudiante', 'schoolYear', 'matricula', 'score'));
     }
 
+    // ── Carnet+ del Hijo ────────────────────────────────────────────────────
+    public function carnetHijo(\App\Models\Estudiante $estudiante)
+    {
+        $rep = $this->getRepresentante();
+        abort_unless(
+            $rep->estudiantes()->where('estudiantes.id', $estudiante->id)->exists(),
+            403, 'No tienes acceso a este estudiante.'
+        );
+
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->with(['grupo.grado', 'grupo.seccion'])
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()->first();
+
+        $carnet = \App\Models\CarnetIdentidad::where('user_id', $estudiante->user?->id)
+            ->where('tipo', 'estudiante')
+            ->first();
+
+        $risk    = $carnet ? \App\Services\CarnetRiskScoreService::calcular($carnet) : null;
+        $qrUrl   = $carnet ? \App\Services\CarnetQrService::qrContent($carnet) : null;
+        $accesos = $carnet ? $carnet->accesos()->latest()->limit(30)->get() : collect();
+
+        return view('portal.padre.hijo_carnet', compact(
+            'estudiante', 'carnet', 'matricula', 'schoolYear', 'risk', 'qrUrl', 'accesos'
+        ));
+    }
+
     // ── Reconocimientos del Hijo ───────────────────────────────────────────
     public function reconocimientosHijo(\App\Models\Estudiante $estudiante)
     {

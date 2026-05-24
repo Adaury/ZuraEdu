@@ -2174,6 +2174,32 @@ class PortalEstudianteController extends Controller
         return view('portal.estudiante.mi_riesgo', compact('estudiante', 'schoolYear', 'matricula', 'score'));
     }
 
+    // ── Mi Carnet+ ────────────────────────────────────────────────────────
+    public function miCarnet()
+    {
+        $user       = auth()->user();
+        $estudiante = $this->getEstudiante();
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = $estudiante->matriculas()
+            ->with(['grupo.grado', 'grupo.seccion'])
+            ->where('estado', 'activa')
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->latest()->first();
+
+        $carnet = \App\Models\CarnetIdentidad::where('user_id', $user->id)
+            ->where('tipo', 'estudiante')
+            ->first();
+
+        $risk    = $carnet ? \App\Services\CarnetRiskScoreService::calcular($carnet) : null;
+        $qrUrl   = $carnet ? \App\Services\CarnetQrService::qrContent($carnet) : null;
+        $accesos = $carnet ? $carnet->accesos()->latest()->limit(30)->get() : collect();
+
+        return view('portal.estudiante.mi_carnet', compact(
+            'estudiante', 'carnet', 'matricula', 'schoolYear', 'risk', 'qrUrl', 'accesos'
+        ));
+    }
+
     // ── Mis Reconocimientos ────────────────────────────────────────────────
     public function misReconocimientos()
     {

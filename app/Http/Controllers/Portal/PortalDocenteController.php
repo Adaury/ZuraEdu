@@ -4799,6 +4799,25 @@ class PortalDocenteController extends Controller
         return view('portal.docente.mis_evaluaciones', compact('docente', 'evaluaciones'));
     }
 
+    // ── Mi Carnet+ ──────────────────────────────────────────────────────────
+    public function miCarnet()
+    {
+        $docente    = $this->getDocente();
+        $user       = auth()->user();
+        $schoolYear = SchoolYear::actual();
+
+        $carnet = \App\Models\CarnetIdentidad::where('user_id', $user->id)
+            ->whereIn('tipo', ['docente', 'empleado'])
+            ->first();
+
+        $qrUrl   = $carnet ? \App\Services\CarnetQrService::qrContent($carnet) : null;
+        $accesos = $carnet ? $carnet->accesos()->latest()->limit(30)->get() : collect();
+
+        return view('portal.docente.mi_carnet', compact(
+            'docente', 'carnet', 'schoolYear', 'qrUrl', 'accesos'
+        ));
+    }
+
     // ── Mis Reuniones ─────────────────────────────────────────────────────
     public function misReuniones()
     {

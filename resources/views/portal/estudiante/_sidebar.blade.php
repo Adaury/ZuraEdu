@@ -30,6 +30,10 @@
    class="prt-sidebar-link {{ $ak === 'mi-riesgo' ? 'active' : '' }}">
     <i class="bi bi-shield-fill-check" style="{{ $ak === 'mi-riesgo' ? '' : 'color:#f59e0b;' }}"></i>Mi Situación
 </a>
+<a href="{{ route('portal.estudiante.mi-carnet') }}"
+   class="prt-sidebar-link {{ $ak === 'mi-carnet' ? 'active' : '' }}">
+    <i class="bi bi-credit-card-2-front-fill" style="{{ $ak === 'mi-carnet' ? '' : 'color:#0ea5e9;' }}"></i>Mi Carnet+
+</a>
 <a href="{{ route('portal.estudiante.observaciones') }}"
    class="prt-sidebar-link {{ $ak === 'observaciones' ? 'active' : '' }}">
     <i class="bi bi-chat-square-text"></i>Observaciones

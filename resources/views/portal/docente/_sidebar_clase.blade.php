@@ -25,6 +25,10 @@ $ak  = $activeKey ?? '';
    class="prt-sidebar-link {{ $ak === 'horario' ? 'active' : '' }}">
     <i class="bi bi-calendar3"></i>Mi Horario
 </a>
+<a href="{{ route('portal.docente.mi-carnet') }}"
+   class="prt-sidebar-link {{ $ak === 'mi-carnet' ? 'active' : '' }}">
+    <i class="bi bi-credit-card-2-front-fill" style="{{ $ak === 'mi-carnet' ? '' : 'color:#0ea5e9;' }}"></i>Mi Carnet+
+</a>
 <a href="{{ route('portal.docente.calendario') }}"
    class="prt-sidebar-link {{ $ak === 'calendario' ? 'active' : '' }}">
     <i class="bi bi-calendar-event-fill"></i>Calendario Escolar

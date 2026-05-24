@@ -93,12 +93,13 @@ export default function PerfilScreen() {
     })
   }
 
-  const rol      = data?.role    ?? user?.role    ?? ''
+  const rol      = (data?.role ?? (user as any)?.role ?? (user?.roles?.[0]) ?? '') as string
   const nombre   = `${data?.name ?? user?.name ?? ''} ${data?.apellidos ?? ''}`.trim()
-  const email    = data?.email   ?? (user as any)?.email ?? ''
-  const telefono = data?.telefono ?? ''
-  const avatarUrl= data?.avatar  ?? null
-  const inits    = nombre.split(' ').slice(0, 2).map((w: string) => w[0] ?? '').join('').toUpperCase()
+  const email    = data?.email   ?? user?.email ?? ''
+  const telefono = (data?.telefono ?? '') as string
+  const avatarUrl= (data?.avatar  ?? user?.avatar ?? null) as string | null
+  const words    = nombre ? nombre.split(' ').filter(Boolean) : []
+  const inits    = words.slice(0, 2).map(w => w[0] ?? '').join('').toUpperCase() || '?'
   const rc       = ROLE_COLORS[rol] ?? Colors.blue
 
   return (

@@ -128,7 +128,7 @@ Route::prefix('v1')->group(function () {
         });
 
         // Docente — gestión de grupos, asistencia, calificaciones, observaciones y tareas
-        Route::prefix('docente')->name('api.docente.')->group(function () {
+        Route::prefix('docente')->name('api.docente.')->middleware('role:Docente|Administrador|Director')->group(function () {
             Route::get('grupos',                             [DocenteApiController::class, 'grupos'])->name('grupos');
             Route::get('asistencia/{id}',                    [DocenteApiController::class, 'consultarAsistencia'])->name('asistencia.consultar');
             Route::post('asistencia',                        [DocenteApiController::class, 'registrarAsistencia'])->name('asistencia.registrar');
@@ -248,10 +248,10 @@ Route::prefix('v1')->group(function () {
         });
 
         // Evaluaciones de desempeño docente
-        Route::get('docente/mis-evaluaciones',      [\App\Http\Controllers\Api\EvaluacionesDocenteApiController::class, 'misEvaluaciones'])->name('api.docente.mis-evaluaciones');
+        Route::get('docente/mis-evaluaciones',      [\App\Http\Controllers\Api\EvaluacionesDocenteApiController::class, 'misEvaluaciones'])->middleware('role:Docente|Administrador|Director')->name('api.docente.mis-evaluaciones');
 
         // Reuniones del docente
-        Route::get('docente/mis-reuniones',         [\App\Http\Controllers\Api\ReunionesApiController::class, 'misReuniones'])->name('api.docente.mis-reuniones');
+        Route::get('docente/mis-reuniones',         [\App\Http\Controllers\Api\ReunionesApiController::class, 'misReuniones'])->middleware('role:Docente|Administrador|Director')->name('api.docente.mis-reuniones');
 
         // Proyectos escolares
         Route::prefix('proyectos')->name('api.proyectos.')->group(function () {

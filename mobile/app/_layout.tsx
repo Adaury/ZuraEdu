@@ -23,10 +23,19 @@ function NavigationGuard() {
 
     const inAuth = segments[0] === 'login' || pathname === '/login' || pathname === '/login/'
 
+    const correctSegment =
+      primaryRole === 'Docente'                                        ? '(docente)'
+      : primaryRole === 'Representante'                                ? '(padre)'
+      : (primaryRole === 'Administrador' || primaryRole === 'Director')? '(admin)'
+      : '(estudiante)'
+
+    const inCorrectPortal = segments[0] === correctSegment
+
     try {
       if (!user && !inAuth) {
         router.replace('/login')
-      } else if (user && inAuth) {
+      } else if (user && (inAuth || !inCorrectPortal)) {
+        // Redirige al portal correcto tanto desde login como tras crash en portal equivocado
         if (primaryRole === 'Docente')                                          router.replace('/(docente)')
         else if (primaryRole === 'Representante')                               router.replace('/(padre)')
         else if (primaryRole === 'Administrador' || primaryRole === 'Director') router.replace('/(admin)')

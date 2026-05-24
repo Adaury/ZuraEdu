@@ -203,7 +203,7 @@ export default function DocenteDashboard() {
 
 const styles = StyleSheet.create({
   safe:            { flex: 1, backgroundColor: Colors.bg },
-  content:         { padding: 16, gap: 14, paddingBottom: 32 },
+  content:         { padding: 16, gap: 14, paddingBottom: 100 },
 
   // Header
   header:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },

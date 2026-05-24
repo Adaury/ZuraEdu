@@ -96,8 +96,6 @@ function routeFromNotification(tipo: string | undefined, role: string | null): s
 
   if (!tipo) return `${prefix}/notificaciones`
 
-  const isAdmin = role === 'Administrador' || role === 'Director'
-
   const map: Record<string, string> = {
     nueva_nota:         isAdmin ? `${prefix}/notificaciones` : `${prefix}/notas`,
     ausencia:           isAdmin ? `${prefix}/notificaciones` : `${prefix}/asistencia`,

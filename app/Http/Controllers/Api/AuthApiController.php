@@ -63,6 +63,7 @@ class AuthApiController extends Controller
             'name'      => $user->name,
             'apellidos' => $user->apellidos,
             'email'     => $user->email,
+            'telefono'  => $user->telefono,
             'role'      => $user->roles->first()?->name ?? 'Usuario',
             'avatar'    => $this->avatar($user),
             'tenant_id' => $user->tenant_id,

@@ -1,10 +1,40 @@
-import { useEffect } from 'react'
+import { useEffect, Component, ReactNode } from 'react'
+import { View, Text, TouchableOpacity } from 'react-native'
 import { Stack, useRouter, useSegments, usePathname } from 'expo-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { StatusBar } from 'expo-status-bar'
 import { AuthProvider, useAuth } from '../context/AuthContext'
 import { usePushNotifications } from '../hooks/usePushNotifications'
+
+/* ── Error Boundary global — evita que errores JS cierren la app ── */
+interface EBState { hasError: boolean; error: string }
+class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
+  constructor(props: { children: ReactNode }) {
+    super(props)
+    this.state = { hasError: false, error: '' }
+  }
+  static getDerivedStateFromError(error: Error): EBState {
+    return { hasError: true, error: error?.message ?? 'Error desconocido' }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 }}>
+          <Text style={{ fontSize: 18, fontWeight: '800', color: '#1e293b' }}>Algo salió mal</Text>
+          <Text style={{ fontSize: 14, color: '#64748b', textAlign: 'center' }}>{this.state.error}</Text>
+          <TouchableOpacity
+            onPress={() => this.setState({ hasError: false, error: '' })}
+            style={{ backgroundColor: '#1e3a6e', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700' }}>Reintentar</Text>
+          </TouchableOpacity>
+        </View>
+      )
+    }
+    return this.props.children
+  }
+}
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 60_000 } },
@@ -43,7 +73,7 @@ function NavigationGuard() {
       }
     } catch {}
 
-  }, [user, isLoading, primaryRole, pathname])
+  }, [user, isLoading, primaryRole, pathname, segments])
 
   return null
 }
@@ -55,13 +85,15 @@ export default function RootLayout() {
         <AuthProvider>
           <NavigationGuard />
           <StatusBar style="auto" />
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="login" />
-            <Stack.Screen name="(estudiante)" />
-            <Stack.Screen name="(padre)" />
-            <Stack.Screen name="(docente)" />
-            <Stack.Screen name="(admin)" />
-          </Stack>
+          <ErrorBoundary>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="login" />
+              <Stack.Screen name="(estudiante)" />
+              <Stack.Screen name="(padre)" />
+              <Stack.Screen name="(docente)" />
+              <Stack.Screen name="(admin)" />
+            </Stack>
+          </ErrorBoundary>
         </AuthProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

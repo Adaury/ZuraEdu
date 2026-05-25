@@ -40,6 +40,12 @@
       "expo-secure-store",
       "expo-camera",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "La aplicación necesita acceso a tus fotos para actualizar tu foto de perfil."
+        }
+      ],
+      [
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",

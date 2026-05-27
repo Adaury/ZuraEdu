@@ -11,7 +11,7 @@ import { Colors } from '../../constants/Colors'
 
 const ACCENT = Colors.blue
 
-type View = 'list' | 'detail' | 'compose'
+type ViewMode = 'list' | 'detail' | 'compose'
 
 function fechaCorta(iso: string | null) {
   if (!iso) return ''
@@ -20,7 +20,7 @@ function fechaCorta(iso: string | null) {
 
 export default function MensajesEstudiante() {
   const qc = useQueryClient()
-  const [view,     setView]     = useState<View>('list')
+  const [view,     setView]     = useState<ViewMode>('list')
   const [tab,      setTab]      = useState<'recibidos' | 'enviados'>('recibidos')
   const [selected, setSelected] = useState<any | null>(null)
   const [asunto,   setAsunto]   = useState('')

@@ -211,8 +211,7 @@ const styles = StyleSheet.create({
   heroTitle:    { fontSize: 15, fontWeight: '800', color: Colors.text, marginBottom: 4 },
   heroText:     { fontSize: 12, color: Colors.muted, marginBottom: 10, lineHeight: 17 },
 
-  gaugeBg:      { height: 8, borderRadius: 99, overflow: 'visible', position: 'relative',
-                  background: 'linear-gradient(to right,#22c55e,#84cc16,#f59e0b,#f97316,#ef4444)' as any,
+  gaugeBg:      { height: 8, borderRadius: 99, overflow: 'hidden', position: 'relative',
                   backgroundColor: '#e2e8f0' },
   gaugeMarker:  { position: 'absolute', top: -5, width: 18, height: 18, borderRadius: 99,
                   backgroundColor: '#fff', borderWidth: 3, marginLeft: -9,

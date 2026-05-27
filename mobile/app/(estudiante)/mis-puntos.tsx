@@ -40,7 +40,7 @@ export default function MisPuntosEstudiante() {
       >
         {/* Header */}
         <View style={styles.headerBanner}>
-          <Ionicons name="controller" size={28} color="#fff" style={{ opacity: 0.9 }} />
+          <Ionicons name="game-controller" size={28} color="#fff" style={{ opacity: 0.9 }} />
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Mis Puntos</Text>
             <Text style={styles.headerSub}>Tu progreso y ranking del grupo</Text>

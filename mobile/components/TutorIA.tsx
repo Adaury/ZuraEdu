@@ -57,8 +57,8 @@ export default function TutorIA({
 
       historyRef.current = [
         ...historyRef.current,
-        { role: 'user', content: trimmed },
-        { role: 'assistant', content: reply },
+        { role: 'user' as const, content: trimmed },
+        { role: 'assistant' as const, content: reply },
       ].slice(-20)
     } catch (err: any) {
       const errText = err.response?.data?.error ?? 'Error al conectar con el Tutor IA.'

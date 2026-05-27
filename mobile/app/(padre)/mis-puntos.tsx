@@ -51,7 +51,7 @@ export default function MisPuntosPadre() {
       >
         {/* Header */}
         <View style={[styles.headerBanner, { backgroundColor: ACCENT }]}>
-          <Ionicons name="controller" size={26} color="#fff" style={{ opacity: 0.9 }} />
+          <Ionicons name="game-controller" size={26} color="#fff" style={{ opacity: 0.9 }} />
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Logros y Puntos</Text>
             <Text style={styles.headerSub}>Progreso de tu hijo/a en el grupo</Text>

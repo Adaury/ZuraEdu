@@ -8,7 +8,7 @@ export const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:8000
 
 export const api = axios.create({
   baseURL: `${API_BASE}/api/v1`,
-  timeout: 15000,
+  timeout: 30000,
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',

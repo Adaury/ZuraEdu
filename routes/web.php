@@ -610,6 +610,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.acc
 
     // ── Módulos base (disponibles en todos los planes) ───────────────────────
     require __DIR__ . '/admin/billing.php';
+    require __DIR__ . '/admin/registro_academico.php';
     require __DIR__ . '/admin/personas.php';
     require __DIR__ . '/admin/academico.php';
     require __DIR__ . '/admin/reportes.php';

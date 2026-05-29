@@ -23,6 +23,7 @@ class EnsureAdminAccess
         'Secretaria Docente',
         'Personal Administrativo',
         'Encargado de Área',
+        'Registrador Académico',
     ];
 
     public function handle(Request $request, Closure $next)

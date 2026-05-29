@@ -2080,6 +2080,7 @@ if (auth()->check()) {
     elseif  ($r->hasRole('Secretaria Docente'))                                                                $bodyRoleClass = 'role-docente-guia';
     elseif  ($r->hasRole('Docente'))                                                                           $bodyRoleClass = 'role-docente';
     elseif  ($r->hasRole('Secretaría'))                                                                        $bodyRoleClass = 'role-secretaria';
+    elseif  ($r->hasRole('Registrador Académico'))                                                             $bodyRoleClass = 'role-registro';
     elseif  ($r->hasAnyRole(['Personal Administrativo','Cajero']))                                             $bodyRoleClass = 'role-cajero';
     elseif  ($r->hasRole('Representante'))                                                                     $bodyRoleClass = 'role-representante';
     elseif  ($r->hasRole('Estudiante'))                                                                        $bodyRoleClass = 'role-estudiante';
@@ -2145,9 +2146,10 @@ if (auth()->check()) {
                 $isSecre        = $u->hasAnyRole(['Secretaría','Secretaria Docente','Secretaria']);
                 $isPersonalAdm  = $u->hasRole('Personal Administrativo');
                 $isSuperAdmin   = $u->hasRole('super_admin');
+                $isRegistro     = $u->hasRole('Registrador Académico');
                 $canSupervisar  = $isAdmin || $isDir || $isPersonalAdm;
                 $canConfig      = $isAdmin || $isSuperAdmin;
-                $canAcad        = $isAdmin || $isDir || $isCoord || $isSecre || $isPersonalAdm;
+                $canAcad        = $isAdmin || $isDir || $isCoord || $isSecre || $isPersonalAdm || $isRegistro;
                 $canCalif       = $isAdmin || $isDir || $isCoord || $isDocente;
                 $docenteArea    = null;
                 if ($isDocente) {
@@ -2162,6 +2164,134 @@ if (auth()->check()) {
                     || ($isDocente && in_array($docenteArea, ['tecnica','ambas']));
             @endphp
 
+            {{-- ══ SIDEBAR REGISTRADOR ACADÉMICO ══ --}}
+            @if($isRegistro)
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.registro-academico.dashboard') }}"
+                       class="{{ request()->routeIs('admin.registro-academico*') ? 'active' : '' }}">
+                        <i class="bi bi-journal-bookmark-fill"></i>Mi Escritorio
+                    </a>
+                </li>
+            </ul>
+
+            <div class="nav-section-title">Registro de Estudiantes</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.estudiantes.wizard') }}"
+                       class="{{ request()->routeIs('admin.estudiantes.wizard') ? 'active' : '' }}">
+                        <i class="bi bi-magic"></i>Wizard de Registro
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.estudiantes.index') }}"
+                       class="{{ request()->routeIs('admin.estudiantes.index') ? 'active' : '' }}">
+                        <i class="bi bi-people-fill"></i>Estudiantes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.estudiantes.import') }}"
+                       class="{{ request()->routeIs('admin.estudiantes.import*') ? 'active' : '' }}">
+                        <i class="bi bi-upload"></i>Importar
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.pre-matriculas.index') }}"
+                       class="{{ request()->routeIs('admin.pre-matriculas*') ? 'active' : '' }}">
+                        <i class="bi bi-inbox"></i>Pre-matrículas
+                        @php
+                            try { $__preCount = \App\Models\PreMatricula::pendientes()->count(); } catch(\Exception $e){ $__preCount = 0; }
+                        @endphp
+                        @if($__preCount > 0)
+                        <span class="badge rounded-pill text-bg-warning ms-auto" style="font-size:.6rem;padding:.18rem .45rem;">{{ $__preCount }}</span>
+                        @endif
+                    </a>
+                </li>
+            </ul>
+
+            <div class="nav-section-title">Matrículas y Grupos</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.matriculas.index') }}"
+                       class="{{ request()->routeIs('admin.matriculas*') ? 'active' : '' }}">
+                        <i class="bi bi-card-list"></i>Matrículas
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.inscripciones.index') }}"
+                       class="{{ request()->routeIs('admin.inscripciones*') ? 'active' : '' }}">
+                        <i class="bi bi-clipboard-check"></i>Inscripciones
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.grupos.index') }}"
+                       class="{{ request()->routeIs('admin.grupos*') ? 'active' : '' }}">
+                        <i class="bi bi-diagram-3"></i>Grupos
+                    </a>
+                </li>
+            </ul>
+
+            <div class="nav-section-title">Documentos y Registros</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.boletines.index') }}"
+                       class="{{ request()->routeIs('admin.boletines*') ? 'active' : '' }}">
+                        <i class="bi bi-file-earmark-text"></i>Boletines
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.registro.index') }}"
+                       class="{{ request()->routeIs('admin.registro*') ? 'active' : '' }}">
+                        <i class="bi bi-table"></i>Registro MINERD
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.calificaciones.index') }}"
+                       class="{{ request()->routeIs('admin.calificaciones*') ? 'active' : '' }}">
+                        <i class="bi bi-journal-check"></i>Calificaciones
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.asistencia.index') }}"
+                       class="{{ request()->routeIs('admin.asistencia*') ? 'active' : '' }}">
+                        <i class="bi bi-calendar-check"></i>Asistencia
+                    </a>
+                </li>
+            </ul>
+
+            <div class="nav-section-title">Reportes</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.estudiantes.lista-excel') }}">
+                        <i class="bi bi-file-earmark-excel"></i>Excel Estudiantes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.estudiantes.lista-pdf') }}">
+                        <i class="bi bi-file-earmark-pdf"></i>PDF Estudiantes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.pre-matriculas.lista-pdf') }}">
+                        <i class="bi bi-file-earmark-pdf"></i>PDF Pre-matrículas
+                    </a>
+                </li>
+            </ul>
+
+            <div class="nav-section-title">Comunicación</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.comunicaciones.index') }}"
+                       class="{{ request()->routeIs('admin.comunicaciones*') ? 'active' : '' }}">
+                        <i class="bi bi-envelope-fill"></i>Mensajes
+                        @php try { $__uid = auth()->id(); $__msgR = \Illuminate\Support\Facades\Cache::remember("user_{$__uid}_msg_unread", 60, fn() => \App\Models\MensajeDestinatario::where('destinatario_id',$__uid)->whereNull('leido_at')->where('eliminado',false)->count()); } catch(\Exception $e){ $__msgR=0; } @endphp
+                        @if($__msgR > 0)
+                        <span class="badge rounded-pill text-bg-primary ms-auto" style="font-size:.62rem;padding:.2rem .5rem;">{{ $__msgR }}</span>
+                        @endif
+                    </a>
+                </li>
+            </ul>
+            @else
             {{-- Dashboard --}}
             <ul class="list-unstyled mb-0">
                 <li class="nav-item">
@@ -2926,6 +3056,7 @@ if (auth()->check()) {
                 </li>
             </ul>
             @endif
+            @endif {{-- end @else isRegistro --}}
 
             {{-- ══ SUPER ADMIN — solo visible para super_admin ══ --}}
             @if(Auth::user()->hasRole('super_admin'))

@@ -199,5 +199,19 @@ class RolesSeeder extends Seeder
             'ver-asistencia',
             'ver-boletines',
         ]);
+
+        // Registrador Académico — gestión completa del departamento de registro
+        $registrador = Role::firstOrCreate(['name' => 'Registrador Académico', 'guard_name' => 'web']);
+        $registrador->syncPermissions([
+            'ver-dashboard',
+            'gestionar-estudiantes',
+            'gestionar-matriculas',
+            'ver-calificaciones',
+            'ver-asistencia',
+            'ver-boletines',
+            'imprimir-boletines',
+            'supervisar-registros',
+            'ver-reportes-institucionales',
+        ]);
     }
 }

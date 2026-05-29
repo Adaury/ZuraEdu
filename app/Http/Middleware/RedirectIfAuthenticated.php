@@ -29,6 +29,7 @@ class RedirectIfAuthenticated
         if ($user->hasRole('Docente'))                   return '/portal/docente';
         if ($user->hasRole('Secretaria Docente'))        return '/admin/estudiantes';
         if ($user->hasRole('Secretaria'))                return '/admin/estudiantes';
+        if ($user->hasRole('Registrador Académico'))     return '/admin/registro-academico';
         if ($user->hasRole('Personal Administrativo'))   return '/admin/reportes';
         return '/admin/dashboard';
     }

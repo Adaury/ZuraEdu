@@ -36,6 +36,7 @@ Route::middleware('can:gestionar-estudiantes')->group(function () {
     Route::get('estudiantes/lista/pdf',           [EstudianteController::class, 'listaPdf'])->name('estudiantes.lista-pdf');
     Route::get('representantes/lista/pdf',         [EstudianteController::class, 'representantesPdf'])->name('representantes.lista-pdf');
     Route::get('representantes/lista/excel',      [EstudianteController::class, 'representantesExcel'])->name('representantes.lista-excel');
+    Route::get('estudiantes/wizard',               [EstudianteController::class, 'wizard'])->name('estudiantes.wizard');
     Route::resource('estudiantes', EstudianteController::class);
 });
 

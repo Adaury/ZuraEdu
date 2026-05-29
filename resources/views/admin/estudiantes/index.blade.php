@@ -195,6 +195,11 @@
            style="background:#059669;color:#fff;" title="Exportar directorio de representantes">
             <i class="bi bi-people-fill me-1"></i>Rep. Excel
         </a>
+        <a href="{{ route('admin.estudiantes.wizard') }}" class="btn btn-sm px-3 py-2"
+           style="background:var(--secondary);color:#fff;border-radius:8px;font-size:.85rem;font-weight:600;"
+           title="Registro guiado paso a paso">
+            <i class="bi bi-magic me-1"></i>Wizard
+        </a>
         <a href="{{ route('admin.estudiantes.create') }}" class="btn btn-sm px-3 py-2"
            style="background:var(--primary);color:#fff;border-radius:8px;font-size:.85rem;font-weight:600;">
             <i class="bi bi-plus-lg me-1"></i>Nuevo Estudiante
@@ -380,6 +385,10 @@
                         <i class="bi bi-upload me-1"></i>Importar estudiantes
                     </a>
                 @else
+                    <a href="{{ route('admin.estudiantes.wizard') }}" class="btn btn-sm"
+                       style="background:var(--secondary);color:#fff;">
+                        <i class="bi bi-magic me-1"></i>Registro Wizard
+                    </a>
                     <a href="{{ route('admin.estudiantes.create') }}" class="btn btn-primary btn-sm">
                         <i class="bi bi-person-plus me-1"></i>Nuevo Estudiante
                     </a>

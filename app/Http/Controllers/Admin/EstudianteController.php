@@ -109,6 +109,23 @@ class EstudianteController extends Controller
         return view('admin.estudiantes.create');
     }
 
+    // ── Wizard ─────────────────────────────────────────────────────────────
+    public function wizard()
+    {
+        $schoolYear = SchoolYear::activo()->first();
+
+        $grupos = Grupo::with(['grado', 'seccion'])
+            ->join('grados', 'grados.id', '=', 'grupos.grado_id')
+            ->join('secciones', 'secciones.id', '=', 'grupos.seccion_id')
+            ->when($schoolYear, fn($q) => $q->where('grupos.school_year_id', $schoolYear->id))
+            ->orderBy('grados.nivel')
+            ->orderBy('secciones.nombre')
+            ->select('grupos.*')
+            ->get();
+
+        return view('admin.estudiantes.wizard', compact('grupos', 'schoolYear'));
+    }
+
     // ── Store ──────────────────────────────────────────────────────────────
     public function store(StoreEstudianteRequest $request)
     {
@@ -126,7 +143,22 @@ class EstudianteController extends Controller
             $data['foto'] = $this->procesarFoto($request->file('foto'), 'fotos/estudiantes');
         }
 
-        Estudiante::create($data);
+        $estudiante = Estudiante::create($data);
+
+        // Matricular automáticamente si viene grupo_id desde el wizard
+        $grupoId = $request->input('grupo_id');
+        if ($grupoId) {
+            $schoolYear = SchoolYear::activo()->first();
+            if ($schoolYear) {
+                Matricula::create([
+                    'school_year_id'  => $schoolYear->id,
+                    'estudiante_id'   => $estudiante->id,
+                    'grupo_id'        => $grupoId,
+                    'fecha_matricula' => now()->toDateString(),
+                    'estado'          => 'activa',
+                ]);
+            }
+        }
 
         return redirect()->route('admin.estudiantes.index')
                          ->with('success', 'Estudiante registrado correctamente.');

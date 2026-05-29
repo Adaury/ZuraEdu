@@ -108,6 +108,9 @@ class ResolveTenant
         return in_array($host, ['localhost', '127.0.0.1', '::1'])
             || str_ends_with($host, '.test')
             || str_ends_with($host, '.local')
+            || str_ends_with($host, '.ngrok-free.app')
+            || str_ends_with($host, '.ngrok-free.dev')
+            || str_ends_with($host, '.ngrok.io')
             || app()->environment('local', 'testing');
     }
 }

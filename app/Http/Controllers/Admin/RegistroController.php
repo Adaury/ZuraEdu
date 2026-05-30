@@ -30,7 +30,11 @@ class RegistroController extends Controller
             ->orderBy('grado_id')
             ->get();
 
-        return view('admin.registro.index', compact('grupos', 'schoolYear', 'cicloFiltro'));
+        $periodos = Periodo::where('school_year_id', $schoolYear->id)
+            ->orderBy('numero')
+            ->get();
+
+        return view('admin.registro.index', compact('grupos', 'schoolYear', 'cicloFiltro', 'periodos'));
     }
 
     // ── Registro MINERD de un grupo ───────────────────────────────────────────

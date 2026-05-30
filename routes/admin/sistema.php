@@ -50,7 +50,8 @@ Route::get('periodos/lista/pdf',   [PeriodoController::class, 'listaPdf'])->name
 Route::get('periodos/lista/excel', [PeriodoController::class, 'listaExcel'])->name('periodos.lista-excel');
 Route::resource('periodos', PeriodoController::class)->except(['show']);
 Route::get('periodos/{periodo}/checklist',  [\App\Http\Controllers\Admin\PeriodoController::class, 'checklist'])->name('periodos.checklist');
-Route::post('periodos/{periodo}/cerrar',    [\App\Http\Controllers\Admin\PeriodoController::class, 'cerrar'])->name('periodos.cerrar');
+Route::post('periodos/{periodo}/cerrar',   [\App\Http\Controllers\Admin\PeriodoController::class, 'cerrar'])->name('periodos.cerrar');
+Route::post('periodos/{periodo}/reabrir',  [\App\Http\Controllers\Admin\PeriodoController::class, 'reabrir'])->name('periodos.reabrir');
 
 // ── Áreas ─────────────────────────────────────────────────────────────────
 Route::get('areas',            [AreaController::class, 'index'])->name('areas.index');

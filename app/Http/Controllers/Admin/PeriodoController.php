@@ -168,6 +168,24 @@ class PeriodoController extends Controller
                 ($siguiente ? " Se activó automáticamente {$siguiente->nombre}." : ''));
     }
 
+    // ── Reabrir período cerrado ───────────────────────────────────────────
+    public function reabrir(Periodo $periodo)
+    {
+        if (! $periodo->cerrado) {
+            return back()->with('error', 'Este período no está cerrado.');
+        }
+
+        // Desactivar cualquier período activo del mismo año escolar
+        Periodo::where('school_year_id', $periodo->school_year_id)
+            ->where('activo', true)
+            ->update(['activo' => false]);
+
+        $periodo->update(['cerrado' => false, 'activo' => true]);
+
+        return redirect()->route('admin.registro.index')
+            ->with('success', "Período {$periodo->nombre} reabierto y marcado como activo.");
+    }
+
     public function listaExcel()
     {
         $schoolYears = SchoolYear::with(['periodos' => fn($q) => $q->orderBy('numero')])

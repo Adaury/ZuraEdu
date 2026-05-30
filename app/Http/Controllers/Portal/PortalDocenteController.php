@@ -1393,8 +1393,11 @@ class PortalDocenteController extends Controller
             ];
         }
 
+        $minerdData = $this->buildMinerdDataDocente($matricula, $schoolYear, $docente);
+
         return view('portal.docente.boletin_ver', compact(
-            'docente', 'asignacion', 'matricula', 'tablaNotas', 'periodos', 'schoolYear'
+            'docente', 'asignacion', 'matricula', 'tablaNotas', 'periodos', 'schoolYear',
+            'minerdData'
         ));
     }
 
@@ -1487,7 +1490,9 @@ class PortalDocenteController extends Controller
         $boletinConfig = $schoolYear ? \App\Models\BoletinConfig::getOrCreate($schoolYear->id) : null;
 
         $data = compact('matricula', 'periodos', 'tablaNotas', 'schoolYear', 'boletinConfig');
-        $data['asistencias'] = collect();   // El docente solo ve sus materias
+        $data['asistencias'] = collect();
+        $data['minerdData']  = $this->buildMinerdDataDocente($matricula, $schoolYear, $docente);
+        $data['ciclo']       = $matricula->grupo?->grado?->ciclo ?? null;
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.boletines.pdf', $data)
             ->setPaper('letter', 'portrait');
@@ -1496,6 +1501,42 @@ class PortalDocenteController extends Controller
         $filename  = "boletin_{$apellidos}.pdf";
 
         return $pdf->download($filename);
+    }
+
+    // ── Helper: datos MINERD filtrados al docente ────────────────────────
+    private function buildMinerdDataDocente(?Matricula $matricula, ?SchoolYear $schoolYear, ?Docente $docente): ?array
+    {
+        if (!$matricula || !$schoolYear || !$docente) return null;
+        $ciclo = $matricula->grupo?->grado?->ciclo ?? null;
+        if (!in_array($ciclo, ['primer_ciclo', 'segundo_ciclo'])) return null;
+
+        $asignaciones = Asignacion::with([
+            'asignatura.competenciasActivas' => fn($q) => $q->where('ciclo', $ciclo)
+                ->orderBy('orden')->with(['indicadoresActivos']),
+        ])
+        ->where('grupo_id', $matricula->grupo_id)
+        ->where('school_year_id', $schoolYear->id)
+        ->where('docente_id', $docente->id)
+        ->where('activo', true)
+        ->get();
+
+        $rawEvals = \App\Models\EvaluacionRegistro::where('matricula_id', $matricula->id)
+            ->where('school_year_id', $schoolYear->id)
+            ->whereIn('asignacion_id', $asignaciones->pluck('id'))
+            ->get();
+
+        $evalMap = [];
+        foreach ($rawEvals as $e) {
+            $k = $e->indicador_id ? "il_{$e->indicador_id}" : "ce_{$e->competencia_id}";
+            $evalMap[$e->asignacion_id][$k][$e->periodo_id] = $e->valor_cualitativo ?? $e->nota_numerica;
+        }
+
+        return [
+            'ciclo'             => $ciclo,
+            'asignaciones'      => $asignaciones,
+            'evalMap'           => $evalMap,
+            'tieneEvaluaciones' => $rawEvals->isNotEmpty(),
+        ];
     }
 
     // ── Observaciones ────────────────────────────────────────────────────

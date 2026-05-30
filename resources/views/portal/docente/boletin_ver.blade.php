@@ -223,4 +223,172 @@
     @endif
 </div>
 
+{{-- ── Sección MINERD CE/IL ─────────────────────────────────────────── --}}
+@if(!empty($minerdData) && $minerdData['tieneEvaluaciones'])
+@php
+    $mCiclo    = $minerdData['ciclo'];
+    $mAsigs    = $minerdData['asignaciones'];
+    $mEvalMap  = $minerdData['evalMap'];
+    $mEsPrimer = $mCiclo === 'primer_ciclo';
+    $mUmbral   = $mEsPrimer ? 2.5 : 65;
+
+    $mPromPer = function(int $asigId, $ces, int $pId) use ($mEvalMap): ?float {
+        $vals = [];
+        foreach ($ces as $ce) {
+            $ils = $ce->indicadoresActivos ?? collect();
+            if ($ils->isNotEmpty()) {
+                foreach ($ils as $il) {
+                    $v = $mEvalMap[$asigId]["il_{$il->id}"][$pId] ?? null;
+                    if ($v !== null) $vals[] = (float)$v;
+                }
+            } else {
+                $v = $mEvalMap[$asigId]["ce_{$ce->id}"][$pId] ?? null;
+                if ($v !== null) $vals[] = (float)$v;
+            }
+        }
+        return count($vals) ? round(array_sum($vals)/count($vals), 2) : null;
+    };
+
+    $mPromAsig = function(int $asigId, $ces) use ($mEvalMap): ?float {
+        $vals = [];
+        foreach ($ces as $ce) {
+            $ils = $ce->indicadoresActivos ?? collect();
+            if ($ils->isNotEmpty()) {
+                foreach ($ils as $il) {
+                    foreach ($mEvalMap[$asigId]["il_{$il->id}"] ?? [] as $v) {
+                        if ($v !== null) $vals[] = (float)$v;
+                    }
+                }
+            } else {
+                foreach ($mEvalMap[$asigId]["ce_{$ce->id}"] ?? [] as $v) {
+                    if ($v !== null) $vals[] = (float)$v;
+                }
+            }
+        }
+        return count($vals) ? round(array_sum($vals)/count($vals), 2) : null;
+    };
+
+    $mNbCls = function($v) use ($mUmbral): string {
+        if ($v === null) return 'nb-nd';
+        return (float)$v >= $mUmbral ? 'nb-ok' : 'nb-mal';
+    };
+
+    $mFmt = function($v) use ($mEsPrimer): string {
+        if ($v === null) return '—';
+        return $mEsPrimer ? number_format((float)$v, 1) : number_format((float)$v, 0);
+    };
+
+    $mEscala = function($v) use ($mEsPrimer, $mUmbral): string {
+        if ($v === null) return '—';
+        $f = (float)$v;
+        if ($mEsPrimer) return match(true) {
+            $f >= 3.5 => 'Avanzado',
+            $f >= 2.5 => 'Logrado',
+            $f >= 1.5 => 'En proceso',
+            default   => 'Inicial',
+        };
+        return $f >= $mUmbral ? 'Aprobado' : 'No aprobado';
+    };
+
+    $mAsigsCon = $mAsigs->filter(fn($a) => ($a->asignatura->competenciasActivas ?? collect())->isNotEmpty());
+@endphp
+
+<div class="prt-card" style="margin-top:1rem;">
+    <div class="prt-card-header" style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:10px 10px 0 0;padding:.7rem 1rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+        <i class="bi bi-table" style="color:#fff;font-size:1rem;"></i>
+        <h3 style="color:#fff;margin:0;font-size:.9rem;">Registro MINERD — Competencias Específicas</h3>
+        <span style="background:rgba(255,255,255,.18);color:#fff;font-size:.68rem;font-weight:700;
+                     padding:.15rem .55rem;border-radius:20px;">
+            {{ $mEsPrimer ? 'Primer Ciclo · Escala 1–4' : 'Segundo Ciclo · 0–100' }}
+        </span>
+    </div>
+
+    <div style="padding:.4rem 1rem;font-size:.7rem;color:#6b7280;border-bottom:1px solid #f1f5f9;
+                display:flex;flex-wrap:wrap;gap:.35rem;align-items:center;">
+        <span style="font-weight:700;">Escala:</span>
+        @if($mEsPrimer)
+            <span style="background:#fee2e2;color:#991b1b;padding:.1rem .38rem;border-radius:4px;font-weight:700;">1 Inicial</span>
+            <span style="background:#fef9c3;color:#92400e;padding:.1rem .38rem;border-radius:4px;font-weight:700;">2 En proceso</span>
+            <span style="background:#dbeafe;color:#1e40af;padding:.1rem .38rem;border-radius:4px;font-weight:700;">3 Logrado</span>
+            <span style="background:#dcfce7;color:#15803d;padding:.1rem .38rem;border-radius:4px;font-weight:700;">4 Avanzado</span>
+            <span style="color:#94a3b8;">· Aprobatorio ≥ 2.5</span>
+        @else
+            <span class="nbadge nb-ok" style="font-size:.68rem;">≥ 65</span> Aprobado &nbsp;
+            <span class="nbadge nb-mal" style="font-size:.68rem;">< 65</span> Reprobado
+        @endif
+    </div>
+
+    @if($mAsigsCon->isEmpty())
+        <div style="padding:1.5rem;text-align:center;color:#94a3b8;font-size:.83rem;">
+            <i class="bi bi-info-circle me-1"></i>Las materias no tienen Competencias Específicas configuradas.
+        </div>
+    @else
+    <div style="overflow-x:auto;">
+        <table class="bol-table">
+            <thead>
+                <tr>
+                    <th class="th-asig">Materia (CE/IL)</th>
+                    @foreach($periodos as $p)
+                        <th>P{{ $p->numero }}</th>
+                    @endforeach
+                    <th>Prom.</th>
+                    <th>{{ $mEsPrimer ? 'Escala' : 'Indicador' }}</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach($mAsigsCon as $asig)
+                @php
+                    $ces = $asig->asignatura->competenciasActivas ?? collect();
+                    $pm  = $mPromAsig($asig->id, $ces);
+                @endphp
+                <tr>
+                    <td style="font-weight:600;color:#1e293b;">{{ $asig->asignatura?->nombre }}</td>
+                    @foreach($periodos as $p)
+                        @php $vp = $mPromPer($asig->id, $ces, $p->id); @endphp
+                        <td style="text-align:center;">
+                            <span class="nbadge {{ $mNbCls($vp) }}">{{ $mFmt($vp) }}</span>
+                        </td>
+                    @endforeach
+                    <td style="text-align:center;">
+                        <span class="nbadge {{ $pm !== null ? 'nb-final-'.($mNbCls($pm) === 'nb-ok' ? 'ok' : ($mNbCls($pm) === 'nb-mal' ? 'mal' : 'nd')) : 'nb-final-nd' }}">
+                            {{ $mFmt($pm) }}
+                        </span>
+                    </td>
+                    <td style="text-align:center;">
+                        @if($pm !== null)
+                            <span class="sit-badge {{ (float)$pm >= $mUmbral ? 'sit-a' : 'sit-r' }}">
+                                {{ $mEscala($pm) }}
+                            </span>
+                        @else
+                            <span style="color:#94a3b8;font-size:.78rem;">—</span>
+                        @endif
+                    </td>
+                </tr>
+            @endforeach
+            </tbody>
+        </table>
+    </div>
+
+    @php
+        $mPromsGral = $mAsigsCon->map(fn($a) => $mPromAsig($a->id, $a->asignatura->competenciasActivas ?? collect()))->filter();
+        $mTotalGral = $mPromsGral->count() ? round($mPromsGral->avg(), 2) : null;
+    @endphp
+    @if($mTotalGral !== null)
+    <div style="padding:.65rem 1rem;border-top:1px solid #f1f5f9;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+        <span style="font-size:.78rem;font-weight:700;color:#64748b;">Promedio MINERD:</span>
+        <span class="nbadge nb-final-{{ (float)$mTotalGral >= $mUmbral ? 'ok' : 'mal' }}" style="font-size:.9rem;">
+            {{ $mFmt($mTotalGral) }}
+        </span>
+        <span class="sit-badge {{ (float)$mTotalGral >= $mUmbral ? 'sit-a' : 'sit-r' }}">
+            {{ $mEscala($mTotalGral) }}
+        </span>
+        <span style="margin-left:auto;font-size:.7rem;color:#94a3b8;">
+            {{ $mAsigsCon->count() }} materia(s)
+        </span>
+    </div>
+    @endif
+    @endif
+</div>
+@endif
+
 @endsection

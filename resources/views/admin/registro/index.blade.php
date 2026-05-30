@@ -115,21 +115,17 @@
         {{-- Acciones --}}
         <div class="d-flex gap-2 ms-auto flex-wrap">
             @if($p->activo && !$p->cerrado)
-                {{-- Checklist --}}
+                {{-- Va al checklist que tiene la validación y el botón de cierre --}}
                 <a href="{{ route('admin.periodos.checklist', $p) }}"
                    class="btn btn-sm btn-outline-primary"
                    style="border-radius:7px;font-size:.75rem;padding:.25rem .65rem;">
                     <i class="bi bi-list-check me-1"></i>Checklist
                 </a>
-                {{-- Cerrar --}}
-                <form method="POST" action="{{ route('admin.periodos.cerrar', $p) }}"
-                      onsubmit="return confirm('¿Cerrar el {{ $p->nombre }}?\n\nEsto bloqueará el ingreso de notas. El siguiente período se activará automáticamente.')">
-                    @csrf
-                    <button type="submit" class="btn btn-sm btn-danger"
-                            style="border-radius:7px;font-size:.75rem;padding:.25rem .65rem;">
-                        <i class="bi bi-lock-fill me-1"></i>Cerrar período
-                    </button>
-                </form>
+                <a href="{{ route('admin.periodos.checklist', $p) }}"
+                   class="btn btn-sm btn-danger"
+                   style="border-radius:7px;font-size:.75rem;padding:.25rem .65rem;">
+                    <i class="bi bi-lock-fill me-1"></i>Cerrar período
+                </a>
             @elseif($p->cerrado)
                 {{-- Reabrir --}}
                 <form method="POST" action="{{ route('admin.periodos.reabrir', $p) }}"

@@ -150,12 +150,49 @@ class PeriodoController extends Controller
         return view('admin.periodos.checklist', compact('periodo', 'sy', 'items', 'resumen', 'totalMatriculas'));
     }
 
-    // ── Cerrar período ────────────────────────────────────────────────────
+    // ── Cerrar período (con validación de notas mínimas) ─────────────────
     public function cerrar(Periodo $periodo)
     {
+        $forzar = request()->boolean('forzar');
+
+        if (! $forzar) {
+            $asignacionIds = Asignacion::where('school_year_id', $periodo->school_year_id)
+                ->where('activo', true)
+                ->pluck('id');
+
+            if ($asignacionIds->isNotEmpty()) {
+                // Asignaciones con notas técnicas en este período
+                $conTrad = Calificacion::where('periodo_id', $periodo->id)
+                    ->whereIn('asignacion_id', $asignacionIds)
+                    ->distinct()->pluck('asignacion_id');
+
+                // Asignaciones con notas académicas registradas en el año
+                $conAcad = CalificacionAcademica::where('school_year_id', $periodo->school_year_id)
+                    ->whereIn('asignacion_id', $asignacionIds)
+                    ->whereNotNull('nota_final')
+                    ->distinct()->pluck('asignacion_id');
+
+                // Asignaciones con evaluaciones MINERD en este período
+                $conMinerd = \App\Models\EvaluacionRegistro::where('periodo_id', $periodo->id)
+                    ->whereIn('asignacion_id', $asignacionIds)
+                    ->distinct()->pluck('asignacion_id');
+
+                $sinNota = $asignacionIds
+                    ->diff($conTrad->merge($conAcad)->merge($conMinerd)->unique())
+                    ->count();
+
+                if ($sinNota > 0) {
+                    return redirect()
+                        ->route('admin.periodos.checklist', $periodo)
+                        ->with('error_cierre',
+                            "{$sinNota} asignación(es) no tienen notas registradas en ningún sistema. " .
+                            "Revisa el detalle abajo. Puedes forzar el cierre marcando la opción correspondiente.");
+                }
+            }
+        }
+
         $periodo->update(['cerrado' => true, 'activo' => false]);
 
-        // Activar el siguiente período si existe
         $siguiente = Periodo::where('school_year_id', $periodo->school_year_id)
             ->where('numero', $periodo->numero + 1)
             ->first();
@@ -163,7 +200,7 @@ class PeriodoController extends Controller
             $siguiente->update(['activo' => true]);
         }
 
-        return redirect()->route('admin.periodos.index')
+        return redirect()->route('admin.registro.index')
             ->with('success', "Período {$periodo->nombre} cerrado correctamente." .
                 ($siguiente ? " Se activó automáticamente {$siguiente->nombre}." : ''));
     }

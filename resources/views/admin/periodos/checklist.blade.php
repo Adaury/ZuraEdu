@@ -29,19 +29,11 @@
 @section('content')
 <div class="page-header">
     <h1>
-        <a href="{{ route('admin.periodos.index') }}" class="text-decoration-none me-2" style="color:#6b7280;"><i class="bi bi-arrow-left"></i></a>
+        <a href="{{ route('admin.registro.index') }}" class="text-decoration-none me-2" style="color:#6b7280;"><i class="bi bi-arrow-left"></i></a>
         Checklist de Cierre — {{ $periodo->nombre }}
     </h1>
     <div class="d-flex gap-2">
-        @if(!$periodo->cerrado)
-        <form method="POST" action="{{ route('admin.periodos.cerrar', $periodo) }}"
-              onsubmit="return confirm('¿Cerrar el período {{ $periodo->nombre }}? Esta acción activará el período siguiente si existe.')">
-            @csrf
-            <button type="submit" class="btn btn-danger btn-sm px-4">
-                <i class="bi bi-lock-fill me-1"></i>Cerrar Período
-            </button>
-        </form>
-        @else
+        @if($periodo->cerrado)
         <span class="badge text-bg-secondary py-2 px-3" style="font-size:.82rem;border-radius:8px;">
             <i class="bi bi-lock-fill me-1"></i>Período Cerrado
         </span>
@@ -53,6 +45,17 @@
 @if($periodo->cerrado)
 <div class="alert alert-secondary py-2 mb-4" style="border-radius:10px;font-size:.83rem;">
     <i class="bi bi-lock me-1"></i>Este período ya fue cerrado. Solo puedes consultar el estado.
+</div>
+@endif
+
+{{-- Advertencia de validación (flash desde cerrar()) --}}
+@if(session('error_cierre'))
+<div class="alert alert-danger d-flex gap-2 align-items-start mb-4" style="border-radius:10px;font-size:.83rem;">
+    <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+    <div>
+        <strong>No se pudo cerrar el período.</strong><br>
+        {{ session('error_cierre') }}
+    </div>
 </div>
 @endif
 
@@ -94,6 +97,14 @@
 @endif
 
 {{-- Tabla detalle --}}
+@php
+    // Conteo de evaluaciones MINERD por asignación para este período
+    $minerdCounts = \App\Models\EvaluacionRegistro::where('periodo_id', $periodo->id)
+        ->selectRaw('asignacion_id, COUNT(*) as total')
+        ->groupBy('asignacion_id')
+        ->pluck('total', 'asignacion_id');
+@endphp
+
 <div class="table-card">
     <table class="table table-hover mb-0">
         <thead>
@@ -102,20 +113,23 @@
                 <th>Grupo</th>
                 <th>Docente</th>
                 <th>Tipo</th>
-                <th class="text-center">Notas</th>
+                <th class="text-center">Notas trad.</th>
                 <th class="text-center">Publicadas</th>
+                <th class="text-center">Notas MINERD</th>
                 <th class="text-center">Estado</th>
             </tr>
         </thead>
         <tbody>
             @foreach($items->sortBy(fn($i) => $i['ok_ingreso'] && $i['ok_publi'] ? 1 : 0) as $item)
             @php
-                $asig = $item['asignacion'];
-                $ok   = $item['ok_ingreso'] && $item['ok_publi'];
-                $warn = $item['total_cal'] > 0 && !$item['ok_publi'];
-                $fail = $item['total_cal'] === 0;
+                $asig      = $item['asignacion'];
+                $ok        = $item['ok_ingreso'] && $item['ok_publi'];
+                $warn      = $item['total_cal'] > 0 && !$item['ok_publi'];
+                $fail      = $item['total_cal'] === 0;
+                $minerd    = $minerdCounts[$asig->id] ?? 0;
+                $sinNada   = $fail && $minerd === 0;
             @endphp
-            <tr style="{{ $fail ? 'background:#fff5f5;' : ($warn ? 'background:#fffbeb;' : '') }}">
+            <tr style="{{ $sinNada ? 'background:#fff5f5;' : ($warn ? 'background:#fffbeb;' : '') }}">
                 <td class="fw-semibold">{{ $asig->asignatura?->nombre ?? '—' }}</td>
                 <td style="font-size:.8rem;">{{ $asig->grupo?->grado?->nombre ?? '' }} {{ $asig->grupo?->seccion?->nombre ?? '' }}</td>
                 <td style="font-size:.8rem;color:#374151;">{{ $asig->docente?->nombre_completo ?? '—' }}</td>
@@ -141,9 +155,16 @@
                     @endif
                 </td>
                 <td class="text-center">
-                    @if($ok)
+                    @if($minerd === 0)
+                        <span style="color:#d1d5db;font-size:.8rem;">—</span>
+                    @else
+                        <span class="fw-bold" style="color:#7c3aed;">{{ $minerd }}</span>
+                    @endif
+                </td>
+                <td class="text-center">
+                    @if($ok || $minerd > 0)
                         <span class="badge text-bg-success" style="font-size:.7rem;">Listo</span>
-                    @elseif($fail)
+                    @elseif($sinNada)
                         <span class="badge text-bg-danger" style="font-size:.7rem;">Sin notas</span>
                     @else
                         <span class="badge text-bg-warning" style="font-size:.7rem;">Pendiente</span>
@@ -154,4 +175,78 @@
         </tbody>
     </table>
 </div>
+
+{{-- ── Bloque de cierre ──────────────────────────────────────────────── --}}
+@if(!$periodo->cerrado)
+@php
+    $sinNotasTotales = $items->filter(fn($i) => $i['total_cal'] === 0 && ($minerdCounts[$i['asignacion']->id] ?? 0) === 0)->count();
+@endphp
+<div class="cierre-card">
+    <div class="d-flex align-items-start gap-3 flex-wrap">
+        <div style="flex:1;">
+            <div style="font-size:1rem;font-weight:800;margin-bottom:.35rem;">
+                <i class="bi bi-lock-fill me-2"></i>Cerrar {{ $periodo->nombre }}
+            </div>
+            @if($sinNotasTotales > 0)
+            <div style="background:rgba(255,255,255,.12);border-radius:8px;padding:.6rem .85rem;font-size:.82rem;margin-bottom:.75rem;">
+                <i class="bi bi-exclamation-triangle-fill me-1" style="color:#fde047;"></i>
+                <strong>{{ $sinNotasTotales }} asignación(es) sin ninguna nota</strong> (ni tradicional ni MINERD).
+                Marca la casilla para cerrar igualmente.
+            </div>
+            <label style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;cursor:pointer;margin-bottom:.75rem;">
+                <input type="checkbox" id="chkForzar" onchange="toggleCerrarBtn()"
+                       style="width:16px;height:16px;cursor:pointer;">
+                Entiendo que hay asignaciones sin notas y quiero cerrar el período igualmente
+            </label>
+            @else
+            <div style="font-size:.82rem;opacity:.85;margin-bottom:.75rem;">
+                <i class="bi bi-check-circle-fill me-1" style="color:#4ade80;"></i>
+                Todas las asignaciones tienen al menos una nota registrada.
+            </div>
+            @endif
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:.5rem;align-items:flex-end;">
+            {{-- Botón normal (sin forzar) --}}
+            @if($sinNotasTotales === 0)
+            <form method="POST" action="{{ route('admin.periodos.cerrar', $periodo) }}"
+                  onsubmit="return confirm('¿Cerrar el {{ $periodo->nombre }}?\n\nEsta acción bloqueará el ingreso de notas. El siguiente período se activará automáticamente.')">
+                @csrf
+                <button type="submit" class="btn btn-light btn-sm px-4" style="font-weight:700;">
+                    <i class="bi bi-lock-fill me-1"></i>Cerrar Período
+                </button>
+            </form>
+            @else
+            {{-- Botón forzar (deshabilitado hasta marcar checkbox) --}}
+            <form method="POST" action="{{ route('admin.periodos.cerrar', $periodo) }}"
+                  id="formCerrar"
+                  onsubmit="return confirm('¿Cerrar el {{ $periodo->nombre }} con asignaciones sin notas?\n\nEsta acción no se puede deshacer fácilmente.')">
+                @csrf
+                <input type="hidden" name="forzar" value="1">
+                <button type="submit" id="btnCerrar" disabled
+                        class="btn btn-warning btn-sm px-4" style="font-weight:700;">
+                    <i class="bi bi-lock-fill me-1"></i>Forzar cierre
+                </button>
+            </form>
+            @endif
+
+            <a href="{{ route('admin.registro.index') }}"
+               class="btn btn-outline-light btn-sm px-4" style="font-size:.8rem;">
+                <i class="bi bi-arrow-left me-1"></i>Volver al Registro
+            </a>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+function toggleCerrarBtn() {
+    const chk = document.getElementById('chkForzar');
+    const btn = document.getElementById('btnCerrar');
+    if (btn) btn.disabled = !chk?.checked;
+}
+</script>
+@endpush
+@endif
+
 @endsection

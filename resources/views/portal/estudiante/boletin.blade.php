@@ -403,7 +403,9 @@ $fmtB  = fn($v) => $v !== null
 </div>
 @endif
 
-@if($calificaciones->isEmpty() && $calificacionesAcademicas->isEmpty())
+@include('portal._partials.boletin_minerd_seccion', ['periodos' => $periodos])
+
+@if($calificaciones->isEmpty() && $calificacionesAcademicas->isEmpty() && (empty($minerdData) || !$minerdData['tieneEvaluaciones']))
 <div style="text-align:center;padding:3.5rem 1rem;color:#64748b;">
     <i class="bi bi-file-earmark-x" style="font-size:3rem;display:block;margin-bottom:.85rem;color:#cbd5e1;"></i>
     <div style="font-weight:700;font-size:.9rem;margin-bottom:.3rem;">Sin calificaciones aún</div>

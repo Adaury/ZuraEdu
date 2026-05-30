@@ -362,6 +362,7 @@ class PortalPadreController extends Controller
             ->keyBy('asignacion_id');
 
         $resumenAsistencia = $this->calcularAsistencia($matricula);
+        $minerdData        = $this->buildMinerdData($matricula, $schoolYear);
 
         // Promedio general
         $notasTecnicas  = $calificaciones->flatten()->pluck('nota_final')->filter();
@@ -382,7 +383,7 @@ class PortalPadreController extends Controller
         return view('portal.padre.boletin', compact(
             'representante', 'estudiante', 'matricula', 'schoolYear', 'periodos',
             'calificaciones', 'calificacionesAcademicas', 'resumenAsistencia',
-            'promedioGeneral', 'rankingGrupo'
+            'promedioGeneral', 'rankingGrupo', 'minerdData'
         ));
     }
 
@@ -590,10 +591,46 @@ class PortalPadreController extends Controller
         $boletinConfig = $schoolYear ? \App\Models\BoletinConfig::getOrCreate($schoolYear->id) : null;
         $data = compact('matricula', 'periodos', 'tablaNotas', 'schoolYear', 'boletinConfig');
         $data['asistencias'] = collect();
+        $data['minerdData']  = $this->buildMinerdData($matricula, $schoolYear);
+        $data['ciclo']       = $matricula->grupo?->grado?->ciclo ?? null;
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.boletines.pdf', $data)->setPaper('letter', 'portrait');
         $apellidos = \Illuminate\Support\Str::slug($estudiante->apellidos ?? 'boletin');
         return $pdf->download("boletin_{$apellidos}.pdf");
+    }
+
+    // ── Helper: datos MINERD CE/IL para el boletín ───────────────────────
+    private function buildMinerdData(?Matricula $matricula, ?SchoolYear $schoolYear): ?array
+    {
+        if (!$matricula || !$schoolYear) return null;
+        $ciclo = $matricula->grupo?->grado?->ciclo ?? null;
+        if (!in_array($ciclo, ['primer_ciclo', 'segundo_ciclo'])) return null;
+
+        $asignaciones = Asignacion::with([
+            'asignatura.competenciasActivas' => fn($q) => $q->where('ciclo', $ciclo)
+                ->orderBy('orden')->with(['indicadoresActivos']),
+        ])
+        ->where('grupo_id', $matricula->grupo_id)
+        ->where('school_year_id', $schoolYear->id)
+        ->where('activo', true)
+        ->get();
+
+        $rawEvals = \App\Models\EvaluacionRegistro::where('matricula_id', $matricula->id)
+            ->where('school_year_id', $schoolYear->id)
+            ->get();
+
+        $evalMap = [];
+        foreach ($rawEvals as $e) {
+            $k = $e->indicador_id ? "il_{$e->indicador_id}" : "ce_{$e->competencia_id}";
+            $evalMap[$e->asignacion_id][$k][$e->periodo_id] = $e->valor_cualitativo ?? $e->nota_numerica;
+        }
+
+        return [
+            'ciclo'             => $ciclo,
+            'asignaciones'      => $asignaciones,
+            'evalMap'           => $evalMap,
+            'tieneEvaluaciones' => $rawEvals->isNotEmpty(),
+        ];
     }
 
     // ── Recursos de la materia del hijo ─────────────────────────────────

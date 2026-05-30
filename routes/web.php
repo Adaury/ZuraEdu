@@ -380,8 +380,9 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::post('/guardar', [\App\Http\Controllers\Portal\ConductaDocenteController::class, 'guardar'])->name('guardar');
         Route::get('/pdf',      [\App\Http\Controllers\Portal\ConductaDocenteController::class, 'pdf'])->name('pdf');
     });
-    Route::get('/asignacion/{asignacion}/boletin/{matricula}',     [PortalDocenteController::class, 'verBoletin'])->name('boletin.ver');
-    Route::get('/asignacion/{asignacion}/boletin/{matricula}/pdf', [PortalDocenteController::class, 'pdfBoletin'])->name('boletin.pdf');
+    Route::get('/asignacion/{asignacion}/boletin/{matricula}',          [PortalDocenteController::class, 'verBoletin'])->name('boletin.ver');
+    Route::get('/asignacion/{asignacion}/boletin/{matricula}/pdf',      [PortalDocenteController::class, 'pdfBoletin'])->name('boletin.pdf');
+    Route::post('/asignacion/{asignacion}/boletin/{matricula}/observacion', [PortalDocenteController::class, 'guardarBoletinObservacion'])->name('boletin.observacion');
     // Recursos por materia
     Route::get('/asignacion/{asignacion}/recursos',               [PortalDocenteController::class, 'recursos'])->name('recursos');
     Route::get('/asignacion/{asignacion}/recursos/pdf',           [PortalDocenteController::class, 'recursosPdf'])->name('recursos.pdf');

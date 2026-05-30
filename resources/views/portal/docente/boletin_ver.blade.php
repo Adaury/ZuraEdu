@@ -391,4 +391,141 @@
 </div>
 @endif
 
+{{-- ── Observaciones del Boletín ────────────────────────────────────── --}}
+<div class="prt-card" style="margin-top:1rem;" id="cardObservaciones">
+    <div class="prt-card-header" style="background:linear-gradient(135deg,#0f766e,#0891b2);border-radius:10px 10px 0 0;padding:.7rem 1rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+        <i class="bi bi-pencil-square" style="color:#fff;font-size:1rem;"></i>
+        <h3 style="color:#fff;margin:0;font-size:.9rem;">Observaciones del Boletín</h3>
+        <span style="background:rgba(255,255,255,.18);color:#fff;font-size:.68rem;font-weight:600;padding:.15rem .55rem;border-radius:20px;">
+            Aparecen en el boletín imprimible
+        </span>
+        <span id="obsSavingIndicator" style="display:none;background:rgba(255,255,255,.2);color:#fff;font-size:.68rem;padding:.15rem .55rem;border-radius:20px;margin-left:auto;">
+            <i class="bi bi-cloud-arrow-up me-1"></i>Guardando…
+        </span>
+        <span id="obsSavedIndicator" style="display:none;background:rgba(255,255,255,.2);color:#fff;font-size:.68rem;padding:.15rem .55rem;border-radius:20px;margin-left:auto;">
+            <i class="bi bi-check-circle-fill me-1"></i>Guardado
+        </span>
+    </div>
+
+    <div style="padding:.75rem 1rem;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+        <label style="font-size:.78rem;font-weight:700;color:#374151;">Período:</label>
+        <select id="selPeriodoObs"
+                style="border:1.5px solid #d1d5db;border-radius:8px;padding:.3rem .65rem;font-size:.8rem;font-weight:600;background:#fff;color:#374151;cursor:pointer;">
+            <option value="general">Todo el año (general)</option>
+            @foreach($periodos as $p)
+                <option value="{{ $p->id }}" {{ ($periodoActivo && $p->id == $periodoActivo->id) ? 'selected' : '' }}>
+                    {{ $p->nombre }}{{ $p->activo ? ' ← Activo' : '' }}
+                </option>
+            @endforeach
+        </select>
+        <span style="font-size:.72rem;color:#94a3b8;">
+            <i class="bi bi-info-circle me-1"></i>Autosave al perder el foco
+        </span>
+    </div>
+
+    <div style="padding:.85rem 1rem;display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+        @php
+        $tiposObs = [
+            'academica'  => ['Académica',    '#1d4ed8', '#eff6ff', 'bi-mortarboard-fill'],
+            'conducta'   => ['Conducta',      '#7c3aed', '#f5f3ff', 'bi-person-check-fill'],
+            'sugerencia' => ['Sugerencia',    '#c2410c', '#fff7ed', 'bi-lightbulb-fill'],
+            'general'    => ['General',       '#374151', '#f9fafb', 'bi-chat-square-text-fill'],
+        ];
+        @endphp
+        @foreach($tiposObs as $tipo => [$label, $color, $bg, $icon])
+        <div style="display:flex;flex-direction:column;gap:.35rem;">
+            <div style="display:flex;align-items:center;gap:.4rem;">
+                <i class="bi {{ $icon }}" style="color:{{ $color }};font-size:.8rem;"></i>
+                <span style="font-size:.73rem;font-weight:700;color:{{ $color }};text-transform:uppercase;letter-spacing:.05em;">
+                    {{ $label }}
+                </span>
+            </div>
+            <textarea
+                class="obs-textarea"
+                data-tipo="{{ $tipo }}"
+                rows="3"
+                maxlength="1000"
+                placeholder="Observación {{ strtolower($label) }}… (máx. 1000 caracteres)"
+                style="width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:.5rem .65rem;
+                       font-size:.8rem;line-height:1.45;resize:vertical;
+                       background:{{ $bg }};color:#1e293b;
+                       transition:border-color .15s,box-shadow .15s;"
+                onfocus="this.style.borderColor='{{ $color }}';this.style.boxShadow='0 0 0 3px {{ $color }}22';"
+                onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none';guardarObservacion(this);"
+            >{{ '' }}</textarea>
+        </div>
+        @endforeach
+    </div>
+</div>
+
+@push('scripts')
+<script>
+const OBS_URL    = '{{ route('portal.docente.boletin.observacion', [$asignacion, $matricula]) }}';
+const OBS_CSRF   = '{{ csrf_token() }}';
+const OBS_SY_ID  = {{ $schoolYear?->id ?? 0 }};
+
+// Mapa de observaciones existentes: { "{periodoKey}_{tipo}": contenido }
+const OBS_DATA = @json($obsMap);
+
+let obsTimer = null;
+
+// Poblar textareas con el período seleccionado
+function poblarObservaciones() {
+    const pKey   = document.getElementById('selPeriodoObs').value;
+    const areas  = document.querySelectorAll('.obs-textarea');
+    areas.forEach(ta => {
+        const tipo  = ta.dataset.tipo;
+        const mapKey = pKey + '_' + tipo;
+        ta.value = OBS_DATA[mapKey] ?? '';
+    });
+}
+
+// Guardar vía AJAX
+async function guardarObservacion(ta) {
+    const pKey = document.getElementById('selPeriodoObs').value;
+    const tipo = ta.dataset.tipo;
+
+    // Actualizar OBS_DATA en memoria
+    const mapKey = pKey + '_' + tipo;
+    const val    = ta.value.trim();
+    if (val) OBS_DATA[mapKey] = val; else delete OBS_DATA[mapKey];
+
+    mostrarIndicador('saving');
+
+    try {
+        const res = await fetch(OBS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': OBS_CSRF, 'Accept': 'application/json' },
+            body: JSON.stringify({
+                school_year_id: OBS_SY_ID,
+                periodo_id    : pKey === 'general' ? null : parseInt(pKey),
+                tipo          : tipo,
+                contenido     : val,
+            }),
+        });
+        const json = await res.json();
+        mostrarIndicador(json.ok ? 'saved' : 'none');
+    } catch {
+        mostrarIndicador('none');
+    }
+}
+
+function mostrarIndicador(estado) {
+    const saving = document.getElementById('obsSavingIndicator');
+    const saved  = document.getElementById('obsSavedIndicator');
+    saving.style.display = estado === 'saving' ? '' : 'none';
+    saved.style.display  = estado === 'saved'  ? '' : 'none';
+    if (estado === 'saved') {
+        clearTimeout(obsTimer);
+        obsTimer = setTimeout(() => { saved.style.display = 'none'; }, 2500);
+    }
+}
+
+document.getElementById('selPeriodoObs').addEventListener('change', poblarObservaciones);
+
+// Poblar al cargar
+document.addEventListener('DOMContentLoaded', poblarObservaciones);
+</script>
+@endpush
+
 @endsection

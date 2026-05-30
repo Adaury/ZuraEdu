@@ -1395,9 +1395,23 @@ class PortalDocenteController extends Controller
 
         $minerdData = $this->buildMinerdDataDocente($matricula, $schoolYear, $docente);
 
+        // Cargar observaciones existentes del boletín de este estudiante
+        // Mapa: "{periodoId|'general'}_{tipo}" => contenido
+        $obsRaw = \App\Models\BoletinObservacion::where('matricula_id', $matricula->id)
+            ->where('school_year_id', $schoolYear?->id ?? 0)
+            ->get();
+
+        $obsMap = [];
+        foreach ($obsRaw as $obs) {
+            $pk = ($obs->periodo_id ?? 'general') . '_' . $obs->tipo;
+            $obsMap[$pk] = $obs->contenido;
+        }
+
+        $periodoActivo = $periodos->firstWhere('activo', true) ?? $periodos->first();
+
         return view('portal.docente.boletin_ver', compact(
             'docente', 'asignacion', 'matricula', 'tablaNotas', 'periodos', 'schoolYear',
-            'minerdData'
+            'minerdData', 'obsMap', 'periodoActivo'
         ));
     }
 
@@ -1501,6 +1515,44 @@ class PortalDocenteController extends Controller
         $filename  = "boletin_{$apellidos}.pdf";
 
         return $pdf->download($filename);
+    }
+
+    // ── Guardar observación del boletín ─────────────────────────────────
+    public function guardarBoletinObservacion(Asignacion $asignacion, Matricula $matricula, Request $request)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+        if ($matricula->grupo_id !== $asignacion->grupo_id) abort(403);
+
+        $request->validate([
+            'school_year_id' => 'required|exists:school_years,id',
+            'periodo_id'     => 'nullable|exists:periodos,id',
+            'tipo'           => 'required|in:academica,conducta,sugerencia,general',
+            'contenido'      => 'nullable|string|max:1000',
+        ]);
+
+        $contenido = trim($request->input('contenido', ''));
+
+        if ($contenido === '') {
+            \App\Models\BoletinObservacion::where([
+                'matricula_id'   => $matricula->id,
+                'school_year_id' => $request->school_year_id,
+                'periodo_id'     => $request->periodo_id,
+                'tipo'           => $request->tipo,
+            ])->delete();
+        } else {
+            \App\Models\BoletinObservacion::updateOrCreate(
+                [
+                    'matricula_id'   => $matricula->id,
+                    'school_year_id' => $request->school_year_id,
+                    'periodo_id'     => $request->periodo_id,
+                    'tipo'           => $request->tipo,
+                ],
+                ['contenido' => $contenido, 'docente_id' => $docente->id]
+            );
+        }
+
+        return response()->json(['ok' => true]);
     }
 
     // ── Helper: datos MINERD filtrados al docente ────────────────────────

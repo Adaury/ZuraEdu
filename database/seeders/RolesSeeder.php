@@ -201,8 +201,7 @@ class RolesSeeder extends Seeder
         ]);
 
         // Registrador Académico — gestión completa del departamento de registro
-        $registrador = Role::firstOrCreate(['name' => 'Registrador Académico', 'guard_name' => 'web']);
-        $registrador->syncPermissions([
+        $registradorPerms = [
             'ver-dashboard',
             'gestionar-estudiantes',
             'gestionar-matriculas',
@@ -212,6 +211,12 @@ class RolesSeeder extends Seeder
             'imprimir-boletines',
             'supervisar-registros',
             'ver-reportes-institucionales',
-        ]);
+        ];
+        $registrador = Role::firstOrCreate(['name' => 'Registrador Académico', 'guard_name' => 'web']);
+        $registrador->syncPermissions($registradorPerms);
+
+        // Encargado de Registro Académico — alias del rol Registrador Académico
+        $encargadoRegistro = Role::firstOrCreate(['name' => 'Encargado de Registro Académico', 'guard_name' => 'web']);
+        $encargadoRegistro->syncPermissions($registradorPerms);
     }
 }

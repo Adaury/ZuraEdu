@@ -2080,7 +2080,7 @@ if (auth()->check()) {
     elseif  ($r->hasRole('Secretaria Docente'))                                                                $bodyRoleClass = 'role-docente-guia';
     elseif  ($r->hasRole('Docente'))                                                                           $bodyRoleClass = 'role-docente';
     elseif  ($r->hasRole('Secretaría'))                                                                        $bodyRoleClass = 'role-secretaria';
-    elseif  ($r->hasRole('Registrador Académico'))                                                             $bodyRoleClass = 'role-registro';
+    elseif  ($r->hasAnyRole(['Registrador Académico', 'Encargado de Registro Académico']))                      $bodyRoleClass = 'role-registro';
     elseif  ($r->hasAnyRole(['Personal Administrativo','Cajero']))                                             $bodyRoleClass = 'role-cajero';
     elseif  ($r->hasRole('Representante'))                                                                     $bodyRoleClass = 'role-representante';
     elseif  ($r->hasRole('Estudiante'))                                                                        $bodyRoleClass = 'role-estudiante';
@@ -2146,7 +2146,7 @@ if (auth()->check()) {
                 $isSecre        = $u->hasAnyRole(['Secretaría','Secretaria Docente','Secretaria']);
                 $isPersonalAdm  = $u->hasRole('Personal Administrativo');
                 $isSuperAdmin   = $u->hasRole('super_admin');
-                $isRegistro     = $u->hasRole('Registrador Académico');
+                $isRegistro     = $u->hasAnyRole(['Registrador Académico', 'Encargado de Registro Académico']);
                 $canSupervisar  = $isAdmin || $isDir || $isPersonalAdm;
                 $canConfig      = $isAdmin || $isSuperAdmin;
                 $canAcad        = $isAdmin || $isDir || $isCoord || $isSecre || $isPersonalAdm || $isRegistro;

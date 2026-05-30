@@ -789,6 +789,180 @@ body {
 @endif
 
 {{-- ══════════════════════════════════════════════════════════
+     3b. EVALUACIÓN POR COMPETENCIAS — MINERD
+══════════════════════════════════════════════════════════ --}}
+@if(!empty($minerdData) && $minerdData['tieneEvaluaciones'])
+@php
+    $mCiclo    = $minerdData['ciclo'];
+    $mAsigs    = $minerdData['asignaciones'];
+    $mEvalMap  = $minerdData['evalMap'];
+    $mEsPrimer = $mCiclo === 'primer_ciclo';
+    $mUmbral   = $mEsPrimer ? 2.5 : 65;
+
+    // Promedio de una asignación en un período concreto
+    $mPromPer = function(int $asigId, $ces, int $pId) use ($mEvalMap): ?float {
+        $vals = [];
+        foreach ($ces as $ce) {
+            $ils = $ce->indicadoresActivos ?? collect();
+            if ($ils->isNotEmpty()) {
+                foreach ($ils as $il) {
+                    $v = $mEvalMap[$asigId]["il_{$il->id}"][$pId] ?? null;
+                    if ($v !== null) $vals[] = (float)$v;
+                }
+            } else {
+                $v = $mEvalMap[$asigId]["ce_{$ce->id}"][$pId] ?? null;
+                if ($v !== null) $vals[] = (float)$v;
+            }
+        }
+        return count($vals) ? round(array_sum($vals)/count($vals), 2) : null;
+    };
+
+    // Promedio general de una asignación (todos los períodos)
+    $mPromAsig = function(int $asigId, $ces) use ($mEvalMap): ?float {
+        $vals = [];
+        foreach ($ces as $ce) {
+            $ils = $ce->indicadoresActivos ?? collect();
+            if ($ils->isNotEmpty()) {
+                foreach ($ils as $il) {
+                    foreach ($mEvalMap[$asigId]["il_{$il->id}"] ?? [] as $v) {
+                        if ($v !== null) $vals[] = (float)$v;
+                    }
+                }
+            } else {
+                foreach ($mEvalMap[$asigId]["ce_{$ce->id}"] ?? [] as $v) {
+                    if ($v !== null) $vals[] = (float)$v;
+                }
+            }
+        }
+        return count($vals) ? round(array_sum($vals)/count($vals), 2) : null;
+    };
+
+    // Color según ciclo
+    $mBg = function($v) use ($mEsPrimer): string {
+        if ($v === null) return '#f9fafb';
+        $f = (float)$v;
+        if ($mEsPrimer) return match(true) { $f>=3.5=>'#dcfce7',$f>=2.5=>'#dbeafe',$f>=1.5=>'#fef3c7',default=>'#fee2e2' };
+        return match(true) { $f>=90=>'#d1fae5',$f>=65=>'#dcfce7',$f>=50=>'#fef3c7',default=>'#fee2e2' };
+    };
+    $mTx = function($v) use ($mEsPrimer): string {
+        if ($v === null) return '#d1d5db';
+        $f = (float)$v;
+        if ($mEsPrimer) return match(true) { $f>=3.5=>'#15803d',$f>=2.5=>'#1e40af',$f>=1.5=>'#92400e',default=>'#991b1b' };
+        return match(true) { $f>=90=>'#065f46',$f>=65=>'#15803d',$f>=50=>'#92400e',default=>'#991b1b' };
+    };
+    $mFmt = function($v) use ($mEsPrimer): string {
+        if ($v === null) return '—';
+        return $mEsPrimer ? number_format((float)$v, 1) : number_format((float)$v, 0);
+    };
+    $mEscala = function($v) use ($mEsPrimer): string {
+        if ($v === null || !$mEsPrimer) return '';
+        return match(true) {
+            (float)$v >= 3.5 => 'Avanzado',
+            (float)$v >= 2.5 => 'Logrado',
+            (float)$v >= 1.5 => 'En proceso',
+            default          => 'Inicial',
+        };
+    };
+
+    // Promedios generales por asignatura para fila final
+    $mPromsGral = [];
+    foreach ($mAsigs as $asig) {
+        $ces = $asig->asignatura->competenciasActivas ?? collect();
+        if ($ces->isEmpty()) continue;
+        $p = $mPromAsig($asig->id, $ces);
+        if ($p !== null) $mPromsGral[] = $p;
+    }
+    $mPromFinal = count($mPromsGral) ? round(array_sum($mPromsGral)/count($mPromsGral), 2) : null;
+@endphp
+
+<div class="sec-title">
+    &#9654; Evaluación por Competencias Específicas (MINERD) — {{ $mEsPrimer ? 'Primer Ciclo' : 'Segundo Ciclo' }}
+</div>
+
+<table class="notas-table" cellpadding="0" cellspacing="0" style="margin-bottom:4px;">
+    <thead>
+        <tr>
+            <th class="th-mat">Asignatura</th>
+            @foreach($periodos as $p)
+                <th style="width:38px;">{{ $p->nombre_corto ?? 'P'.$p->numero }}</th>
+            @endforeach
+            <th class="th-prom" style="width:54px;">Prom.</th>
+            <th class="th-prom" style="width:72px;">{{ $mEsPrimer ? 'Escala' : 'Indicador' }}</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach($mAsigs as $asig)
+        @php
+            $ces = $asig->asignatura->competenciasActivas ?? collect();
+            if ($ces->isEmpty()) continue;
+            $pm  = $mPromAsig($asig->id, $ces);
+            $esc = $mEsPrimer ? $mEscala($pm) : ($pm !== null ? ($pm>=90?'Excelente':($pm>=75?'Bueno':($pm>=60?'En proceso':'Insuficiente'))) : '—');
+        @endphp
+        <tr>
+            <td class="td-mat">{{ $asig->asignatura?->nombre }}</td>
+            @foreach($periodos as $p)
+                @php $vp = $mPromPer($asig->id, $ces, $p->id); @endphp
+                <td style="text-align:center;font-weight:800;font-size:8pt;
+                           background:{{ $mBg($vp) }};color:{{ $mTx($vp) }};">
+                    {{ $mFmt($vp) }}
+                </td>
+            @endforeach
+            <td style="text-align:center;font-weight:800;font-size:8.5pt;
+                       background:{{ $mBg($pm) }};color:{{ $mTx($pm) }};">
+                {{ $mFmt($pm) }}
+            </td>
+            <td style="text-align:center;font-size:7.5pt;font-weight:800;
+                       background:{{ $mBg($pm) }};color:{{ $mTx($pm) }};">
+                {{ $esc }}
+            </td>
+        </tr>
+    @endforeach
+
+    {{-- Fila promedio MINERD --}}
+    @if($mPromFinal !== null)
+    <tr class="prom-row">
+        <td class="td-mat" colspan="{{ $periodos->count() + 1 }}"
+            style="text-align:right;padding-right:10px;font-size:7.5pt;letter-spacing:.1em;">
+            PROMEDIO MINERD
+        </td>
+        <td style="text-align:center;">
+            <span class="prom-box">{{ $mFmt($mPromFinal) }}</span>
+        </td>
+        <td style="text-align:center;font-size:7.5pt;font-weight:800;">
+            @php $escFinal = $mEsPrimer ? $mEscala($mPromFinal) : ($mPromFinal>=90?'Excelente':($mPromFinal>=75?'Bueno':($mPromFinal>=60?'En proceso':'Insuficiente'))); @endphp
+            <span style="background:rgba(255,255,255,.18);color:#fff;">{{ $escFinal }}</span>
+        </td>
+    </tr>
+    @endif
+    </tbody>
+</table>
+
+{{-- Leyenda escala --}}
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="font-size:6.5pt;margin-bottom:5px;border:1px solid #e5e7eb;">
+    <tr>
+        <td style="padding:3px 8px;background:#f9fafb;color:#6b7280;font-weight:600;">
+            @if($mEsPrimer)
+                Escala cualitativa MINERD: &nbsp;
+                <span style="background:#fee2e2;color:#991b1b;padding:1px 5px;border-radius:2px;font-weight:800;">1 — Inicial</span>&nbsp;
+                <span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:2px;font-weight:800;">2 — En proceso</span>&nbsp;
+                <span style="background:#dbeafe;color:#1e40af;padding:1px 5px;border-radius:2px;font-weight:800;">3 — Logrado</span>&nbsp;
+                <span style="background:#dcfce7;color:#15803d;padding:1px 5px;border-radius:2px;font-weight:800;">4 — Avanzado</span>&nbsp;
+                &nbsp;Aprobatorio: ≥ 2.5
+            @else
+                Escala numérica MINERD:&nbsp;
+                <span style="background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:2px;font-weight:800;">90–100 Excelente</span>&nbsp;
+                <span style="background:#dcfce7;color:#15803d;padding:1px 5px;border-radius:2px;font-weight:800;">75–89 Bueno</span>&nbsp;
+                <span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:2px;font-weight:800;">60–74 En Proceso</span>&nbsp;
+                <span style="background:#fee2e2;color:#991b1b;padding:1px 5px;border-radius:2px;font-weight:800;">&lt;60 Insuficiente</span>&nbsp;
+                &nbsp;Aprobatorio: ≥ 65
+            @endif
+        </td>
+    </tr>
+</table>
+@endif
+
+{{-- ══════════════════════════════════════════════════════════
      4. ASISTENCIA
 ══════════════════════════════════════════════════════════ --}}
 @if(!$boletinConfig || $boletinConfig->mostrar_asistencia)

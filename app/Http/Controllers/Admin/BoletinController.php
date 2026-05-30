@@ -386,13 +386,47 @@ class BoletinController extends Controller
         $rankingGrupo = $this->calcularRanking($matricula, $periodo);
         $progreso     = $this->calcularProgreso($tablaNotas, $periodo, $periodos);
 
+        // ── MINERD CE/IL ─────────────────────────────────────────────────────
+        $ciclo      = $matricula->grupo?->grado?->ciclo ?? null;
+        $minerdData = null;
+
+        if (in_array($ciclo, ['primer_ciclo', 'segundo_ciclo'])) {
+            $minerdAsigs = \App\Models\Asignacion::with([
+                'asignatura.competenciasActivas' => fn($q) => $q->where('ciclo', $ciclo)
+                    ->orderBy('orden')->with(['indicadoresActivos']),
+            ])
+            ->where('grupo_id', $matricula->grupo_id)
+            ->where('school_year_id', $schoolYear?->id ?? 0)
+            ->where('activo', true)
+            ->when($vistaDocente && $docente, fn($q) => $q->where('docente_id', $docente->id))
+            ->get();
+
+            $rawEvalRegs = \App\Models\EvaluacionRegistro::where('matricula_id', $matricula->id)
+                ->where('school_year_id', $schoolYear?->id ?? 0)
+                ->get();
+
+            $evalRegMap = [];
+            foreach ($rawEvalRegs as $e) {
+                $k = $e->indicador_id ? "il_{$e->indicador_id}" : "ce_{$e->competencia_id}";
+                $evalRegMap[$e->asignacion_id][$k][$e->periodo_id] = $e->valor_cualitativo ?? $e->nota_numerica;
+            }
+
+            $minerdData = [
+                'ciclo'             => $ciclo,
+                'asignaciones'      => $minerdAsigs,
+                'evalMap'           => $evalRegMap,
+                'tieneEvaluaciones' => $rawEvalRegs->isNotEmpty(),
+            ];
+        }
+
         return compact(
             'matricula', 'periodo', 'periodos', 'schoolYear', 'boletinConfig',
             'tablaNotas', 'promedioGeneral',
             'asistenciaPorPeriodo', 'asistenciaTotales',
             'evaluaciones', 'observacionesList',
             'boletinObservaciones', 'promocion',
-            'vistaDocente', 'rankingGrupo', 'progreso'
+            'vistaDocente', 'rankingGrupo', 'progreso',
+            'minerdData', 'ciclo'
         );
     }
 

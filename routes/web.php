@@ -237,6 +237,8 @@ Route::prefix('portal/estudiante')->name('portal.estudiante.')->middleware(['aut
     Route::post('/asistente/chat', [\App\Http\Controllers\Portal\AsistenteIAController::class, 'chatEstudiante'])->name('asistente.chat');
     // Mi Risk Score
     Route::get('/mi-riesgo', [PortalEstudianteController::class, 'miRiesgo'])->name('mi-riesgo');
+    // Registro MINERD (lectura)
+    Route::get('/registro-minerd', [PortalEstudianteController::class, 'registroMinerd'])->name('registro-minerd');
     // Mi Carnet+
     Route::get('/mi-carnet', [PortalEstudianteController::class, 'miCarnet'])->name('mi-carnet');
 });
@@ -292,6 +294,7 @@ Route::prefix('portal/padre')->name('portal.padre.')->middleware(['auth', 'activ
     Route::get('/hijo/{estudiante}/salud',            [PortalPadreController::class, 'saludHijo'])->name('hijo.salud');
     Route::get('/hijo/{estudiante}/riesgo',           [PortalPadreController::class, 'riesgoHijo'])->name('hijo.riesgo');
     Route::get('/hijo/{estudiante}/carnet',           [PortalPadreController::class, 'carnetHijo'])->name('hijo.carnet');
+    Route::get('/hijo/{estudiante}/registro-minerd',  [PortalPadreController::class, 'registroMinerdHijo'])->name('hijo.registro-minerd');
 
     Route::get('/calendario',     [PortalPadreController::class, 'calendario'])->name('calendario');
     Route::get('/calendario/api', [PortalPadreController::class, 'calendarioApi'])->name('calendario.api');
@@ -360,6 +363,9 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::get('/asignacion/{asignacion}/rendimiento',            [PortalDocenteController::class, 'rendimientoGrupo'])->name('rendimiento');
     Route::get('/asignacion/{asignacion}/historial-notas',        [PortalDocenteController::class, 'historialNotas'])->name('historial-notas');
     Route::get('/asignacion/{asignacion}/historial-notas/pdf',   [PortalDocenteController::class, 'historialNotasPdf'])->name('historial-notas.pdf');
+    Route::get('/asignacion/{asignacion}/registro-minerd',          [PortalDocenteController::class, 'registroMinerd'])->name('registro-minerd');
+    Route::post('/asignacion/{asignacion}/registro-minerd/guardar', [PortalDocenteController::class, 'registroMinerdGuardar'])->name('registro-minerd.guardar');
+    Route::get('/asignacion/{asignacion}/registro-minerd/pdf',      [PortalDocenteController::class, 'registroMinerdPdf'])->name('registro-minerd.pdf');
     Route::get('/asignacion/{asignacion}/comunicado',             [PortalDocenteController::class, 'comunicadoGrupo'])->name('comunicado');
     Route::post('/asignacion/{asignacion}/comunicado',            [PortalDocenteController::class, 'comunicadoGrupoEnviar'])->name('comunicado.enviar');
     Route::get('/asignacion/{asignacion}/boletines',              [PortalDocenteController::class, 'boletines'])->name('boletines');

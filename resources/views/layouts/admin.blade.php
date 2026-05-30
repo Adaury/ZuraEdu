@@ -2246,6 +2246,12 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('admin.competencias.index') }}"
+                       class="{{ request()->routeIs('admin.competencias*') ? 'active' : '' }}">
+                        <i class="bi bi-diagram-3"></i>Competencias / IL
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.calificaciones.index') }}"
                        class="{{ request()->routeIs('admin.calificaciones*') ? 'active' : '' }}">
                         <i class="bi bi-journal-check"></i>Calificaciones

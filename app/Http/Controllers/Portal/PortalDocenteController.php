@@ -4818,6 +4818,151 @@ class PortalDocenteController extends Controller
         ));
     }
 
+    // ── Registro MINERD (CE / IL) ────────────────────────────────────────
+    public function registroMinerd(Asignacion $asignacion, Request $request)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $schoolYear = SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
+        $ciclo      = $asignacion->grupo->grado->ciclo ?? 'primer_ciclo';
+
+        $asignacion->load([
+            'asignatura.competenciasActivas' => fn($q) => $q->where('ciclo', $ciclo)
+                ->orderBy('orden')
+                ->with(['indicadoresActivos']),
+            'grupo.grado',
+            'grupo.seccion',
+            'docente',
+        ]);
+
+        $ces = $asignacion->asignatura->competenciasActivas ?? collect();
+
+        $periodos = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+
+        $periodoActivo = $request->filled('periodo_id')
+            ? $periodos->firstWhere('id', $request->get('periodo_id'))
+            : ($periodos->firstWhere('activo', true) ?? $periodos->first());
+
+        $matriculas = Matricula::with('estudiante')
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('school_year_id', $schoolYear->id)
+            ->where('estado', 'activa')
+            ->orderBy('numero_orden')
+            ->get();
+
+        $rawEvals = \App\Models\EvaluacionRegistro::whereIn('matricula_id', $matriculas->pluck('id'))
+            ->where('asignacion_id', $asignacion->id)
+            ->where('school_year_id', $schoolYear->id)
+            ->get();
+
+        $evalMap = [];
+        foreach ($rawEvals as $e) {
+            $key = $e->indicador_id ? "il_{$e->indicador_id}" : "ce_{$e->competencia_id}";
+            $evalMap[$e->matricula_id][$key][$e->periodo_id] = $e->valor_cualitativo ?? $e->nota_numerica;
+        }
+
+        return view('portal.docente.registro_minerd', compact(
+            'asignacion', 'ciclo', 'ces', 'matriculas', 'evalMap',
+            'periodos', 'periodoActivo', 'schoolYear', 'docente'
+        ));
+    }
+
+    public function registroMinerdGuardar(Asignacion $asignacion, Request $request)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $request->validate([
+            'matricula_id'   => 'required|exists:matriculas,id',
+            'periodo_id'     => 'required|exists:periodos,id',
+            'school_year_id' => 'required|exists:school_years,id',
+            'tipo'           => 'required|in:indicador,competencia',
+            'referencia_id'  => 'required|integer|min:1',
+            'valor'          => 'nullable|numeric',
+        ]);
+
+        $svc   = app(\App\Services\RegistroAcademicoService::class);
+        $valor = $request->input('valor');
+
+        if ($valor !== null && $valor !== '') {
+            $svc->guardarEvaluacion(
+                (int) $request->matricula_id,
+                $asignacion->id,
+                (int) $request->periodo_id,
+                (int) $request->school_year_id,
+                $request->tipo,
+                (int) $request->referencia_id,
+                $valor,
+                auth()->id()
+            );
+        } else {
+            \App\Models\EvaluacionRegistro::where([
+                'matricula_id'   => $request->matricula_id,
+                'asignacion_id'  => $asignacion->id,
+                'periodo_id'     => $request->periodo_id,
+                'indicador_id'   => $request->tipo === 'indicador'   ? $request->referencia_id : null,
+                'competencia_id' => $request->tipo === 'competencia' ? $request->referencia_id : null,
+            ])->delete();
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function registroMinerdPdf(Asignacion $asignacion, Request $request)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $schoolYear = SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
+        $ciclo      = $asignacion->grupo->grado->ciclo ?? 'primer_ciclo';
+
+        $asignacion->load([
+            'asignatura.competenciasActivas' => fn($q) => $q->where('ciclo', $ciclo)
+                ->orderBy('orden')->with(['indicadoresActivos']),
+            'grupo.grado',
+            'grupo.seccion',
+            'docente',
+        ]);
+
+        $periodos = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+        $periodo  = $request->filled('periodo_id')
+            ? $periodos->firstWhere('id', $request->get('periodo_id'))
+            : ($periodos->firstWhere('activo', true) ?? $periodos->first());
+
+        abort_unless($periodo, 404, 'No hay período disponible.');
+
+        $grupo = $asignacion->grupo;
+
+        $matriculas = Matricula::with('estudiante')
+            ->where('grupo_id', $asignacion->grupo_id)
+            ->where('school_year_id', $schoolYear->id)
+            ->where('estado', 'activa')
+            ->orderBy('numero_orden')
+            ->get();
+
+        $rawEvals = \App\Models\EvaluacionRegistro::whereIn('matricula_id', $matriculas->pluck('id'))
+            ->where('asignacion_id', $asignacion->id)
+            ->where('school_year_id', $schoolYear->id)
+            ->get();
+
+        $evalMap = [];
+        foreach ($rawEvals as $e) {
+            $key = $e->indicador_id ? "il_{$e->indicador_id}" : "ce_{$e->competencia_id}";
+            $evalMap[$e->matricula_id][$key][$e->periodo_id] = $e->valor_cualitativo ?? $e->nota_numerica;
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.registro.calificaciones_pdf', compact(
+            'grupo', 'ciclo', 'asignacion', 'periodo', 'periodos',
+            'matriculas', 'evalMap', 'schoolYear'
+        ))->setPaper('letter', 'landscape');
+
+        $nombre = 'Registro_' . \Str::slug($asignacion->asignatura->nombre ?? 'materia') .
+                  '_' . ($grupo->seccion->nombre ?? '') . '_P' . $periodo->numero . '.pdf';
+
+        return $pdf->download($nombre);
+    }
+
     // ── Mis Reuniones ─────────────────────────────────────────────────────
     public function misReuniones()
     {

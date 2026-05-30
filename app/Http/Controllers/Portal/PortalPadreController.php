@@ -2237,4 +2237,51 @@ class PortalPadreController extends Controller
 
         return view('portal.padre.salud_hijo', compact('estudiante', 'ficha', 'incidentes'));
     }
+
+    // ── Registro MINERD del hijo (CE / IL) ──────────────────────────────
+    public function registroMinerdHijo(Estudiante $estudiante)
+    {
+        $representante = $this->getRepresentante();
+        if (! $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists()) abort(403);
+
+        $schoolYear = SchoolYear::actual();
+
+        $matricula = Matricula::with(['grupo.grado', 'grupo.seccion'])
+            ->where('estudiante_id', $estudiante->id)
+            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+            ->where('estado', 'activa')
+            ->first();
+
+        $ciclo        = $matricula?->grupo?->grado?->ciclo ?? 'primer_ciclo';
+        $asignaciones = collect();
+        $periodos     = collect();
+        $evalMap      = [];
+
+        if ($matricula && $schoolYear) {
+            $asignaciones = Asignacion::with([
+                'asignatura.competenciasActivas' => fn($q) => $q->where('ciclo', $ciclo)
+                    ->orderBy('orden')->with(['indicadoresActivos']),
+                'docente',
+            ])
+            ->where('grupo_id', $matricula->grupo_id)
+            ->where('school_year_id', $schoolYear->id)
+            ->where('activo', true)
+            ->get();
+
+            $periodos = Periodo::where('school_year_id', $schoolYear->id)->orderBy('numero')->get();
+
+            $rawEvals = \App\Models\EvaluacionRegistro::where('matricula_id', $matricula->id)
+                ->where('school_year_id', $schoolYear->id)
+                ->get();
+
+            foreach ($rawEvals as $e) {
+                $key = $e->indicador_id ? "il_{$e->indicador_id}" : "ce_{$e->competencia_id}";
+                $evalMap[$e->asignacion_id][$key][$e->periodo_id] = $e->valor_cualitativo ?? $e->nota_numerica;
+            }
+        }
+
+        return view('portal.padre.registro_minerd_hijo', compact(
+            'estudiante', 'matricula', 'ciclo', 'asignaciones', 'periodos', 'evalMap', 'schoolYear'
+        ));
+    }
 }

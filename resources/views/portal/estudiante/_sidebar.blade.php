@@ -18,6 +18,11 @@
    class="prt-sidebar-link {{ $ak === 'boletin' ? 'active' : '' }}">
     <i class="bi bi-file-earmark-text-fill"></i>Mi Boletín
 </a>
+<a href="{{ route('portal.estudiante.registro-minerd') }}"
+   class="prt-sidebar-link {{ $ak === 'registro-minerd' ? 'active' : '' }}"
+   style="{{ $ak === 'registro-minerd' ? '' : 'color:#7c3aed;' }}">
+    <i class="bi bi-table"></i>Registro MINERD
+</a>
 <a href="{{ route('portal.estudiante.horario') }}"
    class="prt-sidebar-link {{ $ak === 'horario' ? 'active' : '' }}">
     <i class="bi bi-calendar3"></i>Mi Horario

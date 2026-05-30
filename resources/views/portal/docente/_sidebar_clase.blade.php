@@ -125,6 +125,11 @@ try {
    class="prt-sidebar-link {{ $ak === 'calificaciones' ? 'active' : '' }}">
     <i class="bi bi-journal-check"></i>Calificaciones
 </a>
+<a href="{{ route('portal.docente.registro-minerd', $asignacion) }}"
+   class="prt-sidebar-link {{ $ak === 'registro-minerd' ? 'active' : '' }}"
+   style="{{ $ak === 'registro-minerd' ? '' : 'color:#7c3aed;' }}">
+    <i class="bi bi-table"></i>Registro MINERD
+</a>
 <a href="{{ route('portal.docente.conducta.index', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'conducta' ? 'active' : '' }}">
     <i class="bi bi-person-check-fill"></i>Conducta

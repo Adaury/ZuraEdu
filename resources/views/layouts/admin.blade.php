@@ -2139,14 +2139,22 @@ if (auth()->check()) {
 
             @php
                 $u = Auth::user();
+                // ── Roles base ────────────────────────────────────────────
                 $isAdmin        = $u->hasRole('Administrador');
                 $isDir          = $u->hasRole('Director');
                 $isCoord        = $u->hasAnyRole(['Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']);
-                $isDocente      = $u->hasRole('Docente');
+                $isDocente      = $u->hasAnyRole(['Docente','Docente Académico','Docente Técnico','Docente Guía']);
                 $isSecre        = $u->hasAnyRole(['Secretaría','Secretaria Docente','Secretaria']);
                 $isPersonalAdm  = $u->hasRole('Personal Administrativo');
                 $isSuperAdmin   = $u->hasRole('super_admin');
                 $isRegistro     = $u->hasAnyRole(['Registrador Académico', 'Encargado de Registro Académico']);
+                $isCaja         = $u->hasRole('Caja / Finanzas');
+                $isBiblioteca   = $u->hasRole('Biblioteca');
+                $isRecepcion    = $u->hasRole('Recepción');
+                // ── Flags "solo ese rol" — impide que admins caigan en sidebars focalizados
+                $isSecreOnly    = $isSecre    && !$isAdmin && !$isDir;
+                $isCoordOnly    = $isCoord    && !$isAdmin && !$isDir;
+                // ── Permisos compuestos (compatibilidad) ──────────────────
                 $canSupervisar  = $isAdmin || $isDir || $isPersonalAdm;
                 $canConfig      = $isAdmin || $isSuperAdmin;
                 $canAcad        = $isAdmin || $isDir || $isCoord || $isSecre || $isPersonalAdm || $isRegistro;
@@ -2297,6 +2305,320 @@ if (auth()->check()) {
                     </a>
                 </li>
             </ul>
+            {{-- ══ SIDEBAR SECRETARÍA ══ --}}
+            @elseif($isSecreOnly)
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                        <i class="bi bi-speedometer2"></i>Mi Escritorio
+                    </a>
+                </li>
+            </ul>
+            <div class="nav-section-title">Registro de Estudiantes</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.estudiantes.index') }}" class="{{ request()->routeIs('admin.estudiantes*') ? 'active' : '' }}">
+                        <i class="bi bi-people-fill"></i>Estudiantes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.pre-matriculas.index') }}" class="{{ request()->routeIs('admin.pre-matriculas*') ? 'active' : '' }}">
+                        <i class="bi bi-inbox"></i>Pre-matrículas
+                        @php try { $__preC = \App\Models\PreMatricula::pendientes()->count(); } catch(\Exception $e){ $__preC=0; } @endphp
+                        @if($__preC > 0)<span class="badge rounded-pill text-bg-warning ms-auto" style="font-size:.6rem;padding:.18rem .45rem;">{{ $__preC }}</span>@endif
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.matriculas.index') }}" class="{{ request()->routeIs('admin.matriculas*') ? 'active' : '' }}">
+                        <i class="bi bi-card-list"></i>Matrículas
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.inscripciones.index') }}" class="{{ request()->routeIs('admin.inscripciones*') ? 'active' : '' }}">
+                        <i class="bi bi-clipboard-check"></i>Inscripciones
+                    </a>
+                </li>
+            </ul>
+            <div class="nav-section-title">Documentos</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.boletines.index') }}" class="{{ request()->routeIs('admin.boletines*') ? 'active' : '' }}">
+                        <i class="bi bi-file-earmark-text"></i>Boletines
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.asistencia.index') }}" class="{{ request()->routeIs('admin.asistencia*') ? 'active' : '' }}">
+                        <i class="bi bi-calendar-check"></i>Asistencia
+                    </a>
+                </li>
+            </ul>
+            <div class="nav-section-title">Comunicación</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.comunicaciones.index') }}" class="{{ request()->routeIs('admin.comunicaciones*') ? 'active' : '' }}">
+                        <i class="bi bi-envelope-fill"></i>Mensajes
+                        @php try { $__uid=auth()->id(); $__msgS=\Illuminate\Support\Facades\Cache::remember("user_{$__uid}_msg_unread",60,fn()=>\App\Models\MensajeDestinatario::where('destinatario_id',$__uid)->whereNull('leido_at')->where('eliminado',false)->count()); } catch(\Exception $e){ $__msgS=0; } @endphp
+                        @if($__msgS > 0)<span class="badge rounded-pill text-bg-primary ms-auto" style="font-size:.62rem;padding:.2rem .5rem;">{{ $__msgS }}</span>@endif
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.comunicados.index') }}" class="{{ request()->routeIs('admin.comunicados*') ? 'active' : '' }}">
+                        <i class="bi bi-megaphone"></i>Comunicados
+                    </a>
+                </li>
+            </ul>
+
+            {{-- ══ SIDEBAR COORDINADOR ══ --}}
+            @elseif($isCoordOnly)
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                        <i class="bi bi-speedometer2"></i>Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.kpis.index') }}" class="{{ request()->routeIs('admin.kpis*') ? 'active' : '' }}">
+                        <i class="bi bi-graph-up-arrow"></i>KPIs
+                    </a>
+                </li>
+            </ul>
+            <div class="nav-section-title">Gestión Académica</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.estudiantes.index') }}" class="{{ request()->routeIs('admin.estudiantes.index') ? 'active' : '' }}">
+                        <i class="bi bi-people-fill"></i>Estudiantes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.grupos.index') }}" class="{{ request()->routeIs('admin.grupos*') ? 'active' : '' }}">
+                        <i class="bi bi-diagram-3"></i>Grupos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.docentes.index') }}" class="{{ request()->routeIs('admin.docentes*') ? 'active' : '' }}">
+                        <i class="bi bi-person-workspace"></i>Docentes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.asignaciones.index') }}" class="{{ request()->routeIs('admin.asignaciones*') ? 'active' : '' }}">
+                        <i class="bi bi-link-45deg"></i>Asignaciones
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.periodos.index') }}" class="{{ request()->routeIs('admin.periodos*') ? 'active' : '' }}">
+                        <i class="bi bi-calendar3"></i>Períodos
+                    </a>
+                </li>
+            </ul>
+            <div class="nav-section-title">Calificaciones</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.calificaciones.index') }}" class="{{ request()->routeIs('admin.calificaciones*') ? 'active' : '' }}">
+                        <i class="bi bi-journal-check"></i>Calificaciones
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.boletines.index') }}" class="{{ request()->routeIs('admin.boletines*') ? 'active' : '' }}">
+                        <i class="bi bi-file-earmark-text"></i>Boletines
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.asistencia.index') }}" class="{{ request()->routeIs('admin.asistencia*') ? 'active' : '' }}">
+                        <i class="bi bi-calendar-check"></i>Asistencia
+                    </a>
+                </li>
+            </ul>
+            <div class="nav-section-title">Supervisión</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.observaciones.index') }}" class="{{ request()->routeIs('admin.observaciones*') ? 'active' : '' }}">
+                        <i class="bi bi-eye"></i>Observaciones
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.registro.index') }}" class="{{ request()->routeIs('admin.registro*') ? 'active' : '' }}">
+                        <i class="bi bi-table"></i>Registro MINERD
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.rendimiento.index') }}" class="{{ request()->routeIs('admin.rendimiento*') ? 'active' : '' }}">
+                        <i class="bi bi-bar-chart-fill"></i>Rendimiento
+                    </a>
+                </li>
+            </ul>
+            <div class="nav-section-title">Planificación</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.planes-clase.index') }}" class="{{ request()->routeIs('admin.planes-clase*') ? 'active' : '' }}">
+                        <i class="bi bi-journal-text"></i>Planes de Clase
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.instrumentos.index') }}" class="{{ request()->routeIs('admin.instrumentos*') ? 'active' : '' }}">
+                        <i class="bi bi-tools"></i>Instrumentos
+                    </a>
+                </li>
+            </ul>
+            <div class="nav-section-title">Comunicación</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.comunicaciones.index') }}" class="{{ request()->routeIs('admin.comunicaciones*') ? 'active' : '' }}">
+                        <i class="bi bi-envelope-fill"></i>Mensajes
+                        @php try { $__uid=auth()->id(); $__msgC=\Illuminate\Support\Facades\Cache::remember("user_{$__uid}_msg_unread",60,fn()=>\App\Models\MensajeDestinatario::where('destinatario_id',$__uid)->whereNull('leido_at')->where('eliminado',false)->count()); } catch(\Exception $e){ $__msgC=0; } @endphp
+                        @if($__msgC > 0)<span class="badge rounded-pill text-bg-primary ms-auto" style="font-size:.62rem;padding:.2rem .5rem;">{{ $__msgC }}</span>@endif
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.comunicados.index') }}" class="{{ request()->routeIs('admin.comunicados*') ? 'active' : '' }}">
+                        <i class="bi bi-megaphone"></i>Comunicados
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.calendario.index') }}" class="{{ request()->routeIs('admin.calendario*') ? 'active' : '' }}">
+                        <i class="bi bi-calendar-event"></i>Calendario
+                    </a>
+                </li>
+            </ul>
+
+            {{-- ══ SIDEBAR CAJA / FINANZAS ══ --}}
+            @elseif($isCaja)
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                        <i class="bi bi-speedometer2"></i>Mi Escritorio
+                    </a>
+                </li>
+            </ul>
+            <div class="nav-section-title">Pagos y Colegiaturas</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.pagos.dashboard') }}" class="{{ request()->routeIs('admin.pagos.dashboard') ? 'active' : '' }}">
+                        <i class="bi bi-cash-coin"></i>Dashboard Financiero
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.pagos.index') }}" class="{{ request()->routeIs('admin.pagos.index') ? 'active' : '' }}">
+                        <i class="bi bi-receipt"></i>Gestión de Pagos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.pagos.deudores') }}" class="{{ request()->routeIs('admin.pagos.deudores') ? 'active' : '' }}">
+                        <i class="bi bi-exclamation-triangle-fill"></i>Deudores
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.becas.index') }}" class="{{ request()->routeIs('admin.becas*') ? 'active' : '' }}">
+                        <i class="bi bi-award"></i>Becas
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.pagos.conceptos') }}" class="{{ request()->routeIs('admin.pagos.conceptos') ? 'active' : '' }}">
+                        <i class="bi bi-tags"></i>Conceptos de Pago
+                    </a>
+                </li>
+            </ul>
+            <div class="nav-section-title">Reportes</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.pagos.resumen-mensual-pdf') }}">
+                        <i class="bi bi-file-earmark-pdf"></i>Resumen Mensual PDF
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.pagos.lista-pdf') }}">
+                        <i class="bi bi-file-earmark-pdf"></i>Lista de Pagos PDF
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.pagos.lista-excel') }}">
+                        <i class="bi bi-file-earmark-excel"></i>Lista de Pagos Excel
+                    </a>
+                </li>
+            </ul>
+            <div class="nav-section-title">Comunicación</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.comunicaciones.index') }}" class="{{ request()->routeIs('admin.comunicaciones*') ? 'active' : '' }}">
+                        <i class="bi bi-envelope-fill"></i>Mensajes
+                    </a>
+                </li>
+            </ul>
+
+            {{-- ══ SIDEBAR BIBLIOTECA ══ --}}
+            @elseif($isBiblioteca)
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                        <i class="bi bi-speedometer2"></i>Mi Escritorio
+                    </a>
+                </li>
+            </ul>
+            <div class="nav-section-title">Biblioteca</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.prestamos.index') }}" class="{{ request()->routeIs('admin.prestamos*') ? 'active' : '' }}">
+                        <i class="bi bi-book"></i>Préstamos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.recursos.index') }}" class="{{ request()->routeIs('admin.recursos*') ? 'active' : '' }}">
+                        <i class="bi bi-archive"></i>Inventario / Recursos
+                    </a>
+                </li>
+            </ul>
+            <div class="nav-section-title">Comunicación</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.comunicaciones.index') }}" class="{{ request()->routeIs('admin.comunicaciones*') ? 'active' : '' }}">
+                        <i class="bi bi-envelope-fill"></i>Mensajes
+                    </a>
+                </li>
+            </ul>
+
+            {{-- ══ SIDEBAR RECEPCIÓN ══ --}}
+            @elseif($isRecepcion)
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                        <i class="bi bi-speedometer2"></i>Mi Escritorio
+                    </a>
+                </li>
+            </ul>
+            <div class="nav-section-title">Estudiantes</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.estudiantes.index') }}" class="{{ request()->routeIs('admin.estudiantes*') ? 'active' : '' }}">
+                        <i class="bi bi-people-fill"></i>Estudiantes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.pre-matriculas.index') }}" class="{{ request()->routeIs('admin.pre-matriculas*') ? 'active' : '' }}">
+                        <i class="bi bi-inbox"></i>Pre-matrículas
+                        @php try { $__preR = \App\Models\PreMatricula::pendientes()->count(); } catch(\Exception $e){ $__preR=0; } @endphp
+                        @if($__preR > 0)<span class="badge rounded-pill text-bg-warning ms-auto" style="font-size:.6rem;padding:.18rem .45rem;">{{ $__preR }}</span>@endif
+                    </a>
+                </li>
+            </ul>
+            <div class="nav-section-title">Comunicación</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.comunicaciones.index') }}" class="{{ request()->routeIs('admin.comunicaciones*') ? 'active' : '' }}">
+                        <i class="bi bi-envelope-fill"></i>Mensajes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.comunicados.index') }}" class="{{ request()->routeIs('admin.comunicados*') ? 'active' : '' }}">
+                        <i class="bi bi-megaphone"></i>Comunicados
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.calendario.index') }}" class="{{ request()->routeIs('admin.calendario*') ? 'active' : '' }}">
+                        <i class="bi bi-calendar-event"></i>Eventos y Calendario
+                    </a>
+                </li>
+            </ul>
+
+            {{-- ══ SIDEBAR ADMIN COMPLETO (Administrador, Director, Personal Adm) ══ --}}
             @else
             {{-- Dashboard --}}
             <ul class="list-unstyled mb-0">

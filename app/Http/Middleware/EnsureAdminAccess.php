@@ -25,6 +25,10 @@ class EnsureAdminAccess
         'Encargado de Área',
         'Registrador Académico',
         'Encargado de Registro Académico',
+        // Roles nuevos
+        'Caja / Finanzas',
+        'Biblioteca',
+        'Recepción',
     ];
 
     public function handle(Request $request, Closure $next)

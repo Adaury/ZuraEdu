@@ -14,27 +14,41 @@ class RolesSeeder extends Seeder
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         $permissions = [
+            // Dashboard y acceso general
             'ver-dashboard',
+            // Usuarios y sistema
             'gestionar-usuarios',
+            'gestionar-configuracion',
+            // Año escolar y estructura académica
             'gestionar-school-years',
             'gestionar-grupos',
-            'gestionar-docentes',
-            'gestionar-estudiantes',
-            'gestionar-matriculas',
             'gestionar-asignaturas',
             'gestionar-asignaciones',
             'gestionar-periodos',
+            'gestionar-indicadores',
+            // Personas
+            'gestionar-docentes',
+            'gestionar-estudiantes',
+            'gestionar-matriculas',
+            // Calificaciones y asistencia
             'ingresar-calificaciones',
             'ver-calificaciones',
             'ingresar-asistencia',
             'ver-asistencia',
-            'gestionar-indicadores',
+            // Boletines
             'ver-boletines',
             'imprimir-boletines',
+            // Reportes y supervisión
             'ver-estadisticas',
-            'gestionar-configuracion',
-            'supervisar-registros',
             'ver-reportes-institucionales',
+            'supervisar-registros',
+            // Pagos y finanzas
+            'ver-pagos',
+            'gestionar-pagos',
+            // Biblioteca
+            'gestionar-biblioteca',
+            // Servicios institucionales
+            'ver-servicios',
         ];
 
         foreach ($permissions as $permission) {
@@ -218,5 +232,66 @@ class RolesSeeder extends Seeder
         // Encargado de Registro Académico — alias del rol Registrador Académico
         $encargadoRegistro = Role::firstOrCreate(['name' => 'Encargado de Registro Académico', 'guard_name' => 'web']);
         $encargadoRegistro->syncPermissions($registradorPerms);
+
+        // Caja / Finanzas — gestión de pagos y cobros
+        $caja = Role::firstOrCreate(['name' => 'Caja / Finanzas', 'guard_name' => 'web']);
+        $caja->syncPermissions([
+            'ver-dashboard',
+            'ver-pagos',
+            'gestionar-pagos',
+            'ver-reportes-institucionales',
+            'gestionar-estudiantes', // solo lectura en práctica (ver quién debe)
+        ]);
+
+        // Biblioteca — gestión de préstamos e inventario
+        $biblioteca = Role::firstOrCreate(['name' => 'Biblioteca', 'guard_name' => 'web']);
+        $biblioteca->syncPermissions([
+            'ver-dashboard',
+            'gestionar-biblioteca',
+            'ver-servicios',
+        ]);
+
+        // Recepción — atención al público y pre-matrículas
+        $recepcion = Role::firstOrCreate(['name' => 'Recepción', 'guard_name' => 'web']);
+        $recepcion->syncPermissions([
+            'ver-dashboard',
+            'gestionar-estudiantes',
+            'gestionar-matriculas',
+            'ver-servicios',
+        ]);
+
+        // Docente Académico — docente área académica (igual que Docente base)
+        $docenteAcad = Role::firstOrCreate(['name' => 'Docente Académico', 'guard_name' => 'web']);
+        $docenteAcad->syncPermissions([
+            'ver-dashboard',
+            'ingresar-calificaciones',
+            'ver-calificaciones',
+            'ingresar-asistencia',
+            'ver-asistencia',
+            'ver-boletines',
+        ]);
+
+        // Docente Técnico — docente área técnica/vocacional
+        $docenteTec = Role::firstOrCreate(['name' => 'Docente Técnico', 'guard_name' => 'web']);
+        $docenteTec->syncPermissions([
+            'ver-dashboard',
+            'ingresar-calificaciones',
+            'ver-calificaciones',
+            'ingresar-asistencia',
+            'ver-asistencia',
+            'ver-boletines',
+        ]);
+
+        // Docente Guía — docente con función de orientación/tutoría
+        $docenteGuia = Role::firstOrCreate(['name' => 'Docente Guía', 'guard_name' => 'web']);
+        $docenteGuia->syncPermissions([
+            'ver-dashboard',
+            'ingresar-calificaciones',
+            'ver-calificaciones',
+            'ingresar-asistencia',
+            'ver-asistencia',
+            'ver-boletines',
+            'ver-estadisticas',
+        ]);
     }
 }

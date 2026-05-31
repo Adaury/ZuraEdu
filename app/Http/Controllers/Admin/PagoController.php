@@ -773,14 +773,12 @@ class PagoController extends Controller
                 }
             }
 
-            // WhatsApp si está configurado
-            try {
-                foreach ($matricula->estudiante->representantes as $rep) {
-                    if (!empty($rep->celular)) {
-                        app(\App\Services\WhatsAppService::class)->sendMessage($rep->celular, $msg);
-                    }
+            // WhatsApp (async via cola whatsapp)
+            foreach ($matricula->estudiante->representantes as $rep) {
+                if (! empty($rep->telefono)) {
+                    \App\Services\WhatsAppService::send($rep->telefono, $msg);
                 }
-            } catch (\Throwable $e) {}
+            }
         }
 
         return redirect()->back()->with('success', "Recordatorio enviado a {$enviados} representante(s).");

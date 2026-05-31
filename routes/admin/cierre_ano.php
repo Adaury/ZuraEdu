@@ -2,10 +2,10 @@
 
 use App\Http\Controllers\Admin\CierreAnoController;
 
-// ── Cierre de Año Escolar ─────────────────────────────────────────────────
-// Acceso restringido a Administrador y Director (verificado en el controlador)
-
-Route::prefix('cierre-ano')->name('cierre-ano.')->group(function () {
+// ── Cierre de Año Escolar — solo Administrador y Director ─────────────────
+Route::prefix('cierre-ano')->name('cierre-ano.')
+    ->middleware('role:Administrador|Director')
+    ->group(function () {
 
     // Pantalla principal del cierre
     Route::get('/', [CierreAnoController::class, 'index'])->name('index');

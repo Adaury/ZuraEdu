@@ -6,43 +6,49 @@ use App\Http\Controllers\Admin\AlertaController;
 use App\Http\Controllers\Admin\CalendarioController;
 use App\Http\Controllers\Admin\ReportesEjecutivosController;
 
-// ── Dashboard Ejecutivo (Dirección) ───────────────────────────────────────
-Route::get('ejecutivo',       [ReportesEjecutivosController::class, 'index'])->name('ejecutivo.index');
-Route::get('ejecutivo/pdf',   [ReportesEjecutivosController::class, 'pdf'])->name('ejecutivo.pdf');
-Route::get('ejecutivo/excel', [ReportesEjecutivosController::class, 'excel'])->name('ejecutivo.excel');
+// ── Dashboard Ejecutivo — solo Administrador y Director ───────────────────
+Route::middleware('role:Administrador|Director')->group(function () {
+    Route::get('ejecutivo',       [ReportesEjecutivosController::class, 'index'])->name('ejecutivo.index');
+    Route::get('ejecutivo/pdf',   [ReportesEjecutivosController::class, 'pdf'])->name('ejecutivo.pdf');
+    Route::get('ejecutivo/excel', [ReportesEjecutivosController::class, 'excel'])->name('ejecutivo.excel');
+});
 
-// ── Reportes Institucionales ──────────────────────────────────────────────
-Route::get('reportes',                    [ReportesController::class, 'index'])->name('reportes.index');
-Route::get('reportes/consolidado',        [ReportesController::class, 'consolidado'])->name('reportes.consolidado');
-Route::get('reportes/consolidado/pdf',    [ReportesController::class, 'consolidadoPdf'])->name('reportes.consolidado.pdf');
-Route::get('reportes/consolidado/excel',  [ReportesController::class, 'consolidadoExcel'])->name('reportes.consolidado.excel');
-Route::get('reportes/situacion',          [ReportesController::class, 'situacion'])->name('reportes.situacion');
-Route::get('reportes/situacion/pdf',      [ReportesController::class, 'situacionPdf'])->name('reportes.situacion.pdf');
-Route::get('reportes/asistencia',         [ReportesController::class, 'asistencia'])->name('reportes.asistencia');
-Route::get('reportes/asistencia/excel',   [ReportesController::class, 'asistenciaExcel'])->name('reportes.asistencia.excel');
-Route::get('reportes/asistencia/pdf',     [ReportesController::class, 'asistenciaPdf'])->name('reportes.asistencia.pdf');
-Route::get('reportes/situacion/excel',    [ReportesController::class, 'situacionExcel'])->name('reportes.situacion.excel');
+// ── Reportes Institucionales — roles con permiso ver-reportes-institucionales
+Route::middleware('can:ver-reportes-institucionales')->group(function () {
+    Route::get('reportes',                   [ReportesController::class, 'index'])->name('reportes.index');
+    Route::get('reportes/consolidado',       [ReportesController::class, 'consolidado'])->name('reportes.consolidado');
+    Route::get('reportes/consolidado/pdf',   [ReportesController::class, 'consolidadoPdf'])->name('reportes.consolidado.pdf');
+    Route::get('reportes/consolidado/excel', [ReportesController::class, 'consolidadoExcel'])->name('reportes.consolidado.excel');
+    Route::get('reportes/situacion',         [ReportesController::class, 'situacion'])->name('reportes.situacion');
+    Route::get('reportes/situacion/pdf',     [ReportesController::class, 'situacionPdf'])->name('reportes.situacion.pdf');
+    Route::get('reportes/situacion/excel',   [ReportesController::class, 'situacionExcel'])->name('reportes.situacion.excel');
+    Route::get('reportes/asistencia',        [ReportesController::class, 'asistencia'])->name('reportes.asistencia');
+    Route::get('reportes/asistencia/excel',  [ReportesController::class, 'asistenciaExcel'])->name('reportes.asistencia.excel');
+    Route::get('reportes/asistencia/pdf',    [ReportesController::class, 'asistenciaPdf'])->name('reportes.asistencia.pdf');
+});
 
-// ── Dashboard de Rendimiento ──────────────────────────────────────────────
-Route::get('rendimiento',             [RendimientoController::class, 'dashboard'])->name('rendimiento.dashboard');
-Route::get('rendimiento/pdf',         [RendimientoController::class, 'dashboardPdf'])->name('rendimiento.pdf');
-Route::get('rendimiento/excel',       [RendimientoController::class, 'dashboardExcel'])->name('rendimiento.excel');
-Route::get('rendimiento/por-grupo/pdf',  [RendimientoController::class, 'porGrupoPdf'])->name('rendimiento.porGrupo.pdf');
-Route::get('rendimiento/por-grupo/excel',[RendimientoController::class, 'porGrupoExcel'])->name('rendimiento.porGrupo.excel');
-Route::get('rendimiento/por-grupo',      [RendimientoController::class, 'porGrupo'])->name('rendimiento.porGrupo');
-Route::get('rendimiento/por-area/pdf',   [RendimientoController::class, 'porAreaPdf'])->name('rendimiento.porArea.pdf');
-Route::get('rendimiento/por-area/excel', [RendimientoController::class, 'porAreaExcel'])->name('rendimiento.porArea.excel');
-Route::get('rendimiento/por-area',       [RendimientoController::class, 'porArea'])->name('rendimiento.porArea');
-Route::get('rendimiento/semaforo',       [RendimientoController::class, 'semaforo'])->name('rendimiento.semaforo');
-Route::get('rendimiento/semaforo/pdf',   [RendimientoController::class, 'semaforoPdf'])->name('rendimiento.semaforo.pdf');
-Route::get('rendimiento/semaforo/excel', [RendimientoController::class, 'semaforoExcel'])->name('rendimiento.semaforo.excel');
-Route::post('rendimiento/recalcular',    [RendimientoController::class, 'recalcular'])->name('rendimiento.recalcular');
-Route::get('rendimiento/recuperaciones',      [RendimientoController::class, 'recuperaciones'])->name('rendimiento.recuperaciones');
-Route::get('rendimiento/recuperaciones/pdf',   [RendimientoController::class, 'recuperacionesPdf'])->name('rendimiento.recuperaciones.pdf');
-Route::get('rendimiento/recuperaciones/excel', [RendimientoController::class, 'recuperacionesExcel'])->name('rendimiento.recuperaciones.excel');
-Route::get('rendimiento/rezagados',         [RendimientoController::class, 'rezagados'])->name('rendimiento.rezagados');
-Route::get('rendimiento/rezagados/pdf',     [RendimientoController::class, 'rezagadosPdf'])->name('rendimiento.rezagados.pdf');
-Route::get('rendimiento/rezagados/excel',   [RendimientoController::class, 'rezagadosExcel'])->name('rendimiento.rezagados.excel');
+// ── Dashboard de Rendimiento — roles con permiso ver-estadisticas ─────────
+Route::middleware('can:ver-estadisticas')->group(function () {
+    Route::get('rendimiento',                    [RendimientoController::class, 'dashboard'])->name('rendimiento.dashboard');
+    Route::get('rendimiento/pdf',                [RendimientoController::class, 'dashboardPdf'])->name('rendimiento.pdf');
+    Route::get('rendimiento/excel',              [RendimientoController::class, 'dashboardExcel'])->name('rendimiento.excel');
+    Route::get('rendimiento/por-grupo',          [RendimientoController::class, 'porGrupo'])->name('rendimiento.porGrupo');
+    Route::get('rendimiento/por-grupo/pdf',      [RendimientoController::class, 'porGrupoPdf'])->name('rendimiento.porGrupo.pdf');
+    Route::get('rendimiento/por-grupo/excel',    [RendimientoController::class, 'porGrupoExcel'])->name('rendimiento.porGrupo.excel');
+    Route::get('rendimiento/por-area',           [RendimientoController::class, 'porArea'])->name('rendimiento.porArea');
+    Route::get('rendimiento/por-area/pdf',       [RendimientoController::class, 'porAreaPdf'])->name('rendimiento.porArea.pdf');
+    Route::get('rendimiento/por-area/excel',     [RendimientoController::class, 'porAreaExcel'])->name('rendimiento.porArea.excel');
+    Route::get('rendimiento/semaforo',           [RendimientoController::class, 'semaforo'])->name('rendimiento.semaforo');
+    Route::get('rendimiento/semaforo/pdf',       [RendimientoController::class, 'semaforoPdf'])->name('rendimiento.semaforo.pdf');
+    Route::get('rendimiento/semaforo/excel',     [RendimientoController::class, 'semaforoExcel'])->name('rendimiento.semaforo.excel');
+    Route::post('rendimiento/recalcular',        [RendimientoController::class, 'recalcular'])->name('rendimiento.recalcular');
+    Route::get('rendimiento/recuperaciones',     [RendimientoController::class, 'recuperaciones'])->name('rendimiento.recuperaciones');
+    Route::get('rendimiento/recuperaciones/pdf', [RendimientoController::class, 'recuperacionesPdf'])->name('rendimiento.recuperaciones.pdf');
+    Route::get('rendimiento/recuperaciones/excel',[RendimientoController::class,'recuperacionesExcel'])->name('rendimiento.recuperaciones.excel');
+    Route::get('rendimiento/rezagados',          [RendimientoController::class, 'rezagados'])->name('rendimiento.rezagados');
+    Route::get('rendimiento/rezagados/pdf',      [RendimientoController::class, 'rezagadosPdf'])->name('rendimiento.rezagados.pdf');
+    Route::get('rendimiento/rezagados/excel',    [RendimientoController::class, 'rezagadosExcel'])->name('rendimiento.rezagados.excel');
+});
 
 // ── Reportes Comparativos de Rendimiento ─────────────────────────────────
 require __DIR__ . '/rendimiento_comparativo.php';

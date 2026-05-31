@@ -19,36 +19,23 @@ use App\Http\Controllers\Admin\ImportacionController;
 
 // ── Hub principal ─────────────────────────────────────────────────────────
 Route::get('importaciones', [ImportacionController::class, 'index'])
-    ->name('importaciones.index');
+    ->name('importaciones.index')
+    ->middleware('role:Administrador|Director|Coordinador Académico|Coordinador Primer Ciclo|Coordinador Segundo Ciclo');
 
-// ── Módulo 1: Calificaciones académicas ──────────────────────────────────
-Route::prefix('importaciones/calificaciones')->name('importaciones.calificaciones')->group(function () {
+// ── Módulo 1: Calificaciones académicas — requiere permiso de ingreso ─────
+Route::prefix('importaciones/calificaciones')->name('importaciones.calificaciones')
+    ->middleware('can:ingresar-calificaciones')
+    ->group(function () {
+        Route::get('/',          [ImportacionController::class, 'calificacionesForm'])->name('');
+        Route::get('/plantilla', [ImportacionController::class, 'calificacionesPlantilla'])->name('.plantilla');
+        Route::post('/',         [ImportacionController::class, 'calificacionesImportar'])->name('.importar');
+    });
 
-    // GET  /admin/importaciones/calificaciones            → formulario
-    Route::get('/',          [ImportacionController::class, 'calificacionesForm'])
-        ->name('');                         // → admin.importaciones.calificaciones
-
-    // GET  /admin/importaciones/calificaciones/plantilla  → descarga CSV/XLSX
-    Route::get('/plantilla', [ImportacionController::class, 'calificacionesPlantilla'])
-        ->name('.plantilla');               // → admin.importaciones.calificaciones.plantilla
-
-    // POST /admin/importaciones/calificaciones            → procesar archivo
-    Route::post('/',         [ImportacionController::class, 'calificacionesImportar'])
-        ->name('.importar');                // → admin.importaciones.calificaciones.importar
-});
-
-// ── Módulo 2: Estudiantes ─────────────────────────────────────────────────
-Route::prefix('importaciones/estudiantes')->name('importaciones.estudiantes')->group(function () {
-
-    // GET  /admin/importaciones/estudiantes               → formulario
-    Route::get('/',          [ImportacionController::class, 'estudiantesForm'])
-        ->name('');                         // → admin.importaciones.estudiantes
-
-    // GET  /admin/importaciones/estudiantes/plantilla     → descarga CSV/XLSX
-    Route::get('/plantilla', [ImportacionController::class, 'estudiantesPlantilla'])
-        ->name('.plantilla');               // → admin.importaciones.estudiantes.plantilla
-
-    // POST /admin/importaciones/estudiantes               → procesar archivo
-    Route::post('/',         [ImportacionController::class, 'estudiantesImportar'])
-        ->name('.importar');                // → admin.importaciones.estudiantes.importar
-});
+// ── Módulo 2: Estudiantes — requiere permiso de gestión ──────────────────
+Route::prefix('importaciones/estudiantes')->name('importaciones.estudiantes')
+    ->middleware('can:gestionar-estudiantes')
+    ->group(function () {
+        Route::get('/',          [ImportacionController::class, 'estudiantesForm'])->name('');
+        Route::get('/plantilla', [ImportacionController::class, 'estudiantesPlantilla'])->name('.plantilla');
+        Route::post('/',         [ImportacionController::class, 'estudiantesImportar'])->name('.importar');
+    });

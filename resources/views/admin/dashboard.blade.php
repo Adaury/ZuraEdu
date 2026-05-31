@@ -119,6 +119,10 @@
     @include('admin.dashboard._secretaria')
 @elseif($rolDashboard === 'coordinador')
     @include('admin.dashboard._coordinador')
+@elseif($rolDashboard === 'registro')
+    @include('admin.dashboard._registro')
+@elseif($rolDashboard === 'biblioteca')
+    @include('admin.dashboard._biblioteca')
 @else
 {{-- Dashboard Admin/Director — original sin cambios ──────────── --}}
 

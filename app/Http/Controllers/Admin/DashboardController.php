@@ -171,6 +171,45 @@ class DashboardController extends Controller
             });
         }
 
+        // Registro Académico: stats + historial SIGERD
+        $statsRegistroAcad = null;
+        if ($rolDashboard === 'registro' && $schoolYear) {
+            $statsRegistroAcad = Cache::remember("t{$tid}_dashboard_regacad_{$syId}", 180, function () use ($syId) {
+                return [
+                    'estudiantes'        => Estudiante::activos()->count(),
+                    'matriculas_activas' => Matricula::where('estado', 'activa')->where('school_year_id', $syId)->count(),
+                    'prematriculas_pend' => PreMatricula::where('estado', 'pendiente')->count(),
+                    'grupos'             => Grupo::where('school_year_id', $syId)->count(),
+                    'ultimas_matriculas' => Matricula::with('estudiante', 'grupo.grado')
+                                            ->where('school_year_id', $syId)
+                                            ->where('estado', 'activa')
+                                            ->latest()->take(6)->get(),
+                    'prematriculas_rec'  => PreMatricula::with('representante')
+                                            ->where('estado', 'pendiente')
+                                            ->latest()->take(5)->get(),
+                    'ultimas_exportaciones' => \App\Models\SigerdExportLog::with(['user', 'grupo'])
+                                            ->latest('created_at')->take(5)->get(),
+                ];
+            });
+        }
+
+        // Biblioteca: préstamos y recursos
+        $statsBiblioteca = null;
+        if ($rolDashboard === 'biblioteca') {
+            $statsBiblioteca = Cache::remember("t{$tid}_dashboard_biblioteca", 180, function () {
+                return [
+                    'prestamos_activos'  => \App\Models\PrestamoBiblioteca::where('estado', 'activo')->count(),
+                    'prestamos_vencidos' => \App\Models\PrestamoBiblioteca::where('estado', 'vencido')->count(),
+                    'total_devueltos_mes'=> \App\Models\PrestamoBiblioteca::where('estado', 'devuelto')
+                                            ->whereMonth('fecha_devolucion', now()->month)->count(),
+                    'pendientes_devolver'=> \App\Models\PrestamoBiblioteca::with(['estudiante', 'libro'])
+                                            ->whereIn('estado', ['activo', 'vencido'])
+                                            ->orderBy('fecha_vencimiento')
+                                            ->take(8)->get(),
+                ];
+            });
+        }
+
         // Coordinador: stats académicas de calidad
         $statsCoord = null;
         if ($rolDashboard === 'coordinador' && $schoolYear) {
@@ -452,6 +491,8 @@ class DashboardController extends Controller
             'rolDashboard',
             'statsCaja',
             'statsRegistro',
+            'statsRegistroAcad',
+            'statsBiblioteca',
             'statsCoord',
         ));
     }

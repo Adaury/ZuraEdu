@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Admin\BillingController;
 use App\Mail\PagoReembolsado;
 use App\Mail\SuscripcionActivada;
+use App\Models\Pago;
 use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Services\StripeService;
@@ -104,8 +105,15 @@ class WebhookStripeController extends Controller
 
         $meta = $session['metadata'] ?? [];
 
+        // ── Pago de cuota de estudiante ───────────────────────────────────
+        if (! empty($meta['pago_id'])) {
+            $this->procesarPagoEstudiante((int) $meta['pago_id'], $session['id']);
+            return;
+        }
+
+        // ── Suscripción de tenant (flujo original) ────────────────────────
         if (empty($meta['tenant_id']) || empty($meta['plan_slug'])) {
-            Log::warning('Stripe webhook: metadata incompleta en checkout.session.completed', $meta);
+            Log::warning('Stripe webhook: metadata sin tenant_id/plan_slug ni pago_id', $meta);
             return;
         }
 
@@ -136,6 +144,30 @@ class WebhookStripeController extends Controller
 
         // Email de confirmación
         $this->enviarEmailActivacion((int) $meta['tenant_id'], $meta['plan_slug'], $meta['ciclo'] ?? 'mensual');
+    }
+
+    private function procesarPagoEstudiante(int $pagoId, string $sessionId): void
+    {
+        $pago = Pago::find($pagoId);
+
+        if (! $pago) {
+            Log::warning("Stripe webhook: pago #{$pagoId} no encontrado");
+            return;
+        }
+
+        if ($pago->estado === 'pagado') {
+            Log::info("Stripe webhook: pago #{$pagoId} ya estaba pagado — idempotente");
+            return;
+        }
+
+        $pago->update([
+            'estado'      => 'pagado',
+            'fecha_pago'  => now()->toDateString(),
+            'metodo_pago' => 'stripe',
+            'referencia'  => $sessionId,
+        ]);
+
+        Log::info("Stripe webhook: pago #{$pagoId} marcado como pagado", ['session' => $sessionId]);
     }
 
     // ── charge.refunded ───────────────────────────────────────────────────

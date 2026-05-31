@@ -30,6 +30,7 @@ use App\Models\InstrumentoEvaluacion;
 use App\Models\SchoolYear;
 use App\Models\SolicitudRepresentante;
 use App\Services\CardNetService;
+use App\Services\PaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -497,22 +498,37 @@ class PortalPadreController extends Controller
         $representante = $this->getRepresentante();
         if (! $representante->estudiantes()->where('estudiante_id', $estudiante->id)->exists()) abort(403);
 
-        // Verificar que el pago pertenece a la matrícula activa del hijo
         $matricula = $estudiante->matriculas()->where('id', $pago->matricula_id)->first();
         abort_if(! $matricula, 403);
         abort_if(! in_array($pago->estado, ['pendiente', 'vencido']), 422, 'Este pago ya no puede procesarse en línea.');
 
+        $metadata = ['pago_id' => $pago->id, 'origen' => 'portal_padre'];
+
+        if (PaymentService::isStripe()) {
+            $appUrl = config('app.url');
+            $result = PaymentService::createCheckout(
+                $pago->concepto,
+                (float) $pago->monto,
+                $metadata,
+                "{$appUrl}/stripe/pago-ok?session_id={CHECKOUT_SESSION_ID}",
+                "{$appUrl}/stripe/pago-cancelado?origen=portal_padre",
+            );
+
+            if (! $result) {
+                return back()->with('error', 'El pago en línea no está disponible. Contacta la administración.');
+            }
+
+            return redirect($result['url']);
+        }
+
+        // CardNet
         if (! CardNetService::isConfigured()) {
             return back()->with('error', 'El pago en línea no está configurado. Contacta la administración.');
         }
 
         $orderId = 'P' . str_pad($pago->id, 11, '0', STR_PAD_LEFT);
-        $result  = CardNetService::createCheckoutParams($orderId, (float) $pago->monto, [
-            'pago_id' => $pago->id,
-            'origen'  => 'portal_padre',
-        ]);
-
-        $token = \Illuminate\Support\Str::random(32);
+        $result  = CardNetService::createCheckoutParams($orderId, (float) $pago->monto, $metadata);
+        $token   = \Illuminate\Support\Str::random(32);
         cache()->put("cardnet_form_{$token}", $result, now()->addMinutes(20));
 
         return redirect()->route('cardnet.checkout', $token);

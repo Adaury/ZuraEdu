@@ -23,6 +23,7 @@ use App\Models\Planificacion;
 use App\Models\InsigniaEstudiante;
 use App\Models\Pago;
 use App\Services\CardNetService;
+use App\Services\PaymentService;
 use App\Models\ProyectoEscolar;
 use App\Models\PuntoEstudiante;
 use App\Models\PlanEvaluacionPeriodo;
@@ -1811,22 +1812,37 @@ class PortalEstudianteController extends Controller
     {
         $estudiante = $this->getEstudiante();
 
-        // Verificar que el pago pertenece a este estudiante
         $matricula = $estudiante->matriculas()->where('id', $pago->matricula_id)->first();
         abort_if(! $matricula, 403);
         abort_if(! in_array($pago->estado, ['pendiente', 'vencido']), 422, 'Este pago ya no puede procesarse en línea.');
 
+        $metadata = ['pago_id' => $pago->id, 'origen' => 'portal_estudiante'];
+
+        if (PaymentService::isStripe()) {
+            $appUrl = config('app.url');
+            $result = PaymentService::createCheckout(
+                $pago->concepto,
+                (float) $pago->monto,
+                $metadata,
+                "{$appUrl}/stripe/pago-ok?session_id={CHECKOUT_SESSION_ID}",
+                "{$appUrl}/stripe/pago-cancelado?origen=portal_estudiante",
+            );
+
+            if (! $result) {
+                return back()->with('error', 'El pago en línea no está disponible. Contacta la administración.');
+            }
+
+            return redirect($result['url']);
+        }
+
+        // CardNet
         if (! CardNetService::isConfigured()) {
             return back()->with('error', 'El pago en línea no está configurado. Contacta la administración.');
         }
 
         $orderId = 'P' . str_pad($pago->id, 11, '0', STR_PAD_LEFT);
-        $result  = CardNetService::createCheckoutParams($orderId, (float) $pago->monto, [
-            'pago_id'    => $pago->id,
-            'origen'     => 'portal_estudiante',
-        ]);
-
-        $token = \Illuminate\Support\Str::random(32);
+        $result  = CardNetService::createCheckoutParams($orderId, (float) $pago->monto, $metadata);
+        $token   = \Illuminate\Support\Str::random(32);
         cache()->put("cardnet_form_{$token}", $result, now()->addMinutes(20));
 
         return redirect()->route('cardnet.checkout', $token);

@@ -25,7 +25,7 @@
     $porcPagado   = $totalGeneral > 0 ? round(($totales['pagado'] / $totalGeneral) * 100) : 0;
     $proximoPago  = $matricula->pagos->whereIn('estado', ['pendiente','vencido'])->sortBy('fecha_vencimiento')->first();
     $diasAlProximo = $proximoPago ? (int) now()->diffInDays($proximoPago->fecha_vencimiento, false) : null;
-    $cardnetActivo = \App\Services\CardNetService::isConfigured();
+    $pagoOnlineActivo = \App\Services\PaymentService::isAvailable();
 @endphp
 
 {{-- Encabezado --}}
@@ -117,7 +117,7 @@
             · Vence: {{ $proximoPago->fecha_vencimiento->format('d/m/Y') }}
         </div>
     </div>
-    @if($cardnetActivo && in_array($proximoPago->estado, ['pendiente','vencido']))
+    @if($pagoOnlineActivo && in_array($proximoPago->estado, ['pendiente','vencido']))
     <form method="POST" action="{{ route('portal.padre.hijo.pagos.pagar-online', [$estudiante, $proximoPago]) }}">
         @csrf
         <button type="submit"
@@ -215,7 +215,7 @@
                     <span style="font-size:.7rem;color:#64748b;">
                         <i class="bi bi-check2"></i> {{ ucfirst($pago->metodo_pago ?? 'confirmado') }}
                     </span>
-                    @elseif(($esPend || $esVenc) && $cardnetActivo)
+                    @elseif(($esPend || $esVenc) && $pagoOnlineActivo)
                     <form method="POST" action="{{ route('portal.padre.hijo.pagos.pagar-online', [$estudiante, $pago]) }}" style="margin:0;">
                         @csrf
                         <button type="submit"

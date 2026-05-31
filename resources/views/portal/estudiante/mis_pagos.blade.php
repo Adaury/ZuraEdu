@@ -114,8 +114,8 @@
             Vence: {{ $proximoPago->fecha_vencimiento->format('d/m/Y') }}
         </div>
     </div>
-    @php $cardnetActivo = \App\Services\CardNetService::isConfigured(); @endphp
-    @if($cardnetActivo)
+    @php $pagoOnlineActivo = \App\Services\PaymentService::isAvailable(); @endphp
+    @if($pagoOnlineActivo)
     <form method="POST" action="{{ route('portal.estudiante.mis-pagos.pagar-online', $proximoPago) }}">
         @csrf
         <button type="submit" class="btn btn-sm"
@@ -171,13 +171,13 @@
                 </tr>
             </thead>
             <tbody>
-            @php $cardnetActivo = \App\Services\CardNetService::isConfigured(); @endphp
+            @php $pagoOnlineActivo = \App\Services\PaymentService::isAvailable(); @endphp
             @foreach($pagos as $pago)
             @php
                 $esPagado    = $pago->estado === 'pagado';
                 $esVencido   = $pago->estado === 'vencido';
                 $esPendiente = $pago->estado === 'pendiente';
-                $puedeOnline = ($esPendiente || $esVencido) && $cardnetActivo;
+                $puedeOnline = ($esPendiente || $esVencido) && $pagoOnlineActivo;
             @endphp
             <tr class="{{ $esVencido ? 'table-danger' : '' }}">
                 <td class="px-4 py-3">

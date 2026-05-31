@@ -747,6 +747,12 @@ Route::prefix('admin/soporte')->name('admin.soporte.')->middleware(['auth', 'act
     Route::patch('/chat/{session}/close',  [\App\Http\Controllers\SupportChatController::class, 'adminClose'])->name('chat.close');
 });
 
+// ── Stripe — Retorno pago de estudiantes ─────────────────────────────────
+Route::middleware(['auth', 'activo'])->group(function () {
+    Route::get('/stripe/pago-ok',        [\App\Http\Controllers\PagoStripeController::class, 'ok'])->name('stripe.pago-ok');
+    Route::get('/stripe/pago-cancelado', [\App\Http\Controllers\PagoStripeController::class, 'cancelado'])->name('stripe.pago-cancelado');
+});
+
 // ── CardNet RD — Pago en Línea ────────────────────────────────────────────
 Route::get('/cardnet/checkout/{token}', [\App\Http\Controllers\CardNetController::class, 'checkout'])->name('cardnet.checkout');
 Route::get('/cardnet/retorno',          [\App\Http\Controllers\CardNetController::class, 'retorno'])->name('cardnet.retorno');

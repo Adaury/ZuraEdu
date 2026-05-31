@@ -2292,6 +2292,23 @@ if (auth()->check()) {
                 </li>
             </ul>
 
+            <div class="nav-section-title">Exportación SIGERD</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.sigerd.index') }}"
+                       class="{{ request()->routeIs('admin.sigerd.index') ? 'active' : '' }}"
+                       style="{{ request()->routeIs('admin.sigerd*') ? '' : 'color:#a78bfa;' }}">
+                        <i class="bi bi-cloud-upload"></i>Exportar a SIGERD
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.sigerd.historial') }}"
+                       class="{{ request()->routeIs('admin.sigerd.historial') ? 'active' : '' }}">
+                        <i class="bi bi-clock-history"></i>Historial Exportaciones
+                    </a>
+                </li>
+            </ul>
+
             <div class="nav-section-title">Comunicación</div>
             <ul class="list-unstyled mb-0">
                 <li class="nav-item">

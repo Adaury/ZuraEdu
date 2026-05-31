@@ -52,6 +52,9 @@ class Kernel extends ConsoleKernel
 
         // ── Verificar pagos: suspender vencidos, reactivar pagados (diario) ───
         $schedule->command('tenants:verificar-pagos')->dailyAt('02:00');
+
+        // ── SIGERD: validación semanal y notificación al registrador (viernes 09:00) ──
+        $schedule->command('sigerd:validar')->weeklyOn(5, '09:00');
     }
 
     /**

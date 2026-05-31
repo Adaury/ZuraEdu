@@ -72,33 +72,84 @@ class SigerdController extends Controller
             'formato' => 'required|in:excel,csv,pdf',
         ]);
         try {
-            $sy = SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
-            $grupoId  = $request->grupo_id ? (int)$request->grupo_id : null;
-            $periodoId = $request->periodo_id ? (int)$request->periodo_id : null;
-            $desde    = $request->desde ?? now()->startOfYear()->toDateString();
-            $hasta    = $request->hasta ?? now()->toDateString();
-            $formato  = $request->formato;
-            $response = match ($request->tipo) {
+            $sy        = SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
+            $grupoId   = $request->grupo_id   ? (int) $request->grupo_id   : null;
+            $periodoId = $request->periodo_id  ? (int) $request->periodo_id : null;
+            $desde     = $request->desde ?? now()->startOfYear()->toDateString();
+            $hasta     = $request->hasta ?? now()->toDateString();
+            $formato   = $request->formato;
+            $tipo      = $request->tipo;
+
+            // Contar registros antes de exportar para el log
+            $totalRegistros = $this->contarRegistros($tipo, $sy, $grupoId);
+
+            $response = match ($tipo) {
                 'nomina_matricula' => $this->service->exportarNomina($sy, $grupoId, $formato),
-                'calificaciones'   => $this->service->exportarCalificaciones($sy, (int)$grupoId, $periodoId, $formato),
+                'calificaciones'   => $this->service->exportarCalificaciones($sy, (int) $grupoId, $periodoId, $formato),
                 'docentes'         => $this->service->exportarDocentes($sy, $formato),
                 'asistencia'       => $this->service->exportarAsistencia($sy, $grupoId, $desde, $hasta, $formato),
-                default => throw new \InvalidArgumentException('Tipo no valido'),
+                default            => throw new \InvalidArgumentException('Tipo no válido'),
             };
+
             SigerdExportLog::create([
                 'tenant_id'       => auth()->user()->tenant_id,
                 'user_id'         => auth()->id(),
-                'tipo'            => $request->tipo,
+                'tipo'            => $tipo,
                 'grupo_id'        => $grupoId,
+                'periodo_id'      => $periodoId,
                 'school_year_id'  => $sy->id,
                 'formato'         => $formato,
-                'total_registros' => 0,
+                'total_registros' => $totalRegistros,
                 'created_at'      => now(),
             ]);
+
+            // Notificar al usuario por WhatsApp (async)
+            $this->notificarExportacion($tipo, $totalRegistros, $formato);
+
             return $response;
         } catch (\Exception $e) {
             return back()->with('error', 'Error al exportar: ' . $e->getMessage());
         }
+    }
+
+    private function contarRegistros(string $tipo, SchoolYear $sy, ?int $grupoId): int
+    {
+        return match ($tipo) {
+            'nomina_matricula', 'asistencia' => \App\Models\Matricula::where('school_year_id', $sy->id)
+                ->where('estado', 'activa')
+                ->when($grupoId, fn($q) => $q->where('grupo_id', $grupoId))
+                ->count(),
+            'calificaciones' => \App\Models\Matricula::where('school_year_id', $sy->id)
+                ->where('estado', 'activa')
+                ->when($grupoId, fn($q) => $q->where('grupo_id', $grupoId))
+                ->count(),
+            'docentes' => \App\Models\Asignacion::where('school_year_id', $sy->id)
+                ->distinct('docente_id')->count('docente_id'),
+            default => 0,
+        };
+    }
+
+    private function notificarExportacion(string $tipo, int $total, string $formato): void
+    {
+        try {
+            $user = auth()->user();
+            if (empty($user->telefono)) return;
+
+            $labels = [
+                'nomina_matricula' => 'Nómina de Matrícula',
+                'calificaciones'   => 'Libro de Calificaciones',
+                'docentes'         => 'Nómina de Docentes',
+                'asistencia'       => 'Registro de Asistencia',
+            ];
+
+            $school = \App\Helpers\Setting::get('system_name', 'El centro educativo');
+            $label  = $labels[$tipo] ?? $tipo;
+
+            \App\Services\WhatsAppService::send(
+                $user->telefono,
+                "✅ *{$school}* — SIGERD\n\n*{$label}* exportado correctamente.\n📊 {$total} registros en formato " . strtoupper($formato) . ".\n\nEl archivo está listo para cargar en el portal SIGERD/MINERD."
+            );
+        } catch (\Throwable) {}
     }
 
     public function validar(Request $request)

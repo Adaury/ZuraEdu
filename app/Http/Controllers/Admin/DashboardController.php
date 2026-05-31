@@ -51,7 +51,18 @@ class DashboardController extends Controller
         );
 
         $docentePanel = null;
-        $isDocente    = $user->hasRole('Docente');
+        $isDocente    = $user->hasAnyRole(['Docente', 'Docente Académico', 'Docente Técnico', 'Docente Guía']);
+
+        // ── Rol del dashboard ────────────────────────────────────────────────
+        $rolDashboard = match(true) {
+            $user->hasRole('Caja / Finanzas')                                                   => 'caja',
+            $user->hasAnyRole(['Secretaría', 'Secretaria Docente', 'Secretaria'])               => 'secretaria',
+            $user->hasAnyRole(['Coordinador Académico', 'Coordinador Primer Ciclo', 'Coordinador Segundo Ciclo']) => 'coordinador',
+            $user->hasAnyRole(['Registrador Académico', 'Encargado de Registro Académico'])     => 'registro',
+            $user->hasRole('Biblioteca')                                                        => 'biblioteca',
+            $user->hasRole('Recepción')                                                         => 'recepcion',
+            default                                                                              => 'admin',
+        };
 
         // ── Horario publicado activo ───────────────────────────────────────
         $horarioActivo = $schoolYear
@@ -113,9 +124,77 @@ class DashboardController extends Controller
             }
         }
 
-        // Estadísticas de planificación y observaciones (solo para no-docentes)
+        // ── Stats específicas por rol ─────────────────────────────────────────
+
+        // Caja: stats financieras prominentes
+        $statsCaja = null;
+        if ($rolDashboard === 'caja' && \App\Models\ConfigInstitucional::moduloActivo('pagos') && $schoolYear) {
+            Cache::remember("t{$tid}_pagos_sync_lock", 3600, function () {
+                \App\Models\Pago::sincronizarVencidos(); return true;
+            });
+            $statsCaja = Cache::remember("t{$tid}_dashboard_caja_{$syId}", 180, function () use ($syId) {
+                $base = \App\Models\Pago::whereHas('matricula', fn($m) => $m->where('school_year_id', $syId));
+                return [
+                    'cobrado'        => (clone $base)->where('estado', 'pagado')->sum('monto'),
+                    'pendiente'      => (clone $base)->where('estado', 'pendiente')->sum('monto'),
+                    'vencido'        => (clone $base)->where('estado', 'vencido')->sum('monto'),
+                    'deudores'       => (clone $base)->where('estado', 'vencido')->distinct('matricula_id')->count('matricula_id'),
+                    'ultimos_pagos'  => \App\Models\Pago::with('matricula.estudiante')
+                                        ->where('estado', 'pagado')
+                                        ->whereHas('matricula', fn($m) => $m->where('school_year_id', $syId))
+                                        ->latest('fecha_pago')->take(6)->get(),
+                    'top_deudores'   => \App\Models\Pago::with('matricula.estudiante')
+                                        ->where('estado', 'vencido')
+                                        ->whereHas('matricula', fn($m) => $m->where('school_year_id', $syId))
+                                        ->orderByDesc('monto')->take(5)->get(),
+                ];
+            });
+        }
+
+        // Secretaría / Recepción / Registro: stats de registro
+        $statsRegistro = null;
+        if (in_array($rolDashboard, ['secretaria', 'registro', 'recepcion']) && $schoolYear) {
+            $statsRegistro = Cache::remember("t{$tid}_dashboard_registro_{$syId}", 180, function () use ($syId) {
+                return [
+                    'estudiantes'         => Estudiante::activos()->count(),
+                    'matriculas_activas'  => Matricula::where('estado', 'activa')->where('school_year_id', $syId)->count(),
+                    'prematriculas_pend'  => PreMatricula::where('estado', 'pendiente')->count(),
+                    'grupos'              => Grupo::where('school_year_id', $syId)->count(),
+                    'ultimas_matriculas'  => Matricula::with('estudiante', 'grupo.grado')
+                                            ->where('school_year_id', $syId)
+                                            ->where('estado', 'activa')
+                                            ->latest()->take(6)->get(),
+                    'prematriculas_rec'   => PreMatricula::with('representante')
+                                            ->where('estado', 'pendiente')
+                                            ->latest()->take(5)->get(),
+                ];
+            });
+        }
+
+        // Coordinador: stats académicas de calidad
+        $statsCoord = null;
+        if ($rolDashboard === 'coordinador' && $schoolYear) {
+            $statsCoord = Cache::remember("t{$tid}_dashboard_coord_{$syId}", 180, function () use ($syId) {
+                return [
+                    'estudiantes'     => Estudiante::activos()->count(),
+                    'grupos'          => Grupo::where('school_year_id', $syId)->count(),
+                    'observaciones'   => Observacion::whereHas('asignacion', fn($q) => $q->where('school_year_id', $syId))->count(),
+                    'periodos_activos'=> Periodo::where('school_year_id', $syId)->where('cerrado', false)->count(),
+                    'periodos_cerrando' => Periodo::where('school_year_id', $syId)
+                                            ->where('cerrado', false)
+                                            ->whereBetween('fecha_fin', [now(), now()->addDays(14)])
+                                            ->get(),
+                    'obs_recientes'   => Observacion::with(['asignacion.docente.user', 'asignacion.asignatura', 'asignacion.grupo.grado'])
+                                            ->whereHas('asignacion', fn($q) => $q->where('school_year_id', $syId))
+                                            ->latest()->take(5)->get(),
+                ];
+            });
+        }
+
+        // Estadísticas de planificación y observaciones (solo admin/director/coordinador)
+        $rolesConExtra = ['admin', 'coordinador'];
         $statsExtra = [];
-        if (!$isDocente && $schoolYear) {
+        if (!$isDocente && in_array($rolDashboard, $rolesConExtra) && $schoolYear) {
             $statsExtra = Cache::remember("t{$tid}_dashboard_extra_{$syId}", 300, function () use ($syId) {
                 $planificacionesCount = Planificacion::whereHas('asignacion',
                     fn($q) => $q->where('school_year_id', $syId))->count();
@@ -130,9 +209,9 @@ class DashboardController extends Controller
             });
         }
 
-        // Datos para gráficas (solo no-docentes)
+        // Datos para gráficas (solo admin/director)
         $chartData = null;
-        if (!$isDocente && $schoolYear) {
+        if (!$isDocente && $rolDashboard === 'admin' && $schoolYear) {
             $chartData = Cache::remember("t{$tid}_dashboard_chart_{$syId}", 300, function () use ($syId) {
                 // Matrículas por grado
                 $porGrado = Matricula::join('grupos', 'matriculas.grupo_id', '=', 'grupos.id')
@@ -158,9 +237,9 @@ class DashboardController extends Controller
             });
         }
 
-        // Stats de pagos (solo si módulo activo y usuario admin/director)
+        // Stats de pagos resumidas (solo admin/director — Caja usa $statsCaja)
         $statsPagos = null;
-        if (!$isDocente && \App\Models\ConfigInstitucional::moduloActivo('pagos') && $schoolYear) {
+        if (!$isDocente && $rolDashboard === 'admin' && \App\Models\ConfigInstitucional::moduloActivo('pagos') && $schoolYear) {
             // Ejecutar sincronización de pagos vencidos como máximo 1 vez por hora por tenant
             Cache::remember("t{$tid}_pagos_sync_lock", 3600, function () {
                 \App\Models\Pago::sincronizarVencidos();
@@ -228,10 +307,10 @@ class DashboardController extends Controller
             }
         }
 
-        // ── Agenda próximos 7 días (solo admin) ──────────────────────────
+        // ── Agenda próximos 7 días (solo admin/director/coordinador) ─────────
         $agendaProxima = null;
         $preMatriculasPendientes = 0;
-        if (!$isDocente) {
+        if (!$isDocente && in_array($rolDashboard, ['admin', 'coordinador'])) {
             $agendaProxima = Cache::remember("t{$tid}_dashboard_agenda", 120, function () {
                 $hoy   = now()->toDateString();
                 $en7   = now()->addDays(7)->toDateString();
@@ -272,9 +351,9 @@ class DashboardController extends Controller
             );
         }
 
-        // ── Transporte (solo admin) ───────────────────────────────────────
+        // ── Transporte (solo admin/director) ──────────────────────────────
         $transporteStats = null;
-        if (!$isDocente) {
+        if (!$isDocente && $rolDashboard === 'admin') {
             $transporteStats = Cache::remember("t{$tid}_dashboard_transporte", 300, function () {
                 $rutas = RutaTransporte::withCount('estudiantesRuta as ocupacion')
                     ->where('activo', true)
@@ -288,10 +367,10 @@ class DashboardController extends Controller
             });
         }
 
-        // ── Disciplina reciente (solo admin) ──────────────────────────────
+        // ── Disciplina reciente (solo admin/director) ─────────────────────
         $recentDisciplina     = null;
         $pendientesDisciplina = 0;
-        if (!$isDocente) {
+        if (!$isDocente && $rolDashboard === 'admin') {
             $recentDisciplina = Cache::remember("t{$tid}_dashboard_disciplina_recent", 120, fn() =>
                 FaltaDisciplinaria::with('estudiante')
                     ->latest('fecha')
@@ -303,10 +382,10 @@ class DashboardController extends Controller
             );
         }
 
-        // ── Incidentes médicos recientes (solo admin) ─────────────────────
+        // ── Incidentes médicos recientes (solo admin/director) ───────────
         $recentSalud          = null;
         $totalIncidentesMes   = 0;
-        if (!$isDocente) {
+        if (!$isDocente && $rolDashboard === 'admin') {
             $recentSalud = Cache::remember("t{$tid}_dashboard_salud_recent", 120, fn() =>
                 IncidenteMedico::with('estudiante')
                     ->latest('fecha')
@@ -320,9 +399,9 @@ class DashboardController extends Controller
             );
         }
 
-        // Alertas académicas recientes no leídas (solo admin/director) — cacheadas 90s por usuario
+        // Alertas académicas (admin/director/coordinador)
         $alertasAcad = null;
-        if (!$isDocente && $schoolYear) {
+        if (!$isDocente && in_array($rolDashboard, ['admin', 'coordinador']) && $schoolYear) {
             $roles = $user->getRoleNames()->toArray();
             $alertasAcad = Cache::remember("t{$tid}_dashboard_alertas_acad_{$user->id}", 90, function () use ($user, $roles) {
                 return AlertaSistema::where(function ($q) use ($user, $roles) {
@@ -369,7 +448,11 @@ class DashboardController extends Controller
             'transporteStats',
             'agendaProxima',
             'preMatriculasPendientes',
-            'setupChecklist'
+            'setupChecklist',
+            'rolDashboard',
+            'statsCaja',
+            'statsRegistro',
+            'statsCoord',
         ));
     }
 

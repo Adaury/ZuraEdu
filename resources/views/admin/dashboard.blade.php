@@ -111,6 +111,17 @@
 
 {{-- ── Stats y módulos admin (ocultos para Docentes) ──────────── --}}
 @unless($isDocente)
+
+{{-- ══ DASHBOARDS CONTEXTUALES POR ROL ══ --}}
+@if($rolDashboard === 'caja')
+    @include('admin.dashboard._caja')
+@elseif(in_array($rolDashboard, ['secretaria', 'recepcion']))
+    @include('admin.dashboard._secretaria')
+@elseif($rolDashboard === 'coordinador')
+    @include('admin.dashboard._coordinador')
+@else
+{{-- Dashboard Admin/Director — original sin cambios ──────────── --}}
+
 {{-- ── Header de estadísticas con botón actualizar ─────────── --}}
 <div class="d-flex align-items-center justify-content-between mb-3 p-slide-up p-delay-1">
     <div>
@@ -246,6 +257,8 @@
     @endif
 @endif
 </div>
+
+@endif {{-- end @else admin/director --}}
 
 @endunless {{-- /isDocente --}}
 

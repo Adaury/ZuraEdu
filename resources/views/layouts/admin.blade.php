@@ -2441,7 +2441,7 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.rendimiento.index') }}" class="{{ request()->routeIs('admin.rendimiento*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.rendimiento.dashboard') }}" class="{{ request()->routeIs('admin.rendimiento*') ? 'active' : '' }}">
                         <i class="bi bi-bar-chart-fill"></i>Rendimiento
                     </a>
                 </li>

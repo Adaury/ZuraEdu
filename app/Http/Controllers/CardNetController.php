@@ -105,5 +105,7 @@ class CardNetController extends Controller
             'order_id' => $result['order_id'],
             'auth_code'=> $result['auth_code'],
         ]);
+
+        \App\Events\PagoConfirmado::dispatch($pago);
     }
 }

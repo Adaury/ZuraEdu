@@ -59,6 +59,8 @@ class PagoStripeController extends Controller
                 'origen'  => $origen,
             ]);
 
+            \App\Events\PagoConfirmado::dispatch($pago);
+
             return $this->redirigirPortal($origen, null, '¡Pago realizado con éxito! Tu recibo está disponible.');
         }
 

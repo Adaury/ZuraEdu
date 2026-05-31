@@ -251,12 +251,14 @@ class PagoController extends Controller
         ]);
 
         $pago->update([
-            'estado'      => 'pagado',
-            'fecha_pago'  => today(),
-            'metodo_pago' => $data['metodo_pago'],
-            'referencia'  => $data['referencia'] ?? null,
+            'estado'         => 'pagado',
+            'fecha_pago'     => today(),
+            'metodo_pago'    => $data['metodo_pago'],
+            'referencia'     => $data['referencia'] ?? null,
             'registrado_por' => auth()->id(),
         ]);
+
+        \App\Events\PagoConfirmado::dispatch($pago);
 
         return response()->json(['ok' => true, 'message' => 'Pago registrado.']);
     }

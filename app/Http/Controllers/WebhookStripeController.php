@@ -168,6 +168,8 @@ class WebhookStripeController extends Controller
         ]);
 
         Log::info("Stripe webhook: pago #{$pagoId} marcado como pagado", ['session' => $sessionId]);
+
+        \App\Events\PagoConfirmado::dispatch($pago);
     }
 
     // ── charge.refunded ───────────────────────────────────────────────────

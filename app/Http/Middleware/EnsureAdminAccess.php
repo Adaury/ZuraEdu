@@ -24,6 +24,7 @@ class EnsureAdminAccess
         'Personal Administrativo',
         'Encargado de Área',
         'Registrador Académico',
+        'Encargado de Registro Académico',
     ];
 
     public function handle(Request $request, Closure $next)

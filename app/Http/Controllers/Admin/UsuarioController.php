@@ -63,6 +63,12 @@ class UsuarioController extends Controller
             ->with('success', 'Usuario creado correctamente.');
     }
 
+    public function show(User $usuario)
+    {
+        $usuario->load(['roles', 'docente', 'estudiante', 'nominaEmpleado']);
+        return view('admin.usuarios.show', compact('usuario'));
+    }
+
     public function edit(User $usuario)
     {
         $roles = Role::orderBy('name')->get();

@@ -291,7 +291,8 @@
 
                         {{-- Usuario --}}
                         <td class="py-3">
-                            <div class="d-flex align-items-center gap-3">
+                            <a href="{{ route('admin.usuarios.show', $u) }}"
+                               class="d-flex align-items-center gap-3 text-decoration-none">
                                 <div class="avatar-initials">
                                     {{ mb_strtoupper(mb_substr($u->name, 0, 1)) }}{{ mb_strtoupper(mb_substr($u->apellidos ?? '', 0, 1)) }}
                                 </div>
@@ -306,7 +307,7 @@
                                         </div>
                                     @endif
                                 </div>
-                            </div>
+                            </a>
                         </td>
 
                         {{-- Rol --}}

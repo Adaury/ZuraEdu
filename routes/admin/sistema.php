@@ -97,6 +97,7 @@ Route::middleware('can:gestionar-usuarios')->group(function () {
     Route::get('usuarios/lista/pdf',          [UsuarioController::class, 'listaPdf'])->name('usuarios.lista-pdf');
     Route::get('usuarios/lista/excel',        [UsuarioController::class, 'listaExcel'])->name('usuarios.lista-excel');
     Route::get('usuarios/pendientes',         [UsuarioController::class, 'pendientes'])->name('usuarios.pendientes');
+    Route::get('usuarios/{usuario}',          [UsuarioController::class, 'show'])->name('usuarios.show');
     Route::get('usuarios/{usuario}/edit',     [UsuarioController::class, 'edit'])->name('usuarios.edit');
     Route::put('usuarios/{usuario}',          [UsuarioController::class, 'update'])->name('usuarios.update');
     Route::delete('usuarios/{usuario}',       [UsuarioController::class, 'destroy'])->name('usuarios.destroy');

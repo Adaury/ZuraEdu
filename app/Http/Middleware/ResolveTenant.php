@@ -24,6 +24,8 @@ class ResolveTenant
         'demo', 'demo/*',
         'verificar-matricula',
         'inscripcion', 'inscripcion/*',
+        'encuesta',
+        'health',
         'portal/representante/*',
     ];
 

@@ -123,6 +123,10 @@ Route::get('/portal/representante/{estudiante}', [PortalRepresentanteController:
 Route::get('/verificar-matricula',  [\App\Http\Controllers\VerificacionMatriculaController::class, 'index'])->name('verificar-matricula');
 Route::post('/verificar-matricula', [\App\Http\Controllers\VerificacionMatriculaController::class, 'buscar'])->name('verificar-matricula.buscar')->middleware('throttle:10,1');
 
+// ── Encuesta de interés ZuraEdu (pública, sin login) ─────────────────────
+Route::get('/encuesta',  [\App\Http\Controllers\EncuestaInteresController::class, 'show'])->name('encuesta.show')->middleware('throttle:30,1');
+Route::post('/encuesta', [\App\Http\Controllers\EncuestaInteresController::class, 'store'])->name('encuesta.store')->middleware('throttle:5,1');
+
 // ── Pre-matrícula pública (sin login) ────────────────────────────────────
 Route::get('/inscripcion',                          [\App\Http\Controllers\PreMatriculaController::class, 'create'])->name('inscripcion');
 Route::post('/inscripcion',                         [\App\Http\Controllers\PreMatriculaController::class, 'store'])->name('inscripcion.store')->middleware('throttle:5,1');

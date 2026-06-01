@@ -20,6 +20,7 @@ class EnsureAdminAccess
         'Coordinador Primer Ciclo',
         'Coordinador Segundo Ciclo',
         'Secretaría',
+        'Secretaria',
         'Secretaria Docente',
         'Personal Administrativo',
         'Encargado de Área',

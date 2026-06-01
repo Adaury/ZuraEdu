@@ -1,10 +1,16 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Panel ZuraEdu') — SuperAdmin</title>
+    <script>
+        (function(){
+            var t = localStorage.getItem('sge-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
     <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
 
     <link href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
@@ -216,6 +222,45 @@
             .sa-sidebar { transform: translateX(-100%); }
             .sa-main    { margin-left: 0; }
         }
+
+        /* ══ Dark Mode ══════════════════════════════════════════ */
+        [data-theme="dark"] body { background: #0f172a; color: #e2e8f0; }
+        [data-theme="dark"] .sa-topbar {
+            background: #1e293b;
+            border-bottom-color: rgba(99,102,241,.18);
+            box-shadow: 0 1px 8px rgba(0,0,0,.28);
+        }
+        [data-theme="dark"] .sa-topbar-title { color: #f1f5f9; }
+        [data-theme="dark"] .sa-topbar .btn-outline-secondary {
+            border-color: rgba(99,102,241,.3); color: #94a3b8;
+        }
+        [data-theme="dark"] .sa-topbar .btn-outline-secondary:hover {
+            background: rgba(99,102,241,.12); border-color: #6366f1; color: #c7d2fe;
+        }
+        [data-theme="dark"] .sa-tenant-chip {
+            background: rgba(99,102,241,.15); color: #a5b4fc; border-color: rgba(99,102,241,.3);
+        }
+        [data-theme="dark"] .sa-content { color: #e2e8f0; }
+        [data-theme="dark"] .alert-success { background: #14532d; border-color: #166534; color: #86efac; }
+        [data-theme="dark"] .alert-info    { background: #0c4a6e; border-color: #075985; color: #7dd3fc; }
+        [data-theme="dark"] .alert-danger  { background: #450a0a; border-color: #7f1d1d; color: #fca5a5; }
+
+        /* ── Toggle dark mode btn ── */
+        #saDarkToggle {
+            background: none;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            color: #64748b;
+            width: 34px; height: 34px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: .92rem;
+            transition: background .15s, border-color .15s, color .15s;
+        }
+        #saDarkToggle:hover { background: #f1f5f9; color: #6366f1; }
+        [data-theme="dark"] #saDarkToggle {
+            border-color: rgba(99,102,241,.3); color: #818cf8;
+        }
+        [data-theme="dark"] #saDarkToggle:hover { background: rgba(99,102,241,.12); color: #c7d2fe; }
     </style>
     @stack('styles')
 </head>
@@ -310,6 +355,9 @@
             <a href="{{ route('superadmin.tenants.index') }}" class="btn btn-sm btn-outline-secondary">
                 <i class="bi bi-building-fill me-1"></i>Instituciones
             </a>
+            <button id="saDarkToggle" title="Cambiar tema">
+                <i class="bi bi-moon-stars-fill" id="saDarkIcon"></i>
+            </button>
         </div>
     </div>
 
@@ -350,6 +398,21 @@
 
 <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 @stack('scripts')
+<script>
+(function () {
+    var btn  = document.getElementById('saDarkToggle');
+    var icon = document.getElementById('saDarkIcon');
+    function applyTheme(t) {
+        document.documentElement.setAttribute('data-theme', t);
+        localStorage.setItem('sge-theme', t);
+        icon.className = t === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+    }
+    applyTheme(localStorage.getItem('sge-theme') || 'light');
+    btn.addEventListener('click', function () {
+        applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+})();
+</script>
 
 {{-- ── ZuraEdu Realtime — Echo + Reverb ──────────────────────────────────── --}}
 @auth

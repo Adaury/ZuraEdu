@@ -89,7 +89,7 @@
                     </div>
                     <div style="flex:1;min-width:0;">
                         <div class="fw-semibold text-truncate" style="font-size:.82rem;">{{ $mat->estudiante?->nombre_completo ?? '—' }}</div>
-                        <div style="font-size:.72rem;color:#94a3b8;">{{ $mat->grupo?->grado?->nombre }} {{ $mat->grupo?->seccion ?? '' }}</div>
+                        <div style="font-size:.72rem;color:#94a3b8;">{{ $mat->grupo?->grado?->nombre }} {{ $mat->grupo?->seccion?->nombre ?? '' }}</div>
                     </div>
                     <div style="font-size:.72rem;color:#94a3b8;white-space:nowrap;">{{ $mat->created_at?->format('d/m/Y') }}</div>
                 </div>

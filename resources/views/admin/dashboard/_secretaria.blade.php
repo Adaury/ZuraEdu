@@ -101,7 +101,7 @@
                             <tr>
                                 <td class="px-4 py-2 fw-semibold">{{ $mat->estudiante?->nombre_completo ?? '—' }}</td>
                                 <td class="py-2 text-muted" style="font-size:.8rem;">
-                                    {{ $mat->grupo?->grado?->nombre }} {{ $mat->grupo?->seccion ?? '' }}
+                                    {{ $mat->grupo?->grado?->nombre }} {{ $mat->grupo?->seccion?->nombre ?? '' }}
                                 </td>
                                 <td class="py-2 text-muted" style="font-size:.78rem;">
                                     {{ $mat->created_at?->format('d/m/Y') ?? '—' }}

@@ -160,7 +160,7 @@ class DashboardController extends Controller
                     'matriculas_activas'  => Matricula::where('estado', 'activa')->where('school_year_id', $syId)->count(),
                     'prematriculas_pend'  => PreMatricula::where('estado', 'pendiente')->count(),
                     'grupos'              => Grupo::where('school_year_id', $syId)->count(),
-                    'ultimas_matriculas'  => Matricula::with('estudiante', 'grupo.grado')
+                    'ultimas_matriculas'  => Matricula::with('estudiante', 'grupo.grado', 'grupo.seccion')
                                             ->where('school_year_id', $syId)
                                             ->where('estado', 'activa')
                                             ->latest()->take(6)->get(),

@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             AsignaturasSeeder::class,
             SchoolYearSeeder::class,
             AdminSeeder::class,
+            RegistroAcademicoUserSeeder::class,
             EspecialidadTecnicaSeeder::class,
             CurriculumMinerdSeeder::class,
 

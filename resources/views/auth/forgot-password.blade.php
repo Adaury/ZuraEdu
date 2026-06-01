@@ -182,7 +182,7 @@
                     </div>
                 </div>
             </div>
-            <p class="panel-left-footer">&copy; {{ date('Y') }} PSAC &middot; República Dominicana</p>
+            <p class="panel-left-footer">&copy; {{ date('Y') }} {{ \App\Helpers\Setting::get('system_name', 'ZuraEdu') }} &middot; República Dominicana</p>
         </div>
 
         {{-- ── Panel derecho ── --}}

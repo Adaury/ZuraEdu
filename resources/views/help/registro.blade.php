@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Guía de Registro — PSAC SGE</title>
+    <title>Guía de Registro — {{ \App\Helpers\Setting::get('system_name', 'ZuraEdu') }}</title>
 
     <!-- Google Fonts: Inter -->
     
@@ -292,9 +292,10 @@
 
 {{-- ── TOPBAR ──────────────────────────────────────────────── --}}
 <header class="help-topbar">
-    <div class="logo-badge">PSAC</div>
+    @php $sysName = \App\Helpers\Setting::get('system_name', 'ZuraEdu'); $sysAbbr = \App\Helpers\Setting::get('system_abbr', 'ZE'); @endphp
+    <div class="logo-badge">{{ $sysAbbr }}</div>
     <div class="brand-text">
-        <div class="name">Politécnico Salesiano Arquides Calderón</div>
+        <div class="name">{{ $sysName }}</div>
         <div class="sub">Sistema de Gestión Escolar</div>
     </div>
     <span class="page-title d-none d-md-flex">
@@ -326,7 +327,7 @@
         </div>
         <div>
             <h1>Guía de Registro al Sistema SGE</h1>
-            <p>Esta guía explica paso a paso cómo solicitar tu acceso al Sistema de Gestión Escolar del PSAC. El proceso consta de <strong>5 pasos</strong> y concluye con una solicitud pendiente de aprobación por parte del administrador.</p>
+            <p>Esta guía explica paso a paso cómo solicitar tu acceso al Sistema de Gestión Escolar. El proceso consta de <strong>5 pasos</strong> y concluye con una solicitud pendiente de aprobación por parte del administrador.</p>
         </div>
     </div>
 
@@ -526,9 +527,9 @@
                     </div>
                     <div class="col-12">
                         <div class="mock-form-label">Código de Acceso del Centro *</div>
-                        <div class="mock-form-field">PSAC2026</div>
+                        <div class="mock-form-field">{{ $sysAbbr }}2026</div>
                         <div style="font-size:.65rem;color:#6b7280;margin-top:.2rem;">
-                            <i class="bi bi-info-circle"></i> Proporcionado por el administrador del PSAC
+                            <i class="bi bi-info-circle"></i> Proporcionado por el administrador del sistema
                         </div>
                     </div>
                 </div>
@@ -537,7 +538,7 @@
             <ul class="step-instructions">
                 <li><i class="bi bi-key text-primary"></i>La contraseña debe tener <strong>mínimo 8 caracteres</strong> e incluir al menos <strong>1 número</strong>.</li>
                 <li><i class="bi bi-bar-chart-fill text-success"></i>El indicador de fortaleza cambia de rojo (débil) → naranja (media) → verde (fuerte).</li>
-                <li><i class="bi bi-building text-primary"></i>El <strong>Código de Acceso del Centro</strong> es proporcionado por el administrador del PSAC (valor inicial: <code>PSAC2026</code>).</li>
+                <li><i class="bi bi-building text-primary"></i>El <strong>Código de Acceso del Centro</strong> es proporcionado por el administrador del sistema.</li>
                 <li><i class="bi bi-check2-all text-success"></i>Confirma la contraseña escribiéndola exactamente igual en el segundo campo.</li>
                 <li><i class="bi bi-eye-slash text-secondary"></i>Usa el botón de ojo (<i class="bi bi-eye"></i>) para mostrar/ocultar la contraseña mientras la escribes.</li>
             </ul>
@@ -619,7 +620,7 @@
                 </h2>
                 <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
                     <div class="accordion-body" style="font-size:.875rem;color:#374151;">
-                        El código es proporcionado por el administrador del sistema o la dirección del PSAC. Si no lo tienes, <strong>contacta al administrador del PSAC</strong> antes de completar el registro. El valor inicial del sistema es <code>PSAC2026</code>, pero puede haber sido actualizado.
+                        El código es proporcionado por el administrador del sistema. Si no lo tienes, <strong>contacta al administrador</strong> antes de completar el registro.
                     </div>
                 </div>
             </div>
@@ -661,7 +662,7 @@
                 </h2>
                 <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
                     <div class="accordion-body" style="font-size:.875rem;color:#374151;">
-                        <strong>No directamente.</strong> Una vez creada la cuenta, el rol solo puede ser modificado por un <strong>administrador del sistema</strong>. Si necesitas cambiar tu rol, solicítalo al administrador a través de los canales correspondientes del PSAC.
+                        <strong>No directamente.</strong> Una vez creada la cuenta, el rol solo puede ser modificado por un <strong>administrador del sistema</strong>. Si necesitas cambiar tu rol, solicítalo al administrador del sistema a través de los canales correspondientes.
                     </div>
                 </div>
             </div>

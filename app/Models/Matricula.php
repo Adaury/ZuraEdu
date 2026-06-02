@@ -18,10 +18,14 @@ class Matricula extends Model
         'numero_orden',
         'estado',
         'observaciones',
+        'fecha_baja',
+        'motivo_baja',
+        'institucion_traslado',
     ];
 
     protected $casts = [
         'fecha_matricula' => 'date',
+        'fecha_baja'      => 'date',
     ];
 
     public function schoolYear()

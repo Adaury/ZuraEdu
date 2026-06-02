@@ -298,17 +298,32 @@
         <div class="kpi-icon" style="background:#fee2e2;color:#991b1b;">
             <i class="bi bi-person-fill-x"></i>
         </div>
-        <div class="kpi-value {{ $sinGrupo > 0 ? '' : '' }}" style="{{ $sinGrupo > 0 ? 'color:#ef4444' : '' }}">{{ $sinGrupo }}</div>
-        <div class="kpi-label">Sin Grupo Asignado</div>
-        @if($sinGrupo > 0)
-        <div class="kpi-sub danger">
-            <i class="bi bi-exclamation-triangle"></i>Pendientes de matricular
+        <a href="{{ route('admin.registro-academico.sin-grupo') }}" style="text-decoration:none;color:inherit;">
+            <div class="kpi-value {{ $sinGrupo > 0 ? '' : '' }}" style="{{ $sinGrupo > 0 ? 'color:#ef4444' : '' }}">{{ $sinGrupo }}</div>
+            <div class="kpi-label">Sin Grupo Asignado</div>
+            @if($sinGrupo > 0)
+            <div class="kpi-sub danger">
+                <i class="bi bi-exclamation-triangle"></i>Pendientes de matricular
+            </div>
+            @else
+            <div class="kpi-sub">
+                <i class="bi bi-check-circle"></i>Todos asignados
+            </div>
+            @endif
+        </a>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-icon" style="background:#fef3c7;color:#92400e;">
+            <i class="bi bi-person-dash-fill"></i>
         </div>
-        @else
-        <div class="kpi-sub">
-            <i class="bi bi-check-circle"></i>Todos asignados
-        </div>
-        @endif
+        <a href="{{ route('admin.registro-academico.bajas') }}" style="text-decoration:none;color:inherit;">
+            <div class="kpi-value">{{ $bajasEsteMes }}</div>
+            <div class="kpi-label">Bajas este Mes</div>
+            <div class="kpi-sub {{ $bajasEsteMes > 0 ? 'warn' : '' }}">
+                <i class="bi bi-calendar-x"></i>Retiros + Traslados
+            </div>
+        </a>
     </div>
 </div>
 
@@ -341,6 +356,18 @@
         </a>
         <a href="{{ route('admin.registro.index') }}" class="qa-btn">
             <i class="bi bi-table"></i>Registro MINERD
+        </a>
+        <a href="{{ route('admin.registro-academico.bajas') }}" class="qa-btn">
+            <i class="bi bi-person-dash"></i>Bajas / Retiros
+        </a>
+        <a href="{{ route('admin.registro-academico.traslados') }}" class="qa-btn">
+            <i class="bi bi-arrow-left-right"></i>Traslados
+        </a>
+        <a href="{{ route('admin.registro-academico.sin-grupo') }}" class="qa-btn">
+            <i class="bi bi-person-fill-x"></i>Sin Grupo
+        </a>
+        <a href="{{ route('admin.registro-academico.reporte-consolidado') }}" class="qa-btn">
+            <i class="bi bi-bar-chart-steps"></i>Reporte Consolidado
         </a>
         <a href="{{ route('admin.estudiantes.lista-excel') }}" class="qa-btn">
             <i class="bi bi-file-earmark-excel"></i>Excel Estudiantes

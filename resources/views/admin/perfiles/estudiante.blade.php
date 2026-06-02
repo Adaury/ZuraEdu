@@ -144,6 +144,19 @@
                     <i class="bi bi-person-lock me-1"></i>Gestionar Usuario
                 </a>
                 @endif
+
+                @if($matriculaActual)
+                <hr style="margin:.5rem 0;border-color:#f3f4f6;">
+                <a href="{{ route('admin.registro-academico.traslado.form', $estudiante) }}"
+                   class="btn btn-sm"
+                   style="background:#f59e0b;color:#fff;border-radius:8px;font-weight:600;">
+                    <i class="bi bi-arrow-left-right me-1"></i>Registrar Traslado
+                </a>
+                <a href="{{ route('admin.registro-academico.baja.form', $matriculaActual) }}"
+                   class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-person-dash me-1"></i>Registrar Baja
+                </a>
+                @endif
             </div>
         </div>
     </div>

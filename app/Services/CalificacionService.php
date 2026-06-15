@@ -28,14 +28,9 @@ class CalificacionService
 
         if ($pesoAplicado <= 0) return 0;
 
-        // Proportional redistribution when some components are null
-        $nota = ($suma / $pesoAplicado) * ($pesoAplicado > 0 ? 1 : 0);
-
-        if ($pesoAplicado < 100) {
-            $nota = $suma / $pesoAplicado;
-        } else {
-            $nota = $suma / 100;
-        }
+        $nota = $pesoAplicado < 100
+            ? $suma / $pesoAplicado  // redistribución proporcional si faltan componentes
+            : $suma / 100;
 
         return round(min(100, max(0, $nota)), 2);
     }

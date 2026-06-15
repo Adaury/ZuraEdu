@@ -22,6 +22,11 @@ class DemoSeeder extends Seeder
      */
     public function run(): void
     {
+        if (app()->isProduction()) {
+            $this->command?->error('DemoSeeder no debe ejecutarse en producción.');
+            return;
+        }
+
         // ── Admin Demo ────────────────────────────────────────────────────
         $this->crearUsuario(
             nombre:    'Admin Demo',

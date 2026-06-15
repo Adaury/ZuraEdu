@@ -91,7 +91,7 @@ class CardNetService
             'Tax'             => $taxCents,
             'Currency'        => $currency,
             'ReturnUrl'       => "{$appUrl}/cardnet/retorno",
-            'CancelUrl'       => "{$appUrl}/pagos/cancelado",
+            'CancelUrl'       => "{$appUrl}/cardnet/retorno?ResponseCode=cancelled",
             'NotifyUrl'       => "{$appUrl}/cardnet/notify",
         ];
 

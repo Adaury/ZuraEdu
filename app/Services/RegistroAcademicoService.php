@@ -152,7 +152,7 @@ class RegistroAcademicoService
                         // ── Evaluación directa por CE ──────────────────
                         $valoresPeriodo = [];
                         foreach ($periodos as $p) {
-                            $key  = "{$m->id}_{$asig->id}_{$p->id}_{$ce->id}";
+                            $key  = "{$m->id}_{$asig->id}_{$p->id}__{$ce->id}";
                             $eval = $evalMap[$key] ?? null;
                             $nota = $eval?->nota_numerica;
                             $ceRow['periodos'][$p->id] = $nota;

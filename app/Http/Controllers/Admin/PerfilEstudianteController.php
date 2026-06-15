@@ -508,9 +508,10 @@ class PerfilEstudianteController extends Controller
         $dir    = \App\Models\ConfigInstitucional::get('nombre_director', '');
         $cod    = \App\Models\ConfigInstitucional::get('codigo_centro', '');
         $nivel  = \App\Models\ConfigInstitucional::get('nivel_educativo', '');
-        $config = \App\Models\BoletinConfig::getOrCreate(
-            \App\Models\SchoolYear::actual()?->id ?? 0
-        );
+        $activeYear = \App\Models\SchoolYear::actual();
+        $config = $activeYear
+            ? \App\Models\BoletinConfig::getOrCreate($activeYear->id)
+            : new \App\Models\BoletinConfig();
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
             'admin.perfiles.historial_pdf',

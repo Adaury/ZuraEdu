@@ -18,7 +18,8 @@ class CardNetController extends Controller
         $data = cache()->get("cardnet_form_{$token}");
 
         if (! $data) {
-            return redirect('/pagos/cancelado')->with('error', 'El enlace de pago expiró. Intenta de nuevo.');
+            return redirect('/cardnet/retorno?ResponseCode=cancelled')
+                ->with('error', 'El enlace de pago expiró. Intenta de nuevo.');
         }
 
         return view('cardnet.checkout', [

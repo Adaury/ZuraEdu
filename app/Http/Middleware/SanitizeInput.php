@@ -22,7 +22,7 @@ class SanitizeInput
      */
     protected array $allowedRichFields = [
         'descripcion', 'contenido', 'mensaje', 'notas', 'observacion',
-        'notas_medicas', 'trial_mensaje',
+        'notas_medicas', 'trial_mensaje', 'cuerpo', 'planificacion', 'actividad',
     ];
 
     public function handle(Request $request, Closure $next): Response

@@ -300,10 +300,10 @@ $maxDia = max(array_max($ausenciaPorDia), 1);
     new Chart(ctx, {
         type: 'line',
         data: {
-            labels: {!! $chartLabels !!},
+            labels: @json($chartLabels),
             datasets: [{
                 label: '% Asistencia',
-                data: {!! $chartData !!},
+                data: @json($chartData),
                 borderColor: '#2563eb',
                 backgroundColor: 'rgba(37,99,235,.1)',
                 fill: true,

@@ -24,8 +24,17 @@ class SecurityHeaders
                 'max-age=31536000; includeSubDomains'
             );
         }
-        // CSP deshabilitado temporalmente — habilitar en producción tras pruebas
-        // $response->headers->set('Content-Security-Policy', "...");
+        $response->headers->set(
+            'Content-Security-Policy',
+            "default-src 'self'; " .
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://js.stripe.com https://cdn.socket.io; " .
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " .
+            "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; " .
+            "img-src 'self' data: https: blob:; " .
+            "connect-src 'self' wss: https://generativelanguage.googleapis.com https://api.stripe.com; " .
+            "frame-src https://js.stripe.com; " .
+            "object-src 'none'; base-uri 'self';"
+        );
 
         return $response;
     }

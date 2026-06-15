@@ -58,7 +58,6 @@ Route::get('/health', function () {
         'status'  => $status === 200 ? 'ok' : 'degraded',
         'checks'  => $checks,
         'version' => config('app.version', '1.0'),
-        'env'     => app()->environment(),
     ], $status);
 })->name('health')->middleware('throttle:30,1');
 
@@ -730,20 +729,20 @@ Route::post('/webhook/stripe', [\App\Http\Controllers\WebhookStripeController::c
     ]);
 
 // ── Chat interno del tenant (staff/admin) ────────────────────────────────
-Route::prefix('admin/tenant-chat')->name('admin.tenant-chat.')->middleware(['auth', 'activo'])->group(function () {
+Route::prefix('admin/tenant-chat')->name('admin.tenant-chat.')->middleware(['auth', 'activo', 'admin.access'])->group(function () {
     Route::get('/',       [\App\Http\Controllers\Admin\TenantChatController::class, 'index'])->name('index');
     Route::post('/',      [\App\Http\Controllers\Admin\TenantChatController::class, 'store'])->name('store');
     Route::delete('/clear', [\App\Http\Controllers\Admin\TenantChatController::class, 'clear'])->name('clear');
 });
 
 // ── Chat de Soporte Público ───────────────────────────────────────────────
-Route::prefix('soporte/chat')->name('support.chat.')->group(function () {
+Route::prefix('soporte/chat')->name('support.chat.')->middleware('throttle:10,1')->group(function () {
     Route::post('/start',            [\App\Http\Controllers\SupportChatController::class, 'start'])->name('start');
-    Route::post('/{token}/mensaje',  [\App\Http\Controllers\SupportChatController::class, 'send'])->name('send');
+    Route::post('/{token}/mensaje',  [\App\Http\Controllers\SupportChatController::class, 'send'])->name('send')->middleware('throttle:20,1');
     Route::get('/{token}/mensajes',  [\App\Http\Controllers\SupportChatController::class, 'messages'])->name('messages');
 });
 
-Route::prefix('admin/soporte')->name('admin.soporte.')->middleware(['auth', 'activo'])->group(function () {
+Route::prefix('admin/soporte')->name('admin.soporte.')->middleware(['auth', 'activo', 'admin.access'])->group(function () {
     Route::get('/chat',                    [\App\Http\Controllers\SupportChatController::class, 'adminPanel'])->name('chat');
     Route::get('/chat/sesiones',           [\App\Http\Controllers\SupportChatController::class, 'adminIndex'])->name('chat.sessions');
     Route::get('/chat/{session}/mensajes', [\App\Http\Controllers\SupportChatController::class, 'adminMessages'])->name('chat.messages');

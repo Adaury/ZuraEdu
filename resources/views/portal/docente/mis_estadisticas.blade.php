@@ -207,10 +207,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 (function () {
-    const labels   = {!! $chartLabels !!};
-    const data     = {!! $chartData !!};
-    const aprob    = {!! $chartAprobados !!};
-    const reprob   = {!! $chartReprobados !!};
+    const labels   = @json($chartLabels);
+    const data     = @json($chartData);
+    const aprob    = @json($chartAprobados);
+    const reprob   = @json($chartReprobados);
 
     const colors  = data.map(v => v >= 70 ? 'rgba(34,197,94,.85)' : v >= 65 ? 'rgba(234,179,8,.85)' : 'rgba(239,68,68,.85)');
     const borders = data.map(v => v >= 70 ? '#16a34a' : v >= 65 ? '#ca8a04' : '#dc2626');

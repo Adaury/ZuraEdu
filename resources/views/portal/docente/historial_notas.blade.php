@@ -411,8 +411,8 @@
     // ── Chart ──────────────────────────────────────────────────────────
     const ctx = document.getElementById('chartHistorial');
     if (ctx) {
-        const labels = {!! $chartLabels !!};
-        const data   = {!! $chartData !!};
+        const labels = @json($chartLabels);
+        const data   = @json($chartData);
 
         const colors  = data.map(v => v === null ? 'transparent' : (v >= 70 ? 'rgba(16,185,129,.85)' : (v >= 65 ? 'rgba(234,179,8,.85)' : 'rgba(239,68,68,.85)')));
         const borders = data.map(v => v === null ? 'transparent' : (v >= 70 ? '#059669' : (v >= 65 ? '#ca8a04' : '#dc2626')));
@@ -483,8 +483,8 @@
     // ── Chart multi-línea por estudiante ──────────────────────────────
     const ctxEst = document.getElementById('chartEstudiantes');
     if (ctxEst) {
-        const datasetsEst = {!! $chartEstudiantesJson ?? '[]' !!};
-        const labelsEst   = {!! $chartLabels !!};
+        const datasetsEst = @json($chartEstudiantesJson ?? []);
+        const labelsEst   = @json($chartLabels);
         new Chart(ctxEst, {
             type: 'line',
             data: { labels: labelsEst, datasets: datasetsEst },

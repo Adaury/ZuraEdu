@@ -256,6 +256,7 @@ class KpiController extends Controller
 
         // Situación según calificaciones académicas (tomamos la última por matrícula)
         $situaciones = DB::table('calificaciones_academicas')
+            ->where('tenant_id', tenant_id())
             ->where('school_year_id', $syId)
             ->selectRaw("matricula_id, MAX(CASE WHEN situacion = 'A' THEN 1 ELSE 0 END) as aprobado")
             ->groupBy('matricula_id')
@@ -283,12 +284,16 @@ class KpiController extends Controller
             return ['top' => [], 'bottom' => []];
         }
 
+        $tid = tenant_id();
+
         $promedios = DB::table('calificaciones_academicas as ca')
             ->join('asignaciones as asi', 'ca.asignacion_id', '=', 'asi.id')
             ->join('grupos as g', 'asi.grupo_id', '=', 'g.id')
             ->join('grados as gr', 'g.grado_id', '=', 'gr.id')
             ->leftJoin('secciones as s', 'g.seccion_id', '=', 's.id')
             ->where('ca.school_year_id', $syId)
+            ->where('ca.tenant_id', $tid)
+            ->where('g.tenant_id', $tid)
             ->whereNotNull('ca.nota_final')
             ->selectRaw('g.id, gr.nombre as grado, s.nombre as seccion, AVG(ca.nota_final) as promedio, COUNT(DISTINCT ca.matricula_id) as estudiantes')
             ->groupBy('g.id', 'gr.nombre', 's.nombre')

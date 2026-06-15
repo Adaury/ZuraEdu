@@ -14,6 +14,11 @@ class AsignacionesDemoSeeder extends Seeder
 {
     public function run(): void
     {
+        if (app()->isProduction()) {
+            $this->command?->error('AsignacionesDemoSeeder no debe ejecutarse en producción — borra TODAS las asignaciones.');
+            return;
+        }
+
         $schoolYear = SchoolYear::actual();
 
         if (! $schoolYear) {

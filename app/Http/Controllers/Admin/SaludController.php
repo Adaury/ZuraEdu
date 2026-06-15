@@ -318,7 +318,8 @@ class SaludController extends Controller
         $ficha      = FichaSalud::where('estudiante_id', $estudiante->id)->first();
         $incidentes = $estudiante->incidentesMedicos()->latest('fecha')->get();
         $inst       = ConfigInstitucional::get('nombre_institucion', config('app.name'));
-        $config     = BoletinConfig::getOrCreate(SchoolYear::actual()?->id ?? 0);
+        $syForConfig = SchoolYear::actual();
+        $config = $syForConfig ? BoletinConfig::getOrCreate($syForConfig->id) : new BoletinConfig();
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
             'admin.salud.ficha_pdf',

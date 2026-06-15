@@ -32,27 +32,29 @@ class ResolveTenant
     public function handle(Request $request, Closure $next): Response
     {
         $host   = $request->getHost();
-        $tenant = $this->resolve($host);
+
+        // SuperAdmin gestionando un tenant → su sesión tiene prioridad sobre el dominio
+        $tenant = null;
+        if (
+            auth()->check() &&
+            auth()->user()->hasRole('super_admin') &&
+            $saId = session('sa_tenant_id')
+        ) {
+            $tenant = Tenant::find($saId);
+        }
+
+        if (! $tenant) {
+            $tenant = $this->resolve($host);
+        }
 
         if (! $tenant) {
             if ($this->isLocal($host)) {
-                // SuperAdmin con tenant activo en sesión → usa ese contexto
-                if (
-                    auth()->check() &&
-                    auth()->user()->hasRole('super_admin') &&
-                    $saId = session('sa_tenant_id')
-                ) {
-                    $tenant = Tenant::find($saId);
-                }
+                $userTenantId = \Illuminate\Support\Facades\DB::table('users')
+                    ->where('id', auth()->id())
+                    ->value('tenant_id');
 
-                if (! $tenant) {
-                    $userTenantId = \Illuminate\Support\Facades\DB::table('users')
-                        ->where('id', auth()->id())
-                        ->value('tenant_id');
-
-                    if ($userTenantId && $userTenantId != config('tenancy.fallback_tenant_id', 1)) {
-                        $tenant = Tenant::find($userTenantId);
-                    }
+                if ($userTenantId && $userTenantId != config('tenancy.fallback_tenant_id', 1)) {
+                    $tenant = Tenant::find($userTenantId);
                 }
 
                 if (! $tenant) {

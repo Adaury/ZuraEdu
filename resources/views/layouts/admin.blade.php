@@ -7,6 +7,9 @@
     @php $__sysName = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name')); @endphp
     <title>@yield('page-title', 'Dashboard') — {{ $__sysName }}</title>
 
+    {{-- Aplicar tema antes de renderizar para evitar FOUC --}}
+    <script>(function(){var t=localStorage.getItem('sge-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+
     {{-- Dynamic favicon — tenant-scoped cache --}}
     @php $__tid = tenant_id(); $faviconPath = \Illuminate\Support\Facades\Cache::remember("t{$__tid}_system_favicon", 600, fn () => \Illuminate\Support\Facades\DB::table('system_settings')->where('key','system_favicon')->value('value')); @endphp
     @if($faviconPath)
@@ -3702,14 +3705,7 @@ if (auth()->check()) {
     <!-- Alpine.js — local -->
     <script defer src="{{ asset('vendor/alpinejs/alpine.min.js') }}"></script>
 
-    <script>
-        // ── Dark mode ──────────────────────────────────
-        (function() {
-            const root    = document.documentElement;
-            const stored  = localStorage.getItem('sge-theme') || 'light';
-            root.setAttribute('data-theme', stored);
-        })();
-    </script>
+    {{-- dark mode ya aplicado en <head> para evitar FOUC --}}
 
     <script>
         // ── Sidebar toggle (mobile) ────────────────────

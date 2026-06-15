@@ -7,8 +7,8 @@
     <title>{{ $__env->yieldContent('page-title') ?: $__env->yieldContent('title', 'Portal') }} — SGE</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
 
-    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/vendor/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
 
     {{-- Aplicar tema antes de renderizar para evitar flash --}}
     <script>
@@ -902,6 +902,7 @@ document.querySelectorAll('.prt-bottom-nav a[href^="#"]').forEach(function(link)
     });
 });
 </script>
+<script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 @stack('scripts')
 
 {{-- Polling de notificaciones cada 45 segundos --}}

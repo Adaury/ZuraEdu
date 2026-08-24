@@ -148,7 +148,6 @@
 
     <!-- Inter font — sistema (sin dependencia de Google) -->
     <style>
-        @import url('data:text/css,');
         :root { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
     </style>
 
@@ -4597,7 +4596,8 @@ if (auth()->check()) {
 })();
 </script>
 
-<!-- DataTables 2 + Scroller JS (sin jQuery) -->
+<!-- DataTables 2 + Scroller JS (requiere jQuery pese al build "sin jQuery" del CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script src="https://cdn.datatables.net/2.1.8/js/dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/2.1.8/js/dataTables.bootstrap5.min.js"></script>
 <script src="https://cdn.datatables.net/scroller/2.4.3/js/dataTables.scroller.min.js"></script>

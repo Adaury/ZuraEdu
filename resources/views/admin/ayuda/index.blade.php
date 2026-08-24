@@ -5,7 +5,7 @@
 @push('styles')
 <style>
 /* ════════════════════════════════════════════════════
-   MANUAL DE AYUDA — PSAC SGE
+   MANUAL DE AYUDA — SGE
 ════════════════════════════════════════════════════ */
 :root {
     --c-pc:#1d4ed8; --c-acad:#047857; --c-tec:#7c3aed;
@@ -308,8 +308,8 @@
 <div class="help-page-header">
     <div class="header-icon"><i class="bi bi-book-half"></i></div>
     <div style="position:relative;z-index:1;">
-        <h1>Manual de Ayuda — SGE PSAC</h1>
-        <p>Politécnico Salesiano Arquides Calderón · Sistema de Gestión Escolar · Guía completa de uso en el orden correcto</p>
+        <h1>Manual de Ayuda — SGE</h1>
+        <p>{{ config('tenant.nombre', config('app.name')) }} · Sistema de Gestión Escolar · Guía completa de uso en el orden correcto</p>
     </div>
 </div>
 
@@ -779,7 +779,7 @@
     <div class="sc-body">
         <h4 class="sc-title"><i class="bi bi-award me-2" style="color:var(--c-tec);"></i>Gestionar Especialidades Técnicas</h4>
         <p class="sc-desc">Las especialidades son las carreras técnicas del plantel. Cada especialidad tiene sus docentes y su propio conjunto de asignaturas técnicas.</p>
-        <div class="tip"><i class="bi bi-info-circle me-1"></i>El PSAC tiene: Turismo · Informática · Mercadeo · Acondicionamiento Físico · Logística y Transporte</div>
+        <div class="tip"><i class="bi bi-info-circle me-1"></i>Ejemplo: Turismo · Informática · Mercadeo · Acondicionamiento Físico · Logística y Transporte</div>
         <ul class="sc-steps">
             <li><i class="bi bi-layout-sidebar" style="color:var(--c-tec);"></i>Ve a <strong>2do Ciclo · Técnica → Especialidades</strong>.</li>
             <li><i class="bi bi-list-ul text-primary"></i>Verás las especialidades configuradas con sus docentes asignados.</li>
@@ -1120,7 +1120,7 @@
     </div>
 </div>
 
-<div class="sc" id="r3" data-s="boletin generar imprimir pdf estudiante grupo notas asistencia periodo">
+<div class="sc" id="r3" data-s="boletin generar imprimir pdf estudiante grupo notas asistencia periodo deuda vencida pago secretaria permiso">
     <div class="sn rep-n">R3</div>
     <div class="sc-body">
         <h4 class="sc-title"><i class="bi bi-file-earmark-text me-2" style="color:var(--c-rep);"></i>Generar Boletines de Calificaciones</h4>
@@ -1135,6 +1135,8 @@
             <li><i class="bi bi-printer text-secondary"></i>Alternativamente, <strong>"Imprimir Todos"</strong> abre todos en el navegador para imprimir directamente.</li>
         </ul>
         <div class="warn"><i class="bi bi-exclamation-triangle me-1"></i>Si las notas no han sido publicadas por el docente, el boletín aparecerá incompleto.</div>
+        <div class="ok"><i class="bi bi-lightbulb me-1"></i>Si el estudiante tiene pagos vencidos, el boletín muestra una alerta informativa con el monto adeudado. Es solo un aviso — no bloquea la consulta ni la impresión.</div>
+        <div class="tip"><i class="bi bi-info-circle me-1"></i><strong>Secretaría</strong> y <strong>Secretaria Docente</strong> también pueden imprimir boletines, además de los roles de coordinación y registro académico.</div>
     </div>
 </div>
 

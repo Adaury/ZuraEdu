@@ -45,7 +45,7 @@
   {{-- Encabezado --}}
   <div class="header">
     <div class="inst-name">{{ strtoupper($inst) }}</div>
-    <div class="inst-sub">Sistema de Gestión Escolar — SGE PSAC</div>
+    <div class="inst-sub">Sistema de Gestión Escolar — {{ $inst }}</div>
     <div class="doc-type">Constancia de Trabajo</div>
   </div>
 
@@ -129,7 +129,7 @@
   </div>
 
   <div class="footer">
-    Documento generado electrónicamente por SGE PSAC el {{ $fecha->format('d/m/Y H:i') }}
+    Documento generado electrónicamente por SGE — {{ $inst }} el {{ $fecha->format('d/m/Y H:i') }}
     · Este documento tiene validez oficial con sello institucional y firma autógrafa.
   </div>
 

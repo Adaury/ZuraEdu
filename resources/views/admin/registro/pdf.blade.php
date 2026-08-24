@@ -207,7 +207,7 @@ body { font-family: DejaVu Sans, sans-serif; font-size:7pt; color:#1a202c; backg
                 <div class="inst-logo">SGE</div>
             </td>
             <td class="inst-info">
-                <div class="inst-name">PSAC — Sistema de Gestión Escolar</div>
+                <div class="inst-name">{{ config('tenant.nombre', config('app.name')) }} — Sistema de Gestión Escolar</div>
                 <div class="inst-sub">
                     Registro Académico &nbsp;|&nbsp; Año Escolar: {{ $schoolYear->nombre }}
                 </div>
@@ -447,7 +447,7 @@ body { font-family: DejaVu Sans, sans-serif; font-size:7pt; color:#1a202c; backg
             </td>
             <td style="width:40%;text-align:right;vertical-align:bottom;padding-bottom:2px;">
                 <div style="font-size:5.5pt;color:#94a3b8;">
-                    SGE — PSAC &nbsp;|&nbsp; Generado: {{ now()->format('d/m/Y H:i') }}<br>
+                    SGE — {{ config('tenant.nombre', config('app.name')) }} &nbsp;|&nbsp; Generado: {{ now()->format('d/m/Y H:i') }}<br>
                     {{ $grupo->grado->nombre }} — Sección {{ $grupo->seccion->nombre }}
                     &nbsp;|&nbsp; Año Escolar: {{ $schoolYear->nombre }}
                 </div>

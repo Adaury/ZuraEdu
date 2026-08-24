@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Alerta de Inasistencias — PSAC</title>
+<title>Alerta de Inasistencias — {{ $institucion }}</title>
 </head>
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Inter',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0">
@@ -55,7 +55,7 @@
   <tr>
     <td style="background:#f8fafc;border-radius:0 0 16px 16px;padding:20px 36px;text-align:center;border-top:1px solid #e2e8f0;">
       <p style="margin:0;font-size:.76rem;color:#9ca3af;">
-        &copy; {{ date('Y') }} PSAC — Alerta generada automáticamente por el Sistema SGE
+        &copy; {{ date('Y') }} {{ $institucion }} — Alerta generada automáticamente por el Sistema SGE
       </p>
     </td>
   </tr>

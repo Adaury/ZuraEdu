@@ -62,7 +62,7 @@
     <div class="header-top">
       <div class="header-left">
         <div class="inst-name">{{ $inst }}</div>
-        <div class="inst-sub">Sistema de Gestión Escolar — SGE PSAC</div>
+        <div class="inst-sub">Sistema de Gestión Escolar — {{ $inst }}</div>
       </div>
       <div class="header-right">
         Año Escolar: <strong>{{ $schoolYear?->nombre ?? now()->year }}</strong><br>
@@ -213,7 +213,7 @@
   </div>
 
   <div class="footer">
-    Documento generado electrónicamente por SGE PSAC el {{ $fecha->format('d/m/Y H:i') }}
+    Documento generado electrónicamente por SGE — {{ $inst }} el {{ $fecha->format('d/m/Y H:i') }}
     · Este documento refleja los datos registrados en el sistema hasta la fecha de emisión.
   </div>
 

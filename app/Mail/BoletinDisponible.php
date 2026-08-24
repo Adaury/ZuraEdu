@@ -33,6 +33,9 @@ class BoletinDisponible extends Mailable
 
     public function content(): Content
     {
-        return new Content(view: 'emails.boletin-disponible');
+        return new Content(
+            view: 'emails.boletin-disponible',
+            with: ['institucion' => $this->estudiante->tenant?->nombre_institucion ?? config('app.name')],
+        );
     }
 }

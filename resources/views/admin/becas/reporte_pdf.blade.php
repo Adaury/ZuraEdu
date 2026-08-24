@@ -185,7 +185,7 @@ tr:nth-child(even) td { background:#f5f3ff; }
 @endif
 
 <div class="footer">
-    <span>Generado por SGE PSAC · {{ now()->format('d/m/Y H:i') }}</span>
+    <span>Generado por SGE · {{ config('tenant.nombre', config('app.name')) }} · {{ now()->format('d/m/Y H:i') }}</span>
     <span>Confidencial — uso interno</span>
 </div>
 

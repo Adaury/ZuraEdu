@@ -29,7 +29,7 @@
 
 <div class="header">
     <h1>Reporte Mensual de Asistencia</h1>
-    <p>Politécnico Salesiano Arquides Calderón (PSAC) &mdash; {{ $nombreMes }}</p>
+    <p>{{ config('tenant.nombre', config('app.name')) }} &mdash; {{ $nombreMes }}</p>
 </div>
 
 <table style="margin-bottom:12px;border:none;">
@@ -117,7 +117,7 @@
 @endif
 
 <div class="footer">
-    Generado el {{ \Carbon\Carbon::now()->format('d/m/Y H:i') }} &mdash; SGE · PSAC &mdash; AprendeTicPaulino
+    Generado el {{ \Carbon\Carbon::now()->format('d/m/Y H:i') }} &mdash; SGE · {{ config('tenant.nombre', config('app.name')) }} &mdash; AprendeTicPaulino
 </div>
 </body>
 </html>

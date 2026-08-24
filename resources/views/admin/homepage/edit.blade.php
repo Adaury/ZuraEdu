@@ -216,7 +216,7 @@
                             <label class="form-label small fw-semibold">Nombre en el Panel Admin</label>
                             <input type="text" name="system_name" class="form-control"
                                 value="{{ old('system_name', $ss['system_name'] ?? '') }}"
-                                placeholder="PSAC" maxlength="200">
+                                placeholder="Ej: Mi Institución" maxlength="200">
                             <div class="form-text">Nombre que aparece en la barra lateral del admin.</div>
                         </div>
                         <div class="row g-2">
@@ -224,7 +224,7 @@
                                 <label class="form-label small fw-semibold">Abreviatura</label>
                                 <input type="text" name="system_abbr" class="form-control"
                                     value="{{ old('system_abbr', $ss['system_abbr'] ?? '') }}"
-                                    placeholder="PSAC" maxlength="10">
+                                    placeholder="Ej: ZE" maxlength="10">
                             </div>
                             <div class="col-7">
                                 <label class="form-label small fw-semibold">Subtítulo sidebar</label>

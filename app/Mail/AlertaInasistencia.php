@@ -30,6 +30,9 @@ class AlertaInasistencia extends Mailable
 
     public function content(): Content
     {
-        return new Content(view: 'emails.alerta-inasistencia');
+        return new Content(
+            view: 'emails.alerta-inasistencia',
+            with: ['institucion' => $this->estudiante->tenant?->nombre_institucion ?? config('app.name')],
+        );
     }
 }

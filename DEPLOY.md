@@ -1,4 +1,4 @@
-# Guía de Despliegue — SGE PSAC / ZuraEdu
+# Guía de Despliegue — ZuraEdu
 
 ## Requisitos del servidor
 
@@ -55,16 +55,16 @@ php artisan optimize
 ## 2. Variables .env críticas para producción
 
 ```env
-APP_NAME="SGE PSAC"
+APP_NAME="Mi Centro Educativo"
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://tu-dominio.edu.do
 FORCE_HTTPS=true
 
-APP_PRODUCT_NAME="SGE PSAC"
+APP_PRODUCT_NAME="ZuraEdu"
 
 # ── Institución ───────────────────────────────────────────────────────────
-SCHOOL_NAME="Centro Educativo PSAC"
+SCHOOL_NAME="Mi Centro Educativo"
 SCHOOL_NIVEL="Nivel Secundario"
 SCHOOL_CODIGO="12345"
 
@@ -180,8 +180,8 @@ php artisan tinker
 ```
 ```php
 \App\Models\Tenant::create([
-    'nombre'     => 'Centro Educativo PSAC',
-    'subdominio' => 'psac',
+    'nombre'     => 'Mi Centro Educativo',
+    'subdominio' => 'mi-centro',
     'plan'       => 'enterprise',
     'activo'     => true,
 ]);

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Boletín Disponible — PSAC</title>
+<title>Boletín Disponible — {{ $institucion }}</title>
 </head>
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Inter',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0">

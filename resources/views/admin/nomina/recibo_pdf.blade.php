@@ -207,7 +207,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
 </div>
 
 <div class="footer">
-    Emitido por SGE PSAC · {{ now()->format('d/m/Y H:i') }} · Documento válido con sello institucional
+    Emitido por SGE · {{ config('tenant.nombre', config('app.name')) }} · {{ now()->format('d/m/Y H:i') }} · Documento válido con sello institucional
 </div>
 
 {{-- ══════════════ COPIA ══════════════ --}}

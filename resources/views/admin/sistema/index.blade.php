@@ -116,7 +116,7 @@
                     <label class="form-label-custom">Abreviatura <span class="text-muted fw-normal">(sidebar)</span></label>
                     <input type="text" name="system_abbr" class="form-control form-control-custom"
                            maxlength="10" value="{{ old('system_abbr', $settings['system_abbr'] ?? '') }}"
-                           placeholder="PSAC">
+                           placeholder="Ej: ZE">
                 </div>
                 <div class="col-sm-7">
                     <label class="form-label-custom">Subtítulo del Sidebar</label>

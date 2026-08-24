@@ -16,7 +16,7 @@ use App\Http\Controllers\PortalRepresentanteController;
 
 /*
 |--------------------------------------------------------------------------
-| Web Routes — SGE PSAC
+| Web Routes — SGE
 |--------------------------------------------------------------------------
 |
 | Las rutas del panel admin están organizadas en archivos separados bajo

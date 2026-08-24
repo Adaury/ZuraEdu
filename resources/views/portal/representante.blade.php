@@ -207,7 +207,7 @@
 
 {{-- ── Header ──────────────────────────────────────────────── --}}
 <header class="portal-header">
-    <div class="logo-box">PSAC</div>
+    <div class="logo-box">SGE</div>
     <div>
         <div class="title">Portal del Representante</div>
         <div class="sub">Politécnico Salesiano Arquides Calderón</div>
@@ -768,7 +768,7 @@
     <i class="bi bi-shield-lock me-1"></i>
     Este enlace es personal y de uso exclusivo del representante. No compartir.
     &nbsp;·&nbsp;
-    &copy; {{ date('Y') }} <strong>PSAC</strong> — Sistema de Gestión Escolar
+    &copy; {{ date('Y') }} <strong>{{ config('tenant.nombre', config('app.name')) }}</strong> — Sistema de Gestión Escolar
 </footer>
 
 <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>

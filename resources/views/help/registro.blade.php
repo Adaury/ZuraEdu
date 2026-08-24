@@ -367,7 +367,7 @@
                     </div>
                     <div class="col-12">
                         <div class="mock-form-label">Correo Electrónico *</div>
-                        <div class="mock-form-field">m.garcia@psac.edu.do</div>
+                        <div class="mock-form-field">m.garcia@micentro.edu.do</div>
                     </div>
                 </div>
                 <div class="d-flex justify-content-end mt-2">
@@ -378,7 +378,7 @@
             <ul class="step-instructions">
                 <li><i class="bi bi-check2-circle text-success"></i>Ingresa tu nombre y apellidos completos tal como aparecen en tu cédula.</li>
                 <li><i class="bi bi-info-circle text-primary"></i>La cédula debe tener el formato <strong>000-0000000-0</strong> — el sistema la formatea automáticamente al escribirla.</li>
-                <li><i class="bi bi-envelope-at text-primary"></i>El correo debe ser institucional (<code>@psac.edu.do</code> o el asignado por el centro).</li>
+                <li><i class="bi bi-envelope-at text-primary"></i>El correo debe ser institucional (<code>@micentro.edu.do</code> o el asignado por el centro).</li>
                 <li><i class="bi bi-arrow-right-circle text-success"></i>Haz clic en "Siguiente" cuando todos los campos requeridos (*) estén completos.</li>
             </ul>
         </div>
@@ -565,7 +565,7 @@
                 <div style="font-size:.72rem;font-weight:700;color:#374151;margin-bottom:.5rem;">Resumen de tu solicitud:</div>
                 <div class="mock-summary-row"><div class="mock-summary-label">Nombre completo</div><div class="mock-summary-val">María Fernanda García López</div></div>
                 <div class="mock-summary-row"><div class="mock-summary-label">Cédula</div><div class="mock-summary-val">001-1234567-8</div></div>
-                <div class="mock-summary-row"><div class="mock-summary-label">Correo</div><div class="mock-summary-val">m.garcia@psac.edu.do</div></div>
+                <div class="mock-summary-row"><div class="mock-summary-label">Correo</div><div class="mock-summary-val">m.garcia@micentro.edu.do</div></div>
                 <div class="mock-summary-row"><div class="mock-summary-label">Rol solicitado</div><div class="mock-summary-val"><span class="mock-badge" style="background:#dbeafe;color:#1d4ed8;">Docente</span></div></div>
                 <div class="mock-summary-row"><div class="mock-summary-label">Área</div><div class="mock-summary-val">Académica</div></div>
 
@@ -634,7 +634,7 @@
                 </h2>
                 <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
                     <div class="accordion-body" style="font-size:.875rem;color:#374151;">
-                        El sistema <strong>recomienda usar el correo institucional</strong> (<code>@psac.edu.do</code> u otro asignado por el centro). Si no tienes uno, consulta con la administración. Es posible usar un correo personal, pero podría limitar ciertas funcionalidades o ser rechazado por el administrador.
+                        El sistema <strong>recomienda usar el correo institucional</strong> (<code>@micentro.edu.do</code> u otro asignado por el centro). Si no tienes uno, consulta con la administración. Es posible usar un correo personal, pero podría limitar ciertas funcionalidades o ser rechazado por el administrador.
                     </div>
                 </div>
             </div>

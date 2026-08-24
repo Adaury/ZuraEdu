@@ -41,7 +41,7 @@ return [
     ],
 
     'school' => [
-        'name'   => env('SCHOOL_NAME',   'SGE PSAC'),
+        'name'   => env('SCHOOL_NAME',   config('app.name', 'SGE')),
         'nivel'  => env('SCHOOL_NIVEL',  'Nivel Secundario'),
         'codigo' => env('SCHOOL_CODIGO', '—'),
     ],

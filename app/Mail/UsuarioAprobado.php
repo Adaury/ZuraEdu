@@ -17,11 +17,16 @@ class UsuarioAprobado extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: '✅ Tu acceso al sistema PSAC ha sido aprobado');
+        $institucion = $this->usuario->tenant?->nombre_institucion ?? config('app.name');
+
+        return new Envelope(subject: "✅ Tu acceso a {$institucion} ha sido aprobado");
     }
 
     public function content(): Content
     {
-        return new Content(view: 'emails.usuario-aprobado');
+        return new Content(
+            view: 'emails.usuario-aprobado',
+            with: ['institucion' => $this->usuario->tenant?->nombre_institucion ?? config('app.name')],
+        );
     }
 }

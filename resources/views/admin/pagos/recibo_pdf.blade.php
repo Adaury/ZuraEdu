@@ -105,7 +105,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
 </div>
 
 <div class="footer">
-    Emitido por SGE PSAC · {{ now()->format('d/m/Y H:i') }} · Recibo válido con sello del centro
+    Emitido por SGE · {{ config('tenant.nombre', config('app.name')) }} · {{ now()->format('d/m/Y H:i') }} · Recibo válido con sello del centro
 </div>
 
 {{-- ── Corte y copia --}}

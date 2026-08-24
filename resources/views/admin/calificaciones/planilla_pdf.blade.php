@@ -35,7 +35,7 @@
 </head>
 <body>
 <div class="header">
-    <h2>POLITÉCNICO SALESIANO ARQUIDES CALDERÓN (PSAC)</h2>
+    <h2>{{ strtoupper(config('tenant.nombre', config('app.name'))) }}</h2>
     <p>Planilla de Calificaciones — Área Académica &nbsp;|&nbsp; {{ $schoolYear->nombre }}</p>
     <p>
         <strong>Asignatura:</strong> {{ $asignacion->asignatura->nombre }} &nbsp;|&nbsp;
@@ -113,7 +113,7 @@
 </table>
 
 <div style="margin-top:20pt;font-size:7pt;text-align:right;color:#555;">
-    Generado: {{ now()->format('d/m/Y H:i') }} | PSAC SGE
+    Generado: {{ now()->format('d/m/Y H:i') }} | {{ config('tenant.nombre', config('app.name')) }} · SGE
 </div>
 </body>
 </html>

@@ -33,6 +33,9 @@ return new class extends Migration
 
         // matriculas: unique sin tenant_id
         if (Schema::hasTable('matriculas')) {
+            // matriculas_school_year_id_foreign necesita un índice que empiece por
+            // school_year_id; el unique que se va a eliminar era el único que lo cubría.
+            $this->addIndexIfMissing('matriculas', 'matriculas_school_year_id_index', ['school_year_id']);
             $this->dropUniqueIfExists('matriculas', 'matriculas_school_year_id_estudiante_id_unique');
             Schema::table('matriculas', function (Blueprint $table) {
                 $existing = collect(DB::select("SHOW INDEX FROM matriculas WHERE Key_name = 'matriculas_tenant_unique'"));
@@ -40,6 +43,14 @@ return new class extends Migration
                     $table->unique(['tenant_id', 'school_year_id', 'estudiante_id'], 'matriculas_tenant_unique');
                 }
             });
+        }
+    }
+
+    private function addIndexIfMissing(string $table, string $name, array $columns): void
+    {
+        $exists = collect(DB::select("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$name]))->isNotEmpty();
+        if (! $exists) {
+            Schema::table($table, fn (Blueprint $t) => $t->index($columns, $name));
         }
     }
 
@@ -60,6 +71,15 @@ return new class extends Migration
             $this->dropUniqueIfExists('matriculas', 'matriculas_tenant_unique');
             Schema::table('matriculas', fn (Blueprint $t) =>
                 $t->unique(['school_year_id', 'estudiante_id']));
+            $this->dropIndexIfExists('matriculas', 'matriculas_school_year_id_index');
+        }
+    }
+
+    private function dropIndexIfExists(string $table, string $name): void
+    {
+        $exists = collect(DB::select("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$name]))->isNotEmpty();
+        if ($exists) {
+            Schema::table($table, fn (Blueprint $t) => $t->dropIndex($name));
         }
     }
 

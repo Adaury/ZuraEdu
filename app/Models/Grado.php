@@ -24,7 +24,7 @@ class Grado extends Model
 
     /* ── Scopes ───────────────────────────────────────── */
 
-    public function scopeOrdenados($q) { return $q->orderBy('nivel'); }
+    public function scopeOrdenados($q) { return $q->orderBy('orden'); }
     public function scopePrimerCiclo($q)  { return $q->where('ciclo', 'primer_ciclo'); }
     public function scopeSegundoCiclo($q) { return $q->where('ciclo', 'segundo_ciclo'); }
 

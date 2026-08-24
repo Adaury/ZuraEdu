@@ -19,6 +19,7 @@ use App\Models\ResultadoAprendizaje;
 use App\Models\SchoolYear;
 use App\Mail\BoletinDisponible;
 use App\Services\WhatsAppService;
+use App\Traits\NormalizesFileEncoding;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Collection;
@@ -32,6 +33,8 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class CalificacionController extends Controller
 {
+    use NormalizesFileEncoding;
+
     // ── Helper: get docente for auth user (null if admin/director) ────────
     private function docenteActual(): ?Docente
     {
@@ -1242,10 +1245,7 @@ class CalificacionController extends Controller
             }
         } else {
             $raw      = file_get_contents($archivo->getPathname());
-            $encoding = mb_detect_encoding($raw, ['UTF-8', 'Windows-1252', 'ISO-8859-1'], true);
-            if ($encoding && $encoding !== 'UTF-8') {
-                $raw = mb_convert_encoding($raw, 'UTF-8', $encoding);
-            }
+            $raw = $this->normalizeToUtf8($raw);
             $lines  = array_filter(explode("\n", str_replace(["\r\n", "\r"], "\n", ltrim($raw, "\xEF\xBB\xBF"))));
             $lines  = array_values($lines);
             $delim  = substr_count($lines[0] ?? '', ';') > substr_count($lines[0] ?? '', ',') ? ';' : ',';

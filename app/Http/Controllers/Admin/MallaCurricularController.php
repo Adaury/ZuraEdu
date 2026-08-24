@@ -17,7 +17,7 @@ class MallaCurricularController extends Controller
 {
     public function index(Request $request)
     {
-        $grados         = Grado::orderBy('nivel')->get();
+        $grados         = Grado::orderBy('orden')->get();
         $especialidades = EspecialidadTecnica::activas()->orderBy('orden')->get();
 
         $query = MallaCurricular::with(['grado', 'asignatura', 'especialidad'])
@@ -40,7 +40,7 @@ class MallaCurricularController extends Controller
 
     public function matriz()
     {
-        $grados      = Grado::orderBy('nivel')->get();
+        $grados      = Grado::orderBy('orden')->get();
         $asignaturas = Asignatura::activas()->orderBy('nombre')->get();
 
         $mallaMap = MallaCurricular::activas()
@@ -52,7 +52,7 @@ class MallaCurricularController extends Controller
 
     public function create()
     {
-        $grados         = Grado::orderBy('nivel')->get();
+        $grados         = Grado::orderBy('orden')->get();
         $asignaturas    = Asignatura::activas()->orderBy('nombre')->get();
         $especialidades = EspecialidadTecnica::activas()->orderBy('orden')->get();
 
@@ -83,7 +83,7 @@ class MallaCurricularController extends Controller
 
     public function edit(MallaCurricular $malla)
     {
-        $grados         = Grado::orderBy('nivel')->get();
+        $grados         = Grado::orderBy('orden')->get();
         $asignaturas    = Asignatura::activas()->orderBy('nombre')->get();
         $especialidades = EspecialidadTecnica::activas()->orderBy('orden')->get();
 
@@ -121,7 +121,7 @@ class MallaCurricularController extends Controller
     // ── Malla Curricular PDF ──────────────────────────────────────────────
     public function matrizPdf()
     {
-        $grados      = Grado::orderBy('nivel')->get();
+        $grados      = Grado::orderBy('orden')->get();
         $asignaturas = Asignatura::activas()->orderBy('nombre')->get();
 
         $mallaMap = MallaCurricular::activas()
@@ -143,7 +143,7 @@ class MallaCurricularController extends Controller
 
     public function matrizExcel()
     {
-        $grados      = Grado::orderBy('nivel')->get();
+        $grados      = Grado::orderBy('orden')->get();
         $asignaturas = Asignatura::activas()->orderBy('nombre')->get();
 
         $mallaMap = MallaCurricular::activas()->get()

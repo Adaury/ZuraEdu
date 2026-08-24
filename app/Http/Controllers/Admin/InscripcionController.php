@@ -41,7 +41,7 @@ class InscripcionController extends Controller
         ];
         $conteos['total'] = array_sum($conteos);
 
-        $grados  = Grado::orderBy('nivel')->get();
+        $grados  = Grado::orderBy('orden')->get();
         $grupos  = Grupo::with(['grado', 'seccion'])
             ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
             ->activos()
@@ -170,6 +170,8 @@ class InscripcionController extends Controller
         }
 
         DB::transaction(function () use ($data, $inscripcion, $schoolYear) {
+            Grupo::where('id', $data['grupo_id'])->lockForUpdate()->firstOrFail();
+
             $numeroOrden = Matricula::where('grupo_id', $data['grupo_id'])->count() + 1;
 
             $matricula = Matricula::create([
@@ -230,6 +232,8 @@ class InscripcionController extends Controller
         $errores    = 0;
 
         DB::transaction(function () use ($data, $schoolYear, $grupoId, &$creados, &$errores) {
+            Grupo::where('id', $grupoId)->lockForUpdate()->firstOrFail();
+
             $inscripciones = Inscripcion::whereIn('id', $data['ids'])->get()->keyBy('id');
 
             $estudiantesIds = $inscripciones->pluck('estudiante_id')->unique();

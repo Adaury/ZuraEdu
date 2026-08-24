@@ -31,7 +31,7 @@ class GrupoController extends Controller
         $schoolYear = SchoolYear::actual();
 
         $grupos = Grupo::with(['grado', 'seccion', 'tutor'])
-            ->withCount('matriculas')
+            ->withCount(['matriculas' => fn ($q) => $q->where('estado', 'activa')])
             ->when(SchoolYear::actual(), fn ($q, $y) => $q->where('school_year_id', $y->id))
             ->orderBy('grado_id')
             ->orderBy('seccion_id')
@@ -44,7 +44,7 @@ class GrupoController extends Controller
 
     public function create()
     {
-        $grados     = Grado::orderBy('nivel')->get();
+        $grados     = Grado::orderBy('orden')->get();
         $secciones  = Seccion::orderBy('orden')->get();
         $docentes   = Docente::with('user')->activos()->orderBy('apellidos')->get();
         $schoolYears = SchoolYear::orderByDesc('id')->get();
@@ -103,7 +103,7 @@ class GrupoController extends Controller
 
     public function edit(Grupo $grupo)
     {
-        $grados      = Grado::orderBy('nivel')->get();
+        $grados      = Grado::orderBy('orden')->get();
         $secciones   = Seccion::orderBy('orden')->get();
         $docentes    = Docente::with('user')->activos()->orderBy('apellidos')->get();
         $schoolYears = SchoolYear::orderByDesc('id')->get();
@@ -540,7 +540,7 @@ class GrupoController extends Controller
         $schoolYear = SchoolYear::actual();
 
         $grupos = Grupo::with(['grado', 'seccion', 'tutor'])
-            ->withCount('matriculas')
+            ->withCount(['matriculas' => fn ($q) => $q->where('estado', 'activa')])
             ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
             ->orderBy('grado_id')
             ->orderBy('seccion_id')
@@ -602,7 +602,7 @@ class GrupoController extends Controller
         $schoolYear = SchoolYear::actual();
 
         $grupos = Grupo::with(['grado', 'seccion', 'tutor'])
-            ->withCount('matriculas')
+            ->withCount(['matriculas' => fn ($q) => $q->where('estado', 'activa')])
             ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
             ->orderBy('grado_id')
             ->orderBy('seccion_id')

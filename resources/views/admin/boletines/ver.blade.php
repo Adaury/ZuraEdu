@@ -386,6 +386,18 @@
     </div>
 </div>
 
+@if($deudaVencida)
+<div class="alert alert-warning no-print d-flex align-items-center gap-2" role="alert" style="margin:0 0 1rem;">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <div>
+        <strong>Este estudiante tiene {{ $deudaVencida['cantidad'] }}
+        pago{{ $deudaVencida['cantidad'] > 1 ? 's' : '' }} vencido{{ $deudaVencida['cantidad'] > 1 ? 's' : '' }}</strong>
+        por un total de RD$ {{ number_format($deudaVencida['monto'], 2) }}.
+        Esta alerta es solo informativa — no impide consultar ni imprimir el boletín.
+    </div>
+</div>
+@endif
+
 {{-- ══════════════════════════════════════════════════════════════════════
      BOLETÍN
 ════════════════════════════════════════════════════════════════════════ --}}

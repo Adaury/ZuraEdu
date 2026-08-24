@@ -111,6 +111,7 @@ class RolesSeeder extends Seeder
             'ver-calificaciones',
             'ver-asistencia',
             'ver-boletines',
+            'imprimir-boletines',
         ]);
 
         // Personal Administrativo (Registrador Académico) — supervisión de registros
@@ -212,6 +213,7 @@ class RolesSeeder extends Seeder
             'ver-calificaciones',
             'ver-asistencia',
             'ver-boletines',
+            'imprimir-boletines',
         ]);
 
         // Registrador Académico — gestión completa del departamento de registro

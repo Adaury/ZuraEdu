@@ -27,7 +27,7 @@ class SecurityHeaders
         $response->headers->set(
             'Content-Security-Policy',
             "default-src 'self'; " .
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://js.stripe.com https://cdn.socket.io; " .
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://js.stripe.com https://cdn.socket.io https://cdn.tailwindcss.com https://cdn.datatables.net https://cdnjs.cloudflare.com; " .
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " .
             "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; " .
             "img-src 'self' data: https: blob:; " .

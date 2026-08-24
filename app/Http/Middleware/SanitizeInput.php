@@ -23,6 +23,8 @@ class SanitizeInput
     protected array $allowedRichFields = [
         'descripcion', 'contenido', 'mensaje', 'notas', 'observacion',
         'notas_medicas', 'trial_mensaje', 'cuerpo', 'planificacion', 'actividad',
+        'respuesta', 'justificacion', 'retroalimentacion', 'explicacion',
+        'texto', 'motivo', 'criterio',
     ];
 
     public function handle(Request $request, Closure $next): Response
@@ -69,11 +71,12 @@ class SanitizeInput
 
     private function stripDangerousTags(string $value): string
     {
-        // Remove script, iframe, object, embed tags — keep everything else
-        $value = preg_replace('/<\s*(script|iframe|object|embed|base|form|meta|link|style)[^>]*>.*?<\s*\/\s*\1\s*>/is', '', $value);
-        $value = preg_replace('/<\s*(script|iframe|object|embed|base|form|meta|link|style)[^>]*\/?>/i', '', $value);
+        // Remove script, iframe, object, embed and other tags with no legitimate use in plain-text rich fields
+        $value = preg_replace('/<\s*(script|iframe|object|embed|base|form|meta|link|style|img|svg|body|math)[^>]*>.*?<\s*\/\s*\1\s*>/is', '', $value);
+        $value = preg_replace('/<\s*(script|iframe|object|embed|base|form|meta|link|style|img|svg|body|math)[^>]*\/?>/i', '', $value);
+        // Remove event handler attributes (on*=), quoted or unquoted
+        $value = preg_replace('/\bon\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $value);
         // Remove javascript: and data: URIs in attributes
-        $value = preg_replace('/\bon\w+\s*=\s*["\'][^"\']*["\']/', '', $value);
         $value = preg_replace('/javascript\s*:/i', '', $value);
         return trim($value);
     }

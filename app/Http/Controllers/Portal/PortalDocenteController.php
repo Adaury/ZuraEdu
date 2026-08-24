@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Portal;
 use App\Events\AsistenciaRegistrada;
 use App\Http\Controllers\Controller;
 use App\Traits\HasDocenteContext;
+use App\Traits\NormalizesFileEncoding;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use App\Models\Asignacion;
@@ -32,6 +33,7 @@ use Illuminate\Support\Facades\Storage;
 class PortalDocenteController extends Controller
 {
     use HasDocenteContext;
+    use NormalizesFileEncoding;
 
     // ── Dashboard del docente ────────────────────────────────────────────
     public function dashboard()
@@ -2284,8 +2286,8 @@ class PortalDocenteController extends Controller
         $declinandoCount = $filas->where('tendencia', 'down')->count();
 
         // Datos para Chart.js
-        $chartLabels = json_encode($periodos->map(fn($p) => $p->nombre)->values()->all());
-        $chartData   = json_encode($periodos->map(fn($p) => $promediosPeriodo[$p->numero])->values()->all());
+        $chartLabels = $periodos->map(fn($p) => $p->nombre)->values()->all();
+        $chartData   = $periodos->map(fn($p) => $promediosPeriodo[$p->numero])->values()->all();
 
         // Datos multi-línea (un dataset por estudiante)
         $coloresPaleta = ['#6366f1','#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316','#84cc16'];
@@ -2302,7 +2304,7 @@ class PortalDocenteController extends Controller
                 'spanGaps'        => true,
             ];
         })->values()->all();
-        $chartEstudiantesJson = json_encode($chartEstudiantes);
+        $chartEstudiantesJson = $chartEstudiantes;
 
         // Top mejoras / top descensos
         $conDiff     = $filas->filter(fn($f) => $f['diff'] !== null)->sortByDesc('diff');
@@ -3182,16 +3184,16 @@ class PortalDocenteController extends Controller
         // Chart.js
         $chartLabels = collect($estadisticasPorAsignacion)
             ->map(fn($e) => Str::limit($e['asignatura'], 18) . ' · ' . Str::limit($e['grupo'], 12))
-            ->values()->toJson();
+            ->values();
         $chartData = collect($estadisticasPorAsignacion)
             ->map(fn($e) => $e['promedio'] ?? 0)
-            ->values()->toJson();
+            ->values();
         $chartAprobados = collect($estadisticasPorAsignacion)
             ->map(fn($e) => $e['aprobados'])
-            ->values()->toJson();
+            ->values();
         $chartReprobados = collect($estadisticasPorAsignacion)
             ->map(fn($e) => $e['reprobados'])
-            ->values()->toJson();
+            ->values();
 
         return view('portal.docente.mis_estadisticas', compact(
             'docente', 'schoolYear', 'asignaciones',
@@ -4239,9 +4241,7 @@ class PortalDocenteController extends Controller
             }
         } else {
             $raw = file_get_contents($archivo->getPathname());
-            if (($enc = mb_detect_encoding($raw, ['UTF-8', 'Windows-1252', 'ISO-8859-1'], true)) && $enc !== 'UTF-8') {
-                $raw = mb_convert_encoding($raw, 'UTF-8', $enc);
-            }
+            $raw = $this->normalizeToUtf8($raw);
             $lines  = array_values(array_filter(explode("\n", str_replace(["\r\n", "\r"], "\n", ltrim($raw, "\xEF\xBB\xBF")))));
             $delim  = substr_count($lines[0] ?? '', ';') > substr_count($lines[0] ?? '', ',') ? ';' : ',';
             $header = array_map('strtolower', array_map('trim', str_getcsv($lines[0] ?? '', $delim)));
@@ -4711,8 +4711,8 @@ class PortalDocenteController extends Controller
                       '07'=>'Jul','08'=>'Ago','09'=>'Sep','10'=>'Oct','11'=>'Nov','12'=>'Dic'];
             [$y, $m] = explode('-', $ym);
             return ($meses[$m] ?? $m) . ' ' . substr($y, 2);
-        })->values()->toJson();
-        $chartData = $porMes->values()->toJson();
+        })->values();
+        $chartData = $porMes->values();
 
         // Día de la semana con más ausencias
         $diasSemana = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];

@@ -7,6 +7,7 @@ use App\Models\Asignacion;
 use App\Models\Docente;
 use App\Models\SchoolYear;
 use App\Models\User;
+use App\Traits\NormalizesFileEncoding;
 use Illuminate\Database\QueryException;
 use App\Http\Requests\Admin\StoreDocenteRequest;
 use App\Http\Requests\Admin\UpdateDocenteRequest;
@@ -23,6 +24,8 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 class DocenteController extends Controller
 {
+    use NormalizesFileEncoding;
+
     // ── Index ──────────────────────────────────────────────────────────────
     public function index(Request $request)
     {
@@ -245,8 +248,7 @@ class DocenteController extends Controller
         } else {
             // CSV / TXT
             $raw = file_get_contents($path);
-            $enc = mb_detect_encoding($raw, ['UTF-8','Windows-1252','ISO-8859-1'], true);
-            if ($enc && $enc !== 'UTF-8') $raw = mb_convert_encoding($raw, 'UTF-8', $enc);
+            $raw = $this->normalizeToUtf8($raw);
             $raw = ltrim($raw, "\xEF\xBB\xBF");
 
             $tmp = tempnam(sys_get_temp_dir(), 'sge_d_');
@@ -321,8 +323,7 @@ class DocenteController extends Controller
             }
         } else {
             $raw = Storage::disk('local')->get($tempPath);
-            $enc = mb_detect_encoding($raw, ['UTF-8','Windows-1252','ISO-8859-1'], true);
-            if ($enc && $enc !== 'UTF-8') $raw = mb_convert_encoding($raw, 'UTF-8', $enc);
+            $raw = $this->normalizeToUtf8($raw);
             $raw = ltrim($raw, "\xEF\xBB\xBF");
             $tmp = tempnam(sys_get_temp_dir(), 'sge_dc_');
             file_put_contents($tmp, $raw);

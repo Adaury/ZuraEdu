@@ -125,7 +125,7 @@ class DemoAutoController extends Controller
         $tid = $tenant->id;
 
         // ── Recuperar estructura base ─────────────────────────────────────
-        $grados    = Grado::where('tenant_id', $tid)->orderBy('nivel')->get();
+        $grados    = Grado::where('tenant_id', $tid)->orderBy('orden')->get();
         $secciones = Seccion::where('tenant_id', $tid)->get();
         $asignaturas = \App\Models\Asignatura::where('tenant_id', $tid)->get();
         $seccionA  = $secciones->firstWhere('nombre', 'A');

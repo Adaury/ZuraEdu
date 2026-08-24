@@ -126,7 +126,7 @@
 </div>
 
 {{-- Evolución mensual ───────────────────────────────────────────────────── --}}
-@if(json_decode($chartLabels))
+@if($chartLabels->isNotEmpty())
 <div class="prt-card" style="margin-bottom:1rem;">
     <div class="prt-card-header">
         <i class="bi bi-graph-up" style="color:#2563eb;"></i>
@@ -293,7 +293,7 @@ $maxDia = max(array_max($ausenciaPorDia), 1);
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 // Gráfica de evolución mensual
-@if(json_decode($chartLabels))
+@if($chartLabels->isNotEmpty())
 (function () {
     const ctx = document.getElementById('chartAsistencia');
     if (!ctx) return;

@@ -130,11 +130,16 @@ class MatriculaController extends Controller
             ]);
         }
 
-        // Generate numero_orden
-        $data['numero_orden'] = Matricula::where('grupo_id', $data['grupo_id'])->count() + 1;
-        $data['estado']       = 'activa';
+        // Bloquea el grupo para serializar el cálculo de numero_orden entre
+        // matrículas concurrentes al mismo grupo (evita duplicados bajo carga).
+        $matricula = DB::transaction(function () use ($data) {
+            Grupo::where('id', $data['grupo_id'])->lockForUpdate()->firstOrFail();
 
-        $matricula = Matricula::create($data);
+            $data['numero_orden'] = Matricula::where('grupo_id', $data['grupo_id'])->count() + 1;
+            $data['estado']       = 'activa';
+
+            return Matricula::create($data);
+        });
 
         try {
             DashboardActualizado::dispatch(tenant_id() ?? 0, 'nueva_matricula', [
@@ -241,6 +246,10 @@ class MatriculaController extends Controller
         $omitidos = 0;
 
         DB::transaction(function () use ($data, $schoolYear, &$creados, &$omitidos) {
+            // Bloquea el grupo para serializar frente a otras matrículas (individuales
+            // o masivas) concurrentes al mismo grupo mientras dura este lote.
+            Grupo::where('id', $data['grupo_id'])->lockForUpdate()->firstOrFail();
+
             foreach ($data['estudiante_ids'] as $estId) {
                 $yaExiste = Matricula::where('school_year_id', $schoolYear->id)
                     ->where('estudiante_id', $estId)

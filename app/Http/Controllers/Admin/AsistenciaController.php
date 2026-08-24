@@ -10,6 +10,7 @@ use App\Models\Horario;
 use App\Models\HorarioDetalle;
 use App\Models\Matricula;
 use App\Models\SchoolYear;
+use App\Traits\NormalizesFileEncoding;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -18,6 +19,8 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class AsistenciaController extends Controller
 {
+    use NormalizesFileEncoding;
+
     // ── Index: list asignaciones for current year ─────────────────────────
     public function index(Request $request)
     {
@@ -975,10 +978,7 @@ class AsistenciaController extends Controller
             }
         } else {
             $raw      = file_get_contents($archivo->getPathname());
-            $encoding = mb_detect_encoding($raw, ['UTF-8', 'Windows-1252', 'ISO-8859-1'], true);
-            if ($encoding && $encoding !== 'UTF-8') {
-                $raw = mb_convert_encoding($raw, 'UTF-8', $encoding);
-            }
+            $raw = $this->normalizeToUtf8($raw);
             $lines  = array_filter(explode("\n", str_replace(["\r\n", "\r"], "\n", ltrim($raw, "\xEF\xBB\xBF"))));
             $lines  = array_values($lines);
             $delim  = substr_count($lines[0] ?? '', ';') > substr_count($lines[0] ?? '', ',') ? ';' : ',';

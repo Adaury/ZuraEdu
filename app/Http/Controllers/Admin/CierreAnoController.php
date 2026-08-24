@@ -328,7 +328,7 @@ class CierreAnoController extends Controller
         $gruposPorGrado = $gruposNuevos->groupBy('grado_id');
 
         // Mapa grado.nivel → siguiente grado (por nivel+1)
-        $grados = Grado::where('activo', true)->orderBy('nivel')->get();
+        $grados = Grado::where('activo', true)->orderBy('orden')->get();
         $siguienteGradoMap = [];
         foreach ($grados as $g) {
             $sig = $grados->firstWhere('nivel', $g->nivel + 1);

@@ -11,6 +11,7 @@ use App\Models\Grupo;
 use App\Models\Matricula;
 use App\Models\Periodo;
 use App\Models\SchoolYear;
+use App\Traits\NormalizesFileEncoding;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +34,8 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
  */
 class ImportacionController extends Controller
 {
+    use NormalizesFileEncoding;
+
     // ═══════════════════════════════════════════════════════════════════════
     //  HUB PRINCIPAL
     // ═══════════════════════════════════════════════════════════════════════
@@ -636,10 +639,7 @@ class ImportacionController extends Controller
 
         // ── CSV / TXT ──────────────────────────────────────────────────
         $raw      = file_get_contents($file->getPathname());
-        $encoding = mb_detect_encoding($raw, ['UTF-8', 'Windows-1252', 'ISO-8859-1'], true);
-        if ($encoding && $encoding !== 'UTF-8') {
-            $raw = mb_convert_encoding($raw, 'UTF-8', $encoding);
-        }
+        $raw = $this->normalizeToUtf8($raw);
         $raw = ltrim($raw, "\xEF\xBB\xBF");
 
         $tmpPath = tempnam(sys_get_temp_dir(), 'sge_imp_');

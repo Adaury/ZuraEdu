@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Traits\AsignaMateriasBasicas;
+use App\Traits\NormalizesFileEncoding;
 use App\Models\Estudiante;
 use App\Models\Grado;
 use App\Models\Grupo;
@@ -26,6 +27,7 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 class EstudianteController extends Controller
 {
     use AsignaMateriasBasicas;
+    use NormalizesFileEncoding;
 
     // ── Index ──────────────────────────────────────────────────────────────
     public function index(Request $request)
@@ -37,7 +39,7 @@ class EstudianteController extends Controller
         $ciclo   = $request->input('ciclo');
         $area    = $request->input('area');
 
-        $grados = Grado::orderBy('nivel')->get();
+        $grados = Grado::orderBy('orden')->get();
 
         $estudiantes = Estudiante::query()
             // ── Búsqueda por texto ────────────────────────────────────────
@@ -420,10 +422,7 @@ class EstudianteController extends Controller
         } else {
             // CSV / TXT / TSV — una sola hoja; agrupar por columna Sección si existe
             $rawContent = file_get_contents($path);
-            $encoding   = mb_detect_encoding($rawContent, ['UTF-8', 'Windows-1252', 'ISO-8859-1'], true);
-            if ($encoding && $encoding !== 'UTF-8') {
-                $rawContent = mb_convert_encoding($rawContent, 'UTF-8', $encoding);
-            }
+            $rawContent = $this->normalizeToUtf8($rawContent);
             $rawContent = ltrim($rawContent, "\xEF\xBB\xBF");
 
             $tmpPath = tempnam(sys_get_temp_dir(), 'sge_prev_');
@@ -487,7 +486,7 @@ class EstudianteController extends Controller
             ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
             ->get();
 
-        $grados   = Grado::orderBy('nivel')->get();
+        $grados   = Grado::orderBy('orden')->get();
         $secciones = Seccion::orderBy('orden')->get();
 
         // Analizar cada hoja: detectar grado+sección y si el grupo existe o debe crearse
@@ -551,10 +550,7 @@ class EstudianteController extends Controller
             }
         } else {
             $rawContent = Storage::disk('local')->get($tempPath);
-            $encoding   = mb_detect_encoding($rawContent, ['UTF-8', 'Windows-1252', 'ISO-8859-1'], true);
-            if ($encoding && $encoding !== 'UTF-8') {
-                $rawContent = mb_convert_encoding($rawContent, 'UTF-8', $encoding);
-            }
+            $rawContent = $this->normalizeToUtf8($rawContent);
             $rawContent = ltrim($rawContent, "\xEF\xBB\xBF");
             $tmp2 = tempnam(sys_get_temp_dir(), 'sge_conf_');
             file_put_contents($tmp2, $rawContent);
@@ -809,10 +805,7 @@ class EstudianteController extends Controller
         } else {
             // CSV / TXT / TSV
             $rawContent = file_get_contents($path);
-            $encoding   = mb_detect_encoding($rawContent, ['UTF-8', 'Windows-1252', 'ISO-8859-1', 'UTF-16'], true);
-            if ($encoding && $encoding !== 'UTF-8') {
-                $rawContent = mb_convert_encoding($rawContent, 'UTF-8', $encoding);
-            }
+            $rawContent = $this->normalizeToUtf8($rawContent, ['Windows-1252', 'ISO-8859-1', 'UTF-16']);
             $rawContent = ltrim($rawContent, "\xEF\xBB\xBF");
 
             $tmpPath = tempnam(sys_get_temp_dir(), 'sge_import_');

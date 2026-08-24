@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Gate;
 use App\Models\Asignacion;
 use App\Models\Estudiante;
 use App\Models\Grupo;
@@ -31,6 +32,11 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // SuperAdmin "entra al panel admin de una institución" (TenantController::enterPanel)
+        // y debe poder administrarla por completo, sin depender de los permisos granulares
+        // por tenant que solo tienen sentido para el staff propio de cada institución.
+        Gate::before(function ($user, string $ability) {
+            return $user?->hasRole('super_admin') ? true : null;
+        });
     }
 }

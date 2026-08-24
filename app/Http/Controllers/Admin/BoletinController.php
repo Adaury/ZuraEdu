@@ -13,6 +13,7 @@ use App\Models\Docente;
 use App\Models\EvaluacionIndicador;
 use App\Models\Grupo;
 use App\Models\Matricula;
+use App\Models\Pago;
 use App\Models\Periodo;
 use App\Models\Promocion;
 use App\Models\SchoolYear;
@@ -419,6 +420,22 @@ class BoletinController extends Controller
             ];
         }
 
+        // Alerta informativa de deuda vencida — solo advierte, nunca bloquea la
+        // consulta/impresión del boletín (decisión de negocio: el staff decide).
+        $pagosVencidos = Pago::where('matricula_id', $matricula->id)
+            ->where(function ($q) {
+                $q->where('estado', 'vencido')
+                  ->orWhere(function ($q2) {
+                      $q2->where('estado', 'pendiente')->where('fecha_vencimiento', '<', now()->toDateString());
+                  });
+            })
+            ->get();
+
+        $deudaVencida = $pagosVencidos->isNotEmpty() ? [
+            'cantidad' => $pagosVencidos->count(),
+            'monto'    => $pagosVencidos->sum('monto'),
+        ] : null;
+
         return compact(
             'matricula', 'periodo', 'periodos', 'schoolYear', 'boletinConfig',
             'tablaNotas', 'promedioGeneral',
@@ -426,7 +443,7 @@ class BoletinController extends Controller
             'evaluaciones', 'observacionesList',
             'boletinObservaciones', 'promocion',
             'vistaDocente', 'rankingGrupo', 'progreso',
-            'minerdData', 'ciclo'
+            'minerdData', 'ciclo', 'deudaVencida'
         );
     }
 

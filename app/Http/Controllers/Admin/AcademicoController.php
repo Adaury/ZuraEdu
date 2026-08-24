@@ -48,7 +48,7 @@ class AcademicoController extends Controller
             ->pluck('total', 'grupo_id');
 
         $cursos    = $grupos->groupBy(fn($g) => $g->grado->nombre ?? 'Sin Grado');
-        $grados    = Grado::orderBy('nivel')->get();
+        $grados    = Grado::orderBy('orden')->get();
         $secciones = Seccion::orderBy('orden')->get();
 
         return view('admin.academico.index', compact(

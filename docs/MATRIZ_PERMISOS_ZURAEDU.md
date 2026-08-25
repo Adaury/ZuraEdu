@@ -1,6 +1,6 @@
 # Matriz de Permisos — ZuraEdu / SGE
 
-**Estado:** Fase 1 completada; §2.1 y §2.2 corregidos y verificados (2026-08-25)
+**Estado:** Auditoría completa — §2.1, §2.2, §2.3, §2.4 y §2.5 corregidos y verificados (2026-08-25)
 **Alcance de este documento:** inventario real del sistema tal como está implementado hoy, más los hallazgos de seguridad detectados. No es un documento aspiracional — cada afirmación está verificada contra el código, con archivo:línea.
 **Regla seguida:** ANALIZAR → DOCUMENTAR (este archivo) → PROPONER → CORREGIR → PROBAR.
 
@@ -12,7 +12,10 @@
 - ✅ **`seguimiento_social.php` (Medio, PII sensible)** — corregido con `can:acceso-salud-disciplina` (mismo Gate que salud/disciplina, mismo nivel de sensibilidad).
 - ✅ **`riesgo.php`** — ya estaba protegido correctamente (middleware en el constructor de `AcademicRiskController`, no en la ruta). No requería cambio.
 - ✅ **Bug adicional tipo §2.4 fuera de Policies** — `AcademicAlertService.php:218` usaba `User::role(['Admin', 'Director'])`; 'Admin' no existe en BD (es 'Administrador'), así que las alertas académicas nunca llegaban a Administradores. Corregido.
-- ⏳ **§2.3 (medio, Policies muertas)** — pendiente de decisión (activar con `$this->authorize()` o documentar como redundantes).
+- ✅ **§2.3 (medio, Policies muertas)** — resuelto, decisión distinta para cada una tras investigar si protegían algo alcanzable:
+  - **`BoletinPolicy` → activada.** Su lógica ya estaba duplicada *inline* en `BoletinController::verEstudiante()`, `::pdf()` y `::pdfAnual()` (con una inconsistencia: el inline no consideraba `tutor_id`, solo asignaciones activas). Reemplazado por `$this->authorize('ver'|'pdf', $matricula)`.
+  - **Gap real encontrado de paso**: `BoletinController::grupo()` y `::zipGrupo()` (vista y ZIP masivo de boletines por grupo) **no tenían ningún control de acceso por grupo** — un docente con `ver-boletines` podía pasar cualquier `grupo_id` ajeno y ver/descargar en bloque boletines de estudiantes que no enseña, saltándose el control que sí existía en las rutas por-estudiante. Corregido con un helper nuevo `puedeVerGrupo()` en el mismo controlador (mismo criterio que `BoletinPolicy`: tutor o asignación activa en ese grupo).
+  - **`EstudiantePolicy` y `GrupoPolicy` → eliminadas.** Su rama de scoping para Docentes era código inalcanzable: las rutas que usan `EstudianteController`/`GrupoController` (`personas.php`, `academico.php`) están gateadas con `can:gestionar-estudiantes`/`can:gestionar-grupos`, permisos que ningún rol Docente tiene — ningún docente llega nunca a ese código, y los roles que sí llegan (Admin/Director/Coordinadores/etc.) no necesitan scoping por asignación. Se eliminaron los 2 archivos y su registro en `AuthServiceProvider::$policies` para no dejar Policies "registradas" que nadie invoca (falsa sensación de seguridad). Si en el futuro se habilita que Docentes naveguen estudiantes/grupos desde el panel admin, escribir una Policy nueva con los requisitos de ese momento.
 - ✅ **§2.4 (bajo, bug de nombre de rol)** — corregido, incluida la ocurrencia adicional en `AcademicAlertService.php:218`.
 - ✅ **§2.5 (NUEVO, alto — no estaba en el informe original) — middleware `role:` usado directamente en producción, no solo en teoría.** El "Hallazgo adicional" de la sección de arriba (que `role:` no pasa por `Gate::before`, rompiendo el bypass de `super_admin` administrando un tenant) no era solo un riesgo teórico: **12 rutas ya lo usaban así en producción**, 9 en `routes/admin/*.php` y 3 en `routes/api.php` (app móvil). Todas corregidas reemplazando `role:` por `can:` + un `Gate::define()` nuevo en `AuthServiceProvider.php` (`solo-administrador`, `acceso-direccion`, `acceso-direccion-coordinacion`, `acceso-sigerd`, `acceso-docente-api`):
   - `cierre_ano.php`, `kpis.php`, `reportes.php` (dashboard ejecutivo) → `acceso-direccion` (Administrador\|Director).

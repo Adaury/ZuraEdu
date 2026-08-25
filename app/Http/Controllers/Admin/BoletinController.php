@@ -50,6 +50,28 @@ class BoletinController extends Controller
         return null;
     }
 
+    // ── Helper: ¿puede el usuario ver los boletines de este grupo completo? ─
+    private function puedeVerGrupo(Grupo $grupo): bool
+    {
+        if ($this->puedeVerTodo()) {
+            return true;
+        }
+
+        $docente = $this->docenteActual();
+        if (! $docente) {
+            return false;
+        }
+
+        if ($grupo->tutor_id === auth()->id()) {
+            return true;
+        }
+
+        return $docente->asignaciones()
+            ->where('grupo_id', $grupo->id)
+            ->where('activo', true)
+            ->exists();
+    }
+
     // ── Helper: get asignacion IDs that the docente teaches (current year) ─
     private function asignacionesDocente(Docente $docente, int $schoolYearId): \Illuminate\Support\Collection
     {
@@ -450,22 +472,7 @@ class BoletinController extends Controller
     // ── Ver estudiante: full boletin web preview ───────────────────────────
     public function verEstudiante(Matricula $matricula, Periodo $periodo)
     {
-        // Docentes can only view boletines of their own groups
-        if (! $this->puedeVerTodo()) {
-            $docente = $this->docenteActual();
-            if ($docente) {
-                $schoolYear = SchoolYear::actual();
-                $grupoIds   = Asignacion::where('docente_id', $docente->id)
-                    ->where('school_year_id', $schoolYear?->id ?? 0)
-                    ->where('activo', true)
-                    ->pluck('grupo_id')
-                    ->unique();
-
-                if (! $grupoIds->contains($matricula->grupo_id)) {
-                    abort(403, 'No tienes acceso al boletín de este estudiante.');
-                }
-            }
-        }
+        $this->authorize('ver', $matricula);
 
         $data = $this->buildBoletinData($matricula, $periodo);
         return view('admin.boletines.ver', $data);
@@ -474,22 +481,7 @@ class BoletinController extends Controller
     // ── PDF download ───────────────────────────────────────────────────────
     public function pdf(Matricula $matricula, Periodo $periodo)
     {
-        // Same access control as verEstudiante
-        if (! $this->puedeVerTodo()) {
-            $docente = $this->docenteActual();
-            if ($docente) {
-                $schoolYear = SchoolYear::actual();
-                $grupoIds   = Asignacion::where('docente_id', $docente->id)
-                    ->where('school_year_id', $schoolYear?->id ?? 0)
-                    ->where('activo', true)
-                    ->pluck('grupo_id')
-                    ->unique();
-
-                if (! $grupoIds->contains($matricula->grupo_id)) {
-                    abort(403, 'No tienes acceso al boletín de este estudiante.');
-                }
-            }
-        }
+        $this->authorize('pdf', $matricula);
 
         $data = $this->buildBoletinData($matricula, $periodo);
 
@@ -513,6 +505,8 @@ class BoletinController extends Controller
         $schoolYear = SchoolYear::actual();
         $periodo    = Periodo::findOrFail($request->periodo_id);
         $grupo      = Grupo::with(['grado', 'seccion'])->findOrFail($request->grupo_id);
+
+        abort_unless($this->puedeVerGrupo($grupo), 403, 'No tienes acceso a los boletines de este grupo.');
 
         $boletinConfig = $schoolYear ? BoletinConfig::getOrCreate($schoolYear->id) : null;
 
@@ -616,6 +610,8 @@ class BoletinController extends Controller
         $grupo   = Grupo::with(['grado', 'seccion', 'schoolYear'])->findOrFail($request->grupo_id);
         $periodo = Periodo::findOrFail($request->periodo_id);
 
+        abort_unless($this->puedeVerGrupo($grupo), 403, 'No tienes acceso a los boletines de este grupo.');
+
         $matriculas = $grupo->matriculas()->activas()->with('estudiante')->orderBy('numero_orden')->get();
 
         // Advertencia preventiva si el grupo es muy grande
@@ -665,19 +661,7 @@ class BoletinController extends Controller
     // ── PDF Anual (todos los períodos en un solo documento) ───────────────
     public function pdfAnual(Matricula $matricula)
     {
-        if (! $this->puedeVerTodo()) {
-            $docente = $this->docenteActual();
-            if ($docente) {
-                $schoolYear = SchoolYear::actual();
-                $grupoIds   = Asignacion::where('docente_id', $docente->id)
-                    ->where('school_year_id', $schoolYear?->id ?? 0)
-                    ->where('activo', true)
-                    ->pluck('grupo_id')->unique();
-                if (! $grupoIds->contains($matricula->grupo_id)) {
-                    abort(403);
-                }
-            }
-        }
+        $this->authorize('pdf', $matricula);
 
         $matricula->load(['estudiante', 'grupo.grado', 'grupo.seccion', 'grupo.schoolYear', 'grupo.tutor']);
         $schoolYear    = $matricula->grupo->schoolYear ?? SchoolYear::actual();

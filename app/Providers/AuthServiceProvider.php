@@ -5,12 +5,8 @@ namespace App\Providers;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use App\Models\Asignacion;
-use App\Models\Estudiante;
-use App\Models\Grupo;
 use App\Models\Matricula;
 use App\Policies\AsignacionPolicy;
-use App\Policies\EstudiantePolicy;
-use App\Policies\GrupoPolicy;
 use App\Policies\BoletinPolicy;
 
 class AuthServiceProvider extends ServiceProvider
@@ -22,8 +18,6 @@ class AuthServiceProvider extends ServiceProvider
      */
     protected $policies = [
         Asignacion::class => AsignacionPolicy::class,
-        Estudiante::class => EstudiantePolicy::class,
-        Grupo::class      => GrupoPolicy::class,
         Matricula::class  => BoletinPolicy::class,
     ];
 

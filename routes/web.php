@@ -319,7 +319,7 @@ Route::prefix('portal/padre')->name('portal.padre.')->middleware(['auth', 'activ
 });
 
 // ── Portal Docente ────────────────────────────────────────────────────────
-Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'activo', 'role:Docente'])->group(function () {
+Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'activo', 'can:acceso-portal-docente'])->group(function () {
     Route::get('/',                                               [PortalDocenteController::class, 'dashboard'])->name('dashboard');
     Route::get('/setup',                                          [DocenteSetupController::class, 'show'])->name('setup');
     Route::get('/horario',                                        [PortalDocenteController::class, 'horario'])->name('horario');

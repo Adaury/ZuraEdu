@@ -65,6 +65,13 @@ class AuthServiceProvider extends ServiceProvider
             return $user->tieneRolDocente() || $user->hasAnyRole(['Administrador', 'Director']);
         });
 
+        // routes/web.php (portal/docente) tenía el MISMO bug pero con impacto total: al usar
+        // role:Docente literal, un usuario con Docente Académico/Técnico/Guía queda 403 tanto
+        // en /portal/docente (no matchea el rol exacto) como en /admin (EnsureAdminAccess lo
+        // redirige ahí precisamente por tener uno de esos roles) — bloqueo completo del sistema,
+        // no solo un permiso de más/de menos. Verificado en navegador con un usuario real.
+        Gate::define('acceso-portal-docente', fn ($user) => $user->tieneRolDocente());
+
         Gate::define('acceso-sigerd', function ($user) {
             return $user->hasAnyRole([
                 'Administrador', 'Director', 'Coordinador Académico',

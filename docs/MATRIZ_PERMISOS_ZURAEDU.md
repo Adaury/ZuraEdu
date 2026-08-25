@@ -28,7 +28,10 @@
   - **`acceso-direccion`** (Gate nuevo, Administrador\|Director): `avisos-emergencia.php` (alcance masivo, alto impacto si se usa mal).
   - **`acceso-direccion-coordinacion`** (Gate nuevo): `reuniones.php` (actas formales), `encuestas.php`.
   - **`supervisar-registros`**: `solicitudes.php` (las 3 bandejas: representantes, estudiantes, docentes).
-  - **Deliberadamente dejados sin tocar** (ambigüedad genuina de audiencia, bajo riesgo — no vale la pena adivinar): `comunicaciones.php`, `comunicados` (en `sistema.php`), `soporte.php` (tickets internos — filed potencialmente por cualquier staff). Si en el futuro se quiere cerrar esto, hay que preguntar primero quién debe poder crear/ver cada uno, no asumir.
+  - **Revisados y confirmados sin necesidad de `can:` de ruta** — ambos siguen el mismo patrón que `riesgo.php` (autorización dentro del controlador, no en la ruta), y en ambos casos es el diseño correcto, no un gap:
+    - `comunicaciones.php` — mensajería interna; por diseño cualquier usuario del panel debe poder escribirle a un colega de su tenant. `ComunicacionesController::show()`/`destroy()`/`descargarAdjunto()` ya verifican remitente/destinatario antes de dar acceso a un mensaje individual. Único detalle menor (no bloqueante): la pestaña "circulares" de `index()` lista el *asunto* de todas las circulares del tenant sin filtrar por destinatario (el cuerpo sigue protegido por `show()`) — parece intencional (transparencia institucional), se deja así salvo que se pida lo contrario.
+    - `soporte.php` — tickets internos; `TicketController::esAdmin()` (Administrador/Director/Coordinador Académico) ya gatea listas Excel/PDF, asignación y ver/responder tickets ajenos; cualquier otro rol solo puede crear/ver/responder los suyos y cerrar los ya resueltos. Completo.
+    - `comunicados` (en `sistema.php`) — no revisado en este pase; sigue pendiente si se quiere auditar.
 - ✅ Verificado tras todo el lote: `php artisan route:list` carga sin errores (930 rutas admin, 124 API) y la suite completa sigue en 29/29.
 
 ### Hallazgo adicional durante la corrección de §2.2

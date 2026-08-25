@@ -337,6 +337,20 @@
     </div>
 </div>
 
+{{-- Matriz de accesos --}}
+<a href="{{ route('admin.ayuda.roles') }}" class="card border-0 shadow-sm mb-4 text-decoration-none" style="border-radius:12px;">
+    <div class="card-body p-3 d-flex align-items-center gap-3">
+        <div style="width:40px;height:40px;border-radius:10px;background:#eef2ff;display:flex;align-items:center;justify-content:center;flex:none;">
+            <i class="bi bi-shield-lock-fill" style="color:#4338ca;font-size:1.1rem;"></i>
+        </div>
+        <div class="flex-grow-1">
+            <div class="fw-bold" style="font-size:.88rem;color:#111827;">Matriz de Accesos por Rol</div>
+            <div style="font-size:.78rem;color:#6b7280;">Qué puede hacer cada rol — 21 roles y sus permisos, en vivo desde el sistema</div>
+        </div>
+        <i class="bi bi-arrow-right" style="color:#9ca3af;"></i>
+    </div>
+</a>
+
 {{-- ── SEARCH ──────────────────────────────────────────────────── --}}
 <div class="help-search-wrap">
     <i class="bi bi-search si"></i>

@@ -21,6 +21,9 @@ Route::get('search', [SearchController::class, 'search'])->name('search');
 
 // ── Centro de Ayuda ───────────────────────────────────────────────────────
 Route::get('ayuda', fn () => view('admin.ayuda.index'))->name('ayuda');
+Route::get('ayuda/roles', fn () => view('admin.ayuda.roles', [
+    'roles' => \Spatie\Permission\Models\Role::with('permissions')->orderBy('id')->get(),
+]))->name('ayuda.roles');
 
 // ── Mensajes Internos ─────────────────────────────────────────────────────
 Route::prefix('mensajes')->name('mensajes.')->group(function () {

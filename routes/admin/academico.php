@@ -20,15 +20,19 @@ use App\Http\Controllers\Admin\ObservacionController;
 use App\Http\Controllers\Admin\BachilleratoTecnicoController;
 
 // ── Año Escolar → Cursos → Materias ──────────────────────────────────────
-Route::get('academico',                                          [AcademicoController::class, 'index'])->name('academico.index');
-Route::post('academico/cursos',                                  [AcademicoController::class, 'storeCurso'])->name('academico.cursos.store');
-Route::put('academico/cursos/{grupo}',                           [AcademicoController::class, 'updateCurso'])->name('academico.cursos.update');
-Route::delete('academico/cursos/{grupo}',                        [AcademicoController::class, 'destroyCurso'])->name('academico.cursos.destroy');
-Route::get('academico/{grupo}',                                  [AcademicoController::class, 'show'])->name('academico.show');
-Route::post('academico/{grupo}/materias',                        [AcademicoController::class, 'storeMateria'])->name('academico.materias.store');
-Route::put('academico/materias/{asignacion}',                    [AcademicoController::class, 'updateMateria'])->name('academico.materias.update');
-Route::patch('academico/materias/{asignacion}/toggle',           [AcademicoController::class, 'toggleMateria'])->name('academico.materias.toggle');
-Route::delete('academico/materias/{asignacion}',                 [AcademicoController::class, 'destroyMateria'])->name('academico.materias.destroy');
+Route::middleware('can:gestionar-grupos')->group(function () {
+    Route::get('academico',                                      [AcademicoController::class, 'index'])->name('academico.index');
+    Route::post('academico/cursos',                              [AcademicoController::class, 'storeCurso'])->name('academico.cursos.store');
+    Route::put('academico/cursos/{grupo}',                       [AcademicoController::class, 'updateCurso'])->name('academico.cursos.update');
+    Route::delete('academico/cursos/{grupo}',                    [AcademicoController::class, 'destroyCurso'])->name('academico.cursos.destroy');
+    Route::get('academico/{grupo}',                              [AcademicoController::class, 'show'])->name('academico.show');
+});
+Route::middleware('can:gestionar-asignaciones')->group(function () {
+    Route::post('academico/{grupo}/materias',                    [AcademicoController::class, 'storeMateria'])->name('academico.materias.store');
+    Route::put('academico/materias/{asignacion}',                [AcademicoController::class, 'updateMateria'])->name('academico.materias.update');
+    Route::patch('academico/materias/{asignacion}/toggle',       [AcademicoController::class, 'toggleMateria'])->name('academico.materias.toggle');
+    Route::delete('academico/materias/{asignacion}',             [AcademicoController::class, 'destroyMateria'])->name('academico.materias.destroy');
+});
 
 // ── Asignaturas ───────────────────────────────────────────────────────────
 Route::middleware('can:gestionar-asignaturas')->group(function () {
@@ -149,21 +153,23 @@ Route::middleware('can:gestionar-indicadores')->group(function () {
 });
 
 // ── Registro Académico MINERD ─────────────────────────────────────────────
-Route::prefix('registro')->name('registro.')->group(function () {
+Route::prefix('registro')->name('registro.')->middleware('can:ver-calificaciones')->group(function () {
     Route::get('/',                              [RegistroController::class, 'index'])->name('index');
     Route::get('/{grupo}/calificaciones',        [RegistroController::class, 'calificaciones'])->name('calificaciones');
     Route::get('/{grupo}/calificaciones/pdf',    [RegistroController::class, 'calificacionesPdf'])->name('calificaciones.pdf');
     Route::get('/{grupo}/exportar-excel',        [RegistroController::class, 'exportarExcel'])->name('exportarExcel');
     Route::get('/{grupo}',                       [RegistroController::class, 'show'])->name('show');
-    Route::post('/guardar',                      [RegistroController::class, 'guardar'])->name('guardar');
-    Route::post('/guardar-lote',                 [RegistroController::class, 'guardarLote'])->name('guardar-lote');
-    Route::post('/observacion',                  [RegistroController::class, 'guardarObservacion'])->name('observacion');
-    Route::post('/{grupo}/calcular-promociones', [RegistroController::class, 'calcularPromociones'])->name('calcular-promociones');
+    Route::middleware('can:ingresar-calificaciones')->group(function () {
+        Route::post('/guardar',                      [RegistroController::class, 'guardar'])->name('guardar');
+        Route::post('/guardar-lote',                 [RegistroController::class, 'guardarLote'])->name('guardar-lote');
+        Route::post('/observacion',                  [RegistroController::class, 'guardarObservacion'])->name('observacion');
+        Route::post('/{grupo}/calcular-promociones', [RegistroController::class, 'calcularPromociones'])->name('calcular-promociones');
+    });
     Route::get('/{grupo}/exportar-pdf',          [RegistroController::class, 'exportarPdf'])->name('exportarPdf');
 });
 
 // ── Competencias e Indicadores ────────────────────────────────────────────
-Route::prefix('competencias')->name('competencias.')->group(function () {
+Route::prefix('competencias')->name('competencias.')->middleware('can:gestionar-indicadores')->group(function () {
     Route::get('/',                          [CompetenciaController::class, 'index'])->name('index');
     Route::post('/ce',                       [CompetenciaController::class, 'storeCompetencia'])->name('ce.store');
     Route::post('/ce/{competencia}',         [CompetenciaController::class, 'updateCompetencia'])->name('ce.update');
@@ -177,7 +183,7 @@ Route::prefix('competencias')->name('competencias.')->group(function () {
 
 
 // ── Planes de Clase ───────────────────────────────────────────────────────
-Route::prefix('planes-clase')->name('planes-clase.')->group(function () {
+Route::prefix('planes-clase')->name('planes-clase.')->middleware('can:ingresar-calificaciones')->group(function () {
     Route::get('/',                          [PlanClaseController::class, 'index'])->name('index');
     Route::get('/lista/excel',               [PlanClaseController::class, 'listaExcel'])->name('lista-excel');
     Route::get('/lista/pdf',                 [PlanClaseController::class, 'listaPdf'])->name('lista-pdf');
@@ -191,7 +197,7 @@ Route::prefix('planes-clase')->name('planes-clase.')->group(function () {
 });
 
 // ── Instrumentos de Evaluación ────────────────────────────────────────────
-Route::prefix('instrumentos')->name('instrumentos.')->group(function () {
+Route::prefix('instrumentos')->name('instrumentos.')->middleware('can:ingresar-calificaciones')->group(function () {
     Route::get('/',                               [InstrumentoController::class, 'index'])->name('index');
     Route::get('/crear',                          [InstrumentoController::class, 'create'])->name('create');
     Route::post('/',                              [InstrumentoController::class, 'store'])->name('store');
@@ -203,21 +209,27 @@ Route::prefix('instrumentos')->name('instrumentos.')->group(function () {
 });
 
 // ── Auditoría de Calificaciones ───────────────────────────────────────────
-Route::get('calificaciones/auditoria', [CalificacionController::class, 'auditoria'])->name('calificaciones.auditoria');
+Route::middleware('can:supervisar-registros')->group(function () {
+    Route::get('calificaciones/auditoria', [CalificacionController::class, 'auditoria'])->name('calificaciones.auditoria');
+});
 
 // ── Observaciones de Docentes ─────────────────────────────────────────────
-Route::get('observaciones',                       [ObservacionController::class, 'index'])->name('observaciones.index');
-Route::get('observaciones/pdf',                   [ObservacionController::class, 'pdf'])->name('observaciones.pdf');
-Route::get('observaciones/excel',                 [ObservacionController::class, 'excel'])->name('observaciones.excel');
-Route::delete('observaciones/{observacion}',      [ObservacionController::class, 'destroy'])->name('observaciones.destroy');
-Route::patch('observaciones/{observacion}/privada',[ObservacionController::class, 'togglePrivada'])->name('observaciones.toggle-privada');
+Route::middleware('can:ingresar-calificaciones')->group(function () {
+    Route::get('observaciones',                       [ObservacionController::class, 'index'])->name('observaciones.index');
+    Route::get('observaciones/pdf',                   [ObservacionController::class, 'pdf'])->name('observaciones.pdf');
+    Route::get('observaciones/excel',                 [ObservacionController::class, 'excel'])->name('observaciones.excel');
+    Route::delete('observaciones/{observacion}',      [ObservacionController::class, 'destroy'])->name('observaciones.destroy');
+    Route::patch('observaciones/{observacion}/privada',[ObservacionController::class, 'togglePrivada'])->name('observaciones.toggle-privada');
+});
 
 // ── Homepage Editor ───────────────────────────────────────────────────────
-Route::get('homepage',  [HomepageController::class, 'edit'])->name('homepage.edit');
-Route::post('homepage', [HomepageController::class, 'update'])->name('homepage.update');
+Route::middleware('can:gestionar-configuracion')->group(function () {
+    Route::get('homepage',  [HomepageController::class, 'edit'])->name('homepage.edit');
+    Route::post('homepage', [HomepageController::class, 'update'])->name('homepage.update');
+});
 
 // ── Planificaciones Área Técnica ──────────────────────────────────────────
-Route::prefix('planificacion')->name('planificacion.')->group(function () {
+Route::prefix('planificacion')->name('planificacion.')->middleware('can:ingresar-calificaciones')->group(function () {
     Route::get('/dashboard',                       [PlanificacionController::class, 'dashboard'])->name('dashboard');
     Route::get('/',                                [PlanificacionController::class, 'index'])->name('index');
     Route::get('/nueva/ra',                        [PlanificacionController::class, 'createRa'])->name('create-ra');
@@ -238,7 +250,7 @@ Route::prefix('planificacion')->name('planificacion.')->group(function () {
 
 
 // ── Bachillerato Técnico (MINERD) — Áreas, Cursos, Módulos ───────────────
-Route::prefix('bachillerato-tecnico')->name('bachillerato-tecnico.')->group(function () {
+Route::prefix('bachillerato-tecnico')->name('bachillerato-tecnico.')->middleware('can:gestionar-asignaturas')->group(function () {
     Route::get('/',                                   [BachilleratoTecnicoController::class, 'index'])->name('index');
     // Áreas Técnicas
     Route::post('areas',                              [BachilleratoTecnicoController::class, 'storeArea'])->name('areas.store');

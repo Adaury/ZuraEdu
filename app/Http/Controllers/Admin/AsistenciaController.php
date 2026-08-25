@@ -32,7 +32,7 @@ class AsistenciaController extends Controller
 
         $user    = auth()->user();
         $docente = null;
-        if ($user->hasRole('Docente')) {
+        if ($user->tieneRolDocente()) {
             $docente = \App\Models\Docente::where('user_id', $user->id)->first()
                 ?? \App\Models\Docente::where('email', $user->email)->first();
         }
@@ -845,7 +845,7 @@ class AsistenciaController extends Controller
 
         $user    = auth()->user();
         $docente = null;
-        if ($user->hasRole('Docente')) {
+        if ($user->tieneRolDocente()) {
             $docente = Docente::where('user_id', $user->id)->first()
                 ?? Docente::where('email', $user->email)->first();
         }

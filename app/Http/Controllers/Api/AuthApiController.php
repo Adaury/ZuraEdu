@@ -141,7 +141,7 @@ class AuthApiController extends Controller
         $user = $request->user();
         $path = $request->file('foto')->store('fotos/perfil', 'public');
 
-        if ($user->hasRole('Docente')) {
+        if ($user->tieneRolDocente()) {
             $docente = Docente::where('user_id', $user->id)->first();
             if ($docente) {
                 if ($docente->foto) Storage::disk('public')->delete($docente->foto);
@@ -176,7 +176,7 @@ class AuthApiController extends Controller
 
     private function avatar(User $user): ?string
     {
-        if ($user->hasRole('Docente') && $user->docente?->foto)
+        if ($user->tieneRolDocente() && $user->docente?->foto)
             return asset('storage/' . $user->docente->foto);
         if ($user->hasRole('Estudiante') && $user->estudiante?->foto)
             return asset('storage/' . $user->estudiante->foto);

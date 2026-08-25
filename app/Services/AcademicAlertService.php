@@ -215,7 +215,7 @@ class AcademicAlertService
         }
 
         // 4. Director / Admin (Spatie roles)
-        $admins = User::role(['Admin', 'Director'])->get();
+        $admins = User::role(['Administrador', 'Director'])->get();
         foreach ($admins as $admin) {
             $destinatarios->push(['user_id' => $admin->id]);
         }

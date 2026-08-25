@@ -4,7 +4,7 @@ use App\Http\Controllers\Admin\CierreAnoController;
 
 // ── Cierre de Año Escolar — solo Administrador y Director ─────────────────
 Route::prefix('cierre-ano')->name('cierre-ano.')
-    ->middleware('role:Administrador|Director')
+    ->middleware('can:acceso-direccion')
     ->group(function () {
 
     // Pantalla principal del cierre

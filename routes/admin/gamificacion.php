@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\GamificacionController;
 
 // ── Módulo de Gamificación ────────────────────────────────────────────────────
-Route::prefix('gamificacion')->name('gamificacion.')->group(function () {
+Route::prefix('gamificacion')->name('gamificacion.')->middleware('can:ingresar-calificaciones')->group(function () {
     Route::get('/',                                       [GamificacionController::class, 'index'])->name('index');
     Route::get('/ranking/pdf',                            [GamificacionController::class, 'rankingPdf'])->name('ranking-pdf');
     Route::get('/ranking/excel',                          [GamificacionController::class, 'rankingExcel'])->name('ranking-excel');

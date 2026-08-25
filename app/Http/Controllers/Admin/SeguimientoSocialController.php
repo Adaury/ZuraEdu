@@ -108,7 +108,7 @@ class SeguimientoSocialController extends Controller
     public function create()
     {
         $estudiantes  = Estudiante::activos()->orderBy('apellidos')->orderBy('nombres')->get();
-        $responsables = User::role(['Administrador', 'Director', 'Coordinador Académico', 'Docente'])
+        $responsables = User::role(array_merge(['Administrador', 'Director', 'Coordinador Académico'], User::ROLES_DOCENTE))
             ->orderBy('name')->get();
 
         return view('admin.seguimiento_social.create', compact('estudiantes', 'responsables'));
@@ -158,7 +158,7 @@ class SeguimientoSocialController extends Controller
             'intervencionesDesc',
         ]);
 
-        $responsables = User::role(['Administrador', 'Director', 'Coordinador Académico', 'Docente'])
+        $responsables = User::role(array_merge(['Administrador', 'Director', 'Coordinador Académico'], User::ROLES_DOCENTE))
             ->orderBy('name')->get();
 
         return view('admin.seguimiento_social.show', compact('caso', 'responsables'));

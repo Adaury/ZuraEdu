@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\EventoController;
 
 // ── Eventos Extracurriculares ──────────────────────────────────────────────
-Route::prefix('eventos')->name('eventos.')->group(function () {
+Route::prefix('eventos')->name('eventos.')->middleware('can:ver-servicios')->group(function () {
 
     // Dashboard
     Route::get('dashboard', [EventoController::class, 'dashboard'])->name('dashboard');

@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\NominaController;
 
 // ── Módulo de Nómina ──────────────────────────────────────────────────────
-Route::prefix('nomina')->name('nomina.')->group(function () {
+Route::prefix('nomina')->name('nomina.')->middleware('can:gestionar-pagos')->group(function () {
     Route::get('/dashboard',                           [NominaController::class, 'dashboard'])->name('dashboard');
     Route::get('/',                                    [NominaController::class, 'index'])->name('index');
     Route::get('/nuevo',                               [NominaController::class, 'create'])->name('create');

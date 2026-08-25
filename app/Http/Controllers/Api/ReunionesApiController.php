@@ -12,7 +12,7 @@ class ReunionesApiController extends Controller
     /** GET /api/v1/docente/mis-reuniones */
     public function misReuniones(Request $request)
     {
-        if (! $request->user()->hasRole('Docente')) {
+        if (! $request->user()->tieneRolDocente()) {
             return response()->json(['message' => 'Solo para docentes.'], 403);
         }
 

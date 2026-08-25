@@ -93,7 +93,7 @@ class IndicadorController extends Controller
 
         // Protección: si es Docente, verificar que la asignación le pertenece
         $user = auth()->user();
-        if ($user->hasRole('Docente')) {
+        if ($user->tieneRolDocente()) {
             $docente = \App\Models\Docente::where('user_id', $user->id)->first();
             if (!$docente || $asignacion->docente_id !== $docente->id) abort(403);
         }
@@ -245,7 +245,7 @@ class IndicadorController extends Controller
         $asignacion  = Asignacion::with(['asignatura', 'grupo.grado', 'grupo.seccion', 'docente'])->findOrFail($asignacionId);
 
         $user = auth()->user();
-        if ($user->hasRole('Docente')) {
+        if ($user->tieneRolDocente()) {
             $docente = \App\Models\Docente::where('user_id', $user->id)->first();
             if (!$docente || $asignacion->docente_id !== $docente->id) abort(403);
         }

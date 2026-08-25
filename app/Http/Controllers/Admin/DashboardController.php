@@ -51,7 +51,7 @@ class DashboardController extends Controller
         );
 
         $docentePanel = null;
-        $isDocente    = $user->hasAnyRole(['Docente', 'Docente Académico', 'Docente Técnico', 'Docente Guía']);
+        $isDocente    = $user->tieneRolDocente();
 
         // ── Rol del dashboard ────────────────────────────────────────────────
         $rolDashboard = match(true) {

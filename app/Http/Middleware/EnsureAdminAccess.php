@@ -47,7 +47,7 @@ class EnsureAdminAccess
         }
 
         // Docente → portal propio
-        if ($user->hasRole('Docente')) {
+        if ($user->tieneRolDocente()) {
             return redirect()->route('portal.docente.dashboard')
                 ->with('info', 'Tu acceso es a través del portal docente.');
         }

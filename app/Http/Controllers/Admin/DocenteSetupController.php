@@ -21,7 +21,7 @@ class DocenteSetupController extends Controller
             return back()->with('error', 'No hay un año escolar activo configurado.');
         }
 
-        $isPortal = request()->routeIs('portal.docente.setup*') || auth()->user()->hasRole('Docente');
+        $isPortal = request()->routeIs('portal.docente.setup*') || auth()->user()->tieneRolDocente();
 
         // Admin puede pasar ?docente_id=X para configurar un docente específico
         if (! $isPortal && $request->filled('docente_id')) {
@@ -99,7 +99,7 @@ class DocenteSetupController extends Controller
             return back()->with('error', 'No hay un año escolar activo configurado.');
         }
 
-        $isPortal = auth()->user()->hasRole('Docente');
+        $isPortal = auth()->user()->tieneRolDocente();
 
         // Admin puede pasar docente_id para editar un docente específico
         if (! $isPortal && $request->filled('docente_id')) {
@@ -197,7 +197,7 @@ class DocenteSetupController extends Controller
         // Limpiar caché del portal para que los cambios se reflejen de inmediato
         Cache::forget('t' . (tenant_id() ?? 0) . "_portal_docente_{$docente->id}_asignaciones_{$schoolYear->id}");
 
-        if (auth()->user()->hasRole('Docente')) {
+        if (auth()->user()->tieneRolDocente()) {
             return redirect()->route('portal.docente.dashboard')
                 ->with('success', 'Configuración guardada. ¡Bienvenido!');
         }

@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\ReconocimientoController;
 
 // ── Módulo de Diplomas y Reconocimientos ──────────────────────────────────────
-Route::prefix('reconocimientos')->name('reconocimientos.')->group(function () {
+Route::prefix('reconocimientos')->name('reconocimientos.')->middleware('can:ingresar-calificaciones')->group(function () {
 
     // Dashboard
     Route::get('/dashboard',             [ReconocimientoController::class, 'dashboard'])->name('dashboard');
@@ -24,6 +24,8 @@ Route::prefix('reconocimientos')->name('reconocimientos.')->group(function () {
 });
 
 // Historial por estudiante (fuera del prefix para URL más limpia)
-Route::get('estudiantes/{estudiante}/reconocimientos',
-    [ReconocimientoController::class, 'historialEstudiante']
-)->name('reconocimientos.historial-estudiante');
+Route::middleware('can:ingresar-calificaciones')->group(function () {
+    Route::get('estudiantes/{estudiante}/reconocimientos',
+        [ReconocimientoController::class, 'historialEstudiante']
+    )->name('reconocimientos.historial-estudiante');
+});

@@ -16,18 +16,18 @@ class ObservacionController extends Controller
     {
         $schoolYear = SchoolYear::actual();
         $user       = auth()->user();
-        $isDocente  = $user->hasRole('Docente');
+        $isDocente  = $user->tieneRolDocente();
 
         $query = Observacion::with([
             'docente', 'estudiante', 'asignacion.asignatura', 'asignacion.grupo', 'periodo',
         ]);
 
-        // Si es docente, solo ve las suyas
+        // Si es docente, solo ve las suyas (docente_id=0 si el perfil aún no existe,
+        // para no exponer observaciones ajenas mientras el onboarding está incompleto)
+        $docente = null;
         if ($isDocente) {
             $docente = Docente::where('user_id', $user->id)->first();
-            if ($docente) {
-                $query->where('docente_id', $docente->id);
-            }
+            $query->where('docente_id', $docente?->id ?? 0);
         }
 
         // Filtrar por año escolar (vía asignación)
@@ -76,7 +76,7 @@ class ObservacionController extends Controller
             ->when($schoolYear, fn($q) => $q->whereHas('asignacion',
                 fn($s) => $s->where('school_year_id', $schoolYear->id)
             ))
-            ->when($isDocente && isset($docente), fn($q) => $q->where('docente_id', $docente->id))
+            ->when($isDocente, fn($q) => $q->where('docente_id', $docente?->id ?? 0))
             ->groupBy('tipo')
             ->pluck('total', 'tipo');
 
@@ -89,7 +89,7 @@ class ObservacionController extends Controller
     public function destroy(Observacion $observacion)
     {
         $user      = auth()->user();
-        $isDocente = $user->hasRole('Docente');
+        $isDocente = $user->tieneRolDocente();
 
         // Solo el docente que la creó o un admin/director puede eliminar
         if ($isDocente) {
@@ -106,7 +106,7 @@ class ObservacionController extends Controller
     public function togglePrivada(Observacion $observacion)
     {
         $user      = auth()->user();
-        $isDocente = $user->hasRole('Docente');
+        $isDocente = $user->tieneRolDocente();
 
         if ($isDocente) {
             $docente = Docente::where('user_id', $user->id)->first();
@@ -208,13 +208,13 @@ class ObservacionController extends Controller
     private function buildQuery(Request $request, $schoolYear)
     {
         $user      = auth()->user();
-        $isDocente = $user->hasRole('Docente');
+        $isDocente = $user->tieneRolDocente();
 
         $query = Observacion::with(['docente', 'estudiante', 'asignacion.asignatura', 'periodo']);
 
         if ($isDocente) {
             $docente = Docente::where('user_id', $user->id)->first();
-            if ($docente) $query->where('docente_id', $docente->id);
+            $query->where('docente_id', $docente?->id ?? 0);
         }
 
         if ($schoolYear) {

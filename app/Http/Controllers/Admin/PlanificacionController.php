@@ -24,7 +24,7 @@ class PlanificacionController extends Controller
     private function docenteActual(): ?Docente
     {
         $user = auth()->user();
-        if ($user->hasRole('Docente')) {
+        if ($user->tieneRolDocente()) {
             return Docente::where('user_id', $user->id)->first()
                 ?? Docente::where('email', $user->email)->first();
         }

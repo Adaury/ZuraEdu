@@ -117,7 +117,7 @@ class ClassroomChatController extends Controller
     {
         $user = auth()->user();
 
-        if ($user->hasRole('Docente')) {
+        if ($user->tieneRolDocente()) {
             $docente = Docente::where('user_id', $user->id)->firstOrFail();
             abort_unless($clase->asignacion->docente_id === $docente->id, 403);
             return;

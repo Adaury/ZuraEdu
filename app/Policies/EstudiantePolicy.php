@@ -24,7 +24,7 @@ class EstudiantePolicy
             return true;
         }
 
-        if ($user->hasRole('Docente')) {
+        if ($user->tieneRolDocente()) {
             $docente = $user->docente;
             if (! $docente) return false;
 

@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\PreMatriculaAdminController;
 
 // ── Pre-matrículas ────────────────────────────────────────────────────────────
-Route::prefix('pre-matriculas')->name('pre-matriculas.')->group(function () {
+Route::prefix('pre-matriculas')->name('pre-matriculas.')->middleware('can:gestionar-matriculas')->group(function () {
     Route::get('/',                              [PreMatriculaAdminController::class, 'index'])->name('index');
     Route::get('/lista/excel',                   [PreMatriculaAdminController::class, 'listaExcel'])->name('lista-excel');
     Route::get('/lista/pdf',                     [PreMatriculaAdminController::class, 'listaPdf'])->name('lista-pdf');

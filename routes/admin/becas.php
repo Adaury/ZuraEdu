@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\BecaController;
 
 // ── Módulo de Becas y Descuentos ──────────────────────────────────────────
-Route::prefix('becas')->name('becas.')->group(function () {
+Route::prefix('becas')->name('becas.')->middleware('can:gestionar-pagos')->group(function () {
 
     // Dashboard
     Route::get('/dashboard',   [BecaController::class, 'dashboard'])->name('dashboard');

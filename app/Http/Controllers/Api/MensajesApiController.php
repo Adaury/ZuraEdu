@@ -60,11 +60,11 @@ class MensajesApiController extends Controller
         $user = $request->user();
         $role = $user->roles->first()?->name;
 
-        $rolesPermitidos = match ($role) {
-            'Docente'        => ['Administrador', 'Director', 'Coordinador Academico'],
-            'Representante',
-            'Estudiante'     => ['Administrador', 'Director', 'Docente'],
-            default          => ['Administrador', 'Director', 'Docente', 'Coordinador Academico'],
+        $rolesPermitidos = match (true) {
+            $user->tieneRolDocente() => ['Administrador', 'Director', 'Coordinador Academico'],
+            in_array($role, ['Representante', 'Estudiante'], true)
+                             => array_merge(['Administrador', 'Director'], User::ROLES_DOCENTE),
+            default          => array_merge(['Administrador', 'Director', 'Coordinador Academico'], User::ROLES_DOCENTE),
         };
 
         $destinatarios = User::where('tenant_id', $user->tenant_id)

@@ -165,7 +165,7 @@ class ComunicadoController extends Controller
                     break;
 
                 case 'docentes':
-                    $userIds = User::role('Docente')
+                    $userIds = User::role(User::ROLES_DOCENTE)
                         ->where('activo', true)
                         ->pluck('id');
                     break;
@@ -326,7 +326,7 @@ class ComunicadoController extends Controller
         $user = auth()->user();
 
         $tipos = ['todos'];
-        if ($user->hasRole('Docente'))                                      $tipos[] = 'docentes';
+        if ($user->tieneRolDocente())                                             $tipos[] = 'docentes';
         if ($user->hasAnyRole(['Coordinador', 'Director', 'Administrador'])) {
             $tipos[] = 'coordinadores';
             $tipos[] = 'docentes';

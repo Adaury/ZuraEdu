@@ -26,7 +26,7 @@ class RedirectIfAuthenticated
     {
         if ($user->hasRole('Representante'))             return '/portal/padre';
         if ($user->hasRole('Estudiante'))                return '/portal/estudiante';
-        if ($user->hasRole('Docente'))                   return '/portal/docente';
+        if ($user->tieneRolDocente())                          return '/portal/docente';
         if ($user->hasRole('Secretaria Docente'))        return '/admin/estudiantes';
         if ($user->hasRole('Secretaria'))                return '/admin/estudiantes';
         if ($user->hasRole('Registrador Académico'))     return '/admin/registro-academico';

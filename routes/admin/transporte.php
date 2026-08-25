@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\TransporteController;
 
 // ── Módulo de Transporte Escolar ──────────────────────────────────────────────
-Route::prefix('transporte')->name('transporte.')->group(function () {
+Route::prefix('transporte')->name('transporte.')->middleware('can:ver-servicios')->group(function () {
 
     Route::get('/dashboard',                                  [TransporteController::class, 'dashboard'])->name('dashboard');
     Route::get('/',                                           [TransporteController::class, 'index'])->name('index');

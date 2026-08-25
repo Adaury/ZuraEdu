@@ -35,7 +35,7 @@ class AlertasEntregaNotas extends Command
             return self::SUCCESS;
         }
 
-        $docentes = User::role('Docente')->get();
+        $docentes = User::role(User::ROLES_DOCENTE)->get();
         $created  = 0;
 
         foreach ($eventos as $evento) {

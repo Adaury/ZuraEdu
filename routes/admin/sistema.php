@@ -111,13 +111,13 @@ Route::middleware('can:gestionar-usuarios')->group(function () {
 });
 
 // ── Landing & Login (Admin + Director + Coordinador) ──────────────────────
-Route::middleware('role:Administrador|Director|Coordinador Académico|Coordinador Primer Ciclo|Coordinador Segundo Ciclo')->group(function () {
+Route::middleware('can:acceso-direccion-coordinacion')->group(function () {
     Route::get('sistema/landing',        [SistemaController::class, 'landingIndex'])->name('sistema.landing');
     Route::post('sistema/landing',       [SistemaController::class, 'landingUpdate'])->name('sistema.landing.update');
 });
 
 // ── Sistema (solo Administrador) ──────────────────────────────────────────
-Route::middleware('role:Administrador')->group(function () {
+Route::middleware('can:solo-administrador')->group(function () {
     // Backup
     Route::get('sistema/backup',           [BackupController::class, 'index'])->name('sistema.backup');
     Route::post('sistema/backup/crear',    [BackupController::class, 'crear'])->name('sistema.backup.crear');

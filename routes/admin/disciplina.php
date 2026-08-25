@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\DisciplinaController;
 
 // ── Disciplina Escolar ─────────────────────────────────────────────────────
+// Expedientes disciplinarios: solo dirección y registro académico.
+Route::middleware('can:acceso-salud-disciplina')->group(function () {
 
 // Expediente PDF (ruta específica antes del resource para evitar colisiones)
 Route::get('disciplina/{estudiante}/expediente-pdf',
@@ -32,3 +34,5 @@ Route::patch('disciplina/{disciplina}/toggle-resuelto',
 Route::resource('disciplina', DisciplinaController::class)
     ->parameters(['disciplina' => 'disciplina'])
     ->except(['show']);
+
+});

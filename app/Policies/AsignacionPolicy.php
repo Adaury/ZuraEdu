@@ -25,7 +25,7 @@ class AsignacionPolicy
             return false;
         }
 
-        if ($user->hasRole('Docente')) {
+        if ($user->tieneRolDocente()) {
             return $this->docentePuedeAcceder($user, $asignacion);
         }
 
@@ -41,7 +41,7 @@ class AsignacionPolicy
             return false;
         }
 
-        if ($user->hasRole('Docente')) {
+        if ($user->tieneRolDocente()) {
             $docente = $user->docente;
             if (! $docente) return false;
             return $asignacion->docente_id === $docente->id;
@@ -61,7 +61,7 @@ class AsignacionPolicy
             return false;
         }
 
-        if ($user->hasRole('Docente')) {
+        if ($user->tieneRolDocente()) {
             return $this->docentePuedeAcceder($user, $asignacion);
         }
 
@@ -77,7 +77,7 @@ class AsignacionPolicy
             return false;
         }
 
-        if ($user->hasRole('Docente')) {
+        if ($user->tieneRolDocente()) {
             $docente = $user->docente;
             if (! $docente) return false;
             return $asignacion->docente_id === $docente->id;

@@ -14,16 +14,16 @@ class GrupoPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->can('gestionar-grupos') || $user->hasRole(['Admin', 'Director', 'Docente']);
+        return $user->can('gestionar-grupos') || $user->hasRole(['Administrador', 'Director']) || $user->tieneRolDocente();
     }
 
     public function view(User $user, Grupo $grupo): bool
     {
-        if ($user->hasRole(['Admin', 'Director'])) {
+        if ($user->hasRole(['Administrador', 'Director'])) {
             return true;
         }
 
-        if ($user->hasRole('Docente')) {
+        if ($user->tieneRolDocente()) {
             $docente = $user->docente;
             if (! $docente) return false;
 

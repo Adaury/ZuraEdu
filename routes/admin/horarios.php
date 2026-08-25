@@ -4,11 +4,15 @@ use App\Http\Controllers\Admin\HorarioController;
 use App\Http\Controllers\Scheduling\HorarioController as SchHorarioController;
 
 // ── Horarios (módulo principal) ───────────────────────────────────────────
-Route::prefix('horarios')->name('horarios.')->group(function () {
-    Route::get('/',                                  [HorarioController::class, 'index'])->name('index');
+// Vista propia del docente: visible para todo el personal docente-capable, no solo gestión.
+Route::prefix('horarios')->name('horarios.')->middleware('can:ingresar-calificaciones')->group(function () {
     Route::get('/mi-horario',                        [HorarioController::class, 'miHorario'])->name('mi-horario');
     Route::get('/horario-docente',                   [HorarioController::class, 'horarioDocente'])->name('horario-docente');
     Route::get('/horario-docente/pdf',               [HorarioController::class, 'horarioDocentePdf'])->name('horario-docente.pdf');
+});
+
+Route::prefix('horarios')->name('horarios.')->middleware('can:gestionar-asignaciones')->group(function () {
+    Route::get('/',                                  [HorarioController::class, 'index'])->name('index');
     Route::get('/vista-maestra',                     [HorarioController::class, 'vistaMaestra'])->name('vista-maestra');
     Route::get('/vista-maestra/pdf',                 [HorarioController::class, 'vistaMaestraPdf'])->name('vista-maestra.pdf');
     Route::get('/vista-maestra/excel',               [HorarioController::class, 'vistaMaestraExcel'])->name('vista-maestra.excel');
@@ -57,7 +61,7 @@ Route::prefix('horarios')->name('horarios.')->group(function () {
 });
 
 // ── Scheduling (módulo simplificado) ─────────────────────────────────────
-Route::prefix('scheduling')->name('scheduling.')->group(function () {
+Route::prefix('scheduling')->name('scheduling.')->middleware('can:gestionar-asignaciones')->group(function () {
     Route::get('/horarios',                          [SchHorarioController::class, 'index'])->name('horarios.index');
     Route::post('/horarios/generar',                 [SchHorarioController::class, 'generar'])->name('horarios.generar');
     Route::get('/horarios/{horario}',                [SchHorarioController::class, 'show'])->name('horarios.show');

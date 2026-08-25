@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('classroom')->name('classroom.')->group(function () {
+Route::prefix('classroom')->name('classroom.')->middleware('can:gestionar-asignaciones')->group(function () {
     Route::get('/',                              [ClaseVirtualController::class, 'index'])->name('index');
     Route::get('/crear',                         [ClaseVirtualController::class, 'create'])->name('create');
     Route::post('/',                             [ClaseVirtualController::class, 'store'])->name('store');

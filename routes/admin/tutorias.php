@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\TutoriaController;
 
 // ── Tutorías ──────────────────────────────────────────────────────────────────
-Route::prefix('tutorias')->name('tutorias.')->group(function () {
+Route::prefix('tutorias')->name('tutorias.')->middleware('can:ingresar-calificaciones')->group(function () {
 
     // Asignación de tutores
     Route::get('/',                         [TutoriaController::class, 'index'])->name('index');

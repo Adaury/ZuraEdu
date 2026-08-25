@@ -24,10 +24,9 @@ class PlanClaseController extends Controller
             ->where('school_year_id', $schoolYear?->id)
             ->latest();
 
-        // Role filtering
-        if ($user->hasRole('Docente')) {
-            $docente = $user->docente;
-            if ($docente) $query->where('docente_id', $docente->id);
+        // Role filtering — docente_id=0 si el perfil aún no existe: no expone planes ajenos
+        if ($user->tieneRolDocente()) {
+            $query->where('docente_id', $user->docente?->id ?? 0);
         }
 
         if ($request->filled('area'))    $query->where('area', $request->area);
@@ -49,8 +48,8 @@ class PlanClaseController extends Controller
         $asignaciones = Asignacion::with(['asignatura', 'grupo'])
             ->where('school_year_id', $schoolYear?->id)
             ->where('activo', true)
-            ->when($user->hasRole('Docente') && $user->docente, function ($q) use ($user) {
-                $q->where('docente_id', $user->docente->id);
+            ->when($user->tieneRolDocente(), function ($q) use ($user) {
+                $q->where('docente_id', $user->docente?->id ?? 0);
             })
             ->get();
 
@@ -219,8 +218,8 @@ class PlanClaseController extends Controller
             ->where('school_year_id', $schoolYear?->id)
             ->latest();
 
-        if ($user->hasRole('Docente') && $user->docente) {
-            $query->where('docente_id', $user->docente->id);
+        if ($user->tieneRolDocente()) {
+            $query->where('docente_id', $user->docente?->id ?? 0);
         }
 
         if ($request->filled('area'))    $query->where('area', $request->area);
@@ -289,8 +288,8 @@ class PlanClaseController extends Controller
             ->where('school_year_id', $schoolYear?->id)
             ->latest();
 
-        if ($user->hasRole('Docente') && $user->docente) {
-            $query->where('docente_id', $user->docente->id);
+        if ($user->tieneRolDocente()) {
+            $query->where('docente_id', $user->docente?->id ?? 0);
         }
 
         if ($request->filled('area'))    $query->where('area', $request->area);

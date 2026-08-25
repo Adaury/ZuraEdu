@@ -20,7 +20,7 @@ use App\Http\Controllers\Admin\ImportacionController;
 // ── Hub principal ─────────────────────────────────────────────────────────
 Route::get('importaciones', [ImportacionController::class, 'index'])
     ->name('importaciones.index')
-    ->middleware('role:Administrador|Director|Coordinador Académico|Coordinador Primer Ciclo|Coordinador Segundo Ciclo');
+    ->middleware('can:acceso-direccion-coordinacion');
 
 // ── Módulo 1: Calificaciones académicas — requiere permiso de ingreso ─────
 Route::prefix('importaciones/calificaciones')->name('importaciones.calificaciones')

@@ -59,7 +59,7 @@ class Comunicado extends Model
     {
         $tipos = ['todos'];
 
-        if ($user->hasRole('Docente'))                                                    $tipos[] = 'docentes';
+        if ($user->tieneRolDocente())                                                           $tipos[] = 'docentes';
         if ($user->hasAnyRole(['Coordinador Académico','Coordinador Primer Ciclo',
                                'Coordinador Segundo Ciclo','Director','Administrador'])) {
             $tipos[] = 'coordinadores';
@@ -80,7 +80,7 @@ class Comunicado extends Model
     {
         $tipos = ['todos'];
 
-        if ($user->hasRole('Docente'))      $tipos[] = 'docentes';
+        if ($user->tieneRolDocente())             $tipos[] = 'docentes';
         if ($user->hasAnyRole(['Coordinador', 'Director', 'Administrador'])) {
             $tipos[] = 'coordinadores';
             $tipos[] = 'docentes';

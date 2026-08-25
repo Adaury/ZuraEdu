@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\ProyectoController;
 
 // ── Módulo de Proyectos Escolares ─────────────────────────────────────────────
-Route::prefix('proyectos')->name('proyectos.')->group(function () {
+Route::prefix('proyectos')->name('proyectos.')->middleware('can:ingresar-calificaciones')->group(function () {
 
     // Dashboard
     Route::get('/dashboard',                 [ProyectoController::class, 'dashboard'])->name('dashboard');

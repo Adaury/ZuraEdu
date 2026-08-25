@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\SaludController;
 
 // ── Salud Escolar ──────────────────────────────────────────────────────────
+// Datos médicos sensibles del estudiante: solo dirección y registro académico.
+Route::middleware('can:acceso-salud-disciplina')->group(function () {
 
 // Dashboard
 Route::get('salud',
@@ -57,3 +59,5 @@ Route::get('salud/incidentes/excel',
 Route::get('salud/incidentes/pdf',
     [SaludController::class, 'incidentesPdf'])
     ->name('salud.incidentes.pdf');
+
+});

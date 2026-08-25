@@ -41,7 +41,7 @@ class TutorIaApiController extends Controller
         $systemPrompt = match (true) {
             $role === 'Estudiante'    => $this->promptEstudiante($user, $schoolYear, $sysName),
             $role === 'Representante' => $this->promptPadre($user, $schoolYear, $sysName),
-            $role === 'Docente'       => $this->promptDocente($user, $schoolYear, $sysName),
+            $user->tieneRolDocente()  => $this->promptDocente($user, $schoolYear, $sysName),
             default                   => $this->promptGeneral($user, $sysName),
         };
 

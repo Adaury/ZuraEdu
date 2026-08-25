@@ -952,7 +952,7 @@ class DocenteApiController extends Controller
 
     private function docenteOFail(Request $request): Docente|\Illuminate\Http\JsonResponse
     {
-        if (! $request->user()->hasRole('Docente')) {
+        if (! $request->user()->tieneRolDocente()) {
             return response()->json(['message' => 'Solo para docentes.'], 403);
         }
 

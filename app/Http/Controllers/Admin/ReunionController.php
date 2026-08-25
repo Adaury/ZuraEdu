@@ -119,9 +119,9 @@ class ReunionController extends Controller
 
             $roles = match ($reunion->tipo) {
                 'reunion_padres'    => ['Padre', 'Representante'],
-                'reunion_docentes'  => ['Docente'],
-                'consejo_directivo' => ['Admin', 'Director'],
-                default             => ['Admin', 'Director', 'Docente'],
+                'reunion_docentes'  => User::ROLES_DOCENTE,
+                'consejo_directivo' => ['Administrador', 'Director'],
+                default             => array_merge(['Administrador', 'Director'], User::ROLES_DOCENTE),
             };
 
             $userIds = User::role($roles)->where('activo', true)->pluck('id')->toArray();

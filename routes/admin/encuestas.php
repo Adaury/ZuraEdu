@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\EncuestaController;
 
 // ── Encuestas de Satisfacción ─────────────────────────────────────────────
-Route::prefix('encuestas')->name('encuestas.')->group(function () {
+Route::prefix('encuestas')->name('encuestas.')->middleware('can:acceso-direccion-coordinacion')->group(function () {
     Route::get('/dashboard',                     [EncuestaController::class, 'dashboard'])->name('dashboard');
     Route::get('/',                             [EncuestaController::class, 'index'])->name('index');
     Route::get('/lista/excel',                  [EncuestaController::class, 'listaExcel'])->name('lista-excel');

@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\Admin\RegistroAcademicoController;
 
-Route::prefix('registro-academico')->name('registro-academico.')->group(function () {
+Route::prefix('registro-academico')->name('registro-academico.')->middleware('can:gestionar-matriculas')->group(function () {
 
     // Dashboard principal
     Route::get('/', [RegistroAcademicoController::class, 'dashboard'])->name('dashboard');

@@ -61,7 +61,7 @@ class MensajesPortalController extends Controller
         if ($portal === 'docente') {
             $roles = ['Administrador', 'Director', 'Coordinador Academico'];
         } else {
-            $roles = ['Administrador', 'Director', 'Docente'];
+            $roles = array_merge(['Administrador', 'Director'], User::ROLES_DOCENTE);
         }
 
         $cacheKey = "t{$tid}_mensajes_destinatarios_{$portal}";

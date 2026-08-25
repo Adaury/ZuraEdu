@@ -12,7 +12,7 @@ class EvaluacionesDocenteApiController extends Controller
     /** GET /api/v1/docente/mis-evaluaciones */
     public function misEvaluaciones(Request $request)
     {
-        if (! $request->user()->hasRole('Docente')) {
+        if (! $request->user()->tieneRolDocente()) {
             return response()->json(['message' => 'Solo para docentes.'], 403);
         }
         $docente = Docente::where('user_id', $request->user()->id)->first();

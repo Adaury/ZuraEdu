@@ -37,7 +37,7 @@ Route::prefix('pagos')->name('pagos.')->middleware('can:gestionar-pagos')->group
 });
 
 // Configuración de pasarelas (Stripe/CardNet) — solo Administrador
-Route::prefix('pagos')->name('pagos.')->middleware('role:Administrador')->group(function () {
+Route::prefix('pagos')->name('pagos.')->middleware('can:solo-administrador')->group(function () {
     Route::get('/config',  [PagoController::class, 'configIndex'])->name('config');
     Route::post('/config', [PagoController::class, 'configUpdate'])->name('config.update');
 });

@@ -92,16 +92,22 @@ Route::post('docente/setup', [DocenteSetupController::class, 'store'])->name('do
 
 // ── Perfiles ──────────────────────────────────────────────────────────────
 Route::get('perfiles/mi-perfil',                 [PerfilDocenteController::class,    'miPerfil'])->name('perfiles.miPerfil');
-Route::get('perfiles/docentes/{docente}',           [PerfilDocenteController::class, 'show'])->name('perfiles.docente');
-Route::get('perfiles/docentes/{docente}/informe',       [PerfilDocenteController::class, 'informePdf'])->name('perfiles.docente.informe-pdf');
-Route::get('perfiles/docentes/{docente}/informe-excel', [PerfilDocenteController::class, 'informeExcel'])->name('perfiles.docente.informe-excel');
-Route::get('perfiles/estudiantes/{estudiante}',   [PerfilEstudianteController::class, 'show'])->name('perfiles.estudiante');
-Route::get('perfiles/estudiantes/{estudiante}/informe-pdf',     [PerfilEstudianteController::class, 'informePdf'])->name('perfiles.estudiante.informe-pdf');
-Route::get('perfiles/estudiantes/{estudiante}/informe-excel',   [PerfilEstudianteController::class, 'informeExcel'])->name('perfiles.estudiante.informe-excel');
-Route::get('perfiles/estudiantes/{estudiante}/certificado-notas', [PerfilEstudianteController::class, 'certificadoNotas'])->name('perfiles.estudiante.certificado-notas');
-Route::get('perfiles/estudiantes/{estudiante}/asistencia-pdf',     [PerfilEstudianteController::class, 'asistenciaPdf'])->name('perfiles.estudiante.asistencia-pdf');
-Route::get('perfiles/estudiantes/{estudiante}/asistencia-excel',   [PerfilEstudianteController::class, 'asistenciaExcel'])->name('perfiles.estudiante.asistencia-excel');
-Route::get('perfiles/estudiantes/{estudiante}/certificado-conducta',[PerfilEstudianteController::class, 'certificadoConducta'])->name('perfiles.estudiante.certificado-conducta');
-Route::get('perfiles/estudiantes/{estudiante}/historial-academico', [PerfilEstudianteController::class, 'historialAcademico'])->name('perfiles.estudiante.historial-academico');
-Route::get('perfiles/estudiantes/{estudiante}/historial-pdf',       [PerfilEstudianteController::class, 'historialPdf'])->name('perfiles.estudiante.historial-pdf');
-Route::get('estudiantes/{estudiante}/ficha-pdf',            [EstudianteController::class,        'fichaPdf'])->name('estudiantes.ficha-pdf');
+
+Route::middleware('can:gestionar-docentes')->group(function () {
+    Route::get('perfiles/docentes/{docente}',           [PerfilDocenteController::class, 'show'])->name('perfiles.docente');
+    Route::get('perfiles/docentes/{docente}/informe',       [PerfilDocenteController::class, 'informePdf'])->name('perfiles.docente.informe-pdf');
+    Route::get('perfiles/docentes/{docente}/informe-excel', [PerfilDocenteController::class, 'informeExcel'])->name('perfiles.docente.informe-excel');
+});
+
+Route::middleware('can:gestionar-estudiantes')->group(function () {
+    Route::get('perfiles/estudiantes/{estudiante}',   [PerfilEstudianteController::class, 'show'])->name('perfiles.estudiante');
+    Route::get('perfiles/estudiantes/{estudiante}/informe-pdf',     [PerfilEstudianteController::class, 'informePdf'])->name('perfiles.estudiante.informe-pdf');
+    Route::get('perfiles/estudiantes/{estudiante}/informe-excel',   [PerfilEstudianteController::class, 'informeExcel'])->name('perfiles.estudiante.informe-excel');
+    Route::get('perfiles/estudiantes/{estudiante}/certificado-notas', [PerfilEstudianteController::class, 'certificadoNotas'])->name('perfiles.estudiante.certificado-notas');
+    Route::get('perfiles/estudiantes/{estudiante}/asistencia-pdf',     [PerfilEstudianteController::class, 'asistenciaPdf'])->name('perfiles.estudiante.asistencia-pdf');
+    Route::get('perfiles/estudiantes/{estudiante}/asistencia-excel',   [PerfilEstudianteController::class, 'asistenciaExcel'])->name('perfiles.estudiante.asistencia-excel');
+    Route::get('perfiles/estudiantes/{estudiante}/certificado-conducta',[PerfilEstudianteController::class, 'certificadoConducta'])->name('perfiles.estudiante.certificado-conducta');
+    Route::get('perfiles/estudiantes/{estudiante}/historial-academico', [PerfilEstudianteController::class, 'historialAcademico'])->name('perfiles.estudiante.historial-academico');
+    Route::get('perfiles/estudiantes/{estudiante}/historial-pdf',       [PerfilEstudianteController::class, 'historialPdf'])->name('perfiles.estudiante.historial-pdf');
+    Route::get('estudiantes/{estudiante}/ficha-pdf',            [EstudianteController::class,        'fichaPdf'])->name('estudiantes.ficha-pdf');
+});

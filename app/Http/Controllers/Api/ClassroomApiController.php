@@ -24,7 +24,7 @@ class ClassroomApiController extends Controller
         $sy   = SchoolYear::actual();
         $role = $user->roles->first()?->name;
 
-        if ($role === 'Docente') {
+        if ($user->tieneRolDocente()) {
             $docente = Docente::where('user_id', $user->id)->first();
             if (! $docente) return response()->json(['clases' => []]);
 
@@ -86,7 +86,7 @@ class ClassroomApiController extends Controller
     public function store(Request $request): \Illuminate\Http\JsonResponse
     {
         $user = $request->user();
-        if (! $user->hasRole('Docente')) {
+        if (! $user->tieneRolDocente()) {
             return response()->json(['message' => 'No autorizado.'], 403);
         }
 
@@ -128,7 +128,7 @@ class ClassroomApiController extends Controller
             return response()->json(['message' => 'Acceso no autorizado.'], 403);
         }
 
-        $esDocente  = $user->hasRole('Docente');
+        $esDocente  = $user->tieneRolDocente();
         $materiales = MaterialClase::with('archivos')
             ->where('clase_virtual_id', $claseVirtual->id)
             ->when(! $esDocente, fn($q) => $q->where('publicado', true))
@@ -184,7 +184,7 @@ class ClassroomApiController extends Controller
     public function storeMaterial(Request $request, ClaseVirtual $claseVirtual)
     {
         $user = $request->user();
-        if (! $user->hasRole('Docente')) return response()->json(['message' => 'No autorizado.'], 403);
+        if (! $user->tieneRolDocente()) return response()->json(['message' => 'No autorizado.'], 403);
 
         $docente = Docente::where('user_id', $user->id)->first();
         if (! $docente || $claseVirtual->asignacion?->docente_id !== $docente->id) {
@@ -237,7 +237,7 @@ class ClassroomApiController extends Controller
     public function togglePublicar(Request $request, MaterialClase $material)
     {
         $user = $request->user();
-        if (! $user->hasRole('Docente')) return response()->json(['message' => 'No autorizado.'], 403);
+        if (! $user->tieneRolDocente()) return response()->json(['message' => 'No autorizado.'], 403);
 
         $docente = Docente::where('user_id', $user->id)->first();
         $clase   = $material->claseVirtual;
@@ -272,7 +272,7 @@ class ClassroomApiController extends Controller
         $role = $user->roles->first()?->name;
         $sy   = SchoolYear::actual();
 
-        if ($role === 'Docente') {
+        if ($user->tieneRolDocente()) {
             $docente = Docente::where('user_id', $user->id)->first();
             return $docente && $clase->asignacion?->docente_id === $docente->id;
         }

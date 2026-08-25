@@ -30,7 +30,7 @@ class HorarioApiController extends Controller
             return $this->porGrupo($h, $mat?->grupo_id);
         }
 
-        if ($role === 'Docente') {
+        if ($user->tieneRolDocente()) {
             $doc = Docente::where('user_id', $user->id)->first();
             return $this->porDocente($h, $doc);
         }

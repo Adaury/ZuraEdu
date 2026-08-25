@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\InventarioController;
 
 // ── Módulo de Inventario Escolar ──────────────────────────────────────────
-Route::prefix('inventario')->name('inventario.')->group(function () {
+Route::prefix('inventario')->name('inventario.')->middleware('can:ver-servicios')->group(function () {
     Route::get('/',                                          [InventarioController::class, 'index'])->name('index');
     Route::get('/nuevo',                                     [InventarioController::class, 'create'])->name('create');
     Route::post('/',                                         [InventarioController::class, 'store'])->name('store');

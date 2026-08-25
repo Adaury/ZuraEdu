@@ -24,8 +24,10 @@ class InstrumentoController extends Controller
             ->where('school_year_id', $schoolYear?->id)
             ->latest();
 
-        if ($user->hasRole('Docente') && $user->docente) {
-            $query->where('docente_id', $user->docente->id);
+        if ($user->tieneRolDocente()) {
+            // Si el rol está asignado pero el perfil Docente aún no existe (onboarding
+            // incompleto), docente_id=0 nunca matchea → no expone instrumentos ajenos.
+            $query->where('docente_id', $user->docente?->id ?? 0);
         }
 
         if ($request->filled('tipo'))   $query->where('tipo', $request->tipo);
@@ -42,8 +44,8 @@ class InstrumentoController extends Controller
         $asignaciones = Asignacion::with(['asignatura','grupo'])
             ->where('school_year_id', $schoolYear?->id)
             ->where('activo', true)
-            ->when(Auth::user()->hasRole('Docente') && Auth::user()->docente, function ($q) {
-                $q->where('docente_id', Auth::user()->docente->id);
+            ->when(Auth::user()->tieneRolDocente(), function ($q) {
+                $q->where('docente_id', Auth::user()->docente?->id ?? 0);
             })
             ->get();
 
@@ -159,8 +161,8 @@ class InstrumentoController extends Controller
             ->where('school_year_id', $schoolYear?->id)
             ->latest();
 
-        if ($user->hasRole('Docente') && $user->docente) {
-            $query->where('docente_id', $user->docente->id);
+        if ($user->tieneRolDocente()) {
+            $query->where('docente_id', $user->docente?->id ?? 0);
         }
         if ($request->filled('tipo')) $query->where('tipo', $request->tipo);
 
@@ -233,8 +235,8 @@ class InstrumentoController extends Controller
             ->where('school_year_id', $schoolYear?->id)
             ->latest();
 
-        if ($user->hasRole('Docente') && $user->docente) {
-            $query->where('docente_id', $user->docente->id);
+        if ($user->tieneRolDocente()) {
+            $query->where('docente_id', $user->docente?->id ?? 0);
         }
         if ($request->filled('tipo')) $query->where('tipo', $request->tipo);
 

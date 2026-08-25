@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Route;
 | Nombre  : admin.galeria.*
 */
 
-Route::prefix('galeria')->name('galeria.')->group(function () {
+Route::prefix('galeria')->name('galeria.')->middleware('can:ver-servicios')->group(function () {
 
     Route::get('/dashboard',                                 [GaleriaController::class, 'dashboard'])->name('dashboard');
     Route::get('/',                                         [GaleriaController::class, 'index'])->name('index');

@@ -4,7 +4,7 @@ use App\Http\Controllers\Admin\ReunionController;
 use Illuminate\Support\Facades\Route;
 
 // ── Actas de Reuniones ────────────────────────────────────────────────────
-Route::prefix('reuniones')->name('reuniones.')->group(function () {
+Route::prefix('reuniones')->name('reuniones.')->middleware('can:acceso-direccion-coordinacion')->group(function () {
 
     Route::get('/dashboard',      [ReunionController::class, 'dashboard'])     ->name('dashboard');
 

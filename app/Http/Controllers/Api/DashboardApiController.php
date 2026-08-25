@@ -27,7 +27,7 @@ class DashboardApiController extends Controller
 
         return match (true) {
             in_array($role, ['Administrador','Director','Coordinador Academico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']) => $this->admin($user),
-            $role === 'Docente'       => $this->docente($user),
+            $user->tieneRolDocente()  => $this->docente($user),
             $role === 'Estudiante'    => $this->estudiante($user),
             $role === 'Representante' => $this->padre($user),
             default => response()->json(['message' => 'Rol no soportado.'], 403),

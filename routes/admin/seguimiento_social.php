@@ -3,7 +3,8 @@
 use App\Http\Controllers\Admin\SeguimientoSocialController;
 
 // ── Seguimiento Social ────────────────────────────────────────────────────────
-Route::prefix('seguimiento-social')->name('seguimiento-social.')->group(function () {
+// Casos de trabajo social (PII sensible): mismo alcance que Salud/Disciplina.
+Route::prefix('seguimiento-social')->name('seguimiento-social.')->middleware('can:acceso-salud-disciplina')->group(function () {
 
     Route::get('/dashboard',                   [SeguimientoSocialController::class, 'dashboard'])->name('dashboard');
 

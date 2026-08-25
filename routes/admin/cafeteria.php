@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\CafeteriaController;
 
 // ── Módulo de Cafetería / Canteen ─────────────────────────────────────────
-Route::prefix('cafeteria')->name('cafeteria.')->group(function () {
+Route::prefix('cafeteria')->name('cafeteria.')->middleware('can:ver-servicios')->group(function () {
 
     // ── Dashboard ──────────────────────────────────────────────────────────
     Route::get('/',                              [CafeteriaController::class, 'dashboard'])->name('dashboard');

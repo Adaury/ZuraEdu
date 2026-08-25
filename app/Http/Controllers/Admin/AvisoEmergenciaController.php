@@ -191,7 +191,7 @@ class AvisoEmergenciaController extends Controller
                 ->toArray(),
 
             'docentes' => User::activos()
-                ->role('Docente')
+                ->role(User::ROLES_DOCENTE)
                 ->pluck('id')
                 ->toArray(),
 

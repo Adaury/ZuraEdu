@@ -26,11 +26,11 @@ class BoletinPolicy
             return false;
         }
 
-        if ($user->hasRole(['Admin', 'Director'])) {
+        if ($user->hasRole(['Administrador', 'Director'])) {
             return true;
         }
 
-        if ($user->hasRole('Docente')) {
+        if ($user->tieneRolDocente()) {
             $docente = $user->docente;
             if (! $docente) return false;
 

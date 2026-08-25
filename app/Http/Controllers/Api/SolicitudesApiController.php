@@ -21,7 +21,7 @@ class SolicitudesApiController extends Controller
     {
         $user = $request->user();
 
-        if ($user->hasRole('Docente'))        return $this->indexDocente($user);
+        if ($user->tieneRolDocente())               return $this->indexDocente($user);
         if ($user->hasRole('Estudiante'))     return $this->indexEstudiante($user);
         if ($user->hasRole('Representante'))  return $this->indexRepresentante($user);
 
@@ -33,7 +33,7 @@ class SolicitudesApiController extends Controller
     {
         $user = $request->user();
 
-        if ($user->hasRole('Docente'))        return $this->storeDocente($request, $user);
+        if ($user->tieneRolDocente())               return $this->storeDocente($request, $user);
         if ($user->hasRole('Estudiante'))     return $this->storeEstudiante($request, $user);
         if ($user->hasRole('Representante'))  return $this->storeRepresentante($request, $user);
 
@@ -45,7 +45,7 @@ class SolicitudesApiController extends Controller
     {
         $user = $request->user();
 
-        if ($user->hasRole('Docente')) {
+        if ($user->tieneRolDocente()) {
             $doc = Docente::where('user_id', $user->id)->first();
             if (! $doc) return response()->json(['message' => 'Perfil no encontrado.'], 404);
 

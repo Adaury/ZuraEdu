@@ -7,7 +7,7 @@ use App\Http\Controllers\Admin\CalendarioController;
 use App\Http\Controllers\Admin\ReportesEjecutivosController;
 
 // ── Dashboard Ejecutivo — solo Administrador y Director ───────────────────
-Route::middleware('role:Administrador|Director')->group(function () {
+Route::middleware('can:acceso-direccion')->group(function () {
     Route::get('ejecutivo',       [ReportesEjecutivosController::class, 'index'])->name('ejecutivo.index');
     Route::get('ejecutivo/pdf',   [ReportesEjecutivosController::class, 'pdf'])->name('ejecutivo.pdf');
     Route::get('ejecutivo/excel', [ReportesEjecutivosController::class, 'excel'])->name('ejecutivo.excel');

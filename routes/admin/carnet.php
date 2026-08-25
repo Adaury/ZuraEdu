@@ -6,7 +6,7 @@ use App\Http\Controllers\Admin\CarnetHistorialController;
 use App\Http\Controllers\Admin\CarnetReportesController;
 
 // ── ZuraEdu Carnet+ ───────────────────────────────────────────────────────────
-Route::prefix('carnet')->name('carnet.')->group(function () {
+Route::prefix('carnet')->name('carnet.')->middleware('can:ver-servicios')->group(function () {
 
     // Index + acciones CRUD
     Route::get('/',                           [CarnetController::class, 'index'])->name('index');

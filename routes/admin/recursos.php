@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\RecursoController;
 
 // ── Módulo de Gestión de Recursos y Aulas ─────────────────────────────────
-Route::prefix('recursos')->name('recursos.')->group(function () {
+Route::prefix('recursos')->name('recursos.')->middleware('can:ver-servicios')->group(function () {
 
     // Vista general de disponibilidad y Excel lista (deben ir antes del {recurso} param)
     Route::get('/disponibilidad', [RecursoController::class, 'disponibilidad'])->name('disponibilidad');

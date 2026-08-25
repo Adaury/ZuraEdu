@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\EquipoController;
 
 // ── Módulo de Préstamos de Equipos ────────────────────────────────────────
-Route::prefix('equipos')->name('equipos.')->group(function () {
+Route::prefix('equipos')->name('equipos.')->middleware('can:ver-servicios')->group(function () {
 
     // ── Dashboard ─────────────────────────────────────────────────────────
     Route::get('/dashboard',              [EquipoController::class, 'dashboard'])->name('dashboard');

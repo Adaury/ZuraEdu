@@ -55,7 +55,7 @@
                     <span class="badge-acad">Académica</span>
                 @endif
             </td>
-            <td>{{ $asig->familia?->nombre ?? '—' }}</td>
+            <td>{{ $asig->familiaProfesional?->nombre ?? '—' }}</td>
             <td style="text-align:center;">{{ $asig->horas_semanales ?? '—' }}</td>
             <td style="text-align:center;">{{ $asig->num_ra ?? 0 }}</td>
             <td style="text-align:center;">{{ $asig->asignaciones->count() }}</td>

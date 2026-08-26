@@ -105,6 +105,7 @@ class SupportChatController extends Controller
         $status   = $request->query('status', 'open'); // open | resolved | all
 
         $query = SupportSession::delTenant($tenantId)
+            ->with('agente')
             ->withCount(['mensajes as sin_leer' => fn($q) => $q->where('origen', 'visitor')->where('leido', false)])
             ->orderByDesc('ultimo_mensaje_at')
             ->limit(60);

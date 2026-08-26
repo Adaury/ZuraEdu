@@ -40,7 +40,7 @@ class AsistenciaController extends Controller
         $ciclo = $request->input('ciclo');
         $area  = $request->input('area');
 
-        $query = Asignacion::with(['grupo.grado','grupo.seccion','asignatura','docente'])
+        $query = Asignacion::with(['grupo.grado','grupo.seccion','grupo.tutor','asignatura','docente'])
             ->where('school_year_id', $schoolYear->id)
             ->where('activo', true);
 

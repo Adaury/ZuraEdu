@@ -111,7 +111,7 @@ class CalificacionController extends Controller
         $ciclo = request('ciclo');
         $area  = request('area');
 
-        $grupos = Grupo::with(['grado','seccion','asignaciones'])
+        $grupos = Grupo::with(['grado','seccion','asignaciones.asignatura','asignaciones.docente'])
             ->where('school_year_id', $schoolYear->id)
             ->when($ciclo == 1, fn($q) => $q->whereHas('grado', fn($g) => $g->whereBetween('nivel', [1, 3])))
             ->when($ciclo == 2, fn($q) => $q->whereHas('grado', fn($g) => $g->whereBetween('nivel', [4, 6])))
@@ -1413,7 +1413,8 @@ class CalificacionController extends Controller
             'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
         ];
 
-        $sheet->mergeCells('A1:' . chr(65 + 1 + $asignaciones->count() * $periodos->count()) . '1');
+        $totalColsResumen = 2 + $asignaciones->count() * $periodos->count();
+        $sheet->mergeCells('A1:' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalColsResumen) . '1');
         $sheet->setCellValue('A1', 'RESUMEN DE CALIFICACIONES — ' . $grupo->grado?->nombre . ' ' . $grupo->seccion?->nombre . ' — ' . $schoolYear->nombre);
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(11);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
@@ -1424,10 +1425,10 @@ class CalificacionController extends Controller
         foreach ($asignaciones as $asi) {
             foreach ($periodos as $p) {
                 $col++;
-                $sheet->setCellValue(chr(65 + $col - 1) . '2', \Illuminate\Support\Str::limit($asi->asignatura?->nombre ?? '—', 12) . ' P' . $p->numero);
+                $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col) . '2', \Illuminate\Support\Str::limit($asi->asignatura?->nombre ?? '—', 12) . ' P' . $p->numero);
             }
         }
-        $lastCol = chr(65 + $col - 1);
+        $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
         $sheet->getStyle('A2:' . $lastCol . '2')->applyFromArray($hdrStyle);
         $sheet->getRowDimension(2)->setRowHeight(30);
 
@@ -1440,12 +1441,13 @@ class CalificacionController extends Controller
             foreach ($asignaciones as $asi) {
                 foreach ($periodos as $p) {
                     $col++;
-                    $cal   = $allCals->get("{$m->id}_{$asi->id}_{$p->id}");
-                    $nota  = $cal?->nota_final;
-                    $sheet->setCellValue(chr(65 + $col - 1) . $row, $nota ?? '');
+                    $cal      = $allCals->get("{$m->id}_{$asi->id}_{$p->id}");
+                    $nota     = $cal?->nota_final;
+                    $colLetra = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
+                    $sheet->setCellValue($colLetra . $row, $nota ?? '');
                     if ($nota !== null && $nota < 60) {
-                        $sheet->getStyle(chr(65 + $col - 1) . $row)->getFont()->getColor()->setRGB('dc2626');
-                        $sheet->getStyle(chr(65 + $col - 1) . $row)->getFont()->setBold(true);
+                        $sheet->getStyle($colLetra . $row)->getFont()->getColor()->setRGB('dc2626');
+                        $sheet->getStyle($colLetra . $row)->getFont()->setBold(true);
                     }
                 }
             }
@@ -1456,7 +1458,9 @@ class CalificacionController extends Controller
             }
         }
 
-        foreach (range('A', $lastCol) as $c) $sheet->getColumnDimension($c)->setAutoSize(true);
+        for ($ci = 1; $ci <= $col; $ci++) {
+            $sheet->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci))->setAutoSize(true);
+        }
         $sheet->freezePane('C3');
 
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);

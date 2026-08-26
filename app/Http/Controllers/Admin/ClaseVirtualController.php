@@ -63,7 +63,7 @@ class ClaseVirtualController extends Controller
     public function create()
     {
         $schoolYear  = SchoolYear::actual();
-        $asignaciones = Asignacion::with(['asignatura', 'grupo', 'docente'])
+        $asignaciones = Asignacion::with(['asignatura', 'grupo', 'docente.user'])
             ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
             ->where('activo', true)
             ->orderBy('asignatura_id')

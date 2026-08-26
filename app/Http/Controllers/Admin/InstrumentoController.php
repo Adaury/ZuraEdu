@@ -41,7 +41,7 @@ class InstrumentoController extends Controller
     public function create()
     {
         $schoolYear   = SchoolYear::actual();
-        $asignaciones = Asignacion::with(['asignatura','grupo'])
+        $asignaciones = Asignacion::with(['asignatura','grupo.grado','grupo.seccion'])
             ->where('school_year_id', $schoolYear?->id)
             ->where('activo', true)
             ->when(Auth::user()->tieneRolDocente(), function ($q) {

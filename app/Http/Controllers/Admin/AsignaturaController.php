@@ -202,7 +202,7 @@ class AsignaturaController extends Controller
 
     public function listaPdf(Request $request)
     {
-        $asignaturas = Asignatura::with(['familia', 'asignaciones'])
+        $asignaturas = Asignatura::with(['familiaProfesional', 'asignaciones'])
             ->orderBy('nombre')->get();
 
         $inst = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
@@ -217,7 +217,7 @@ class AsignaturaController extends Controller
 
     public function listaExcel(Request $request)
     {
-        $asignaturas = Asignatura::with(['familia', 'asignaciones'])
+        $asignaturas = Asignatura::with(['familiaProfesional', 'asignaciones'])
             ->orderBy('nombre')->get();
 
         $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
@@ -244,7 +244,7 @@ class AsignaturaController extends Controller
             $ws->setCellValue("B{$row}", $asig->nombre);
             $ws->setCellValue("C{$row}", $asig->codigo ?? '—');
             $ws->setCellValue("D{$row}", $asig->area === 'tecnica' ? 'Técnica' : 'Académica');
-            $ws->setCellValue("E{$row}", $asig->familia?->nombre ?? '—');
+            $ws->setCellValue("E{$row}", $asig->familiaProfesional?->nombre ?? '—');
             $ws->setCellValue("F{$row}", $asig->horas_semanales ?? '—');
             $ws->setCellValue("G{$row}", $asig->asignaciones->count());
             if ($i % 2 === 1) {

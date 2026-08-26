@@ -551,15 +551,16 @@ class NominaController extends Controller
             $pagos  = $pagosAnio->get($mesStr, collect());
 
             return [
-                'mes'     => $mesStr,
-                'nombre'  => PagoNomina::MESES[str_pad($m, 2, '0', STR_PAD_LEFT)] ?? $m,
-                'bruto'   => $pagos->sum('salario_bruto'),
-                'tss'     => $pagos->sum('desc_tss'),
-                'isr'     => $pagos->sum('desc_isr'),
-                'deduc'   => $pagos->sum('deducciones'),
-                'neto'    => $pagos->sum('salario_neto'),
-                'pagados' => $pagos->where('pagado', true)->count(),
-                'total'   => $pagos->count(),
+                'mes'       => $mesStr,
+                'nombre'    => PagoNomina::MESES[str_pad($m, 2, '0', STR_PAD_LEFT)] ?? $m,
+                'empleados' => $pagos->count(),
+                'bruto'     => $pagos->sum('salario_bruto'),
+                'tss'       => $pagos->sum('desc_tss'),
+                'isr'       => $pagos->sum('desc_isr'),
+                'deduc'     => $pagos->sum('deducciones'),
+                'neto'      => $pagos->sum('salario_neto'),
+                'pagados'   => $pagos->where('pagado', true)->count(),
+                'total'     => $pagos->count(),
             ];
         });
 

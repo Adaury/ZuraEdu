@@ -96,7 +96,7 @@ class PlanificacionController extends Controller
         $schoolYear  = $this->schoolYear();
         $docente     = $this->docenteActual();
 
-        $query = Planificacion::with(['asignacion.asignatura', 'asignacion.grupo', 'asignacion.docente'])
+        $query = Planificacion::with(['asignacion.asignatura', 'asignacion.grupo.grado', 'asignacion.grupo.seccion', 'asignacion.docente'])
             ->where('school_year_id', $schoolYear->id)
             ->where(function ($q) {
                 $q->whereHas('asignacion', fn($sq) => $sq->where('area', 'tecnica'));
@@ -117,7 +117,7 @@ class PlanificacionController extends Controller
         $planificaciones = $query->latest()->paginate(20)->withQueryString();
 
         // Asignaciones técnicas para el filtro
-        $asigQuery = Asignacion::with(['asignatura', 'grupo'])
+        $asigQuery = Asignacion::with(['asignatura', 'grupo.grado', 'grupo.seccion'])
             ->where('school_year_id', $schoolYear->id)
             ->where('area', 'tecnica');
         if ($docente) $asigQuery->where('docente_id', $docente->id);
@@ -135,14 +135,14 @@ class PlanificacionController extends Controller
         $schoolYear  = $this->schoolYear();
         $docente     = $this->docenteActual();
 
-        $asigQuery = Asignacion::with(['asignatura', 'grupo', 'docente'])
+        $asigQuery = Asignacion::with(['asignatura', 'grupo.grado', 'grupo.seccion', 'docente'])
             ->where('school_year_id', $schoolYear->id)
             ->where('area', 'tecnica');
         if ($docente) $asigQuery->where('docente_id', $docente->id);
         $asignaciones = $asigQuery->get();
 
         $asignacionSeleccionada = $request->filled('asignacion_id')
-            ? Asignacion::with(['asignatura', 'grupo', 'docente'])->find($request->asignacion_id)
+            ? Asignacion::with(['asignatura', 'grupo.grado', 'grupo.seccion', 'docente'])->find($request->asignacion_id)
             : null;
 
         $planificacion = null;
@@ -244,14 +244,14 @@ class PlanificacionController extends Controller
         $schoolYear = $this->schoolYear();
         $docente    = $this->docenteActual();
 
-        $asigQuery = Asignacion::with(['asignatura', 'grupo', 'docente'])
+        $asigQuery = Asignacion::with(['asignatura', 'grupo.grado', 'grupo.seccion', 'docente'])
             ->where('school_year_id', $schoolYear->id)
             ->where('area', 'tecnica');
         if ($docente) $asigQuery->where('docente_id', $docente->id);
         $asignaciones = $asigQuery->get();
 
         $asignacionSeleccionada = $request->filled('asignacion_id')
-            ? Asignacion::with(['asignatura', 'grupo', 'docente'])->find($request->asignacion_id)
+            ? Asignacion::with(['asignatura', 'grupo.grado', 'grupo.seccion', 'docente'])->find($request->asignacion_id)
             : null;
 
         $planificacion = null;
@@ -345,7 +345,7 @@ class PlanificacionController extends Controller
         $schoolYear = $this->schoolYear();
         $docente    = $this->docenteActual();
 
-        $asigQuery = Asignacion::with(['asignatura', 'grupo', 'docente'])
+        $asigQuery = Asignacion::with(['asignatura', 'grupo.grado', 'grupo.seccion', 'docente'])
             ->where('school_year_id', $schoolYear->id)
             ->where('area', 'tecnica');
         if ($docente) $asigQuery->where('docente_id', $docente->id);
@@ -556,7 +556,7 @@ class PlanificacionController extends Controller
         $schoolYear = $this->schoolYear();
         $docente    = $this->docenteActual();
 
-        $query = Planificacion::with(['asignacion.asignatura', 'asignacion.grupo', 'asignacion.docente'])
+        $query = Planificacion::with(['asignacion.asignatura', 'asignacion.grupo.grado', 'asignacion.grupo.seccion', 'asignacion.docente'])
             ->where('school_year_id', $schoolYear->id)
             ->whereHas('asignacion', fn($q) => $q->where('area', 'tecnica'));
 
@@ -729,7 +729,7 @@ class PlanificacionController extends Controller
         $schoolYear = $this->schoolYear();
         $docente    = $this->docenteActual();
 
-        $query = Planificacion::with(['asignacion.asignatura', 'asignacion.grupo', 'asignacion.docente'])
+        $query = Planificacion::with(['asignacion.asignatura', 'asignacion.grupo.grado', 'asignacion.grupo.seccion', 'asignacion.docente'])
             ->where('school_year_id', $schoolYear->id)
             ->whereHas('asignacion', fn($q) => $q->where('area', 'tecnica'));
 

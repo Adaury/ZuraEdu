@@ -184,7 +184,7 @@ class PagoController extends Controller
         $syActual   = SchoolYear::actual();
         $matriculas = Matricula::with(['estudiante', 'grupo.grado', 'grupo.seccion'])
             ->where('school_year_id', $syActual?->id)
-            ->orderByHas('estudiante', fn ($q) => $q->orderBy('apellidos'))
+            ->orderBy(Estudiante::select('apellidos')->whereColumn('estudiantes.id', 'matriculas.estudiante_id'))
             ->get();
 
         $concepto  = Setting::get('payments_concept', 'Cuota escolar mensual');
@@ -590,6 +590,13 @@ class PagoController extends Controller
     // ── PDF de lista general de pagos ────────────────────────────────────
     public function listaPdf(Request $request)
     {
+        // Instituciones con muchos meses/estudiantes pueden acumular miles de pagos;
+        // dompdf es memory-hungry con tablas grandes (~2000+ filas agota hasta 1024M).
+        // Sin filtro de mes/estado se exporta el año completo — en uso real conviene
+        // filtrar primero, pero la ruta permite el caso sin filtro.
+        set_time_limit(300);
+        ini_set('memory_limit', '2048M');
+
         Pago::sincronizarVencidos();
         $sy  = SchoolYear::actual();
         $mon = Setting::get('payments_currency', 'DOP');

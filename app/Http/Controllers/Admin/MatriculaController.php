@@ -407,7 +407,7 @@ class MatriculaController extends Controller
         $query = Matricula::with(['estudiante', 'grupo.grado', 'grupo.seccion'])
             ->where('school_year_id', $schoolYear?->id)
             ->where('estado', 'activa')
-            ->orderByHas('grupo', fn($q) => $q->orderBy('grado_id'))
+            ->orderBy(Grupo::select('grado_id')->whereColumn('grupos.id', 'matriculas.grupo_id'))
             ->orderBy('numero_orden');
 
         if ($grupoId) $query->where('grupo_id', $grupoId);
@@ -439,7 +439,7 @@ class MatriculaController extends Controller
         ])
         ->where('school_year_id', $schoolYear?->id)
         ->where('estado', 'activa')
-        ->orderByHas('grupo', fn($q) => $q->orderBy('grado_id'))
+        ->orderBy(Grupo::select('grado_id')->whereColumn('grupos.id', 'matriculas.grupo_id'))
         ->orderBy('numero_orden');
 
         if ($grupoId) $query->where('grupo_id', $grupoId);

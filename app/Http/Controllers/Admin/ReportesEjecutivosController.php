@@ -376,7 +376,7 @@ class ReportesEjecutivosController extends Controller
             $ws3->setCellValue('C' . $row3, $prom);
             $ws3->setCellValue('D' . $row3, $asig->total_estudiantes);
             $color = $prom >= 80 ? '16a34a' : ($prom >= 70 ? 'd97706' : 'dc2626');
-            $ws3->getStyle('C' . $row3)->getFont()->getColor()->setRGB($color)->setBold(true);
+            $ws3->getStyle('C' . $row3)->getFont()->setBold(true)->getColor()->setRGB($color);
             $ws3->getStyle('A' . $row3 . ':D' . $row3)->getAlignment()
                 ->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $ws3->getStyle('B' . $row3)->getAlignment()

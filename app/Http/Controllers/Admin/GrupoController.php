@@ -30,7 +30,7 @@ class GrupoController extends Controller
     {
         $schoolYear = SchoolYear::actual();
 
-        $grupos = Grupo::with(['grado', 'seccion', 'tutor'])
+        $grupos = Grupo::with(['grado', 'seccion', 'tutor', 'schoolYear'])
             ->withCount(['matriculas' => fn ($q) => $q->where('estado', 'activa')])
             ->when(SchoolYear::actual(), fn ($q, $y) => $q->where('school_year_id', $y->id))
             ->orderBy('grado_id')
@@ -539,7 +539,7 @@ class GrupoController extends Controller
     {
         $schoolYear = SchoolYear::actual();
 
-        $grupos = Grupo::with(['grado', 'seccion', 'tutor'])
+        $grupos = Grupo::with(['grado', 'seccion', 'tutor', 'schoolYear'])
             ->withCount(['matriculas' => fn ($q) => $q->where('estado', 'activa')])
             ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
             ->orderBy('grado_id')
@@ -601,7 +601,7 @@ class GrupoController extends Controller
     {
         $schoolYear = SchoolYear::actual();
 
-        $grupos = Grupo::with(['grado', 'seccion', 'tutor'])
+        $grupos = Grupo::with(['grado', 'seccion', 'tutor', 'schoolYear'])
             ->withCount(['matriculas' => fn ($q) => $q->where('estado', 'activa')])
             ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
             ->orderBy('grado_id')

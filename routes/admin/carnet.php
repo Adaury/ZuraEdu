@@ -11,10 +11,7 @@ Route::prefix('carnet')->name('carnet.')->middleware('can:ver-servicios')->group
     // Index + acciones CRUD
     Route::get('/',                           [CarnetController::class, 'index'])->name('index');
     Route::post('/generar-masivo',            [CarnetController::class, 'generarMasivo'])->name('generar-masivo');
-    Route::get('/{carnet}/pdf',               [CarnetController::class, 'pdf'])->name('pdf');
     Route::get('/pdf-grupo',                  [CarnetController::class, 'pdfGrupo'])->name('pdf-grupo');
-    Route::patch('/{carnet}/suspender',       [CarnetController::class, 'suspender'])->name('suspender');
-    Route::delete('/{carnet}',                [CarnetController::class, 'destroy'])->name('destroy');
 
     // Kiosco / Check-in
     Route::get('/checkin',                    [CarnetCheckinController::class, 'kiosko'])->name('checkin');
@@ -34,4 +31,12 @@ Route::prefix('carnet')->name('carnet.')->middleware('can:ver-servicios')->group
     Route::post('/zonas',                     [CarnetController::class, 'zonaStore'])->name('zonas.store');
     Route::patch('/zonas/{zona}/toggle',      [CarnetController::class, 'zonaToggle'])->name('zonas.toggle');
     Route::delete('/zonas/{zona}',            [CarnetController::class, 'zonaDestroy'])->name('zonas.destroy');
+
+    // Rutas dinámicas por {carnet} — deben ir al final: si van antes que las
+    // estáticas de arriba (ej. /historial/pdf), Laravel captura "historial"
+    // como {carnet} y da 404 (ModelNotFoundException) en vez de resolver la
+    // ruta estática.
+    Route::get('/{carnet}/pdf',               [CarnetController::class, 'pdf'])->name('pdf');
+    Route::patch('/{carnet}/suspender',       [CarnetController::class, 'suspender'])->name('suspender');
+    Route::delete('/{carnet}',                [CarnetController::class, 'destroy'])->name('destroy');
 });

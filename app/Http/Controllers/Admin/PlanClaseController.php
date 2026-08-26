@@ -45,7 +45,7 @@ class PlanClaseController extends Controller
         $user        = Auth::user();
 
         // Get academic asignaciones
-        $asignaciones = Asignacion::with(['asignatura', 'grupo'])
+        $asignaciones = Asignacion::with(['asignatura', 'grupo.grado', 'grupo.seccion'])
             ->where('school_year_id', $schoolYear?->id)
             ->where('activo', true)
             ->when($user->tieneRolDocente(), function ($q) use ($user) {

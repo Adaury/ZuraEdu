@@ -198,7 +198,7 @@
 
         // Agrupar por ciclo → grupo → asignaciones, ordenando por nivel de grado
         $byCiclo = $asignaciones
-            ->sortBy(fn($a) => $a->grupo?->grado?->nivel ?? 99)
+            ->sortBy(fn($a) => $a->grupo?->grado?->orden ?? 99)
             ->groupBy(fn($a) => $a->grupo?->grado?->ciclo ?? 'primer_ciclo');
 
         $cicloConfig = [

@@ -50,7 +50,7 @@ class DocenteSetupController extends Controller
             ->where('school_year_id', $schoolYear->id)
             ->where('activo', true)
             ->get()
-            ->sortBy(fn ($g) => $g->grado->nivel);
+            ->sortBy(fn ($g) => $g->grado->orden);
 
         $asignaturas = Asignatura::where('activo', true)
             ->orderBy('area')
@@ -62,7 +62,7 @@ class DocenteSetupController extends Controller
             ->where('school_year_id', $schoolYear->id)
             ->where('activo', true)
             ->get()
-            ->sortBy(fn ($g) => $g->grado->nivel);
+            ->sortBy(fn ($g) => $g->grado->orden);
 
         // Detectar si ya es maestro guía de algún grupo
         $tutor_user_id = $docente?->user_id ?? auth()->id();

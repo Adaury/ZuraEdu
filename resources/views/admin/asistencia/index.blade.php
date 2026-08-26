@@ -122,7 +122,7 @@
         <span class="text-muted" style="font-size:.78rem;">{{ $asigsCiclo->count() }} asignaciones</span>
     </div>
 
-    @foreach($asigsCiclo->sortBy(fn($a) => optional(optional($a->grupo)->grado)->nivel . optional(optional($a->grupo)->seccion)->nombre . optional($a->asignatura)->nombre) as $a)
+    @foreach($asigsCiclo->sortBy(fn($a) => optional(optional($a->grupo)->grado)->orden . optional(optional($a->grupo)->seccion)->nombre . optional($a->asignatura)->nombre) as $a)
     <div class="asig-row-card asig-item"
          data-texto="{{ strtolower(optional($a->asignatura)->nombre . ' ' . optional($a->grupo)->nombre_completo . ' ' . optional($a->docente)->nombre_completo . ' ' . ($a->area ?? '')) }}">
         <div class="d-flex flex-wrap align-items-center gap-3">

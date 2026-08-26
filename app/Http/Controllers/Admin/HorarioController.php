@@ -229,7 +229,7 @@ class HorarioController extends Controller
                 ->pluck('asignacion.grupo')
                 ->filter()
                 ->unique('id')
-                ->sortBy(fn ($g) => sprintf('%03d-%s', $g->grado?->nivel ?? 0, $g->nombre_completo ?? ''));
+                ->sortBy(fn ($g) => sprintf('%03d-%s', $g->grado?->orden ?? 0, $g->nombre_completo ?? ''));
 
             foreach ($detalles as $d) {
                 $grupoId = $d->asignacion?->grupo_id;
@@ -269,7 +269,7 @@ class HorarioController extends Controller
             ->get();
 
         $grupos = $detalles->pluck('asignacion.grupo')->filter()->unique('id')
-            ->sortBy(fn($g) => sprintf('%03d-%s', $g->grado?->nivel ?? 0, $g->nombre_completo ?? ''));
+            ->sortBy(fn($g) => sprintf('%03d-%s', $g->grado?->orden ?? 0, $g->nombre_completo ?? ''));
 
         foreach ($detalles as $d) {
             $grupoId = $d->asignacion?->grupo_id;
@@ -309,7 +309,7 @@ class HorarioController extends Controller
             ->get();
 
         $grupos = $detalles->pluck('asignacion.grupo')->filter()->unique('id')
-            ->sortBy(fn($g) => sprintf('%03d-%s', $g->grado?->nivel ?? 0, $g->nombre_completo ?? ''));
+            ->sortBy(fn($g) => sprintf('%03d-%s', $g->grado?->orden ?? 0, $g->nombre_completo ?? ''));
 
         foreach ($detalles as $d) {
             $grupoId = $d->asignacion?->grupo_id;

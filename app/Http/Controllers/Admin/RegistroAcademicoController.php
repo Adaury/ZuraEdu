@@ -61,7 +61,7 @@ class RegistroAcademicoController extends Controller
             ->where('matriculas.estado', 'activa')
             ->when($schoolYear, fn($q) => $q->where('matriculas.school_year_id', $schoolYear->id))
             ->groupBy('grados.id', 'grados.nombre', 'grados.nivel')
-            ->orderBy('grados.nivel')
+            ->orderBy('grados.orden')
             ->get();
 
         $sinGrupo = Estudiante::where('estado', 'activo')
@@ -271,7 +271,7 @@ class RegistroAcademicoController extends Controller
             ->join('estudiantes', 'estudiantes.id', '=', 'matriculas.estudiante_id')
             ->when($schoolYear, fn($q) => $q->where('matriculas.school_year_id', $schoolYear->id))
             ->groupBy('grados.id', 'grados.nombre', 'grados.nivel', 'secciones.nombre', 'grupos.id')
-            ->orderBy('grados.nivel')
+            ->orderBy('grados.orden')
             ->orderBy('secciones.nombre')
             ->get()
             ->groupBy('grado');
@@ -313,7 +313,7 @@ class RegistroAcademicoController extends Controller
             ->join('estudiantes', 'estudiantes.id', '=', 'matriculas.estudiante_id')
             ->when($schoolYear, fn($q) => $q->where('matriculas.school_year_id', $schoolYear->id))
             ->groupBy('grados.id', 'grados.nombre', 'grados.nivel', 'secciones.nombre', 'grupos.id')
-            ->orderBy('grados.nivel')
+            ->orderBy('grados.orden')
             ->orderBy('secciones.nombre')
             ->get()
             ->groupBy('grado');
@@ -362,7 +362,7 @@ class RegistroAcademicoController extends Controller
             ->join('estudiantes', 'estudiantes.id', '=', 'matriculas.estudiante_id')
             ->when($schoolYear, fn($q) => $q->where('matriculas.school_year_id', $schoolYear->id))
             ->groupBy('grados.id', 'grados.nombre', 'grados.nivel', 'secciones.nombre', 'grupos.id')
-            ->orderBy('grados.nivel')
+            ->orderBy('grados.orden')
             ->orderBy('secciones.nombre')
             ->get();
 

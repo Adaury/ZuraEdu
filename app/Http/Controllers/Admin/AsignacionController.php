@@ -19,7 +19,7 @@ class AsignacionController extends Controller
         $asignaciones = Asignacion::with(['docente', 'grupo.grado', 'grupo.seccion', 'asignatura'])
             ->where('school_year_id', $schoolYear?->id)
             ->get()
-            ->sortBy(fn ($a) => $a->grupo->grado->nivel . $a->grupo->seccion->nombre . $a->asignatura->nombre);
+            ->sortBy(fn ($a) => $a->grupo->grado->orden . $a->grupo->seccion->nombre . $a->asignatura->nombre);
 
         return view('admin.asignaciones.index', compact('asignaciones', 'schoolYear'));
     }
@@ -181,7 +181,7 @@ class AsignacionController extends Controller
         $asignaciones = Asignacion::with(['docente', 'grupo.grado', 'grupo.seccion', 'asignatura'])
             ->where('school_year_id', $sy?->id)
             ->get()
-            ->sortBy(fn($a) => ($a->grupo->grado->nivel ?? 0) . ($a->grupo->seccion->nombre ?? '') . ($a->asignatura->nombre ?? ''));
+            ->sortBy(fn($a) => ($a->grupo->grado->orden ?? 0) . ($a->grupo->seccion->nombre ?? '') . ($a->asignatura->nombre ?? ''));
 
         $ss    = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $ss->getActiveSheet();
@@ -244,7 +244,7 @@ class AsignacionController extends Controller
         $asignaciones = \App\Models\Asignacion::with(['docente', 'grupo.grado', 'grupo.seccion', 'asignatura'])
             ->where('school_year_id', $sy?->id)
             ->get()
-            ->sortBy(fn($a) => ($a->grupo?->grado?->nivel ?? 0) . ($a->grupo?->seccion?->nombre ?? '') . ($a->asignatura?->nombre ?? ''));
+            ->sortBy(fn($a) => ($a->grupo?->grado?->orden ?? 0) . ($a->grupo?->seccion?->nombre ?? '') . ($a->asignatura?->nombre ?? ''));
 
         $inst   = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
         $config = $sy ? \App\Models\BoletinConfig::getOrCreate($sy->id) : null;

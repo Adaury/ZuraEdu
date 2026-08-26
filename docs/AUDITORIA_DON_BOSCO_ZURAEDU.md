@@ -8,7 +8,7 @@
 
 # 1. Resumen ejecutivo
 
-De los 31 requerimientos de Don Bosco: **13 🟢 existen y funcionan**, **9 🟡 existen parcialmente**, **4 🟠 existen pero están defectuosos**, **4 🔴 no existen**, **1 ⚫ requiere decisión institucional** (ver tabla completa en la sección final). **Actualización 2026-08-26: las recomendaciones #1, #2 y #3 (ver §16) ya fueron implementadas y verificadas — #22, #7, #15 y #17 pasan de 🟠 a 🟢, quedando 17/9/0/4/1.**
+De los 31 requerimientos de Don Bosco: **13 🟢 existen y funcionan**, **9 🟡 existen parcialmente**, **4 🟠 existen pero están defectuosos**, **4 🔴 no existen**, **1 ⚫ requiere decisión institucional** (ver tabla completa en la sección final). **Actualización 2026-08-26: las recomendaciones #1, #2, #3 y #4 (ver §16) ya fueron implementadas y verificadas — #22, #7, #15, #17 y #1 pasan a 🟢, quedando 18/8/0/4/1.**
 
 **El hallazgo más grave de esta auditoría — ✅ ya corregido:** `CierreAnoController::ejecutar()` (`app/Http/Controllers/Admin/CierreAnoController.php:199-200`) intentaba guardar `matricula.estado = 'promovida'` o `'no_promovida'`, pero la columna `estado` de `matriculas` era un `ENUM('activa','retirada','transferida')` (`database/migrations/2026_03_17_000031_create_matriculas_table.php:18`) que nunca fue ampliado para aceptar esos dos valores, con la conexión MySQL en modo `strict => true` (`config/database.php:59`). El cierre de año escolar no podía persistir el resultado de la promoción de un estudiante sin fallar o corromper el dato — esto explicaba buena parte de las matrículas "sucias" que Don Bosco reporta al cruzar años. **Resuelto con la migración aditiva `2026_08_26_000001_add_promocion_states_to_matriculas_enum.php`** (ver actualización al final de §5).
 
@@ -145,7 +145,9 @@ Tercero: la corrección de orden curricular de la sesión anterior (`Grado::scop
 
 ---
 
-## ✅ Actualización — Recomendaciones críticas 1, 2 y 3 implementadas (2026-08-26)
+## ✅ Actualización — Recomendaciones críticas 1, 2, 3 y 4 implementadas (2026-08-26)
+
+**#1 Ordenamiento académico — RESUELTO, con alcance más amplio del reportado.** La recomendación #4 pedía corregir los 6/7 sitios con `orderBy('grados.nivel')` a nivel SQL — hecho en `EstudianteController.php` (2 sitios), `ImportacionController.php` (1) y `RegistroAcademicoController.php` (4). Pero una búsqueda del mismo patrón a nivel de PHP (`sortBy` con `->grado->nivel`, que la auditoría original no cubrió por buscar solo el patrón SQL) encontró **~18 ocurrencias más en 8 archivos**: `AsignacionController.php` (3), `DocenteSetupController.php` (2), `HorarioController.php` (3), `RendimientoController.php` (5), y las vistas `admin/asignaciones/index.blade.php`, `admin/asistencia/index.blade.php`, `admin/docente/setup.blade.php`, `admin/estudiantes/import-preview.blade.php` (1 cada una). Con aprobación del usuario, se corrigieron también. Verificado: `Grado::orden` coincide con `nivel` fila por fila en los datos actuales (sin discrepancias ni valores nulos, confirmado consultando los 56 grados reales), así que el cambio no altera ningún orden visible hoy — deja el sistema consistente y a salvo de la regresión latente que describía la auditoría. Probado en navegador: 7 páginas afectadas (wizard de estudiantes, importaciones, registro académico, asignaciones, calificaciones, asistencia, horario) cargan correctamente sin errores nuevos en el log.
 
 **#15/#17 Permiso `imprimir-boletines` — RESUELTO.** Estaba en la tabla `permissions` de Spatie, asignado a roles, listado en `resources/views/admin/ayuda/roles.blade.php:88`, pero sin ningún uso real (`grep` → un solo resultado, la vista que solo lo mostraba). Corregido en `routes/admin/academico.php`: las rutas de impresión/exportación (`boletines.zip`, `boletines.pdf`, `boletines.pdf-anual`) ahora requieren `can:imprimir-boletines` además de `can:ver-boletines`. Verificado en navegador: un rol con solo `ver-boletines` (probado con `Encargado de Área`) ve el boletín pero recibe 403 al intentar imprimir/exportar; un rol con ambos permisos sigue funcionando sin cambios.
 
@@ -263,7 +265,7 @@ Por impacto/riesgo, sin implementar nada todavía:
 1. Migración aditiva para ampliar el ENUM de `matriculas.estado` (agregar `'promovida'`, `'no_promovida'`) — desbloquea el cierre de año real.
 2. Agregar `lockForUpdate()` en los 2 flujos de traslado/matrícula masiva que no lo tienen.
 3. ✅ Separar `imprimir-boletines` del permiso `ver-boletines` a nivel de ruta. (2026-08-26)
-4. Corregir los 6 sitios que ordenan grados por `nivel` en vez de `orden`.
+4. ✅ Corregir los sitios que ordenan grados por `nivel` en vez de `orden`. (2026-08-26 — 7 sitios SQL de la auditoría original + 18 sitios PHP adicionales encontrados al ampliar la búsqueda, con aprobación del usuario)
 5. Extender `TicketSoporte` con SLA y causa raíz (campos aditivos, sin módulo nuevo).
 6. Evaluar mover la carga masiva de calificaciones a un Job en cola si el volumen real de estudiantes de Don Bosco lo justifica.
 7. Crear sección de capacitación dentro de `/admin/ayuda` (extensión, no módulo nuevo).
@@ -279,7 +281,7 @@ Crítica: 1, 2 (recomendaciones). Alta: 3, 4, 8. Media: 5, 6. Baja: 7.
 
 | # | Requerimiento | Estado | Ya existía | Ubicación | Falta | Prioridad |
 |---|---|---|---|---|---|---|
-| 1 | Ordenamiento académico | 🟡 Parcial | Sí | `Grado.php`, 30+ controllers | Corregir 6 sitios con `orderBy('nivel')` | Alta |
+| 1 | Ordenamiento académico | 🟢 Completo ✅ 2026-08-26 | Sí | `Grado.php`, 30+ controllers, todos por `orden` | — | — |
 | 2 | Nivel | 🟡 Parcial | Sí (como enum `ciclo`) | `Grado.php` | Normalizar relación nivel↔ciclo | Baja |
 | 3 | Grado | 🟢 Completo | Sí | `grados` table + modelo | — | — |
 | 4 | Sección | 🟢 Completo | Sí | `secciones` table + modelo | — | — |

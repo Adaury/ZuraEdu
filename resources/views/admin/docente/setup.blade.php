@@ -307,7 +307,7 @@
                 </label>
                 <select name="grupo_guia_id" class="form-select" style="max-width:320px;">
                     <option value="">— Seleccionar grupo —</option>
-                    @forelse(($todosGrupos ?? collect())->sortBy(fn($g) => $g->grado->nivel) as $g)
+                    @forelse(($todosGrupos ?? collect())->sortBy(fn($g) => $g->grado->orden) as $g)
                         <option value="{{ $g->id }}" {{ $grupoGuiaSel == $g->id ? 'selected' : '' }}>
                             {{ $g->nombre_completo }}
                         </option>

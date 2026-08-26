@@ -256,7 +256,7 @@
                     @else
                         @php
                             $gruposOrdenados = ($gruposExistentes ?? collect())
-                                ->sortBy(fn($g) => ($g->grado->nivel ?? 99) . ($g->seccion->nombre ?? ''));
+                                ->sortBy(fn($g) => ($g->grado->orden ?? 99) . ($g->seccion->nombre ?? ''));
                         @endphp
                         <div class="grupo-bar warn" style="flex-direction:column;align-items:flex-start;gap:.65rem;">
                             <div class="d-flex align-items-center gap-2">

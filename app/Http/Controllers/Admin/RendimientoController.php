@@ -36,7 +36,7 @@ class RendimientoController extends Controller
                               fn($q) => $q->whereNull('periodo_id'))
             ->with(['grupo.grado', 'grupo.seccion'])
             ->get()
-            ->sortBy('grupo.grado.nivel');
+            ->sortBy('grupo.grado.orden');
 
         // KPIs institucionales
         $promedioInstitucional = $cacheData->avg('promedio_grupo');
@@ -61,7 +61,7 @@ class RendimientoController extends Controller
                                   fn($q) => $q->whereNull('periodo_id'))
                 ->with(['grupo.grado', 'grupo.seccion'])
                 ->get()
-                ->sortBy('grupo.grado.nivel');
+                ->sortBy('grupo.grado.orden');
             $promedioInstitucional = $cacheData->avg('promedio_grupo');
             $totalRiesgo           = $cacheData->sum('total_riesgo');
             $totalEstudiantes      = $cacheData->sum('total_estudiantes');
@@ -1124,7 +1124,7 @@ class RendimientoController extends Controller
                               fn($q) => $q->whereNull('periodo_id'))
             ->with(['grupo.grado', 'grupo.seccion'])
             ->get()
-            ->sortBy('grupo.grado.nivel');
+            ->sortBy('grupo.grado.orden');
 
         if ($cacheData->isEmpty()) {
             $grupos = Grupo::where('school_year_id', $schoolYear->id)->where('activo', true)->get();
@@ -1135,7 +1135,7 @@ class RendimientoController extends Controller
                 ->when($periodoId, fn($q) => $q->where('periodo_id', $periodoId),
                                   fn($q) => $q->whereNull('periodo_id'))
                 ->with(['grupo.grado', 'grupo.seccion'])
-                ->get()->sortBy('grupo.grado.nivel');
+                ->get()->sortBy('grupo.grado.orden');
         }
 
         $promedioInst = $cacheData->avg('promedio_grupo');
@@ -1168,7 +1168,7 @@ class RendimientoController extends Controller
             ->when($periodoId, fn($q) => $q->where('periodo_id', $periodoId),
                               fn($q) => $q->whereNull('periodo_id'))
             ->with(['grupo.grado', 'grupo.seccion'])
-            ->get()->sortBy('grupo.grado.nivel');
+            ->get()->sortBy('grupo.grado.orden');
 
         if ($cacheData->isEmpty()) {
             $grupos = Grupo::where('school_year_id', $schoolYear->id)->where('activo', true)->get();
@@ -1178,7 +1178,7 @@ class RendimientoController extends Controller
             $cacheData = RendimientoCache::where('school_year_id', $schoolYear->id)
                 ->when($periodoId, fn($q) => $q->where('periodo_id', $periodoId),
                                   fn($q) => $q->whereNull('periodo_id'))
-                ->with(['grupo.grado', 'grupo.seccion'])->get()->sortBy('grupo.grado.nivel');
+                ->with(['grupo.grado', 'grupo.seccion'])->get()->sortBy('grupo.grado.orden');
         }
 
         $ss    = new Spreadsheet();

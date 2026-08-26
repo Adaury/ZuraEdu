@@ -318,7 +318,7 @@ class ImportacionController extends Controller
             ->join('grados',    'grados.id',    '=', 'grupos.grado_id')
             ->join('secciones', 'secciones.id', '=', 'grupos.seccion_id')
             ->when($schoolYear, fn($q) => $q->where('grupos.school_year_id', $schoolYear->id))
-            ->orderBy('grados.nivel')
+            ->orderBy('grados.orden')
             ->orderBy('secciones.nombre')
             ->select('grupos.*')
             ->get();

@@ -68,6 +68,20 @@
         </div>
     @endif
 
+    {{-- SLA vencido --}}
+    @if($vencidos > 0)
+        <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700
+                    text-red-800 dark:text-red-300 rounded-lg px-4 py-3 text-sm flex items-center gap-2">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span><strong>{{ $vencidos }}</strong> ticket{{ $vencidos !== 1 ? 's' : '' }} {{ $vencidos !== 1 ? 'superaron' : 'superó' }} el tiempo de respuesta esperado (SLA).</span>
+            <a href="{{ route('admin.soporte.index') }}"
+               class="ml-1 underline font-semibold hover:no-underline">Revisar</a>
+        </div>
+    @endif
+
     {{-- Tarjetas de estado --}}
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
 

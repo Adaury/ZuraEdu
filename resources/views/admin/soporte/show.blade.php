@@ -193,6 +193,18 @@
                         <span class="badge-prioridad {{ $soporte->color_prioridad }}">{{ $soporte->prioridad_nombre }}</span>
                     </dd>
 
+                    @if($soporte->sla_estado_nombre)
+                    <dt class="col-5 text-muted">SLA</dt>
+                    <dd class="col-7 mb-0">
+                        <span class="badge-estado {{ $soporte->sla_estado_color }}">{{ $soporte->sla_estado_nombre }}</span>
+                        @if(!in_array($soporte->estado, ['resuelto', 'cerrado']))
+                        <div class="text-muted mt-1" style="font-size:.68rem;">
+                            Vence: {{ $soporte->sla_vencimiento_at->format('d/m/Y H:i') }}
+                        </div>
+                        @endif
+                    </dd>
+                    @endif
+
                     <dt class="col-5 text-muted">Categoría</dt>
                     <dd class="col-7 mb-0">{{ $soporte->categoria_nombre }}</dd>
 
@@ -211,6 +223,18 @@
             </div>
         </div>
 
+        {{-- Causa raíz (si ya se registró al cerrar) --}}
+        @if($soporte->causa_raiz)
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white border-bottom py-2">
+                <span class="fw-semibold small"><i class="bi bi-search me-1"></i>Causa raíz</span>
+            </div>
+            <div class="card-body p-3">
+                <p class="mb-0 small" style="white-space:pre-wrap;">{{ $soporte->causa_raiz }}</p>
+            </div>
+        </div>
+        @endif
+
         {{-- Cambiar estado (admin o solicitante cerrando resuelto) --}}
         @php
             $puedeAdmin  = $esAdmin;
@@ -225,13 +249,22 @@
                 <form action="{{ route('admin.soporte.estado', $soporte) }}" method="POST">
                     @csrf
                     @method('PATCH')
-                    <select name="estado" class="form-select form-select-sm mb-2">
+                    <select name="estado" id="selectEstadoTicket" class="form-select form-select-sm mb-2"
+                            onchange="document.getElementById('campoCausaRaiz')?.classList.toggle('d-none', this.value !== 'cerrado')">
                         @foreach($estados as $val => $label)
                         @if($puedeAdmin || $val === 'cerrado')
                         <option value="{{ $val }}" {{ $soporte->estado === $val ? 'selected' : '' }}>{{ $label }}</option>
                         @endif
                         @endforeach
                     </select>
+                    @if($puedeAdmin)
+                    <div id="campoCausaRaiz" class="mb-2 {{ $soporte->estado === 'cerrado' ? '' : 'd-none' }}">
+                        <label class="form-label small fw-semibold mb-1">Causa raíz <span class="text-muted fw-normal">(opcional, al cerrar)</span></label>
+                        <textarea name="causa_raiz" rows="3" maxlength="2000"
+                                  class="form-control form-control-sm"
+                                  placeholder="¿Qué originó el problema? Ayuda a detectar patrones en reportes futuros.">{{ old('causa_raiz', $soporte->causa_raiz) }}</textarea>
+                    </div>
+                    @endif
                     <button type="submit" class="btn btn-sm btn-outline-primary w-100">
                         <i class="bi bi-check2 me-1"></i>Actualizar estado
                     </button>

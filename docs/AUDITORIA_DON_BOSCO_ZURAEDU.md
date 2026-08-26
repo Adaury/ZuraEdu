@@ -8,7 +8,7 @@
 
 # 1. Resumen ejecutivo
 
-De los 31 requerimientos de Don Bosco: **13 🟢 existen y funcionan**, **9 🟡 existen parcialmente**, **4 🟠 existen pero están defectuosos**, **4 🔴 no existen**, **1 ⚫ requiere decisión institucional** (ver tabla completa en la sección final). **Actualización 2026-08-26: las recomendaciones #1, #2, #3 y #4 (ver §16) ya fueron implementadas y verificadas — #22, #7, #15, #17 y #1 pasan a 🟢, quedando 18/8/0/4/1.**
+De los 31 requerimientos de Don Bosco: **13 🟢 existen y funcionan**, **9 🟡 existen parcialmente**, **4 🟠 existen pero están defectuosos**, **4 🔴 no existen**, **1 ⚫ requiere decisión institucional** (ver tabla completa en la sección final). **Actualización 2026-08-26: las recomendaciones #1 a #5 (ver §16) ya fueron implementadas y verificadas — #22, #7, #15, #17, #1, #26 y #29 pasan a 🟢, quedando 20/8/0/2/1.**
 
 **El hallazgo más grave de esta auditoría — ✅ ya corregido:** `CierreAnoController::ejecutar()` (`app/Http/Controllers/Admin/CierreAnoController.php:199-200`) intentaba guardar `matricula.estado = 'promovida'` o `'no_promovida'`, pero la columna `estado` de `matriculas` era un `ENUM('activa','retirada','transferida')` (`database/migrations/2026_03_17_000031_create_matriculas_table.php:18`) que nunca fue ampliado para aceptar esos dos valores, con la conexión MySQL en modo `strict => true` (`config/database.php:59`). El cierre de año escolar no podía persistir el resultado de la promoción de un estudiante sin fallar o corromper el dato — esto explicaba buena parte de las matrículas "sucias" que Don Bosco reporta al cruzar años. **Resuelto con la migración aditiva `2026_08_26_000001_add_promocion_states_to_matriculas_enum.php`** (ver actualización al final de §5).
 
@@ -151,6 +151,13 @@ Tercero: la corrección de orden curricular de la sesión anterior (`Grado::scop
 
 **#15/#17 Permiso `imprimir-boletines` — RESUELTO.** Estaba en la tabla `permissions` de Spatie, asignado a roles, listado en `resources/views/admin/ayuda/roles.blade.php:88`, pero sin ningún uso real (`grep` → un solo resultado, la vista que solo lo mostraba). Corregido en `routes/admin/academico.php`: las rutas de impresión/exportación (`boletines.zip`, `boletines.pdf`, `boletines.pdf-anual`) ahora requieren `can:imprimir-boletines` además de `can:ver-boletines`. Verificado en navegador: un rol con solo `ver-boletines` (probado con `Encargado de Área`) ve el boletín pero recibe 403 al intentar imprimir/exportar; un rol con ambos permisos sigue funcionando sin cambios.
 
+**#26/#29 SLA y causa raíz — RESUELTO.** Extensión aditiva de `tickets_soporte` (nombre real de la tabla; el documento original decía `ticket_soportes` por error), sin módulo ni tabla nueva:
+- Migración `2026_08_26_000002_add_sla_causa_raiz_to_tickets_soporte.php`: columnas `sla_vencimiento_at` (timestamp), `sla_incumplido` (boolean, se fija de forma permanente la primera vez que el ticket pasa a "resuelto" — deja rastro histórico aunque se reabra después), `causa_raiz` (texto).
+- `TicketSoporte::SLA_HORAS` (baja=72h, media=48h, alta=24h, urgente=4h — valores por defecto, no configurables por institución todavía, fuera del alcance de "campos aditivos"); se calcula automáticamente al crear el ticket vía `booted()::creating`.
+- Accessor `sla_estado` (vencido/por_vencer/a_tiempo mientras está abierto; cumplido/incumplido una vez resuelto) con sus labels/colores, usado en `admin.soporte.index` (columna nueva), `admin.soporte.show` (badge + fecha de vencimiento) y `admin.soporte.dashboard` (alerta roja de "N tickets vencieron el SLA", mismo patrón que la alerta ya existente de "sin asignar").
+- `causa_raiz`: editable solo por `esAdmin()` y solo cuando el estado pasa a `'cerrado'` (textarea que aparece/desaparece según el select, con JS mínimo inline); se muestra en un panel dedicado del ticket una vez registrada.
+- Verificado con datos reales: ciclo completo (crear con prioridad urgente → forzar vencimiento → resolver tarde → cerrar con causa raíz) en una transacción revertida, confirmando `sla_vencimiento_at`, `sla_estado` y `sla_incumplido` en cada paso; las 3 vistas probadas en navegador real con capturas (dashboard, listado, detalle, y el campo de causa raíz apareciendo al seleccionar "Cerrado").
+
 **Regresión encontrada y corregida de paso:** al probar el split se descubrió que `BoletinPolicy::ver()` (activada en la sesión de RBAC previa) restringía el acceso a solo `Administrador`/`Director` hardcodeados, bloqueando con 403 a Coordinadores, Secretaría, Personal Administrativo, Encargado de Área y Registrador Académico — todos roles que sí tienen `ver-boletines` en la BD y antes funcionaban vía la lógica inline que la Policy reemplazó. Corregido: cualquier usuario no-docente con `ver-boletines` ahora tiene acceso (los docentes mantienen su scoping por asignación). Ver detalle completo en `docs/MATRIZ_PERMISOS_ZURAEDU.md`.
 
 **#22 Estados de matrícula — RESUELTO.** El ENUM de `matriculas.estado` se amplió vía migración aditiva `database/migrations/2026_08_26_000001_add_promocion_states_to_matriculas_enum.php` (`ALTER TABLE matriculas MODIFY COLUMN estado ENUM('activa','retirada','transferida','promovida','no_promovida')`). No se tocó ninguna fila existente — solo se agregaron los 2 valores que faltaban. Verificado end-to-end: `Matricula::estado = 'promovida'`/`'no_promovida'` se guarda correctamente (probado en una transacción revertida, sin persistir datos). `CierreAnoController` ya puede escribir el resultado real del cierre de año.
@@ -266,7 +273,7 @@ Por impacto/riesgo, sin implementar nada todavía:
 2. Agregar `lockForUpdate()` en los 2 flujos de traslado/matrícula masiva que no lo tienen.
 3. ✅ Separar `imprimir-boletines` del permiso `ver-boletines` a nivel de ruta. (2026-08-26)
 4. ✅ Corregir los sitios que ordenan grados por `nivel` en vez de `orden`. (2026-08-26 — 7 sitios SQL de la auditoría original + 18 sitios PHP adicionales encontrados al ampliar la búsqueda, con aprobación del usuario)
-5. Extender `TicketSoporte` con SLA y causa raíz (campos aditivos, sin módulo nuevo).
+5. ✅ Extender `TicketSoporte` con SLA y causa raíz (campos aditivos, sin módulo nuevo). (2026-08-26)
 6. Evaluar mover la carga masiva de calificaciones a un Job en cola si el volumen real de estudiantes de Don Bosco lo justifica.
 7. Crear sección de capacitación dentro de `/admin/ayuda` (extensión, no módulo nuevo).
 8. Escribir al menos un test de regresión para el cierre de año antes de tocar el ENUM de estados (para no repetir el patrón de "corregir sin poder verificar").
@@ -306,9 +313,9 @@ Crítica: 1, 2 (recomendaciones). Alta: 3, 4, 8. Media: 5, 6. Baja: 7.
 | 23 | Períodos lectivos | 🟢 Completo | Sí | `app/Models/Periodo.php` | — | — |
 | 24 | Meses/períodos (nómina) | 🟢 Completo | Sí | `PagoNomina` usa mes calendario `'YYYY-MM'`, separado de `Periodo` académico — separación correcta, no es un conflicto | — | — |
 | 25 | Saldos financieros | 🟡 Parcial | Sí (por módulo) | `mi-saldo-cafeteria`, `PagoController` | Sin saldo consolidado único por estudiante | Baja |
-| 26 | SLA | 🔴 No existe | No | — | Crear campos en `TicketSoporte` | Media |
+| 26 | SLA | 🟢 Completo ✅ 2026-08-26 | No | `TicketSoporte::SLA_HORAS`, migración `2026_08_26_000002` | — | — |
 | 27 | Mesa de ayuda | 🟢 Completo | Sí | `TicketController.php`, `routes/admin/soporte.php` | — | — |
 | 28 | Tickets | 🟢 Completo | Sí | mismo módulo que #27 | — | — |
-| 29 | Causa raíz | 🔴 No existe | No | — | Campo `causa_raiz` en `TicketSoporte` | Baja |
+| 29 | Causa raíz | 🟢 Completo ✅ 2026-08-26 | No | Campo `causa_raiz` en `tickets_soporte` | — | — |
 | 30 | Documentación | 🟡 Parcial | Sí | `/admin/ayuda/*`, `docs/*.md` | README mínimo, sin docs de usuario final | Baja |
 | 31 | Capacitación | 🔴 No existe | No | — | Sección nueva en `/admin/ayuda` | Baja |

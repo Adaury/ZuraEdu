@@ -66,13 +66,15 @@ class TicketController extends Controller
                 ->count()
             : 0;
 
+        $vencidos = ($base)()->vencidos()->count();
+
         $agentes = $esAdmin ? User::role(['Administrador', 'Director', 'Coordinador Académico'])->get() : collect();
 
         return view('admin.soporte.dashboard', compact(
             'esAdmin', 'total',
             'totalAbiertos', 'totalEnProceso', 'totalResueltos', 'totalCerrados',
             'porCategoria', 'porPrioridad',
-            'urgentes', 'recientes', 'sinAsignar', 'agentes'
+            'urgentes', 'recientes', 'sinAsignar', 'vencidos', 'agentes'
         ));
     }
 
@@ -245,10 +247,25 @@ class TicketController extends Controller
         }
 
         $request->validate([
-            'estado' => 'required|in:abierto,en_proceso,resuelto,cerrado',
+            'estado'     => 'required|in:abierto,en_proceso,resuelto,cerrado',
+            'causa_raiz' => 'nullable|string|max:2000',
         ]);
 
-        $soporte->update(['estado' => $request->estado]);
+        // Primer paso a 'resuelto': fija si se cumplió el SLA (histórico, no se
+        // recalcula si el ticket se reabre y se resuelve de nuevo).
+        if ($request->estado === 'resuelto' && $soporte->estado !== 'resuelto') {
+            $soporte->marcarSlaAlResolver();
+        }
+
+        $datosActualizar = ['estado' => $request->estado];
+
+        // Causa raíz: solo admin puede registrarla, y solo al cerrar el ticket
+        // (recomendación #5 de la auditoría Don Bosco, #29).
+        if ($this->esAdmin() && $request->estado === 'cerrado' && $request->filled('causa_raiz')) {
+            $datosActualizar['causa_raiz'] = $request->causa_raiz;
+        }
+
+        $soporte->update($datosActualizar);
 
         // Notificar al solicitante
         if ($soporte->solicitante_id !== $user->id) {

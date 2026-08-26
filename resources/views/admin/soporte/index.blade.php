@@ -149,6 +149,7 @@
                     <th class="text-muted small fw-semibold">Categoría</th>
                     <th class="text-muted small fw-semibold">Prioridad</th>
                     <th class="text-muted small fw-semibold">Estado</th>
+                    <th class="text-muted small fw-semibold">SLA</th>
                     @if($esAdmin)
                     <th class="text-muted small fw-semibold">Solicitante</th>
                     <th class="text-muted small fw-semibold">Asignado a</th>
@@ -182,6 +183,15 @@
                             {{ $ticket->estado_nombre }}
                         </span>
                     </td>
+                    <td>
+                        @if($ticket->sla_estado_nombre)
+                        <span class="badge-estado {{ $ticket->sla_estado_color }}">
+                            {{ $ticket->sla_estado_nombre }}
+                        </span>
+                        @else
+                        <span class="text-muted small">—</span>
+                        @endif
+                    </td>
                     @if($esAdmin)
                     <td class="small text-muted">{{ $ticket->solicitante?->nombre_completo ?? '—' }}</td>
                     <td class="small text-muted">{{ $ticket->asignadoA?->nombre_completo ?? '—' }}</td>
@@ -195,7 +205,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="{{ $esAdmin ? 9 : 7 }}" class="text-center text-muted py-5">
+                    <td colspan="{{ $esAdmin ? 10 : 8 }}" class="text-center text-muted py-5">
                         <i class="bi bi-inbox fs-2 d-block mb-2 opacity-40"></i>
                         No hay tickets con los filtros aplicados.
                     </td>

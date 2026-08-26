@@ -59,6 +59,7 @@ Route::middleware('can:gestionar-asignaturas')->group(function () {
 Route::middleware('can:ver-calificaciones')->group(function () {
     Route::get('calificaciones',                          [CalificacionController::class,         'index'])->name('calificaciones.index');
     Route::get('calificaciones/import',                   [CalificacionController::class,         'import'])->name('calificaciones.import');
+    Route::get('calificaciones/import/{importacion}',     [CalificacionController::class,         'importEstado'])->name('calificaciones.import.estado');
     Route::get('calificaciones/plantilla/descargar',      [CalificacionController::class,         'downloadTemplate'])->name('calificaciones.plantilla.descargar');
     Route::get('calificaciones/grilla',                   [CalificacionController::class,         'grilla'])->name('calificaciones.grilla');
     Route::get('calificaciones/resumen/excel',             [CalificacionController::class,         'resumenExcel'])->name('calificaciones.resumen.excel');

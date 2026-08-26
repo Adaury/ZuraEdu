@@ -165,6 +165,10 @@ class ImportacionController extends Controller
      * POST /admin/importaciones/calificaciones
      * Procesa el archivo CSV/XLSX y guarda las calificaciones académicas.
      */
+    // En cola desde la recomendación #6 de la auditoría Don Bosco — dispatcha
+    // el mismo Job que CalificacionController::importStore() en vez de tener
+    // su propia copia del procesamiento por fila (evita la duplicación que
+    // señalaba §7 de la auditoría).
     public function calificacionesImportar(Request $request)
     {
         $request->validate([
@@ -172,134 +176,26 @@ class ImportacionController extends Controller
             'asignacion_id' => 'required|exists:asignaciones,id',
         ]);
 
-        $asignacion = Asignacion::with(['asignatura', 'grupo'])->findOrFail($request->asignacion_id);
-        $schoolYear = SchoolYear::actual();
-
-        if (! $schoolYear) {
+        if (! SchoolYear::actual()) {
             return back()->with('error', 'No hay un año escolar activo.');
         }
 
-        // ── Leer filas del archivo ──────────────────────────────────────
-        $rows = $this->leerArchivo($request->file('archivo'));
+        $archivo = $request->file('archivo');
+        $path    = $archivo->store('imports/calificaciones', 'local');
 
-        if ($rows === null) {
-            return back()->with('error', 'No se pudo leer el archivo. Verifica el formato.');
-        }
+        $importacion = \App\Models\ImportacionCalificacion::create([
+            'user_id'          => auth()->id(),
+            'asignacion_id'    => $request->asignacion_id,
+            'periodo_id'       => $request->periodo_id ?: null,
+            'archivo_original' => $archivo->getClientOriginalName(),
+            'archivo_path'     => $path,
+            'estado'           => 'pendiente',
+        ]);
 
-        // Pre-cargar matrículas activas del grupo
-        $matriculasPorNum    = $asignacion->grupo->matriculas()
-            ->activas()->with('estudiante')->get()->keyBy('numero_matricula');
-        $matriculasPorCedula = $matriculasPorNum->groupBy(fn($m) => $m->estudiante->cedula ?? '');
+        \App\Jobs\ImportarCalificacionesJob::dispatch($importacion->id);
 
-        $importados = 0;
-        $omitidos   = 0;
-        $errores    = [];
-        $resultados = [];
-
-        foreach ($rows as $i => $row) {
-            $linea   = $i + 2;
-            $numMat  = trim($row['numero_matricula'] ?? $row['num_matricula'] ?? '');
-            $cedula  = trim($row['cedula'] ?? '');
-
-            $matricula = null;
-            if ($numMat && $matriculasPorNum->has($numMat)) {
-                $matricula = $matriculasPorNum->get($numMat);
-            } elseif ($cedula && $matriculasPorCedula->has($cedula)) {
-                $matricula = $matriculasPorCedula->get($cedula)->first();
-            }
-
-            if (! $matricula) {
-                $errores[]    = "Fila {$linea}: Estudiante no encontrado (matrícula: '{$numMat}', cédula: '{$cedula}').";
-                $resultados[] = ['fila' => $linea, 'estado' => 'error', 'mensaje' => 'Estudiante no encontrado', 'nombre' => "{$numMat}/{$cedula}"];
-                $omitidos++;
-                continue;
-            }
-
-            $nombre = trim(($matricula->estudiante->apellidos ?? '') . ', ' . ($matricula->estudiante->nombres ?? ''));
-
-            // Construir datos de notas (comp1_p1 … comp4_p4)
-            $data        = [];
-            $tieneDatos  = false;
-            $notasValidas = true;
-            $notaErrMsg  = [];
-
-            foreach (['p1','p2','p3','p4'] as $pIdx => $pKey) {
-                $pNum = $pIdx + 1;
-                foreach ([1,2,3,4] as $c) {
-                    // Acepta ambas convenciones: comp1_p1 y p1_comp1
-                    $val = trim(
-                        $row["comp{$c}_{$pKey}"] ??
-                        $row["{$pKey}_comp{$c}"] ??
-                        ''
-                    );
-
-                    if ($val === '' || $val === null) {
-                        continue;
-                    }
-
-                    if (! is_numeric($val)) {
-                        $notasValidas = false;
-                        $notaErrMsg[] = "comp{$c}_p{$pNum}='{$val}' no es numérico";
-                        continue;
-                    }
-
-                    $nota = (float) $val;
-                    if ($nota < 0 || $nota > 100) {
-                        $notasValidas = false;
-                        $notaErrMsg[] = "comp{$c}_p{$pNum}={$nota} fuera de rango [0-100]";
-                        continue;
-                    }
-
-                    $data["comp{$c}_p{$pNum}"] = $nota;
-                    $tieneDatos = true;
-                }
-            }
-
-            if (! empty($notaErrMsg)) {
-                $errores[]    = "Fila {$linea} ({$nombre}): " . implode('; ', $notaErrMsg) . " — valores inválidos omitidos.";
-                $resultados[] = ['fila' => $linea, 'estado' => 'advertencia', 'mensaje' => implode('; ', $notaErrMsg), 'nombre' => $nombre];
-            }
-
-            if (! $tieneDatos) {
-                $errores[]    = "Fila {$linea} ({$nombre}): Sin datos numéricos válidos — fila omitida.";
-                $resultados[] = ['fila' => $linea, 'estado' => 'error', 'mensaje' => 'Sin datos válidos', 'nombre' => $nombre];
-                $omitidos++;
-                continue;
-            }
-
-            try {
-                /** @var CalificacionAcademica $calAcad */
-                $calAcad = CalificacionAcademica::updateOrCreate(
-                    [
-                        'matricula_id'  => $matricula->id,
-                        'asignacion_id' => $asignacion->id,
-                        'school_year_id'=> $schoolYear->id,
-                    ],
-                    array_merge($data, ['modificado_por' => auth()->id()])
-                );
-
-                // Recalcular promedios derivados
-                $calAcad->recalcularPromedios();
-
-                $importados++;
-                $resultados[] = ['fila' => $linea, 'estado' => 'ok', 'mensaje' => 'Importado', 'nombre' => $nombre];
-            } catch (\Throwable $e) {
-                $errores[]    = "Fila {$linea} ({$nombre}): Error al guardar — " . $e->getMessage();
-                $resultados[] = ['fila' => $linea, 'estado' => 'error', 'mensaje' => 'Error al guardar', 'nombre' => $nombre];
-                $omitidos++;
-            }
-        }
-
-        $msg = "Se importaron {$importados} calificación(es) correctamente.";
-        if ($omitidos) {
-            $msg .= " {$omitidos} fila(s) omitida(s).";
-        }
-
-        return back()
-            ->with('success', $msg)
-            ->with('errores_import', $errores)
-            ->with('resultados_import', $resultados)
-            ->with('stats_import', ['importados' => $importados, 'omitidos' => $omitidos, 'total' => count($rows)]);
+        return redirect()->route('admin.calificaciones.import.estado', $importacion)
+            ->with('success', 'Tu archivo se está procesando. Esta página se actualiza sola hasta que termine.');
     }
 
     // ═══════════════════════════════════════════════════════════════════════

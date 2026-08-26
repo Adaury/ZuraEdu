@@ -8,7 +8,7 @@
 
 # 1. Resumen ejecutivo
 
-De los 31 requerimientos de Don Bosco: **13 🟢 existen y funcionan**, **9 🟡 existen parcialmente**, **4 🟠 existen pero están defectuosos**, **4 🔴 no existen**, **1 ⚫ requiere decisión institucional** (ver tabla completa en la sección final). **Actualización 2026-08-26: las recomendaciones #1 a #5 (ver §16) ya fueron implementadas y verificadas — #22, #7, #15, #17, #1, #26 y #29 pasan a 🟢, quedando 20/8/0/2/1.**
+De los 31 requerimientos de Don Bosco: **13 🟢 existen y funcionan**, **9 🟡 existen parcialmente**, **4 🟠 existen pero están defectuosos**, **4 🔴 no existen**, **1 ⚫ requiere decisión institucional** (ver tabla completa en la sección final). **Actualización 2026-08-26: las recomendaciones #1 a #6 (ver §16) ya fueron implementadas y verificadas — #22, #7, #15, #17, #1, #26, #29, #9 y #10 pasan a 🟢, quedando 22/6/0/2/1.**
 
 **El hallazgo más grave de esta auditoría — ✅ ya corregido:** `CierreAnoController::ejecutar()` (`app/Http/Controllers/Admin/CierreAnoController.php:199-200`) intentaba guardar `matricula.estado = 'promovida'` o `'no_promovida'`, pero la columna `estado` de `matriculas` era un `ENUM('activa','retirada','transferida')` (`database/migrations/2026_03_17_000031_create_matriculas_table.php:18`) que nunca fue ampliado para aceptar esos dos valores, con la conexión MySQL en modo `strict => true` (`config/database.php:59`). El cierre de año escolar no podía persistir el resultado de la promoción de un estudiante sin fallar o corromper el dato — esto explicaba buena parte de las matrículas "sucias" que Don Bosco reporta al cruzar años. **Resuelto con la migración aditiva `2026_08_26_000001_add_promocion_states_to_matriculas_enum.php`** (ver actualización al final de §5).
 
@@ -105,14 +105,9 @@ Tercero: la corrección de orden curricular de la sesión anterior (`Grado::scop
 - No hay un "Nivel" como entidad propia (Inicial/Primaria/Secundaria como registro independiente) — es un ENUM de texto dentro de `Grado`. Funciona para filtrar y agrupar (`Grado::scopePrimerCiclo()`, etc.) pero no es una jerarquía normalizada con su propia tabla.
 - **Riesgo si se pide un nivel nuevo o renombrar uno existente:** requiere una migración de ALTER ENUM (ya se hizo una vez, el 2026-05-15, y esa misma migración tuvo que borrar filas `ciclo='inicial'` preexistentes antes de aplicar el ALTER — "Remove any 'inicial' rows first to avoid data-truncation errors", línea 19-20 de esa migración — señal de que el enum es frágil ante cambios).
 
-**#9 Carga masiva de notas — parcial.**
-- Existe en 2 flujos distintos, no unificados: `CalificacionController::import()/importStore()` (`routes/admin/academico.php:57,76`, límite `throttle:10,1`, 10 intentos/minuto) y `ImportacionController` (`routes/admin/importaciones.php`, módulo separado con plantilla descargable).
-- **Qué funciona:** valida columnas, usa `NormalizesFileEncoding`, procesa CSV/XLSX hasta 10MB (`'archivo' => '...max:10240'`, `CalificacionController.php:1228`).
-- **Qué NO funciona / falta:** es **síncrono**, no hay `Job`/cola de por medio — un archivo grande bloquea la petición HTTP hasta terminar (riesgo de timeout con muchos estudiantes × muchas asignaturas). No hay feedback de progreso en tiempo real, solo el resultado final. No hay límite explícito de filas (solo de tamaño de archivo en KB).
+**#9 Carga masiva de notas — ✅ RESUELTO (2026-08-26, recomendación #6).** Ver actualización más abajo.
 
-**#10 Procesamiento batch — parcial.**
-- Sí existen `Jobs` reales con `ShouldQueue`: `app/Jobs/EnviarMensajeCircularJob.php`, `EnviarNotificacionJob.php`, `EnviarWhatsApp.php`, `NotificarPadreAccesoJob.php`, `RecalcularRendimientoJob.php`, `TenantJob.php` — 6 jobs en producción, usados para notificaciones masivas y recálculo de rendimiento académico.
-- **Qué falta:** ningún flujo de importación/carga masiva (calificaciones, estudiantes, nómina) usa colas — todos son síncronos (ver #9). El procesamiento batch existe para notificaciones, no para las cargas de datos pesadas que Don Bosco probablemente tiene en mente.
+**#10 Procesamiento batch — ✅ RESUELTO (2026-08-26, recomendación #6).** Ver actualización más abajo.
 
 **#11 Staging / Sandbox — parcial.**
 - No hay un ambiente de staging separado (`.env` actual: `APP_ENV=local`, sin config de staging documentada).
@@ -168,6 +163,13 @@ Tercero: la corrección de orden curricular de la sesión anterior (`Grado::scop
 
 Mismo patrón ya usado en `MatriculaController::store()`/`InscripcionController`. Verificado funcionalmente: ambos métodos se ejecutaron con datos reales dentro de una transacción revertida (sin persistir), confirmando que el lock no rompe el flujo. Suite completa: 29/29.
 
+**#9/#10 Carga masiva de notas por cola — RESUELTO.** La carga de calificaciones pasó de procesarse de forma síncrona (bloqueando la petición HTTP) a un `Job` en cola (`app/Jobs/ImportarCalificacionesJob.php`, extiende `TenantJob`), con una tabla de tracking nueva (`importaciones_calificaciones`, migración `2026_08_26_000003`) y una página de estado con auto-refresh (`admin.calificaciones.import.estado`):
+- **Unificación (resuelve también el hallazgo de §7):** los 2 flujos existentes — `CalificacionController::importStore()` (academica + técnica/simple) e `ImportacionController::calificacionesImportar()` (solo académica, con `recalcularPromedios()`) — ahora despachan el **mismo** Job en vez de procesar inline cada uno con su propia lógica duplicada. Ambos controladores redirigen a la misma vista de estado compartida, tal como exigía la regla de "un solo lugar, no una tercera vía" del §7.
+- El Job guarda el archivo temporal en `storage/app/imports/calificaciones`, procesa fila por fila (académica: `comp{n}_p{n}` + `recalcularPromedios()`; técnica/simple: `nota_final` por período), acumula contadores (`total_filas`, `importados`, `omitidos`) y un arreglo de `errores` por fila, y borra el archivo temporal al terminar (éxito o fallo, en un `finally`). Al terminar notifica al usuario que lo subió vía `Notificacion::enviar()` (que a su vez encola `EnviarNotificacionJob` si la cola no es síncrona).
+- La vista `import_estado.blade.php` usa `<meta http-equiv="refresh" content="3">` mientras el lote está `pendiente`/`procesando`, y muestra contadores + lista colapsable de errores una vez `completado`, o el mensaje de error si quedó `fallido`.
+- **Bug pre-existente encontrado y corregido de paso:** ambos controladores originales (y por tanto el Job, antes de corregirlo) hacían `->keyBy('numero_matricula')` directamente sobre la colección de `Matricula`, pero `numero_matricula` y `cedula` son columnas de `Estudiante`, no de `Matricula` (confirmado con `Schema::getColumnListing()`). El `keyBy` silenciosamente devolvía siempre una clave vacía — el emparejamiento por número de matrícula nunca funcionó en producción, solo el de cédula (que sí navegaba la relación correctamente) tenía alguna chance de funcionar, y solo si el archivo traía cédula. Corregido a `->keyBy(fn ($m) => $m->estudiante->numero_matricula ?? '')` en el Job, y en `CalificacionController::downloadTemplate()` (3 ocurrencias) que tenía el mismo error al generar la plantilla de ejemplo.
+- Verificado end-to-end con datos reales de un grupo/asignatura existente (committeado y luego revertido manualmente, ya que un Job en cola corre en un proceso aparte y no participa de una transacción de prueba): se dispatchó el Job, se procesó con `queue:work`, se confirmó `estado=completado`, el conteo correcto de importados/omitidos, los mensajes de error esperados (nota fuera de rango, estudiante no encontrado), la actualización real de `CalificacionAcademica` con `recalcularPromedios()` ejecutado, el borrado del archivo temporal, y la notificación al usuario — luego se restauró el valor de nota original y se eliminaron los registros de prueba. La vista de estado se renderizó sin errores en sus 3 estados (`procesando`, `completado`, `fallido`). Suite completa: 29/29.
+
 ---
 
 # 6. Funciones inexistentes (🔴) — propuestas de diseño, sin implementar
@@ -206,7 +208,7 @@ Mismo patrón ya usado en `MatriculaController::store()`/`InscripcionController`
 
 # 7. Funciones duplicadas
 
-- **Carga de calificaciones masiva por 2 rutas distintas** (`CalificacionController::import` vs. `ImportacionController` módulo "calificaciones") — no son estrictamente duplicadas (una es genérica, la otra específica por plantilla), pero **si se implementa la mejora de batch/colas del punto #9-#10, debe hacerse en un solo lugar y el otro debe redirigir/reusar**, no crearse una tercera vía. Ver regla del §6 (Fase 6 del pedido original: mejorar lo existente, no duplicar).
+- **Carga de calificaciones masiva por 2 rutas distintas** (`CalificacionController::import` vs. `ImportacionController` módulo "calificaciones") — ✅ **RESUELTO 2026-08-26 (recomendación #6):** ambas rutas siguen existiendo (una genérica, otra específica por plantilla) pero ahora despachan el mismo `ImportarCalificacionesJob` y redirigen a la misma vista de estado compartida, en vez de duplicar la lógica de procesamiento. Ver actualización en §5.
 - No se encontraron módulos, tablas o rutas verdaderamente duplicadas (mismo propósito, dos implementaciones independientes) más allá de este caso.
 
 ---
@@ -219,7 +221,7 @@ Mismo patrón ya usado en `MatriculaController::store()`/`InscripcionController`
 | UTF-8 | Config/BD | `config/database.php:55-56`, `app/Traits/NormalizesFileEncoding.php` | todas |
 | Concurrencia matrícula | Matrícula | `MatriculaController.php`, `InscripcionController.php`, `CierreAnoController.php`, `SchoolYearController.php` | `matriculas`, `grupos` |
 | Carga masiva notas | Calificaciones | `CalificacionController.php:1225` (import), `ImportacionController.php` | `calificaciones`, `calificaciones_academicas` |
-| Batch/Jobs | Sistema | `app/Jobs/*.php` (6 archivos) | — |
+| Batch/Jobs | Sistema | `app/Jobs/*.php` (7 archivos, incl. `ImportarCalificacionesJob`) | — |
 | Tests | QA | `tests/Feature/*.php`, `tests/Unit/*.php` | — |
 | Boletines | Académico | `BoletinController.php`, `BoletinPolicy.php`, `routes/admin/academico.php:120-138` | `matriculas`, `calificaciones*`, `boletin_config` |
 | Sábanas/Actas | Académico | `CalificacionController.php:740,781` | `calificaciones`, `asignaciones` |
@@ -269,12 +271,12 @@ Académico (grados/secciones/períodos/orden), Matrícula (concurrencia/estados)
 # 16. Recomendaciones
 
 Por impacto/riesgo, sin implementar nada todavía:
-1. Migración aditiva para ampliar el ENUM de `matriculas.estado` (agregar `'promovida'`, `'no_promovida'`) — desbloquea el cierre de año real.
-2. Agregar `lockForUpdate()` en los 2 flujos de traslado/matrícula masiva que no lo tienen.
+1. ✅ Migración aditiva para ampliar el ENUM de `matriculas.estado` (agregar `'promovida'`, `'no_promovida'`) — desbloquea el cierre de año real. (2026-08-26)
+2. ✅ Agregar `lockForUpdate()` en los 2 flujos de traslado/matrícula masiva que no lo tienen. (2026-08-26)
 3. ✅ Separar `imprimir-boletines` del permiso `ver-boletines` a nivel de ruta. (2026-08-26)
 4. ✅ Corregir los sitios que ordenan grados por `nivel` en vez de `orden`. (2026-08-26 — 7 sitios SQL de la auditoría original + 18 sitios PHP adicionales encontrados al ampliar la búsqueda, con aprobación del usuario)
 5. ✅ Extender `TicketSoporte` con SLA y causa raíz (campos aditivos, sin módulo nuevo). (2026-08-26)
-6. Evaluar mover la carga masiva de calificaciones a un Job en cola si el volumen real de estudiantes de Don Bosco lo justifica.
+6. ✅ Mover la carga masiva de calificaciones a un Job en cola, unificando los 2 flujos existentes en uno solo. (2026-08-26)
 7. Crear sección de capacitación dentro de `/admin/ayuda` (extensión, no módulo nuevo).
 8. Escribir al menos un test de regresión para el cierre de año antes de tocar el ENUM de estados (para no repetir el patrón de "corregir sin poder verificar").
 
@@ -296,8 +298,8 @@ Crítica: 1, 2 (recomendaciones). Alta: 3, 4, 8. Media: 5, 6. Baja: 7.
 | 6 | Ñ y tildes | 🟢 Completo | Sí | utf8mb4 + DejaVu Sans en PDFs | — | — |
 | 7 | Concurrencia en matrícula | 🟢 Completo ✅ 2026-08-26 | Sí | `MatriculaController`/`InscripcionController`/`CierreAnoController`/`SchoolYearController`, todos con `lockForUpdate` | — | — |
 | 8 | Optimización de calificaciones | 🟡 Parcial | Sí (general) | Optimizaciones previas de sesión 2026-03-19 | Índice compuesto dedicado a boletín/planilla | Media |
-| 9 | Carga masiva de notas | 🟡 Parcial | Sí, 2 flujos | `CalificacionController.php`, `ImportacionController.php` | Procesamiento por cola, feedback de progreso | Media |
-| 10 | Procesamiento batch | 🟡 Parcial | Sí (6 Jobs) | `app/Jobs/*.php` | Ningún Job cubre cargas masivas de datos | Media |
+| 9 | Carga masiva de notas | 🟢 Completo ✅ 2026-08-26 | Sí, unificado a 1 flujo | `app/Jobs/ImportarCalificacionesJob.php`, `CalificacionController.php`, `ImportacionController.php` | — | — |
+| 10 | Procesamiento batch | 🟢 Completo ✅ 2026-08-26 | Sí (7 Jobs) | `app/Jobs/*.php` | — | — |
 | 11 | Staging / Sandbox | 🟡 Parcial | Sí (DemoMode) | `DemoMode` middleware | Ambiente de staging real separado | Baja |
 | 12 | Pruebas de regresión | 🟡 Parcial | Sí (29 tests) | `tests/` | Cobertura de matrícula/calificaciones/boletines/RBAC | Alta |
 | 13 | Git / control de versiones | 🟢 Completo | Sí | repo `master` + convención de commits | — | — |

@@ -1135,7 +1135,7 @@ class CalificacionController extends Controller
             foreach ($matriculas as $mat) {
                 if ($esTecnica) {
                     $row = [
-                        $mat->numero_matricula ?? '',
+                        $mat->estudiante->numero_matricula ?? '',
                         $mat->estudiante->cedula ?? '',
                         $mat->estudiante->nombres ?? '',
                         $mat->estudiante->apellidos ?? '',
@@ -1145,7 +1145,7 @@ class CalificacionController extends Controller
                     $row[] = '';
                 } elseif ($esAcademica) {
                     $row = [
-                        $mat->numero_matricula ?? '',
+                        $mat->estudiante->numero_matricula ?? '',
                         $mat->estudiante->cedula ?? '',
                         $mat->estudiante->nombres ?? '',
                         $mat->estudiante->apellidos ?? '',
@@ -1153,7 +1153,7 @@ class CalificacionController extends Controller
                     foreach (range(1, 16) as $_) $row[] = '';
                 } else {
                     $row = [
-                        $mat->numero_matricula ?? '',
+                        $mat->estudiante->numero_matricula ?? '',
                         $mat->estudiante->cedula ?? '',
                         $mat->estudiante->nombres ?? '',
                         $mat->estudiante->apellidos ?? '',
@@ -1221,7 +1221,8 @@ class CalificacionController extends Controller
         ]);
     }
 
-    // ── Import: process uploaded file ─────────────────────────────────────
+    // ── Import: process uploaded file (en cola, ver recomendación #6 de la
+    // auditoría Don Bosco — antes procesaba inline y bloqueaba la petición) ──
     public function importStore(Request $request)
     {
         $request->validate([
@@ -1229,124 +1230,36 @@ class CalificacionController extends Controller
             'asignacion_id' => 'required|exists:asignaciones,id',
         ]);
 
-        $asignacion = Asignacion::with(['asignatura', 'grupo'])->findOrFail($request->asignacion_id);
-        $periodoId  = $request->periodo_id ?: null;
+        $asignacion = Asignacion::findOrFail($request->asignacion_id);
         $archivo    = $request->file('archivo');
-        $ext        = strtolower($archivo->getClientOriginalExtension());
+        $path       = $archivo->store('imports/calificaciones', 'local');
 
-        // ── Read rows ────────────────────────────────────────────────────
-        $rows = [];
-        if (in_array($ext, ['xlsx', 'xls'])) {
-            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($archivo->getPathname());
-            $sheet       = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
-            $header      = array_map('strtolower', array_map('trim', $sheet[0] ?? []));
-            foreach (array_slice($sheet, 1) as $r) {
-                $rows[] = array_combine($header, array_pad($r, count($header), null));
-            }
-        } else {
-            $raw      = file_get_contents($archivo->getPathname());
-            $raw = $this->normalizeToUtf8($raw);
-            $lines  = array_filter(explode("\n", str_replace(["\r\n", "\r"], "\n", ltrim($raw, "\xEF\xBB\xBF"))));
-            $lines  = array_values($lines);
-            $delim  = substr_count($lines[0] ?? '', ';') > substr_count($lines[0] ?? '', ',') ? ';' : ',';
-            $header = array_map('strtolower', array_map('trim', str_getcsv($lines[0] ?? '', $delim)));
-            foreach (array_slice($lines, 1) as $line) {
-                if (trim($line) === '') continue;
-                $cols   = str_getcsv($line, $delim);
-                $rows[] = array_combine($header, array_pad($cols, count($header), ''));
-            }
+        $importacion = \App\Models\ImportacionCalificacion::create([
+            'user_id'          => auth()->id(),
+            'asignacion_id'    => $asignacion->id,
+            'periodo_id'       => $request->periodo_id ?: null,
+            'archivo_original' => $archivo->getClientOriginalName(),
+            'archivo_path'     => $path,
+            'estado'           => 'pendiente',
+        ]);
+
+        \App\Jobs\ImportarCalificacionesJob::dispatch($importacion->id);
+
+        return redirect()->route('admin.calificaciones.import.estado', $importacion)
+            ->with('success', 'Tu archivo se está procesando. Esta página se actualiza sola hasta que termine.');
+    }
+
+    // ── Ver el progreso/resultado de un lote de importación ────────────────
+    public function importEstado(\App\Models\ImportacionCalificacion $importacion)
+    {
+        $user = auth()->user();
+        if ($importacion->user_id !== $user->id && ! $user->hasAnyRole(['Administrador', 'Director', 'Coordinador Académico', 'Coordinador Primer Ciclo', 'Coordinador Segundo Ciclo'])) {
+            abort(403);
         }
 
-        // Pre-load all active matriculas for this group
-        $matriculasPorNum    = $asignacion->grupo->matriculas()->activas()->with('estudiante')
-            ->get()->keyBy('numero_matricula');
-        $matriculasPorCedula = $matriculasPorNum->groupBy(fn ($m) => $m->estudiante->cedula ?? '');
+        $importacion->load(['asignacion.asignatura', 'asignacion.grupo.grado', 'asignacion.grupo.seccion', 'periodo']);
 
-        $esAcademica = $asignacion->area === 'academica';
-        $importados  = 0;
-        $omitidos    = 0;
-        $errores     = [];
-
-        // Pre-load periods and school year once outside the row loop
-        $schoolYear      = SchoolYear::actual();
-        $periodosIndexed = Periodo::where('school_year_id', $asignacion->school_year_id)
-            ->orderBy('numero')->get()->keyBy('numero');
-        $periodoFijo     = $periodoId ? Periodo::find($periodoId) : null;
-
-        foreach ($rows as $i => $row) {
-            $linea = $i + 2;
-
-            // Resolve matricula
-            $numMat  = trim($row['numero_matricula'] ?? '');
-            $cedula  = trim($row['cedula'] ?? '');
-            $matricula = null;
-
-            if ($numMat && $matriculasPorNum->has($numMat)) {
-                $matricula = $matriculasPorNum->get($numMat);
-            } elseif ($cedula && $matriculasPorCedula->has($cedula)) {
-                $matricula = $matriculasPorCedula->get($cedula)->first();
-            }
-
-            if (! $matricula) {
-                $errores[] = "Fila {$linea}: Estudiante no encontrado (matrícula: '{$numMat}', cédula: '{$cedula}').";
-                $omitidos++;
-                continue;
-            }
-
-            if ($esAcademica) {
-                // ── Área académica: 4 competencias × 4 períodos ─────────
-                $data = [];
-                foreach (range(1, 4) as $p) {
-                    foreach (range(1, 4) as $c) {
-                        $key = "p{$p}_comp{$c}";
-                        $val = trim($row[$key] ?? '');
-                        if ($val !== '' && is_numeric($val)) {
-                            $data["periodo_{$p}_comp{$c}"] = min(100, max(0, (float) $val));
-                        }
-                    }
-                }
-                if (! empty($data)) {
-                    CalificacionAcademica::updateOrCreate(
-                        ['matricula_id' => $matricula->id, 'asignacion_id' => $asignacion->id, 'school_year_id' => $schoolYear?->id],
-                        $data
-                    );
-                    $importados++;
-                } else {
-                    $omitidos++;
-                }
-            } else {
-                // ── Área técnica / simple: nota_final por período ────────
-                $periodoNum = (int) trim($row['periodo'] ?? $request->periodo_numero ?? 1);
-                $periodo    = $periodoFijo ?? $periodosIndexed->get($periodoNum);
-
-                if (! $periodo) {
-                    $errores[] = "Fila {$linea}: Período {$periodoNum} no encontrado.";
-                    $omitidos++;
-                    continue;
-                }
-
-                $notaFinal = trim($row['nota_final'] ?? '');
-                if ($notaFinal === '' || ! is_numeric($notaFinal)) {
-                    $errores[] = "Fila {$linea}: nota_final '{$notaFinal}' no es válida — fila omitida.";
-                    $omitidos++;
-                    continue;
-                }
-                $notaFinal = min(100, max(0, (float) $notaFinal));
-
-                Calificacion::updateOrCreate(
-                    ['matricula_id' => $matricula->id, 'asignacion_id' => $asignacion->id, 'periodo_id' => $periodo->id],
-                    ['nota_final' => $notaFinal]
-                );
-                $importados++;
-            }
-        }
-
-        $msg = "Se importaron {$importados} nota(s) correctamente.";
-        if ($omitidos) $msg .= " {$omitidos} fila(s) omitida(s).";
-
-        return back()
-            ->with('success', $msg)
-            ->with('errores_import', $errores);
+        return view('admin.calificaciones.import_estado', compact('importacion'));
     }
 
     // ── Auditoría de cambios en calificaciones ────────────────────────────

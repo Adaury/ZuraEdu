@@ -46,7 +46,7 @@
         <div style="font-size:.8rem;color:#64748b;">Backtracking + Heurísticas (MRV, Forward Checking)</div>
     </div>
     <div class="d-flex gap-2">
-        <a href="{{ route('scheduling.configuracion') }}" class="btn btn-outline-secondary btn-sm" style="border-radius:8px;">
+        <a href="{{ route('admin.scheduling.configuracion') }}" class="btn btn-outline-secondary btn-sm" style="border-radius:8px;">
             <i class="bi bi-gear me-1"></i>Configuración
         </a>
         <button type="button" class="btn btn-primary btn-sm" style="border-radius:8px;" data-bs-toggle="modal" data-bs-target="#modalGenerar">
@@ -64,7 +64,7 @@
         Primero configura materias, profesores y asignaciones, luego genera el horario.
     </div>
     <div class="mt-3">
-        <a href="{{ route('scheduling.configuracion') }}" class="btn btn-primary btn-sm" style="border-radius:8px;">
+        <a href="{{ route('admin.scheduling.configuracion') }}" class="btn btn-primary btn-sm" style="border-radius:8px;">
             <i class="bi bi-gear me-1"></i>Ir a Configuración
         </a>
     </div>
@@ -120,11 +120,11 @@
                 </td>
                 <td class="text-center">
                     <div class="d-flex justify-content-center gap-1">
-                        <a href="{{ route('scheduling.horarios.show', $h) }}"
+                        <a href="{{ route('admin.scheduling.horarios.show', $h) }}"
                            class="btn btn-sm btn-outline-primary" style="border-radius:7px;font-size:.75rem;">
                             <i class="bi bi-eye"></i>
                         </a>
-                        <form action="{{ route('scheduling.horarios.publicar', $h) }}" method="POST">
+                        <form action="{{ route('admin.scheduling.horarios.publicar', $h) }}" method="POST">
                             @csrf
                             <button class="btn btn-sm {{ $h->estado === 'publicado' ? 'btn-outline-secondary' : 'btn-outline-success' }}"
                                     style="border-radius:7px;font-size:.75rem;"
@@ -132,7 +132,7 @@
                                 <i class="bi bi-{{ $h->estado === 'publicado' ? 'eye-slash' : 'check-circle' }}"></i>
                             </button>
                         </form>
-                        <form action="{{ route('scheduling.horarios.destroy', $h) }}" method="POST"
+                        <form action="{{ route('admin.scheduling.horarios.destroy', $h) }}" method="POST"
                               onsubmit="return confirm('¿Eliminar este horario?')">
                             @csrf @method('DELETE')
                             <button class="btn btn-sm btn-outline-danger" style="border-radius:7px;font-size:.75rem;">
@@ -152,7 +152,7 @@
 {{-- Modal Generar --}}
 <div class="modal fade" id="modalGenerar" tabindex="-1">
     <div class="modal-dialog">
-        <form action="{{ route('scheduling.horarios.generar') }}" method="POST">
+        <form action="{{ route('admin.scheduling.horarios.generar') }}" method="POST">
             @csrf
             <div class="modal-content" style="border-radius:16px;border:none;">
                 <div class="modal-header border-0 pb-0">

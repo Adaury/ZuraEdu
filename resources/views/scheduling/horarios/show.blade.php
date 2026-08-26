@@ -17,7 +17,7 @@
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
     <div>
         <div class="d-flex align-items-center gap-2">
-            <a href="{{ route('scheduling.horarios.index') }}" class="text-muted text-decoration-none" style="font-size:.82rem;">
+            <a href="{{ route('admin.scheduling.horarios.index') }}" class="text-muted text-decoration-none" style="font-size:.82rem;">
                 <i class="bi bi-arrow-left"></i> Horarios
             </a>
             <span style="color:#cbd5e1;">·</span>
@@ -44,7 +44,7 @@
             </select>
         </form>
         {{-- Publicar / Despublicar --}}
-        <form action="{{ route('scheduling.horarios.publicar', $horario) }}" method="POST">
+        <form action="{{ route('admin.scheduling.horarios.publicar', $horario) }}" method="POST">
             @csrf
             <button class="btn btn-sm {{ $horario->estado === 'publicado' ? 'btn-outline-secondary' : 'btn-success' }}"
                     style="border-radius:8px;">
@@ -61,7 +61,7 @@
     <div class="card-header bg-warning bg-opacity-10 d-flex align-items-center gap-2 py-2 px-3">
         <i class="bi bi-exclamation-triangle text-warning"></i>
         <strong style="font-size:.85rem;">{{ count($horario->conflictos) }} clase(s) sin asignar</strong>
-        <a href="{{ route('scheduling.horarios.generar') }}" class="ms-auto btn btn-warning btn-sm" style="border-radius:8px;font-size:.75rem;">
+        <a href="{{ route('admin.scheduling.horarios.generar') }}" class="ms-auto btn btn-warning btn-sm" style="border-radius:8px;font-size:.75rem;">
             Reintentar generación
         </a>
     </div>

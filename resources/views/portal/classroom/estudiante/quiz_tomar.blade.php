@@ -28,7 +28,7 @@
     </div>
 </div>
 
-<form method="POST" action="{{ route('portal.estudiante.quiz.enviar', [$claseVirtual, $material, $intento]) }}" id="formQuiz">
+<form method="POST" action="{{ route('portal.estudiante.classroom.quiz.enviar', [$claseVirtual, $material, $intento]) }}" id="formQuiz">
 @csrf
 
 @foreach($quiz->preguntas as $i => $pregunta)
@@ -116,7 +116,7 @@ function seleccionarOpcion(input) {
     respondidas.add(String(pid));
     actualizarContador();
     // Guardar via AJAX
-    fetch('{{ route('portal.estudiante.quiz.guardar', $intento) }}', {
+    fetch('{{ route('portal.estudiante.classroom.quiz.guardar', $intento) }}', {
         method: 'POST',
         headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}','Content-Type':'application/json'},
         body: JSON.stringify({pregunta_id: pid, opcion_id: input.value})

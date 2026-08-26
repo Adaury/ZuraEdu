@@ -13,7 +13,7 @@
 @endforeach
 
 <div class="d-flex align-items-center gap-3 mb-4">
-    <a href="{{ route('scheduling.horarios.index') }}" class="text-muted text-decoration-none" style="font-size:.82rem;">
+    <a href="{{ route('admin.scheduling.horarios.index') }}" class="text-muted text-decoration-none" style="font-size:.82rem;">
         <i class="bi bi-arrow-left"></i> Horarios
     </a>
     <h5 class="mb-0 fw-bold">Configuración del Sistema</h5>
@@ -43,7 +43,7 @@
                             @if($f->es_recreo)<i class="bi bi-check-circle-fill text-success"></i>@else<span class="text-muted">—</span>@endif
                         </td>
                         <td>
-                            <form action="{{ route('scheduling.franjas.destroy', $f) }}" method="POST" onsubmit="return confirm('¿Eliminar franja?')">
+                            <form action="{{ route('admin.scheduling.franjas.destroy', $f) }}" method="POST" onsubmit="return confirm('¿Eliminar franja?')">
                                 @csrf @method('DELETE')
                                 <button class="btn btn-xs text-danger" style="font-size:.72rem;"><i class="bi bi-trash"></i></button>
                             </form>
@@ -77,7 +77,7 @@
                         <td>{{ $a->capacidad }}</td>
                         <td><span class="badge bg-secondary bg-opacity-10 text-secondary" style="border-radius:20px;font-size:.7rem;">{{ $a->tipo }}</span></td>
                         <td>
-                            <form action="{{ route('scheduling.aulas.destroy', $a) }}" method="POST" onsubmit="return confirm('¿Eliminar aula?')">
+                            <form action="{{ route('admin.scheduling.aulas.destroy', $a) }}" method="POST" onsubmit="return confirm('¿Eliminar aula?')">
                                 @csrf @method('DELETE')
                                 <button class="btn btn-xs text-danger" style="font-size:.72rem;"><i class="bi bi-trash"></i></button>
                             </form>
@@ -112,7 +112,7 @@
                         <td>{{ $c->seccion ?? '—' }}</td>
                         <td>{{ $c->capacidad }}</td>
                         <td>
-                            <form action="{{ route('scheduling.cursos.destroy', $c) }}" method="POST" onsubmit="return confirm('¿Eliminar curso?')">
+                            <form action="{{ route('admin.scheduling.cursos.destroy', $c) }}" method="POST" onsubmit="return confirm('¿Eliminar curso?')">
                                 @csrf @method('DELETE')
                                 <button class="btn btn-xs text-danger" style="font-size:.72rem;"><i class="bi bi-trash"></i></button>
                             </form>
@@ -148,7 +148,7 @@
                             <span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:{{ $m->color }};border:1px solid rgba(0,0,0,.1);"></span>
                         </td>
                         <td>
-                            <form action="{{ route('scheduling.materias.destroy', $m) }}" method="POST" onsubmit="return confirm('¿Eliminar materia?')">
+                            <form action="{{ route('admin.scheduling.materias.destroy', $m) }}" method="POST" onsubmit="return confirm('¿Eliminar materia?')">
                                 @csrf @method('DELETE')
                                 <button class="btn btn-xs text-danger" style="font-size:.72rem;"><i class="bi bi-trash"></i></button>
                             </form>
@@ -182,7 +182,7 @@
                         <td style="color:#64748b;">{{ $p->email ?? '—' }}</td>
                         <td>{{ $p->especialidad ?? '—' }}</td>
                         <td>
-                            <form action="{{ route('scheduling.profesores.destroy', $p) }}" method="POST" onsubmit="return confirm('¿Eliminar profesor?')">
+                            <form action="{{ route('admin.scheduling.profesores.destroy', $p) }}" method="POST" onsubmit="return confirm('¿Eliminar profesor?')">
                                 @csrf @method('DELETE')
                                 <button class="btn btn-xs text-danger" style="font-size:.72rem;"><i class="bi bi-trash"></i></button>
                             </form>
@@ -223,7 +223,7 @@
                         <td>{{ $a->curso->nombre }}</td>
                         <td class="text-center">{{ $a->horas_semana }}</td>
                         <td>
-                            <form action="{{ route('scheduling.asignaciones.destroy', $a) }}" method="POST" onsubmit="return confirm('¿Eliminar asignación?')">
+                            <form action="{{ route('admin.scheduling.asignaciones.destroy', $a) }}" method="POST" onsubmit="return confirm('¿Eliminar asignación?')">
                                 @csrf @method('DELETE')
                                 <button class="btn btn-xs text-danger" style="font-size:.72rem;"><i class="bi bi-trash"></i></button>
                             </form>
@@ -244,7 +244,7 @@
 
 {{-- Modal Franja --}}
 <div class="modal fade" id="modalFranja" tabindex="-1">
-    <div class="modal-dialog"><form action="{{ route('scheduling.franjas.store') }}" method="POST">@csrf
+    <div class="modal-dialog"><form action="{{ route('admin.scheduling.franjas.store') }}" method="POST">@csrf
         <div class="modal-content" style="border-radius:14px;">
             <div class="modal-header border-0"><h6 class="modal-title fw-bold">Nueva Franja</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
@@ -263,7 +263,7 @@
 
 {{-- Modal Aula --}}
 <div class="modal fade" id="modalAula" tabindex="-1">
-    <div class="modal-dialog"><form action="{{ route('scheduling.aulas.store') }}" method="POST">@csrf
+    <div class="modal-dialog"><form action="{{ route('admin.scheduling.aulas.store') }}" method="POST">@csrf
         <div class="modal-content" style="border-radius:14px;">
             <div class="modal-header border-0"><h6 class="modal-title fw-bold">Nueva Aula</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
@@ -284,7 +284,7 @@
 
 {{-- Modal Curso --}}
 <div class="modal fade" id="modalCurso" tabindex="-1">
-    <div class="modal-dialog"><form action="{{ route('scheduling.cursos.store') }}" method="POST">@csrf
+    <div class="modal-dialog"><form action="{{ route('admin.scheduling.cursos.store') }}" method="POST">@csrf
         <div class="modal-content" style="border-radius:14px;">
             <div class="modal-header border-0"><h6 class="modal-title fw-bold">Nuevo Curso</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
@@ -302,7 +302,7 @@
 
 {{-- Modal Materia --}}
 <div class="modal fade" id="modalMateria" tabindex="-1">
-    <div class="modal-dialog"><form action="{{ route('scheduling.materias.store') }}" method="POST">@csrf
+    <div class="modal-dialog"><form action="{{ route('admin.scheduling.materias.store') }}" method="POST">@csrf
         <div class="modal-content" style="border-radius:14px;">
             <div class="modal-header border-0"><h6 class="modal-title fw-bold">Nueva Materia</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
@@ -319,7 +319,7 @@
 
 {{-- Modal Profesor --}}
 <div class="modal fade" id="modalProfesor" tabindex="-1">
-    <div class="modal-dialog"><form action="{{ route('scheduling.profesores.store') }}" method="POST">@csrf
+    <div class="modal-dialog"><form action="{{ route('admin.scheduling.profesores.store') }}" method="POST">@csrf
         <div class="modal-content" style="border-radius:14px;">
             <div class="modal-header border-0"><h6 class="modal-title fw-bold">Nuevo Profesor</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
@@ -337,7 +337,7 @@
 
 {{-- Modal Asignación --}}
 <div class="modal fade" id="modalAsignacion" tabindex="-1">
-    <div class="modal-dialog"><form action="{{ route('scheduling.asignaciones.store') }}" method="POST">@csrf
+    <div class="modal-dialog"><form action="{{ route('admin.scheduling.asignaciones.store') }}" method="POST">@csrf
         <div class="modal-content" style="border-radius:14px;">
             <div class="modal-header border-0"><h6 class="modal-title fw-bold">Nueva Asignación</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">

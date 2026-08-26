@@ -71,7 +71,7 @@
                         </span>
                         @endif
                     </div>
-                    <a href="{{ route('portal.estudiante.quiz.resultado', [$claseVirtual, $material, $prev]) }}"
+                    <a href="{{ route('portal.estudiante.classroom.quiz.resultado', [$claseVirtual, $material, $prev]) }}"
                        class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.75rem;">Ver</a>
                 </div>
                 @endforeach
@@ -86,7 +86,7 @@
                 Una vez iniciado, el tiempo corre. Responde todas las preguntas antes de enviar.
             </div>
 
-            <form method="POST" action="{{ route('portal.estudiante.quiz.comenzar', [$claseVirtual, $material]) }}">
+            <form method="POST" action="{{ route('portal.estudiante.classroom.quiz.comenzar', [$claseVirtual, $material]) }}">
                 @csrf
                 <button type="submit" class="btn btn-primary w-100 fw-bold py-3" style="border-radius:12px;font-size:1rem;">
                     <i class="bi bi-play-fill me-2"></i>Comenzar Quiz

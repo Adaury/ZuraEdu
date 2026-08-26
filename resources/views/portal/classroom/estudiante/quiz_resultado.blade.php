@@ -100,7 +100,7 @@ $esAbierta = $pregunta->tipo === 'abierta';
         <i class="bi bi-arrow-left me-1"></i>Volver al Aula
     </a>
     @if($quiz->puedeIntentar($matricula->id))
-    <a href="{{ route('portal.estudiante.quiz.iniciar', [$claseVirtual, $material]) }}" class="btn btn-primary" style="border-radius:10px;">
+    <a href="{{ route('portal.estudiante.classroom.quiz.iniciar', [$claseVirtual, $material]) }}" class="btn btn-primary" style="border-radius:10px;">
         <i class="bi bi-arrow-repeat me-1"></i>Reintentar
     </a>
     @endif

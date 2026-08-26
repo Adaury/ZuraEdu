@@ -397,13 +397,32 @@ class PortalEstudianteController extends Controller
         }
 
         $boletinConfig = $schoolYear ? \App\Models\BoletinConfig::getOrCreate($schoolYear->id) : null;
-        $data = compact('matricula', 'periodos', 'tablaNotas', 'schoolYear', 'boletinConfig');
-        $data['asistencias'] = collect();
-        $data['minerdData']  = $this->buildMinerdData($matricula, $schoolYear);
-        $data['ciclo']       = $matricula->grupo?->grado?->ciclo ?? null;
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.boletines.pdf', $data)
-            ->setPaper('letter', 'portrait');
+        // Vista compartida con BoletinController::pdfAnual() — espera cada fila con
+        // 'final'/'indicador' (no 'promedio'/'situacion'/'esTecnica' de la vista HTML).
+        $tablaAnual = array_map(function ($row) {
+            $final = $row['promedio'];
+            return [
+                'asignatura' => $row['asignatura'],
+                'periodos'   => $row['periodos'],
+                'final'      => $final,
+                'indicador'  => $final !== null
+                    ? ($final >= 90 ? 'Excelente' : ($final >= 75 ? 'Bueno' : ($final >= 60 ? 'En proceso' : 'Insuficiente')))
+                    : null,
+            ];
+        }, $tablaNotas);
+
+        $promediosValidos = collect($tablaAnual)->pluck('final')->filter(fn ($v) => $v !== null);
+
+        $data = compact('matricula', 'periodos', 'schoolYear', 'boletinConfig', 'tablaAnual');
+        $data['promedioAnual']        = $promediosValidos->isNotEmpty() ? round($promediosValidos->avg(), 2) : null;
+        $data['promocion']            = null;
+        $data['rankingGrupo']         = [];
+        $data['asistenciaTotales']    = [];
+        $data['boletinObservaciones'] = collect();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.boletines.pdf_anual', $data)
+            ->setPaper('letter', 'landscape');
 
         $apellidos = \Illuminate\Support\Str::slug($matricula->estudiante->apellidos ?? 'boletin');
         return $pdf->download("boletin_{$apellidos}.pdf");
@@ -1391,7 +1410,7 @@ class PortalEstudianteController extends Controller
         $sinFaltas = true;
         if ($matricula) {
             $hayFaltas = \DB::table('faltas_disciplinarias')
-                ->where('matricula_id', $matricula->id)
+                ->where('estudiante_id', $estudiante->id)
                 ->exists();
             $sinFaltas = ! $hayFaltas;
         }

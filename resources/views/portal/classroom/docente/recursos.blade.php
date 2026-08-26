@@ -75,7 +75,7 @@ $tiposIconos = [
                 <i class="bi bi-box-arrow-up-right me-1"></i>Abrir
             </a>
             @endif
-            <form method="POST" action="{{ route('portal.docente.classroom.eliminar_recurso', [$claseVirtual, $recurso]) }}"
+            <form method="POST" action="{{ route('portal.docente.classroom.recursos.eliminar', [$claseVirtual, $recurso]) }}"
                   onsubmit="return confirm('¿Eliminar este recurso?')">
                 @csrf @method('DELETE')
                 <button class="btn btn-sm btn-outline-danger" style="border-radius:8px;" title="Eliminar">
@@ -97,7 +97,7 @@ $tiposIconos = [
                 <h6 class="modal-title fw-bold">Agregar recurso</h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{{ route('portal.docente.classroom.guardar_recurso', $claseVirtual) }}" enctype="multipart/form-data">
+            <form method="POST" action="{{ route('portal.docente.classroom.recursos.guardar', $claseVirtual) }}" enctype="multipart/form-data">
             @csrf
             <div class="modal-body">
 

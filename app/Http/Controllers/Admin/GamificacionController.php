@@ -133,7 +133,7 @@ class GamificacionController extends Controller
 
             // ── Puntos por sin faltas disciplinarias ───────────────────
             $sinFaltas = ! DB::table('faltas_disciplinarias')
-                ->where('matricula_id', $matricula->id)
+                ->where('estudiante_id', $matricula->estudiante_id)
                 ->exists();
 
             if ($sinFaltas) {

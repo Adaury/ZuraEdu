@@ -370,6 +370,14 @@ class CierreAnoController extends Controller
         DB::transaction(function () use ($request, $anoNuevo, $yaMatriculados, $hoy, &$creados, &$omitidos) {
             $ordenPorGrupo = [];
 
+            // Bloquea todos los grupos destino (en orden consistente, evita deadlocks
+            // entre traslados concurrentes) para serializar el cálculo de numero_orden,
+            // mismo patrón que MatriculaController::store().
+            $grupoIdsDestino = collect($request->traslados)->pluck('grupo_id')->unique()->sort()->values();
+            if ($grupoIdsDestino->isNotEmpty()) {
+                Grupo::whereIn('id', $grupoIdsDestino)->lockForUpdate()->get();
+            }
+
             foreach ($request->traslados as $item) {
                 $estId  = (int) $item['estudiante_id'];
                 $grupoId = (int) $item['grupo_id'];

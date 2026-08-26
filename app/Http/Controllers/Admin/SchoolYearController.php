@@ -199,7 +199,14 @@ class SchoolYearController extends Controller
         $omitidos  = 0;
         $hoy       = now()->toDateString();
 
-        DB::transaction(function () use ($request, $schoolYear, $yaMatriculados, &$creados, &$omitidos, $hoy, &$ordenPorGrupo) {
+        DB::transaction(function () use ($request, $schoolYear, $yaMatriculados, &$creados, &$omitidos, $hoy, &$ordenPorGrupo, $grupoIds) {
+            // Bloquea todos los grupos destino (orden consistente, evita deadlocks
+            // entre matrículas masivas concurrentes) para serializar numero_orden,
+            // mismo patrón que MatriculaController::store().
+            if ($grupoIds->isNotEmpty()) {
+                Grupo::whereIn('id', $grupoIds->sort()->values())->lockForUpdate()->get();
+            }
+
             foreach ($request->matriculas as $item) {
                 $estudianteId = (int) $item['estudiante_id'];
                 $grupoId      = (int) $item['grupo_id'];

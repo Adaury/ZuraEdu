@@ -1,0 +1,312 @@
+# Auditoría de Requerimientos — Centro Educativo Don Bosco vs. ZuraEdu
+
+**Regla seguida:** REQUERIMIENTO → VERIFICAR EN CÓDIGO → DETERMINAR SI EXISTE/FUNCIONA/DÓNDE ESTÁ/QUÉ FALTA → (recién ahí) proponer. Nada de lo que sigue fue implementado — es únicamente el inventario y diagnóstico solicitado. Cada afirmación cita archivo:línea real, verificado en este pase (no repetido de memoria sin confirmar).
+
+**Relación con auditorías previas:** esta no reemplaza `docs/MATRIZ_PERMISOS_ZURAEDU.md` (RBAC, ya resuelta) ni el barrido de bugs de portales/admin/superadmin de esta misma sesión (ya corregido y commiteado) — los da por buenos y los referencia donde aplica, sin repetir su detalle.
+
+---
+
+# 1. Resumen ejecutivo
+
+De los 31 requerimientos de Don Bosco: **13 🟢 existen y funcionan**, **9 🟡 existen parcialmente**, **4 🟠 existen pero están defectuosos**, **4 🔴 no existen**, **1 ⚫ requiere decisión institucional** (ver tabla completa en la sección final). **Actualización 2026-08-26: las recomendaciones críticas #1 y #2 (ver §16) ya fueron implementadas y verificadas — #22 y #7 pasan de 🟠 a 🟢, quedando 15/9/2/4/1.**
+
+**El hallazgo más grave de esta auditoría — ✅ ya corregido:** `CierreAnoController::ejecutar()` (`app/Http/Controllers/Admin/CierreAnoController.php:199-200`) intentaba guardar `matricula.estado = 'promovida'` o `'no_promovida'`, pero la columna `estado` de `matriculas` era un `ENUM('activa','retirada','transferida')` (`database/migrations/2026_03_17_000031_create_matriculas_table.php:18`) que nunca fue ampliado para aceptar esos dos valores, con la conexión MySQL en modo `strict => true` (`config/database.php:59`). El cierre de año escolar no podía persistir el resultado de la promoción de un estudiante sin fallar o corromper el dato — esto explicaba buena parte de las matrículas "sucias" que Don Bosco reporta al cruzar años. **Resuelto con la migración aditiva `2026_08_26_000001_add_promocion_states_to_matriculas_enum.php`** (ver actualización al final de §5).
+
+Segundo hallazgo relevante: el permiso `imprimir-boletines` existe en Spatie, está asignado a roles, y se muestra en `/admin/ayuda/roles` — pero **no se usa en ningún lado del código real** (ni en rutas, ni en `@can()`, ni en controladores). Ver, imprimir y exportar boletines dependen todos de un único permiso (`ver-boletines`) en `routes/admin/academico.php:125`.
+
+Tercero: la corrección de orden curricular de la sesión anterior (`Grado::scopeOrdenados()` → `orderBy('orden')`) no llegó a **6 sitios** que ordenan grados con SQL crudo `orderBy('grados.nivel')` en vez de `orden` (`EstudianteController.php:123,263`, `ImportacionController.php:321`, `RegistroAcademicoController.php:64,274,316,365`). En los datos actuales `nivel` y `orden` coinciden número a número, así que hoy no se nota — pero son columnas independientes y editables por separado, y el resto del código (30+ sitios) sí usa `orden` como fuente de verdad.
+
+---
+
+# 2. Requerimientos recibidos
+
+1. Ordenamiento académico
+2. Nivel
+3. Grado
+4. Sección
+5. UTF-8 / UTF8MB4
+6. Ñ y tildes
+7. Concurrencia en matrícula
+8. Optimización de calificaciones
+9. Carga masiva de notas
+10. Procesamiento batch
+11. Staging / Sandbox
+12. Pruebas de regresión
+13. Git / control de versiones
+14. RBAC
+15. Impresión de boletines
+16. Impresión de sábanas de notas
+17. Permisos administrativos
+18. Validación financiera
+19. Deudas
+20. Bloqueo o alerta de notas
+21. Saneamiento de estudiantes
+22. Estados de matrícula
+23. Períodos lectivos
+24. Meses/períodos
+25. Saldos financieros
+26. SLA
+27. Mesa de ayuda
+28. Tickets
+29. Causa raíz
+30. Documentación
+31. Capacitación
+
+---
+
+# 3. Funciones existentes (🟢 completas)
+
+**#3 Grado / #4 Sección** — Modelos y tablas dedicadas con columna `orden` propia y explícita para curricular, separada de `nivel`.
+- Migration: `database/migrations/2026_03_17_000011_create_grados_table.php` (`nombre`, `nivel` tinyint, `orden` tinyint, `ciclo` enum).
+- Migration: `database/migrations/2026_03_17_000012_create_secciones_table.php` (`nombre`, `orden` tinyint).
+- Modelo: `app/Models/Grado.php` — `scopeOrdenados()` (línea 30: `orderBy('orden')`), `scopePrimerCiclo`/`scopeSegundoCiclo`, `esInicial()/esPrimerCiclo()/esSegundoCiclo()`.
+
+**#5/#6 UTF-8 / Ñ y tildes** — Conexión MySQL en `utf8mb4`/`utf8mb4_unicode_ci` (`config/database.php:55-56`). PDFs (dompdf) usan `DejaVu Sans` en todas las plantillas revisadas esta sesión (soporta Ñ/tildes de forma nativa — confirmado visualmente en los PDFs generados durante el barrido de bugs de hoy: boletines, carnets, nómina, pagos). Trait `NormalizesFileEncoding` (sesión anterior) normaliza CSV/Excel de origen dudoso antes de importar.
+
+**#7 Concurrencia en matrícula (parcial pero con base sólida)** — Ver detalle en §4, está bien resuelto en los 2 controladores principales.
+
+**#13 Git / control de versiones** — Repo real, rama `master`, remoto `origin` (`https://github.com/Adaury/ZuraEdu.git`), convención de commits `tipo(alcance): descripción` ya usada consistentemente en las últimas ~15 auditorías/fixes de esta sesión.
+
+**#14 RBAC** — Cubierto extensamente en `docs/MATRIZ_PERMISOS_ZURAEDU.md`. 21 roles, 25 permisos Spatie, matriz interactiva en `/admin/ayuda/roles` con datos en vivo desde BD. No se repite aquí.
+
+**#16 Impresión de sábanas de notas ("acta de calificaciones")** — Existe con ese nombre exacto en el dominio MINERD dominicano.
+- Ruta: `calificaciones.acta-pdf` / `calificaciones.acta-excel` — `routes/admin/academico.php:68-69`.
+- Controller: `app/Http/Controllers/Admin/CalificacionController.php:740` (`actaPdf`), `:781` (`actaExcel`).
+- Permiso: `ver-calificaciones` (grupo completo, `routes/admin/academico.php:55`).
+- También existe versión por docente en `PortalDocenteController::actaPdf()`/`actaCalificaciones()` (`routes/web.php:376-377`) y versión de cierre de año en `CierreAnoController::boletinesMasivos()`.
+
+**#19 Deudas** — `PagoController` calcula deudores por `estado = 'vencido'`/`'pendiente'` (`app/Http/Controllers/Admin/PagoController.php`, método `deudores()` y `Pago::sincronizarVencidos()`), con vista dedicada `admin.pagos.deudores` y export PDF/Excel. Es el mecanismo real detrás del banner de validación financiera (#18).
+
+**#21 Saneamiento de estudiantes** — Comando `php artisan sge:saneamiento` (sesión anterior), modo reporte por defecto, `--fix` limitado a pagos huérfanos. Confirmado que sigue existiendo y no fue tocado en esta sesión.
+- Qué detecta: matrículas duplicadas, pagos sin matrícula válida, grupos con conteos de matriculados inconsistentes (retirados/transferidos contados como activos — bug de origen ya corregido en `GrupoController`).
+- Qué **no** detecta (confirmado en este pase): estados de matrícula fuera del ENUM permitido (relevante por el hallazgo de §1 de este documento — el comando no valida que `estado` sea uno de los 3 valores del ENUM, así que si el cierre de año llegó a insertar un valor corrupto, `sge:saneamiento` no lo señalaría).
+
+**#23 Períodos lectivos** — `app/Models/Periodo.php`: `belongsTo(SchoolYear::class)`, columnas `numero`, `nombre`, fechas de inicio/fin. Relación año escolar → períodos limpia y usada consistentemente (`getPeriodos()` cacheado 10 min, definido en `app/Http/Controllers/Controller.php:21-29`, reusado por decenas de controladores).
+
+**#27/#28 Mesa de ayuda / Tickets** — Ya revisado a fondo esta sesión (ver conversación previa): `app/Http/Controllers/Admin/TicketController.php`, modelo `TicketSoporte`, rutas `routes/admin/soporte.php`. Autoprotegido correctamente por rol dentro del propio controlador (`esAdmin()`), sin gaps de seguridad encontrados. Categorías: técnico/académico/administrativo/otro. Prioridades: baja/media/alta/urgente. Estados: abierto/en_proceso/resuelto/cerrado.
+
+**#30 Documentación (parcial, ver también §4)** — `/admin/ayuda/index` y `/admin/ayuda/roles` (matriz de accesos en vivo), `docs/MATRIZ_PERMISOS_ZURAEDU.md`, este mismo documento. `README.md` existe pero es mínimo (66 líneas).
+
+---
+
+# 4. Funciones parciales (🟡)
+
+**#1 Ordenamiento académico — parcial, con una regresión no detectada antes.**
+- **Qué funciona:** `Grado::scopeOrdenados()` (orden correcto) es usado por 30+ controladores vía `Grado::orderBy('orden')` directo o el scope: `AcademicoController.php:51`, `EstudianteController.php:42,489`, `GrupoController.php:47,106`, `MallaCurricularController.php` (5 sitios), `CierreAnoController.php:331`, `SchoolYearController.php:159`, `InscripcionController.php:44`, `OnboardingWizardController.php:127`, `DemoAutoController.php:128`. `BoletinController.php:108` y `ExportacionMasivaController.php:35,78` ordenan grupos con `->sortBy(fn($g) => [$g->grado->orden ?? 99, ...])` — correcto.
+- **Qué NO funciona:** 6 sitios ordenan con SQL crudo por `nivel` en vez de `orden`, saltándose el scope corregido:
+  - `EstudianteController.php:123` y `:263` — listado y filtro de estudiantes.
+  - `ImportacionController.php:321` — hub de importaciones masivas.
+  - `RegistroAcademicoController.php:64,274,316,365` — módulo SIGERD/Registro Académico (4 de 4 métodos de listado del controlador).
+- **Por qué no se ve hoy:** en la BD actual, `nivel` y `orden` tienen el mismo valor numérico fila por fila (confirmado con consulta directa: `1ro→nivel=1/orden=1`, `2do→nivel=2/orden=2`, etc.). El bug es latente, no visible, hasta que alguien reordene grados manualmente sin que `nivel` cambie en la misma proporción (el propio diseño de tener dos columnas separadas sugiere que eso es exactamente lo que se espera poder hacer).
+- **Archivos a modificar si se aprueba:** los 3 archivos de arriba, reemplazando `orderBy('grados.nivel')` por `orderBy('grados.orden')` — cambio de una palabra por sitio, mismo patrón que la corrección original.
+
+**#2 Nivel — parcial, ambigüedad de modelo.**
+- Existe como concepto en 2 lugares distintos sin relación explícita entre ellos: (a) columna `grados.nivel` (tinyint, ~1-8, código de grado dentro de su ciclo) y (b) columna `grados.ciclo` (enum: `inicial`, `primer_ciclo`, `segundo_ciclo`, `bachillerato` — `database/migrations/2026_05_15_100000_add_inicial_to_grados_ciclo_enum.php:12`).
+- No hay un "Nivel" como entidad propia (Inicial/Primaria/Secundaria como registro independiente) — es un ENUM de texto dentro de `Grado`. Funciona para filtrar y agrupar (`Grado::scopePrimerCiclo()`, etc.) pero no es una jerarquía normalizada con su propia tabla.
+- **Riesgo si se pide un nivel nuevo o renombrar uno existente:** requiere una migración de ALTER ENUM (ya se hizo una vez, el 2026-05-15, y esa misma migración tuvo que borrar filas `ciclo='inicial'` preexistentes antes de aplicar el ALTER — "Remove any 'inicial' rows first to avoid data-truncation errors", línea 19-20 de esa migración — señal de que el enum es frágil ante cambios).
+
+**#9 Carga masiva de notas — parcial.**
+- Existe en 2 flujos distintos, no unificados: `CalificacionController::import()/importStore()` (`routes/admin/academico.php:57,76`, límite `throttle:10,1`, 10 intentos/minuto) y `ImportacionController` (`routes/admin/importaciones.php`, módulo separado con plantilla descargable).
+- **Qué funciona:** valida columnas, usa `NormalizesFileEncoding`, procesa CSV/XLSX hasta 10MB (`'archivo' => '...max:10240'`, `CalificacionController.php:1228`).
+- **Qué NO funciona / falta:** es **síncrono**, no hay `Job`/cola de por medio — un archivo grande bloquea la petición HTTP hasta terminar (riesgo de timeout con muchos estudiantes × muchas asignaturas). No hay feedback de progreso en tiempo real, solo el resultado final. No hay límite explícito de filas (solo de tamaño de archivo en KB).
+
+**#10 Procesamiento batch — parcial.**
+- Sí existen `Jobs` reales con `ShouldQueue`: `app/Jobs/EnviarMensajeCircularJob.php`, `EnviarNotificacionJob.php`, `EnviarWhatsApp.php`, `NotificarPadreAccesoJob.php`, `RecalcularRendimientoJob.php`, `TenantJob.php` — 6 jobs en producción, usados para notificaciones masivas y recálculo de rendimiento académico.
+- **Qué falta:** ningún flujo de importación/carga masiva (calificaciones, estudiantes, nómina) usa colas — todos son síncronos (ver #9). El procesamiento batch existe para notificaciones, no para las cargas de datos pesadas que Don Bosco probablemente tiene en mente.
+
+**#11 Staging / Sandbox — parcial.**
+- No hay un ambiente de staging separado (`.env` actual: `APP_ENV=local`, sin config de staging documentada).
+- Sí existe `DemoMode` middleware (sesión anterior, confirmado presente en el pipeline de middleware de rutas admin: `app/Http/Middleware/DemoMode.php`) que simula un modo demo dentro del mismo ambiente — no es un sandbox real con datos aislados, es una capa de restricciones sobre el ambiente de producción/desarrollo.
+
+**#12 Pruebas de regresión — parcial, cobertura muy delgada.**
+- 9 archivos de test, **29 tests en total** (confirmado corriendo la suite hoy mismo, 29/29 pasando).
+- Cobertura real: `BackupSecurityTest` (3 tests, seguridad de backups), `HorarioIntegrityTest` (8 tests, validador de horarios), `PortalAccesoTest` (9 tests, control de acceso entre portales — el que se usó para verificar los fixes de RBAC de esta sesión), `AcademicAlertThresholdsTest` (3), `CalificacionAuditTest` (4), 2 `ExampleTest` triviales (Laravel default, no aportan cobertura real).
+- **Qué NO tiene ningún test:** matrícula (ni concurrencia ni CRUD), calificaciones (CRUD ni cálculo de promedios), boletines, permisos/RBAC (irónico dado el volumen de la auditoría de esta sesión), pagos, carnet, nómina, importaciones masivas, cierre de año — es decir, ninguno de los módulos que Don Bosco señaló como problemáticos tiene un test de regresión que hubiera detectado el bug del §1 de este documento.
+
+**#17 Permisos administrativos — parcial, granularidad real menor a la aparente.**
+- La matriz de 25 permisos (`docs/MATRIZ_PERMISOS_ZURAEDU.md`) sí diferencia Administrador/Director/Coordinador/Registrador Académico como roles con permisos Spatie distintos.
+- Pero para boletines específicamente, **ver/imprimir/exportar-zip están bajo el mismo permiso** (`ver-boletines`, `routes/admin/academico.php:125`) — no hay diferenciación real de "puede ver pero no imprimir" pese a que `imprimir-boletines` existe como permiso separado (ver §5, es el hallazgo #2 del resumen ejecutivo).
+- Tabla cruzada real (verificada contra código, no supuesta) para el módulo de boletines:
+
+| Acción | Permiso que la protege | Roles que lo tienen |
+|---|---|---|
+| Ver boletín individual | `ver-boletines` | Administrador, Coordinador Académico/1/2, Director, Docente\*, Encargado de Registro Académico, Estudiante, Personal Administrativo, Registrador Académico, Representante, Secretaría, Secretaria Docente |
+| Ver boletines de un grupo completo | `ver-boletines` (mismo permiso) | mismos de arriba |
+| Descargar PDF individual | `ver-boletines` (mismo permiso) | mismos de arriba |
+| Exportar ZIP de todo un grupo | `ver-boletines` (mismo permiso) | mismos de arriba |
+| Configurar plantilla de boletín | `gestionar-configuracion` | Solo Administrador |
+| "Imprimir boletines" (permiso dedicado) | `imprimir-boletines` | asignado en BD pero **sin ningún uso real en código** |
+
+---
+
+# 5. Funciones defectuosas (🟠)
+
+**#15/#17 Permiso `imprimir-boletines` — existe en el modelo de datos, no hace nada.** *(sigue pendiente, no incluido en las recomendaciones críticas 1-2 ya implementadas)*
+- Está en la tabla `permissions` de Spatie, asignado a roles, y se lista en `resources/views/admin/ayuda/roles.blade.php:88`.
+- `grep -rn "imprimir-boletines" app/ resources/views/` → **un solo resultado**, el de la vista de ayuda que solo lo *muestra*, no lo *usa*.
+- Efecto: un rol que en la BD "no tiene" `imprimir-boletines` pero sí tiene `ver-boletines` puede imprimir boletines igual, porque el código nunca pregunta por el permiso dedicado.
+- **Archivos a modificar:** `routes/admin/academico.php` (separar el grupo de boletines en ver vs. imprimir/exportar, igual que se hizo esta sesión para nómina/salud/etc. con Gates nuevos).
+
+---
+
+## ✅ Actualización — Recomendaciones críticas 1 y 2 implementadas (2026-08-26)
+
+**#22 Estados de matrícula — RESUELTO.** El ENUM de `matriculas.estado` se amplió vía migración aditiva `database/migrations/2026_08_26_000001_add_promocion_states_to_matriculas_enum.php` (`ALTER TABLE matriculas MODIFY COLUMN estado ENUM('activa','retirada','transferida','promovida','no_promovida')`). No se tocó ninguna fila existente — solo se agregaron los 2 valores que faltaban. Verificado end-to-end: `Matricula::estado = 'promovida'`/`'no_promovida'` se guarda correctamente (probado en una transacción revertida, sin persistir datos). `CierreAnoController` ya puede escribir el resultado real del cierre de año.
+
+**#7 Concurrencia en matrícula — RESUELTO.** Se agregó `Grupo::whereIn('id', $grupoIds)->lockForUpdate()->get()` (bloqueando todos los grupos destino del lote, en orden consistente para evitar deadlocks) en:
+- `CierreAnoController::ejecutarTraslado()` — antes del loop que crea las nuevas matrículas del traslado de fin de año.
+- `SchoolYearController::matriculaMasivaStore()` — antes del loop de matrícula masiva del año nuevo.
+
+Mismo patrón ya usado en `MatriculaController::store()`/`InscripcionController`. Verificado funcionalmente: ambos métodos se ejecutaron con datos reales dentro de una transacción revertida (sin persistir), confirmando que el lock no rompe el flujo. Suite completa: 29/29.
+
+---
+
+# 6. Funciones inexistentes (🔴) — propuestas de diseño, sin implementar
+
+**#26 SLA (Service Level Agreement) para tickets de soporte.**
+- Confirmado: `app/Models/TicketSoporte.php:17-26` (`$fillable`) no tiene ningún campo de tiempo de respuesta, vencimiento o compromiso de atención. No existe en ninguna migración relacionada a `TicketSoporte`.
+- **Propuesta (no implementada):**
+  - Módulo: extensión de Mesa de Ayuda existente (NO un módulo nuevo — mejorar `TicketSoporte`).
+  - Objetivo: definir un tiempo máximo de primera respuesta/resolución por prioridad, y alertar cuando se incumple.
+  - Usuarios: Administrador, Director, Coordinador Académico (los mismos que ya gestionan tickets vía `esAdmin()`).
+  - Tablas: agregar columnas a `ticket_soportes` (`sla_vencimiento_at`, `sla_incumplido` boolean) vía migración aditiva; tabla nueva opcional `sla_configuraciones` (prioridad → horas límite), configurable por institución.
+  - Controllers: extender `TicketController` (no crear uno nuevo) con cálculo de vencimiento al crear/asignar, y un scope `vencidos()`.
+  - UI: badge de "vencido"/"por vencer" en `admin.soporte.index` y `admin.soporte.dashboard` (vistas ya existentes).
+  - Tests: nuevo test de regresión para el cálculo de vencimiento (el módulo de soporte no tiene ningún test hoy).
+
+**#29 Causa raíz (root cause) en tickets de soporte.**
+- Confirmado: mismo `$fillable` de arriba, no hay campo `causa_raiz` ni tabla de análisis post-mortem.
+- **Propuesta (no implementada):** agregar campo `causa_raiz` (texto, opcional) al mismo modelo `TicketSoporte`, editable solo al cerrar el ticket (`cambiarEstado()` a `'cerrado'`), visible en reportes agregados por categoría. No requiere tabla nueva ni módulo nuevo — es un campo más en lo que ya existe.
+
+**#31 Capacitación.**
+- Confirmado: `grep` de "capacitacion"/"training" en controllers y rutas → 0 resultados. Lo único parecido es `DocenteSetupController` (`routes/web.php:324,329`), que es onboarding de perfil (elegir materias/grupos), no capacitación de uso del sistema.
+- **Propuesta (no implementada):**
+  - Módulo: nuevo, ligero — no hay nada que mejorar porque no existe nada equivalente.
+  - Objetivo: contenido de capacitación (guías/videos) por rol, marcable como "visto".
+  - Usuarios: todos los roles del panel admin y portales.
+  - Permisos: ninguno nuevo — visible para cualquier usuario autenticado, como `/admin/ayuda` hoy.
+  - Rutas: extender `routes/admin/sistema.php` (ya tiene el bloque de `/ayuda`) en vez de crear un archivo de rutas nuevo — ej. `admin.ayuda.capacitacion`.
+  - Tablas: opcional, una sola tabla `capacitaciones_vistas` (user_id, contenido_id, visto_at) si se quiere trackear progreso; el contenido en sí puede vivir como vistas Blade estáticas igual que `admin/ayuda/roles.blade.php`, sin tabla de contenido dinámico salvo que se quiera editar desde el panel.
+  - UI: sección nueva dentro de `/admin/ayuda/index.blade.php` (ya existe esa vista, se extiende).
+
+**#8 Optimización de calificaciones específica — no existe como esfuerzo dedicado (aunque el sistema en general sí tiene optimizaciones de otra sesión).**
+- La sesión "Optimizaciones de rendimiento" (memoria, 2026-03-19) atacó N+1 e índices de forma general en el sistema, pero no hay evidencia de un trabajo específico sobre `calificaciones`/`calificaciones_academicas` más allá de eso — no encontré, por ejemplo, índices compuestos dedicados a los patrones de consulta de boletín/planilla (`matricula_id + asignacion_id + periodo_id`, que es el patrón de consulta más repetido de todo el sistema, usado en `BoletinController`, `CalificacionController`, `PortalEstudianteController`, `PortalDocenteController`).
+- **Propuesta (no implementada):** migración aditiva con índice compuesto `(matricula_id, asignacion_id, periodo_id)` en `calificaciones` y `calificaciones_academicas` si no existe ya (no confirmado en esta pasada — requeriría inspeccionar los índices reales de la BD, fuera del alcance de "buscar en código" de esta auditoría).
+
+---
+
+# 7. Funciones duplicadas
+
+- **Carga de calificaciones masiva por 2 rutas distintas** (`CalificacionController::import` vs. `ImportacionController` módulo "calificaciones") — no son estrictamente duplicadas (una es genérica, la otra específica por plantilla), pero **si se implementa la mejora de batch/colas del punto #9-#10, debe hacerse en un solo lugar y el otro debe redirigir/reusar**, no crearse una tercera vía. Ver regla del §6 (Fase 6 del pedido original: mejorar lo existente, no duplicar).
+- No se encontraron módulos, tablas o rutas verdaderamente duplicadas (mismo propósito, dos implementaciones independientes) más allá de este caso.
+
+---
+
+# 8. Ubicación exacta (tabla consolidada)
+
+| Requerimiento | Módulo | Archivo(s) clave | Tabla(s) |
+|---|---|---|---|
+| Orden académico | Académico | `app/Models/Grado.php`, `EstudianteController.php`, `ImportacionController.php`, `RegistroAcademicoController.php` | `grados`, `secciones` |
+| UTF-8 | Config/BD | `config/database.php:55-56`, `app/Traits/NormalizesFileEncoding.php` | todas |
+| Concurrencia matrícula | Matrícula | `MatriculaController.php`, `InscripcionController.php`, `CierreAnoController.php`, `SchoolYearController.php` | `matriculas`, `grupos` |
+| Carga masiva notas | Calificaciones | `CalificacionController.php:1225` (import), `ImportacionController.php` | `calificaciones`, `calificaciones_academicas` |
+| Batch/Jobs | Sistema | `app/Jobs/*.php` (6 archivos) | — |
+| Tests | QA | `tests/Feature/*.php`, `tests/Unit/*.php` | — |
+| Boletines | Académico | `BoletinController.php`, `BoletinPolicy.php`, `routes/admin/academico.php:120-138` | `matriculas`, `calificaciones*`, `boletin_config` |
+| Sábanas/Actas | Académico | `CalificacionController.php:740,781` | `calificaciones`, `asignaciones` |
+| Financiero/Deudas | Pagos | `PagoController.php` | `pagos` |
+| Saneamiento | Sistema | comando `sge:saneamiento` | `matriculas`, `pagos`, `grupos` |
+| Estados matrícula | Matrícula | `database/migrations/2026_03_17_000031_create_matriculas_table.php`, `CierreAnoController.php` | `matriculas` |
+| Períodos | Académico | `app/Models/Periodo.php` | `periodos`, `school_years` |
+| Mesa de ayuda/Tickets | Soporte | `TicketController.php`, `routes/admin/soporte.php` | `ticket_soportes`, `respuesta_tickets` |
+| Documentación | Sistema | `docs/*.md`, `resources/views/admin/ayuda/*` | — |
+
+---
+
+# 9. Roles involucrados
+
+Sin cambios respecto a `docs/MATRIZ_PERMISOS_ZURAEDU.md` §1 (21 roles). Los relevantes a esta auditoría: Administrador, Director, Coordinador Académico/Primer/Segundo Ciclo, Registrador Académico/Encargado de Registro Académico, Docente (4 variantes), Secretaría/Secretaria Docente, Caja/Finanzas.
+
+# 10. Permisos
+
+Los 25 permisos existentes ya documentados. Hallazgo nuevo de esta auditoría: `imprimir-boletines` existe pero no se aplica (§5). No se proponen permisos nuevos salvo que se apruebe la mejora de granularidad de boletines.
+
+# 11. Base de datos (tablas relevantes a esta auditoría)
+
+`grados`, `secciones`, `matriculas` (⚠️ ENUM de `estado` insuficiente, §5), `periodos`, `school_years`, `calificaciones`, `calificaciones_academicas`, `pagos`, `ticket_soportes`, `respuesta_tickets`.
+
+# 12. Rutas
+
+Las citadas en cada sección; ninguna ruta nueva fue creada en esta auditoría.
+
+# 13. Controllers
+
+`CierreAnoController` (hallazgo crítico), `CalificacionController`, `EstudianteController`, `ImportacionController`, `RegistroAcademicoController`, `MatriculaController`, `InscripcionController`, `SchoolYearController`, `TicketController`, `PagoController`.
+
+# 14. Módulos
+
+Académico (grados/secciones/períodos/orden), Matrícula (concurrencia/estados), Calificaciones (carga masiva/optimización), RBAC (ya cubierto), Boletines/Actas, Financiero (deudas/saldos), Mesa de Ayuda (SLA/causa raíz — a extender), Documentación/Capacitación (a crear).
+
+---
+
+# 15. Riesgos
+
+1. **Crítico:** `CierreAnoController` no puede persistir el resultado real del cierre de año (§1, §5) — riesgo de que el año escolar se marque como cerrado (`school_years.activo = false`, línea 206) mientras las matrículas individuales quedan en un estado indefinido o corrupto. Esto es peor que "no cerrar" — deja el sistema en un estado a medias del que es difícil recuperarse manualmente.
+2. **Alto:** permiso `imprimir-boletines` fantasma (§5) — cualquier decisión institucional de "fulano puede ver pero no imprimir" es actualmente imposible de aplicar pese a que la matriz de roles sugiere que sí se puede.
+3. **Medio:** concurrencia sin lock en traslado de fin de año y matrícula masiva de año nuevo (§5) — son operaciones que típicamente se ejecutan una vez al año, con más de un usuario administrativo trabajando a la vez bajo presión de tiempo (justo el escenario de mayor probabilidad de colisión).
+4. **Medio:** cobertura de tests casi nula en los módulos que Don Bosco señaló como problemáticos (§4) — cualquier corrección futura a estos puntos no tiene red de seguridad automatizada.
+5. **Bajo:** orden por `nivel` en 3 controladores (§4) — latente, no visible hoy, pero inconsistente con el resto del código.
+
+# 16. Recomendaciones
+
+Por impacto/riesgo, sin implementar nada todavía:
+1. Migración aditiva para ampliar el ENUM de `matriculas.estado` (agregar `'promovida'`, `'no_promovida'`) — desbloquea el cierre de año real.
+2. Agregar `lockForUpdate()` en los 2 flujos de traslado/matrícula masiva que no lo tienen.
+3. Separar `imprimir-boletines` del permiso `ver-boletines` a nivel de ruta.
+4. Corregir los 6 sitios que ordenan grados por `nivel` en vez de `orden`.
+5. Extender `TicketSoporte` con SLA y causa raíz (campos aditivos, sin módulo nuevo).
+6. Evaluar mover la carga masiva de calificaciones a un Job en cola si el volumen real de estudiantes de Don Bosco lo justifica.
+7. Crear sección de capacitación dentro de `/admin/ayuda` (extensión, no módulo nuevo).
+8. Escribir al menos un test de regresión para el cierre de año antes de tocar el ENUM de estados (para no repetir el patrón de "corregir sin poder verificar").
+
+# 17. Prioridad
+
+Crítica: 1, 2 (recomendaciones). Alta: 3, 4, 8. Media: 5, 6. Baja: 7.
+
+---
+
+## TABLA OBLIGATORIA
+
+| # | Requerimiento | Estado | Ya existía | Ubicación | Falta | Prioridad |
+|---|---|---|---|---|---|---|
+| 1 | Ordenamiento académico | 🟡 Parcial | Sí | `Grado.php`, 30+ controllers | Corregir 6 sitios con `orderBy('nivel')` | Alta |
+| 2 | Nivel | 🟡 Parcial | Sí (como enum `ciclo`) | `Grado.php` | Normalizar relación nivel↔ciclo | Baja |
+| 3 | Grado | 🟢 Completo | Sí | `grados` table + modelo | — | — |
+| 4 | Sección | 🟢 Completo | Sí | `secciones` table + modelo | — | — |
+| 5 | UTF-8 / UTF8MB4 | 🟢 Completo | Sí | `config/database.php` | — | — |
+| 6 | Ñ y tildes | 🟢 Completo | Sí | utf8mb4 + DejaVu Sans en PDFs | — | — |
+| 7 | Concurrencia en matrícula | 🟢 Completo ✅ 2026-08-26 | Sí | `MatriculaController`/`InscripcionController`/`CierreAnoController`/`SchoolYearController`, todos con `lockForUpdate` | — | — |
+| 8 | Optimización de calificaciones | 🟡 Parcial | Sí (general) | Optimizaciones previas de sesión 2026-03-19 | Índice compuesto dedicado a boletín/planilla | Media |
+| 9 | Carga masiva de notas | 🟡 Parcial | Sí, 2 flujos | `CalificacionController.php`, `ImportacionController.php` | Procesamiento por cola, feedback de progreso | Media |
+| 10 | Procesamiento batch | 🟡 Parcial | Sí (6 Jobs) | `app/Jobs/*.php` | Ningún Job cubre cargas masivas de datos | Media |
+| 11 | Staging / Sandbox | 🟡 Parcial | Sí (DemoMode) | `DemoMode` middleware | Ambiente de staging real separado | Baja |
+| 12 | Pruebas de regresión | 🟡 Parcial | Sí (29 tests) | `tests/` | Cobertura de matrícula/calificaciones/boletines/RBAC | Alta |
+| 13 | Git / control de versiones | 🟢 Completo | Sí | repo `master` + convención de commits | — | — |
+| 14 | RBAC | 🟢 Completo | Sí | `docs/MATRIZ_PERMISOS_ZURAEDU.md` | — | — |
+| 15 | Impresión de boletines | 🟠 Defectuoso | Sí | `routes/admin/academico.php:125` | Separar ver/imprimir/exportar | Alta |
+| 16 | Impresión de sábanas de notas | 🟢 Completo | Sí | `CalificacionController::actaPdf/actaExcel` | — | — |
+| 17 | Permisos administrativos | 🟠 Defectuoso | Sí | Matriz de 25 permisos | `imprimir-boletines` no se aplica en código | Alta |
+| 18 | Validación financiera | 🟢 Completo | Sí (sesión anterior) | `BoletinController`/banner | — | — |
+| 19 | Deudas | 🟢 Completo | Sí | `PagoController::deudores()` | — | — |
+| 20 | Bloqueo o alerta de notas | ⚫ Requiere decisión | Sí (solo alerta) | `admin/boletines/ver.blade.php` | Decisión institucional: ¿bloqueo real o mantener alerta? | Media |
+| 21 | Saneamiento de estudiantes | 🟢 Completo | Sí (sesión anterior) | comando `sge:saneamiento` | No detecta estados fuera del ENUM | — |
+| 22 | Estados de matrícula | 🟢 Completo ✅ 2026-08-26 | Sí | `matriculas` ENUM ampliado a 5 valores (migración `2026_08_26_000001`) | — | — |
+| 23 | Períodos lectivos | 🟢 Completo | Sí | `app/Models/Periodo.php` | — | — |
+| 24 | Meses/períodos (nómina) | 🟢 Completo | Sí | `PagoNomina` usa mes calendario `'YYYY-MM'`, separado de `Periodo` académico — separación correcta, no es un conflicto | — | — |
+| 25 | Saldos financieros | 🟡 Parcial | Sí (por módulo) | `mi-saldo-cafeteria`, `PagoController` | Sin saldo consolidado único por estudiante | Baja |
+| 26 | SLA | 🔴 No existe | No | — | Crear campos en `TicketSoporte` | Media |
+| 27 | Mesa de ayuda | 🟢 Completo | Sí | `TicketController.php`, `routes/admin/soporte.php` | — | — |
+| 28 | Tickets | 🟢 Completo | Sí | mismo módulo que #27 | — | — |
+| 29 | Causa raíz | 🔴 No existe | No | — | Campo `causa_raiz` en `TicketSoporte` | Baja |
+| 30 | Documentación | 🟡 Parcial | Sí | `/admin/ayuda/*`, `docs/*.md` | README mínimo, sin docs de usuario final | Baja |
+| 31 | Capacitación | 🔴 No existe | No | — | Sección nueva en `/admin/ayuda` | Baja |

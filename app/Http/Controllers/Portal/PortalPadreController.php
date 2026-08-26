@@ -692,7 +692,8 @@ class PortalPadreController extends Controller
                 ->unique();
         }
 
-        $comunicados = Comunicado::publicados()
+        $comunicados = Comunicado::with('autor')
+            ->publicados()
             ->where(function ($q) use ($grupoIds) {
                 $q->whereIn('tipo_destinatarios', ['todos'])
                   ->orWhere(function ($g) use ($grupoIds) {
@@ -709,7 +710,8 @@ class PortalPadreController extends Controller
     // ── PDF lista comunicados del padre ─────────────────────────────────
     public function comunicadosPdf()
     {
-        $comunicados = Comunicado::publicados()
+        $comunicados = Comunicado::with('autor')
+            ->publicados()
             ->orderByDesc('published_at')
             ->get();
 

@@ -8,7 +8,7 @@
 
 # 1. Resumen ejecutivo
 
-De los 31 requerimientos de Don Bosco: **13 🟢 existen y funcionan**, **9 🟡 existen parcialmente**, **4 🟠 existen pero están defectuosos**, **4 🔴 no existen**, **1 ⚫ requiere decisión institucional** (ver tabla completa en la sección final). **Actualización 2026-08-26: las recomendaciones críticas #1 y #2 (ver §16) ya fueron implementadas y verificadas — #22 y #7 pasan de 🟠 a 🟢, quedando 15/9/2/4/1.**
+De los 31 requerimientos de Don Bosco: **13 🟢 existen y funcionan**, **9 🟡 existen parcialmente**, **4 🟠 existen pero están defectuosos**, **4 🔴 no existen**, **1 ⚫ requiere decisión institucional** (ver tabla completa en la sección final). **Actualización 2026-08-26: las recomendaciones #1, #2 y #3 (ver §16) ya fueron implementadas y verificadas — #22, #7, #15 y #17 pasan de 🟠 a 🟢, quedando 17/9/0/4/1.**
 
 **El hallazgo más grave de esta auditoría — ✅ ya corregido:** `CierreAnoController::ejecutar()` (`app/Http/Controllers/Admin/CierreAnoController.php:199-200`) intentaba guardar `matricula.estado = 'promovida'` o `'no_promovida'`, pero la columna `estado` de `matriculas` era un `ENUM('activa','retirada','transferida')` (`database/migrations/2026_03_17_000031_create_matriculas_table.php:18`) que nunca fue ampliado para aceptar esos dos valores, con la conexión MySQL en modo `strict => true` (`config/database.php:59`). El cierre de año escolar no podía persistir el resultado de la promoción de un estudiante sin fallar o corromper el dato — esto explicaba buena parte de las matrículas "sucias" que Don Bosco reporta al cruzar años. **Resuelto con la migración aditiva `2026_08_26_000001_add_promocion_states_to_matriculas_enum.php`** (ver actualización al final de §5).
 
@@ -141,15 +141,15 @@ Tercero: la corrección de orden curricular de la sesión anterior (`Grado::scop
 
 # 5. Funciones defectuosas (🟠)
 
-**#15/#17 Permiso `imprimir-boletines` — existe en el modelo de datos, no hace nada.** *(sigue pendiente, no incluido en las recomendaciones críticas 1-2 ya implementadas)*
-- Está en la tabla `permissions` de Spatie, asignado a roles, y se lista en `resources/views/admin/ayuda/roles.blade.php:88`.
-- `grep -rn "imprimir-boletines" app/ resources/views/` → **un solo resultado**, el de la vista de ayuda que solo lo *muestra*, no lo *usa*.
-- Efecto: un rol que en la BD "no tiene" `imprimir-boletines` pero sí tiene `ver-boletines` puede imprimir boletines igual, porque el código nunca pregunta por el permiso dedicado.
-- **Archivos a modificar:** `routes/admin/academico.php` (separar el grupo de boletines en ver vs. imprimir/exportar, igual que se hizo esta sesión para nómina/salud/etc. con Gates nuevos).
+**#15/#17 Permiso `imprimir-boletines` — ✅ RESUELTO (2026-08-26, recomendación #3).** Ver actualización más abajo.
 
 ---
 
-## ✅ Actualización — Recomendaciones críticas 1 y 2 implementadas (2026-08-26)
+## ✅ Actualización — Recomendaciones críticas 1, 2 y 3 implementadas (2026-08-26)
+
+**#15/#17 Permiso `imprimir-boletines` — RESUELTO.** Estaba en la tabla `permissions` de Spatie, asignado a roles, listado en `resources/views/admin/ayuda/roles.blade.php:88`, pero sin ningún uso real (`grep` → un solo resultado, la vista que solo lo mostraba). Corregido en `routes/admin/academico.php`: las rutas de impresión/exportación (`boletines.zip`, `boletines.pdf`, `boletines.pdf-anual`) ahora requieren `can:imprimir-boletines` además de `can:ver-boletines`. Verificado en navegador: un rol con solo `ver-boletines` (probado con `Encargado de Área`) ve el boletín pero recibe 403 al intentar imprimir/exportar; un rol con ambos permisos sigue funcionando sin cambios.
+
+**Regresión encontrada y corregida de paso:** al probar el split se descubrió que `BoletinPolicy::ver()` (activada en la sesión de RBAC previa) restringía el acceso a solo `Administrador`/`Director` hardcodeados, bloqueando con 403 a Coordinadores, Secretaría, Personal Administrativo, Encargado de Área y Registrador Académico — todos roles que sí tienen `ver-boletines` en la BD y antes funcionaban vía la lógica inline que la Policy reemplazó. Corregido: cualquier usuario no-docente con `ver-boletines` ahora tiene acceso (los docentes mantienen su scoping por asignación). Ver detalle completo en `docs/MATRIZ_PERMISOS_ZURAEDU.md`.
 
 **#22 Estados de matrícula — RESUELTO.** El ENUM de `matriculas.estado` se amplió vía migración aditiva `database/migrations/2026_08_26_000001_add_promocion_states_to_matriculas_enum.php` (`ALTER TABLE matriculas MODIFY COLUMN estado ENUM('activa','retirada','transferida','promovida','no_promovida')`). No se tocó ninguna fila existente — solo se agregaron los 2 valores que faltaban. Verificado end-to-end: `Matricula::estado = 'promovida'`/`'no_promovida'` se guarda correctamente (probado en una transacción revertida, sin persistir datos). `CierreAnoController` ya puede escribir el resultado real del cierre de año.
 
@@ -262,7 +262,7 @@ Académico (grados/secciones/períodos/orden), Matrícula (concurrencia/estados)
 Por impacto/riesgo, sin implementar nada todavía:
 1. Migración aditiva para ampliar el ENUM de `matriculas.estado` (agregar `'promovida'`, `'no_promovida'`) — desbloquea el cierre de año real.
 2. Agregar `lockForUpdate()` en los 2 flujos de traslado/matrícula masiva que no lo tienen.
-3. Separar `imprimir-boletines` del permiso `ver-boletines` a nivel de ruta.
+3. ✅ Separar `imprimir-boletines` del permiso `ver-boletines` a nivel de ruta. (2026-08-26)
 4. Corregir los 6 sitios que ordenan grados por `nivel` en vez de `orden`.
 5. Extender `TicketSoporte` con SLA y causa raíz (campos aditivos, sin módulo nuevo).
 6. Evaluar mover la carga masiva de calificaciones a un Job en cola si el volumen real de estudiantes de Don Bosco lo justifica.
@@ -293,9 +293,9 @@ Crítica: 1, 2 (recomendaciones). Alta: 3, 4, 8. Media: 5, 6. Baja: 7.
 | 12 | Pruebas de regresión | 🟡 Parcial | Sí (29 tests) | `tests/` | Cobertura de matrícula/calificaciones/boletines/RBAC | Alta |
 | 13 | Git / control de versiones | 🟢 Completo | Sí | repo `master` + convención de commits | — | — |
 | 14 | RBAC | 🟢 Completo | Sí | `docs/MATRIZ_PERMISOS_ZURAEDU.md` | — | — |
-| 15 | Impresión de boletines | 🟠 Defectuoso | Sí | `routes/admin/academico.php:125` | Separar ver/imprimir/exportar | Alta |
+| 15 | Impresión de boletines | 🟢 Completo ✅ 2026-08-26 | Sí | `routes/admin/academico.php` — `imprimir-boletines` separado de `ver-boletines` | — | — |
 | 16 | Impresión de sábanas de notas | 🟢 Completo | Sí | `CalificacionController::actaPdf/actaExcel` | — | — |
-| 17 | Permisos administrativos | 🟠 Defectuoso | Sí | Matriz de 25 permisos | `imprimir-boletines` no se aplica en código | Alta |
+| 17 | Permisos administrativos | 🟢 Completo ✅ 2026-08-26 | Sí | Matriz de 25 permisos, `imprimir-boletines` ya aplicado | — | — |
 | 18 | Validación financiera | 🟢 Completo | Sí (sesión anterior) | `BoletinController`/banner | — | — |
 | 19 | Deudas | 🟢 Completo | Sí | `PagoController::deudores()` | — | — |
 | 20 | Bloqueo o alerta de notas | ⚫ Requiere decisión | Sí (solo alerta) | `admin/boletines/ver.blade.php` | Decisión institucional: ¿bloqueo real o mantener alerta? | Media |

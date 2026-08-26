@@ -26,10 +26,6 @@ class BoletinPolicy
             return false;
         }
 
-        if ($user->hasRole(['Administrador', 'Director'])) {
-            return true;
-        }
-
         if ($user->tieneRolDocente()) {
             $docente = $user->docente;
             if (! $docente) return false;
@@ -47,7 +43,13 @@ class BoletinPolicy
                 ->exists();
         }
 
-        return false;
+        // Cualquier otro rol con ver-boletines (Administrador, Director, Coordinadores,
+        // Secretaría, Registrador Académico, Encargado de Área, Personal Administrativo...)
+        // ve sin restricción adicional por estudiante — el permiso de módulo ya filtra
+        // quién llega aquí. Antes esto solo cubría 'Administrador'/'Director' hardcodeados
+        // y bloqueaba con 403 a todos los demás roles con el permiso (regresión al activar
+        // esta Policy, ver docs/AUDITORIA_DON_BOSCO_ZURAEDU.md).
+        return true;
     }
 
     /**

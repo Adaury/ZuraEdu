@@ -28,6 +28,8 @@ body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #1e293b; }
 .chip-vencido  .num { color: #dc2626; }
 .chip-total    { background: #eff6ff; }
 .chip-total    .num { color: #1d4ed8; }
+.chip-cafeteria{ background: #ede9fe; }
+.chip-cafeteria .num { color: #6d28d9; }
 
 table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
 thead tr { background: #1e40af; color: #fff; }
@@ -109,6 +111,12 @@ tbody td.left { text-align: left; }
     <div class="resumen-chip chip-vencido">
         <div class="num">{{ $cVencido }}</div>
         <div class="lbl">Cuota(s) Vencida(s)</div>
+    </div>
+    @endif
+    @if(isset($totales['saldo_cafeteria']) && $totales['saldo_cafeteria'] > 0)
+    <div class="resumen-chip chip-cafeteria">
+        <div class="num">{{ $mon }} {{ number_format($totales['saldo_cafeteria'], 2) }}</div>
+        <div class="lbl">Saldo Cafetería (crédito)</div>
     </div>
     @endif
 </div>

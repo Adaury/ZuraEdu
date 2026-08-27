@@ -139,8 +139,12 @@ class PagoController extends Controller
         $pagos = $matricula->pagos()->latest('fecha_vencimiento')->get();
 
         $totales = [
-            'pagado'    => $pagos->where('estado', 'pagado')->sum('monto'),
-            'pendiente' => $pagos->whereIn('estado', ['pendiente', 'vencido'])->sum('monto'),
+            'pagado'          => $pagos->where('estado', 'pagado')->sum('monto'),
+            'pendiente'       => $pagos->whereIn('estado', ['pendiente', 'vencido'])->sum('monto'),
+            // Recomendación 25 de la auditoría Don Bosco: saldo consolidado —
+            // colegiatura (deuda) y cafetería (saldo prepago) son conceptos
+            // opuestos (deuda vs. crédito), se muestran juntos pero no se suman.
+            'saldo_cafeteria' => \App\Models\VentaCafeteria::saldoEstudiante($matricula->estudiante_id),
         ];
 
         return view('admin.pagos.por_estudiante', compact('matricula', 'pagos', 'totales'));
@@ -164,9 +168,10 @@ class PagoController extends Controller
         $mon    = Setting::get('payments_currency', 'DOP');
 
         $totales = [
-            'pagado'    => $matricula->pagos->where('estado', 'pagado')->sum('monto'),
-            'pendiente' => $matricula->pagos->whereIn('estado', ['pendiente', 'vencido'])->sum('monto'),
-            'total'     => $matricula->pagos->sum('monto'),
+            'pagado'          => $matricula->pagos->where('estado', 'pagado')->sum('monto'),
+            'pendiente'       => $matricula->pagos->whereIn('estado', ['pendiente', 'vencido'])->sum('monto'),
+            'total'           => $matricula->pagos->sum('monto'),
+            'saldo_cafeteria' => \App\Models\VentaCafeteria::saldoEstudiante($matricula->estudiante_id),
         ];
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(

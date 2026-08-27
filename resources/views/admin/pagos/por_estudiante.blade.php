@@ -108,6 +108,12 @@
         <div class="label">Total Registros</div>
         <div class="value">{{ $pagos->count() }}</div>
     </div>
+    @if(isset($totales['saldo_cafeteria']))
+    <div class="total-chip">
+        <div class="label">Saldo Cafetería</div>
+        <div class="value" style="color:#1d4ed8;">RD$ {{ number_format($totales['saldo_cafeteria'], 2) }}</div>
+    </div>
+    @endif
 </div>
 
 {{-- Tabla --}}

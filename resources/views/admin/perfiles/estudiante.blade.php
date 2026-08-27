@@ -421,18 +421,24 @@
             @php
                 $matriculaActual = $estudiante->matriculas->where('school_year_id', \App\Models\SchoolYear::actual()?->id)->first();
                 $pagosEstudiante = $matriculaActual ? $matriculaActual->pagos()->latest('fecha_vencimiento')->get() : collect();
+                $saldoCafeteria  = \App\Models\VentaCafeteria::saldoEstudiante($estudiante->id);
             @endphp
             <div class="tab-pane fade" id="tab-pagos">
                 <div class="card border-0 shadow-sm">
                     <div class="card-body">
                         @if($matriculaActual)
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                             <div>
                                 <span style="font-size:.83rem;font-weight:600;">Cobrado: </span>
                                 <span class="text-success fw-bold">RD$ {{ number_format($pagosEstudiante->where('estado','pagado')->sum('monto'),2) }}</span>
                                 &nbsp;·&nbsp;
                                 <span style="font-size:.83rem;font-weight:600;">Pendiente: </span>
                                 <span class="text-warning fw-bold">RD$ {{ number_format($pagosEstudiante->whereIn('estado',['pendiente','vencido'])->sum('monto'),2) }}</span>
+                                @if($saldoCafeteria > 0)
+                                &nbsp;·&nbsp;
+                                <span style="font-size:.83rem;font-weight:600;">Saldo Cafetería: </span>
+                                <span class="fw-bold" style="color:#6d28d9;">RD$ {{ number_format($saldoCafeteria,2) }}</span>
+                                @endif
                             </div>
                             <div class="d-flex gap-2">
                                 <a href="{{ route('admin.pagos.por-estudiante', $matriculaActual) }}" class="btn btn-sm btn-outline-primary" style="font-size:.78rem;">

@@ -207,9 +207,13 @@
         <button onclick="imprimirTodo()" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-printer me-1"></i>Imprimir Todo
         </button>
+        @php $totalBloqueados = collect($boletines)->where('bloqueadoPorDeuda', true)->count(); @endphp
         <a href="{{ route('admin.boletines.zip', ['grupo_id'=>$grupo->id,'periodo_id'=>$periodo->id]) }}"
-           class="btn btn-danger btn-sm">
+           class="btn btn-danger btn-sm" @if($totalBloqueados) title="{{ $totalBloqueados }} estudiante(s) con pagos vencidos se omitirán del ZIP" @endif>
             <i class="bi bi-file-earmark-zip me-1"></i>Descargar ZIP PDF
+            @if($totalBloqueados)
+                <span class="badge bg-light text-danger ms-1">{{ $totalBloqueados }} omitido{{ $totalBloqueados > 1 ? 's' : '' }}</span>
+            @endif
         </a>
         <a href="{{ route('admin.boletines.config') }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-gear me-1"></i>Configurar
@@ -236,9 +240,11 @@
 @else
 
 <div id="lista-boletines" class="row g-3">
+@php $puedeForzarDeuda = auth()->user()->hasAnyRole(['Administrador', 'Director']); @endphp
 @foreach($matriculas as $matricula)
 @php
     $bd        = $boletines[$matricula->id] ?? null;
+    $bloqueadoPorDeuda = $bd['bloqueadoPorDeuda'] ?? false;
     $notas     = $bd ? $bd['notas'] : [];
     $promGen   = $bd ? $bd['promedioGeneral'] : null;
     $asist     = $bd ? $bd['asistencia'] : [];
@@ -367,14 +373,26 @@
                    class="btn btn-sm btn-outline-primary" title="Ver boletín completo">
                     <i class="bi bi-eye"></i>
                 </a>
-                <a href="{{ route('admin.boletines.pdf', [$matricula->id, $periodo->id]) }}"
-                   class="btn btn-sm btn-danger" title="PDF Período" target="_blank">
-                    <i class="bi bi-file-pdf"></i>
-                </a>
-                <a href="{{ route('admin.boletines.pdf-anual', $matricula->id) }}"
-                   class="btn btn-sm btn-outline-info" title="PDF Anual" target="_blank">
-                    <i class="bi bi-file-earmark-bar-graph"></i>
-                </a>
+                @if($bloqueadoPorDeuda && ! $puedeForzarDeuda)
+                    <button class="btn btn-sm btn-danger" title="Bloqueado por pagos vencidos" disabled>
+                        <i class="bi bi-lock-fill"></i>
+                    </button>
+                @else
+                    <a href="{{ route('admin.boletines.pdf', [$matricula->id, $periodo->id]) }}{{ $bloqueadoPorDeuda ? '?forzar=1' : '' }}"
+                       class="btn btn-sm btn-danger" title="{{ $bloqueadoPorDeuda ? 'Forzar PDF Período pese a pagos vencidos' : 'PDF Período' }}" target="_blank">
+                        <i class="bi {{ $bloqueadoPorDeuda ? 'bi-unlock-fill' : 'bi-file-pdf' }}"></i>
+                    </a>
+                @endif
+                @if($bloqueadoPorDeuda && ! $puedeForzarDeuda)
+                    <button class="btn btn-sm btn-outline-info" title="Bloqueado por pagos vencidos" disabled>
+                        <i class="bi bi-lock-fill"></i>
+                    </button>
+                @else
+                    <a href="{{ route('admin.boletines.pdf-anual', $matricula->id) }}{{ $bloqueadoPorDeuda ? '?forzar=1' : '' }}"
+                       class="btn btn-sm btn-outline-info" title="{{ $bloqueadoPorDeuda ? 'Forzar PDF Anual pese a pagos vencidos' : 'PDF Anual' }}" target="_blank">
+                        <i class="bi {{ $bloqueadoPorDeuda ? 'bi-unlock-fill' : 'bi-file-earmark-bar-graph' }}"></i>
+                    </a>
+                @endif
                 @php
                     $telRep = $matricula->estudiante?->representantes()->first()?->telefono
                         ?? $matricula->estudiante?->tutor_telefono ?? null;

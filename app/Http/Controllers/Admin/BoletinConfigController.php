@@ -46,6 +46,7 @@ class BoletinConfigController extends Controller
             'observaciones_generales' => 'nullable|string|max:1000',
             'mostrar_indicadores'     => 'boolean',
             'mostrar_asistencia'      => 'boolean',
+            'bloquear_por_deuda'      => 'boolean',
             'logo'                    => 'nullable|image|mimes:png,jpg,jpeg|max:2048',
             // Diseño
             'color_primario'          => 'nullable|string|max:7',
@@ -59,6 +60,7 @@ class BoletinConfigController extends Controller
         $data['mostrar_indicadores']     = $request->boolean('mostrar_indicadores');
         $data['mostrar_asistencia']      = $request->boolean('mostrar_asistencia');
         $data['mostrar_foto_estudiante'] = $request->boolean('mostrar_foto_estudiante');
+        $data['bloquear_por_deuda']      = $request->boolean('bloquear_por_deuda');
 
         $config = BoletinConfig::getOrCreate($schoolYear->id);
 

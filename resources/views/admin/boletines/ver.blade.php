@@ -345,6 +345,8 @@
     $waUrl = $telRepresentante
         ? 'https://wa.me/' . preg_replace('/\D+/', '', $telRepresentante) . '?text=' . $msgWA
         : null;
+    $bloqueadoPorDeuda = ($boletinConfig->bloquear_por_deuda ?? false) && $deudaVencida;
+    $puedeForzarDeuda  = auth()->user()->hasAnyRole(['Administrador', 'Director']);
 @endphp
 <div class="action-bar no-print">
     <div class="d-flex align-items-center gap-3 flex-wrap">
@@ -374,26 +376,47 @@
             <i class="bi bi-whatsapp me-1"></i>WhatsApp
         </a>
         @endif
-        <a href="{{ route('admin.boletines.pdf-anual', $matricula) }}" class="btn btn-sm btn-outline-primary">
-            <i class="bi bi-file-earmark-bar-graph me-1"></i>PDF Anual
-        </a>
+        @if($bloqueadoPorDeuda && ! $puedeForzarDeuda)
+            <button class="btn btn-sm btn-outline-primary" disabled title="Bloqueado por pagos vencidos">
+                <i class="bi bi-lock-fill me-1"></i>PDF Anual
+            </button>
+        @else
+            <a href="{{ route('admin.boletines.pdf-anual', $matricula) }}{{ $bloqueadoPorDeuda ? '?forzar=1' : '' }}"
+               class="btn btn-sm btn-outline-primary" @if($bloqueadoPorDeuda) title="Forzar impresión pese a pagos vencidos" @endif>
+                <i class="bi {{ $bloqueadoPorDeuda ? 'bi-unlock-fill' : 'bi-file-earmark-bar-graph' }} me-1"></i>PDF Anual
+            </a>
+        @endif
         <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">
             <i class="bi bi-printer me-1"></i>Imprimir
         </button>
-        <a href="{{ route('admin.boletines.pdf', [$matricula, $periodo]) }}" class="btn btn-sm btn-danger">
-            <i class="bi bi-file-earmark-pdf me-1"></i>PDF Período
-        </a>
+        @if($bloqueadoPorDeuda && ! $puedeForzarDeuda)
+            <button class="btn btn-sm btn-danger" disabled title="Bloqueado por pagos vencidos">
+                <i class="bi bi-lock-fill me-1"></i>PDF Período
+            </button>
+        @else
+            <a href="{{ route('admin.boletines.pdf', [$matricula, $periodo]) }}{{ $bloqueadoPorDeuda ? '?forzar=1' : '' }}"
+               class="btn btn-sm btn-danger" @if($bloqueadoPorDeuda) title="Forzar impresión pese a pagos vencidos" @endif>
+                <i class="bi {{ $bloqueadoPorDeuda ? 'bi-unlock-fill' : 'bi-file-earmark-pdf' }} me-1"></i>PDF Período
+            </a>
+        @endif
     </div>
 </div>
 
 @if($deudaVencida)
-<div class="alert alert-warning no-print d-flex align-items-center gap-2" role="alert" style="margin:0 0 1rem;">
-    <i class="bi bi-exclamation-triangle-fill"></i>
+<div class="alert {{ $bloqueadoPorDeuda ? 'alert-danger' : 'alert-warning' }} no-print d-flex align-items-center gap-2" role="alert" style="margin:0 0 1rem;">
+    <i class="bi {{ $bloqueadoPorDeuda ? 'bi-lock-fill' : 'bi-exclamation-triangle-fill' }}"></i>
     <div>
         <strong>Este estudiante tiene {{ $deudaVencida['cantidad'] }}
         pago{{ $deudaVencida['cantidad'] > 1 ? 's' : '' }} vencido{{ $deudaVencida['cantidad'] > 1 ? 's' : '' }}</strong>
         por un total de RD$ {{ number_format($deudaVencida['monto'], 2) }}.
-        Esta alerta es solo informativa — no impide consultar ni imprimir el boletín.
+        @if($bloqueadoPorDeuda)
+            La impresión/descarga del PDF está <strong>bloqueada</strong> hasta regularizar el pago.
+            @if($puedeForzarDeuda)
+                Puedes forzar la impresión con los botones marcados <i class="bi bi-unlock-fill"></i> de arriba.
+            @endif
+        @else
+            Esta alerta es solo informativa — no impide consultar ni imprimir el boletín.
+        @endif
     </div>
 </div>
 @endif

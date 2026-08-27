@@ -442,21 +442,7 @@ class BoletinController extends Controller
             ];
         }
 
-        // Alerta informativa de deuda vencida — solo advierte, nunca bloquea la
-        // consulta/impresión del boletín (decisión de negocio: el staff decide).
-        $pagosVencidos = Pago::where('matricula_id', $matricula->id)
-            ->where(function ($q) {
-                $q->where('estado', 'vencido')
-                  ->orWhere(function ($q2) {
-                      $q2->where('estado', 'pendiente')->where('fecha_vencimiento', '<', now()->toDateString());
-                  });
-            })
-            ->get();
-
-        $deudaVencida = $pagosVencidos->isNotEmpty() ? [
-            'cantidad' => $pagosVencidos->count(),
-            'monto'    => $pagosVencidos->sum('monto'),
-        ] : null;
+        $deudaVencida = $this->calcularDeudaVencida($matricula);
 
         return compact(
             'matricula', 'periodo', 'periodos', 'schoolYear', 'boletinConfig',
@@ -478,12 +464,67 @@ class BoletinController extends Controller
         return view('admin.boletines.ver', $data);
     }
 
+    // ── Helper: pagos vencidos de la matrícula, para alertar y (opcionalmente) bloquear ──
+    private function calcularDeudaVencida(Matricula $matricula): ?array
+    {
+        $pagosVencidos = Pago::where('matricula_id', $matricula->id)
+            ->where(function ($q) {
+                $q->where('estado', 'vencido')
+                  ->orWhere(function ($q2) {
+                      $q2->where('estado', 'pendiente')->where('fecha_vencimiento', '<', now()->toDateString());
+                  });
+            })
+            ->get();
+
+        return $pagosVencidos->isNotEmpty() ? [
+            'cantidad' => $pagosVencidos->count(),
+            'monto'    => $pagosVencidos->sum('monto'),
+        ] : null;
+    }
+
+    // ── Helper: ¿puede el usuario saltarse el bloqueo por deuda vencida? ────
+    private function puedeForzarBloqueoDeuda(): bool
+    {
+        return auth()->user()->hasAnyRole(['Administrador', 'Director']);
+    }
+
+    /**
+     * Recomendación 20 de la auditoría Don Bosco: bloqueo real (opcional por
+     * institución, vía BoletinConfig::bloquear_por_deuda) de impresión/
+     * exportación cuando el estudiante tiene pagos vencidos. Nunca bloquea
+     * la consulta en pantalla (ver()), solo pdf()/pdfAnual()/zipGrupo().
+     * Administrador y Director pueden forzar con ?forzar=1.
+     * Devuelve una respuesta de bloqueo, o null si puede continuar.
+     */
+    private function bloqueoPorDeuda(?BoletinConfig $config, ?array $deudaVencida, Request $request)
+    {
+        if (! $config?->bloquear_por_deuda || ! $deudaVencida) {
+            return null;
+        }
+
+        if ($this->puedeForzarBloqueoDeuda() && $request->boolean('forzar')) {
+            return null;
+        }
+
+        $mensaje = "No se puede imprimir: el estudiante tiene {$deudaVencida['cantidad']} pago(s) vencido(s) por RD$ "
+            . number_format($deudaVencida['monto'], 2) . '.';
+        $mensaje .= $this->puedeForzarBloqueoDeuda()
+            ? ' Puedes forzar la impresión desde el boletín si la situación lo amerita.'
+            : ' Contacta a Administración para regularizar el pago o solicitar una excepción.';
+
+        return back()->with('error', $mensaje);
+    }
+
     // ── PDF download ───────────────────────────────────────────────────────
-    public function pdf(Matricula $matricula, Periodo $periodo)
+    public function pdf(Request $request, Matricula $matricula, Periodo $periodo)
     {
         $this->authorize('pdf', $matricula);
 
         $data = $this->buildBoletinData($matricula, $periodo);
+
+        if ($bloqueo = $this->bloqueoPorDeuda($data['boletinConfig'], $data['deudaVencida'], $request)) {
+            return $bloqueo;
+        }
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.boletines.pdf', $data)
             ->setPaper('letter', 'portrait');
@@ -546,6 +587,17 @@ class BoletinController extends Controller
         $toIndicador = fn (?float $n) => $n === null ? null
             : ($n >= 90 ? 'Excelente' : ($n >= 75 ? 'Bueno' : ($n >= 60 ? 'En proceso' : 'Insuficiente')));
 
+        // Deuda vencida por matrícula (bulk, para no repetir la consulta N veces).
+        $pagosVencidosPorMatricula = Pago::whereIn('matricula_id', $matriculaIds)
+            ->where(function ($q) {
+                $q->where('estado', 'vencido')
+                  ->orWhere(function ($q2) {
+                      $q2->where('estado', 'pendiente')->where('fecha_vencimiento', '<', now()->toDateString());
+                  });
+            })
+            ->get()
+            ->groupBy('matricula_id');
+
         $boletines = [];
         foreach ($matriculas as $matricula) {
             $calAcRows  = $allCalAc->get($matricula->id) ?? collect();
@@ -577,10 +629,14 @@ class BoletinController extends Controller
 
             $notasFinales = collect($notas)->pluck('nota_final')->filter();
 
+            $pagosVencidosMat = $pagosVencidosPorMatricula->get($matricula->id) ?? collect();
+            $bloqueadoPorDeuda = $boletinConfig?->bloquear_por_deuda && $pagosVencidosMat->isNotEmpty();
+
             $boletines[$matricula->id] = [
-                'matricula'       => $matricula,
-                'notas'           => $notas,
-                'promedioGeneral' => $notasFinales->count() > 0 ? round($notasFinales->avg(), 2) : null,
+                'matricula'         => $matricula,
+                'notas'             => $notas,
+                'promedioGeneral'   => $notasFinales->count() > 0 ? round($notasFinales->avg(), 2) : null,
+                'bloqueadoPorDeuda' => $bloqueadoPorDeuda,
                 'asistencia'      => [
                     'presente'    => $asistencias->where('estado', 'presente')->count(),
                     'ausente'     => $asistencias->where('estado', 'ausente')->count(),
@@ -636,9 +692,21 @@ class BoletinController extends Controller
             return back()->with('error', 'No se pudo crear el archivo ZIP.');
         }
 
+        // Bloqueo por deuda (recomendación 20): los estudiantes con pagos vencidos
+        // se omiten del ZIP en vez de bloquear la exportación completa del grupo,
+        // salvo que Administrador/Director forcen con ?forzar=1.
+        $forzado  = $this->puedeForzarBloqueoDeuda() && $request->boolean('forzar');
+        $omitidos = 0;
+
         foreach ($matriculas as $matricula) {
             try {
-                $data       = $this->buildBoletinData($matricula, $periodo);
+                $data = $this->buildBoletinData($matricula, $periodo);
+
+                if ($data['boletinConfig']?->bloquear_por_deuda && $data['deudaVencida'] && ! $forzado) {
+                    $omitidos++;
+                    continue;
+                }
+
                 $pdfContent = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.boletines.pdf', $data)
                     ->setPaper('letter', 'portrait')
                     ->output();
@@ -651,6 +719,14 @@ class BoletinController extends Controller
 
         $zip->close();
 
+        if ($omitidos > 0) {
+            $puedeForzar = $this->puedeForzarBloqueoDeuda();
+            session()->flash('warning',
+                "{$omitidos} boletín(es) se omitieron del ZIP por pagos vencidos." .
+                ($puedeForzar ? ' Agrega &forzar=1 a la URL para incluirlos de todas formas.' : ' Contacta a Administración para regularizar los pagos.')
+            );
+        }
+
         $nombreArchivo = 'boletines_' . Str::slug($grupo->nombre_completo) . '_P' . $periodo->numero . '.zip';
 
         return response()->download($zipPath, $nombreArchivo, [
@@ -659,13 +735,18 @@ class BoletinController extends Controller
     }
 
     // ── PDF Anual (todos los períodos en un solo documento) ───────────────
-    public function pdfAnual(Matricula $matricula)
+    public function pdfAnual(Request $request, Matricula $matricula)
     {
         $this->authorize('pdf', $matricula);
 
         $matricula->load(['estudiante', 'grupo.grado', 'grupo.seccion', 'grupo.schoolYear', 'grupo.tutor']);
         $schoolYear    = $matricula->grupo->schoolYear ?? SchoolYear::actual();
         $boletinConfig = $schoolYear ? BoletinConfig::getOrCreate($schoolYear->id) : null;
+
+        $deudaVencida = $this->calcularDeudaVencida($matricula);
+        if ($bloqueo = $this->bloqueoPorDeuda($boletinConfig, $deudaVencida, $request)) {
+            return $bloqueo;
+        }
 
         $periodos = $this->getPeriodos($schoolYear);
 

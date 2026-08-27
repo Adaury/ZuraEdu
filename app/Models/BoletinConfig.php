@@ -43,12 +43,14 @@ class BoletinConfig extends Model
         'mostrar_asistencia',
         'pie_pagina',
         'observaciones_generales',
+        'bloquear_por_deuda',
     ];
 
     protected $casts = [
         'mostrar_indicadores'     => 'boolean',
         'mostrar_asistencia'      => 'boolean',
         'mostrar_foto_estudiante' => 'boolean',
+        'bloquear_por_deuda'      => 'boolean',
     ];
 
     public function schoolYear()

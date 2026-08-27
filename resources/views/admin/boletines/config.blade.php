@@ -442,6 +442,35 @@
         </div>
     </div>
 
+    {{-- ─── BLOQUE 4B: CONTROL FINANCIERO ─────────────────── --}}
+    <div class="cfg-card">
+        <div class="cfg-card-header">
+            <div class="cfg-icon" style="background:#dc2626;"><i class="bi bi-cash-coin"></i></div>
+            <div>
+                <h6>Control Financiero</h6>
+                <small>Retención de boletines por morosidad</small>
+            </div>
+        </div>
+        <div class="cfg-body">
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <h6><i class="bi bi-lock-fill text-danger me-2"></i>Bloquear impresión por pagos vencidos</h6>
+                    <small>
+                        Si está activo, no se podrá imprimir ni descargar el PDF del boletín (individual, anual o por
+                        grupo) de un estudiante con pagos vencidos hasta que se regularice. Administrador y Director
+                        podrán forzar la impresión en casos excepcionales. Consultar el boletín en pantalla nunca se
+                        bloquea.
+                    </small>
+                </div>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" role="switch"
+                           id="bloquear_por_deuda" name="bloquear_por_deuda" value="1"
+                           {{ old('bloquear_por_deuda', $boletinConfig->bloquear_por_deuda ?? false) ? 'checked' : '' }}>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- ─── BLOQUE 5: DISEÑO DEL BOLETÍN ─────────────────── --}}
     <div class="cfg-card">
         <div class="cfg-card-header">

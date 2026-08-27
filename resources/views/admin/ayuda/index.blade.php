@@ -338,7 +338,7 @@
 </div>
 
 {{-- Matriz de accesos --}}
-<a href="{{ route('admin.ayuda.roles') }}" class="card border-0 shadow-sm mb-4 text-decoration-none" style="border-radius:12px;">
+<a href="{{ route('admin.ayuda.roles') }}" class="card border-0 shadow-sm mb-3 text-decoration-none" style="border-radius:12px;">
     <div class="card-body p-3 d-flex align-items-center gap-3">
         <div style="width:40px;height:40px;border-radius:10px;background:#eef2ff;display:flex;align-items:center;justify-content:center;flex:none;">
             <i class="bi bi-shield-lock-fill" style="color:#4338ca;font-size:1.1rem;"></i>
@@ -346,6 +346,20 @@
         <div class="flex-grow-1">
             <div class="fw-bold" style="font-size:.88rem;color:#111827;">Matriz de Accesos por Rol</div>
             <div style="font-size:.78rem;color:#6b7280;">Qué puede hacer cada rol — 21 roles y sus permisos, en vivo desde el sistema</div>
+        </div>
+        <i class="bi bi-arrow-right" style="color:#9ca3af;"></i>
+    </div>
+</a>
+
+{{-- Capacitación --}}
+<a href="{{ route('admin.ayuda.capacitacion') }}" class="card border-0 shadow-sm mb-4 text-decoration-none" style="border-radius:12px;">
+    <div class="card-body p-3 d-flex align-items-center gap-3">
+        <div style="width:40px;height:40px;border-radius:10px;background:#ecfdf5;display:flex;align-items:center;justify-content:center;flex:none;">
+            <i class="bi bi-mortarboard-fill" style="color:#047857;font-size:1.1rem;"></i>
+        </div>
+        <div class="flex-grow-1">
+            <div class="fw-bold" style="font-size:.88rem;color:#111827;">Capacitación</div>
+            <div style="font-size:.78rem;color:#6b7280;">Guías cortas por perfil (Administración, Docentes, Secretaría, Finanzas…) con progreso marcable</div>
         </div>
         <i class="bi bi-arrow-right" style="color:#9ca3af;"></i>
     </div>
@@ -1800,6 +1814,14 @@
         var m = fn.match(/'(s\w+)'/);
         if (m) b.dataset.section = m[1];
     });
+
+    // Deep-link: ?tab=sPC activa esa pestaña al cargar (usado desde Capacitación)
+    var qsTab = new URLSearchParams(location.search).get('tab');
+    if (qsTab && document.getElementById(qsTab)) {
+        var qsBtn = document.querySelector('.htb[onclick*="\'' + qsTab + '\'"]');
+        window.sw(qsTab, qsBtn);
+        document.getElementById(qsTab).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 })();
 </script>
 

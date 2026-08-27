@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\MallaCurricularController;
 use App\Http\Controllers\Admin\ChatController;
 use App\Http\Controllers\Admin\MensajeController;
 use App\Http\Controllers\Admin\SearchController;
+use App\Http\Controllers\Admin\AyudaController;
 
 // ── Chat IA ───────────────────────────────────────────────────────────────
 Route::post('chat/send', [ChatController::class, 'send'])->name('chat.send')->middleware('throttle:30,1');
@@ -24,6 +25,8 @@ Route::get('ayuda', fn () => view('admin.ayuda.index'))->name('ayuda');
 Route::get('ayuda/roles', fn () => view('admin.ayuda.roles', [
     'roles' => \Spatie\Permission\Models\Role::with('permissions')->orderBy('id')->get(),
 ]))->name('ayuda.roles');
+Route::get('ayuda/capacitacion',                    [AyudaController::class, 'capacitacion'])->name('ayuda.capacitacion');
+Route::post('ayuda/capacitacion/{contenidoId}/visto', [AyudaController::class, 'marcarVisto'])->name('ayuda.capacitacion.visto');
 
 // ── Mensajes Internos ─────────────────────────────────────────────────────
 Route::prefix('mensajes')->name('mensajes.')->group(function () {

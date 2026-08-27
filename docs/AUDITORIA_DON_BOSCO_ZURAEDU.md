@@ -8,7 +8,7 @@
 
 # 1. Resumen ejecutivo
 
-De los 31 requerimientos de Don Bosco: **13 🟢 existen y funcionan**, **9 🟡 existen parcialmente**, **4 🟠 existen pero están defectuosos**, **4 🔴 no existen**, **1 ⚫ requiere decisión institucional** (ver tabla completa en la sección final). **Actualización 2026-08-26: las recomendaciones #1 a #6 (ver §16) ya fueron implementadas y verificadas — #22, #7, #15, #17, #1, #26, #29, #9 y #10 pasan a 🟢, quedando 22/6/0/2/1.**
+De los 31 requerimientos de Don Bosco: **13 🟢 existen y funcionan**, **9 🟡 existen parcialmente**, **4 🟠 existen pero están defectuosos**, **4 🔴 no existen**, **1 ⚫ requiere decisión institucional** (ver tabla completa en la sección final). **Actualización 2026-08-26: las recomendaciones #1 a #7 (ver §16) ya fueron implementadas y verificadas — #22, #7, #15, #17, #1, #26, #29, #9, #10 y #31 pasan a 🟢, quedando 23/6/0/1/1.**
 
 **El hallazgo más grave de esta auditoría — ✅ ya corregido:** `CierreAnoController::ejecutar()` (`app/Http/Controllers/Admin/CierreAnoController.php:199-200`) intentaba guardar `matricula.estado = 'promovida'` o `'no_promovida'`, pero la columna `estado` de `matriculas` era un `ENUM('activa','retirada','transferida')` (`database/migrations/2026_03_17_000031_create_matriculas_table.php:18`) que nunca fue ampliado para aceptar esos dos valores, con la conexión MySQL en modo `strict => true` (`config/database.php:59`). El cierre de año escolar no podía persistir el resultado de la promoción de un estudiante sin fallar o corromper el dato — esto explicaba buena parte de las matrículas "sucias" que Don Bosco reporta al cruzar años. **Resuelto con la migración aditiva `2026_08_26_000001_add_promocion_states_to_matriculas_enum.php`** (ver actualización al final de §5).
 
@@ -170,6 +170,13 @@ Mismo patrón ya usado en `MatriculaController::store()`/`InscripcionController`
 - **Bug pre-existente encontrado y corregido de paso:** ambos controladores originales (y por tanto el Job, antes de corregirlo) hacían `->keyBy('numero_matricula')` directamente sobre la colección de `Matricula`, pero `numero_matricula` y `cedula` son columnas de `Estudiante`, no de `Matricula` (confirmado con `Schema::getColumnListing()`). El `keyBy` silenciosamente devolvía siempre una clave vacía — el emparejamiento por número de matrícula nunca funcionó en producción, solo el de cédula (que sí navegaba la relación correctamente) tenía alguna chance de funcionar, y solo si el archivo traía cédula. Corregido a `->keyBy(fn ($m) => $m->estudiante->numero_matricula ?? '')` en el Job, y en `CalificacionController::downloadTemplate()` (3 ocurrencias) que tenía el mismo error al generar la plantilla de ejemplo.
 - Verificado end-to-end con datos reales de un grupo/asignatura existente (committeado y luego revertido manualmente, ya que un Job en cola corre en un proceso aparte y no participa de una transacción de prueba): se dispatchó el Job, se procesó con `queue:work`, se confirmó `estado=completado`, el conteo correcto de importados/omitidos, los mensajes de error esperados (nota fuera de rango, estudiante no encontrado), la actualización real de `CalificacionAcademica` con `recalcularPromedios()` ejecutado, el borrado del archivo temporal, y la notificación al usuario — luego se restauró el valor de nota original y se eliminaron los registros de prueba. La vista de estado se renderizó sin errores en sus 3 estados (`procesando`, `completado`, `fallido`). Suite completa: 29/29.
 
+**#31 Capacitación — RESUELTO.** Sección nueva y ligera dentro del Centro de Ayuda existente (`/admin/ayuda/capacitacion`), sin permisos nuevos (visible para cualquier usuario autenticado, igual que `/admin/ayuda` hoy):
+- `app/Http/Controllers/Admin/AyudaController.php`: catálogo estático de guías (`AyudaController::GRUPOS`) agrupadas en 5 perfiles — Administración y Dirección, Docentes, Secretaría y Registro, Finanzas y Caja, Soporte a Padres y Estudiantes — cubriendo los 21 roles del sistema. 16 guías en total, cada una con título, duración estimada y 3-5 pasos concretos (rutas reales del menú).
+- Progreso marcable como "visto" por usuario: tabla aditiva `capacitaciones_vistas` (migración `2026_08_26_000004`, único por `user_id`+`contenido_id`), toggle vía `POST admin/ayuda/capacitacion/{contenidoId}/visto` (valida el id contra el catálogo, 404 si no existe) y barra de progreso en vivo (`X/16`) sin recargar la página.
+- Varias guías enlazan de vuelta a la sección correspondiente del manual completo (`admin.ayuda`) vía un parámetro `?tab=` nuevo que el manual ya sabe leer al cargar (deep-link agregado al script existente de `admin/ayuda/index.blade.php`, sin tocar su lógica de búsqueda ni de tabs).
+- Tarjeta de acceso agregada en `/admin/ayuda/index.blade.php`, mismo patrón visual que la tarjeta existente de "Matriz de Accesos por Rol".
+- Verificado en navegador real (Playwright, cuenta `admin@demo.com`): las 5 pestañas cambian correctamente, marcar/desmarcar "visto" actualiza el botón y la barra de progreso sin recargar, el estado persiste tras recargar la página, el deep-link `?tab=sCfg` activa la pestaña correcta del manual, y el diseño se ve correcto en modo claro y oscuro. Suite completa: 29/29.
+
 ---
 
 # 6. Funciones inexistentes (🔴) — propuestas de diseño, sin implementar
@@ -189,16 +196,7 @@ Mismo patrón ya usado en `MatriculaController::store()`/`InscripcionController`
 - Confirmado: mismo `$fillable` de arriba, no hay campo `causa_raiz` ni tabla de análisis post-mortem.
 - **Propuesta (no implementada):** agregar campo `causa_raiz` (texto, opcional) al mismo modelo `TicketSoporte`, editable solo al cerrar el ticket (`cambiarEstado()` a `'cerrado'`), visible en reportes agregados por categoría. No requiere tabla nueva ni módulo nuevo — es un campo más en lo que ya existe.
 
-**#31 Capacitación.**
-- Confirmado: `grep` de "capacitacion"/"training" en controllers y rutas → 0 resultados. Lo único parecido es `DocenteSetupController` (`routes/web.php:324,329`), que es onboarding de perfil (elegir materias/grupos), no capacitación de uso del sistema.
-- **Propuesta (no implementada):**
-  - Módulo: nuevo, ligero — no hay nada que mejorar porque no existe nada equivalente.
-  - Objetivo: contenido de capacitación (guías/videos) por rol, marcable como "visto".
-  - Usuarios: todos los roles del panel admin y portales.
-  - Permisos: ninguno nuevo — visible para cualquier usuario autenticado, como `/admin/ayuda` hoy.
-  - Rutas: extender `routes/admin/sistema.php` (ya tiene el bloque de `/ayuda`) en vez de crear un archivo de rutas nuevo — ej. `admin.ayuda.capacitacion`.
-  - Tablas: opcional, una sola tabla `capacitaciones_vistas` (user_id, contenido_id, visto_at) si se quiere trackear progreso; el contenido en sí puede vivir como vistas Blade estáticas igual que `admin/ayuda/roles.blade.php`, sin tabla de contenido dinámico salvo que se quiera editar desde el panel.
-  - UI: sección nueva dentro de `/admin/ayuda/index.blade.php` (ya existe esa vista, se extiende).
+**#31 Capacitación — ✅ RESUELTO (2026-08-26, recomendación #7).** Ver actualización más abajo.
 
 **#8 Optimización de calificaciones específica — no existe como esfuerzo dedicado (aunque el sistema en general sí tiene optimizaciones de otra sesión).**
 - La sesión "Optimizaciones de rendimiento" (memoria, 2026-03-19) atacó N+1 e índices de forma general en el sistema, pero no hay evidencia de un trabajo específico sobre `calificaciones`/`calificaciones_academicas` más allá de eso — no encontré, por ejemplo, índices compuestos dedicados a los patrones de consulta de boletín/planilla (`matricula_id + asignacion_id + periodo_id`, que es el patrón de consulta más repetido de todo el sistema, usado en `BoletinController`, `CalificacionController`, `PortalEstudianteController`, `PortalDocenteController`).
@@ -256,7 +254,7 @@ Las citadas en cada sección; ninguna ruta nueva fue creada en esta auditoría.
 
 # 14. Módulos
 
-Académico (grados/secciones/períodos/orden), Matrícula (concurrencia/estados), Calificaciones (carga masiva/optimización), RBAC (ya cubierto), Boletines/Actas, Financiero (deudas/saldos), Mesa de Ayuda (SLA/causa raíz — a extender), Documentación/Capacitación (a crear).
+Académico (grados/secciones/períodos/orden), Matrícula (concurrencia/estados), Calificaciones (carga masiva/optimización), RBAC (ya cubierto), Boletines/Actas, Financiero (deudas/saldos), Mesa de Ayuda (SLA/causa raíz — resuelto §16.5), Documentación/Capacitación (resuelto §16.7).
 
 ---
 
@@ -277,7 +275,7 @@ Por impacto/riesgo, sin implementar nada todavía:
 4. ✅ Corregir los sitios que ordenan grados por `nivel` en vez de `orden`. (2026-08-26 — 7 sitios SQL de la auditoría original + 18 sitios PHP adicionales encontrados al ampliar la búsqueda, con aprobación del usuario)
 5. ✅ Extender `TicketSoporte` con SLA y causa raíz (campos aditivos, sin módulo nuevo). (2026-08-26)
 6. ✅ Mover la carga masiva de calificaciones a un Job en cola, unificando los 2 flujos existentes en uno solo. (2026-08-26)
-7. Crear sección de capacitación dentro de `/admin/ayuda` (extensión, no módulo nuevo).
+7. ✅ Crear sección de capacitación dentro de `/admin/ayuda` (extensión, no módulo nuevo). (2026-08-26)
 8. Escribir al menos un test de regresión para el cierre de año antes de tocar el ENUM de estados (para no repetir el patrón de "corregir sin poder verificar").
 
 # 17. Prioridad
@@ -320,4 +318,4 @@ Crítica: 1, 2 (recomendaciones). Alta: 3, 4, 8. Media: 5, 6. Baja: 7.
 | 28 | Tickets | 🟢 Completo | Sí | mismo módulo que #27 | — | — |
 | 29 | Causa raíz | 🟢 Completo ✅ 2026-08-26 | No | Campo `causa_raiz` en `tickets_soporte` | — | — |
 | 30 | Documentación | 🟡 Parcial | Sí | `/admin/ayuda/*`, `docs/*.md` | README mínimo, sin docs de usuario final | Baja |
-| 31 | Capacitación | 🔴 No existe | No | — | Sección nueva en `/admin/ayuda` | Baja |
+| 31 | Capacitación | 🟢 Completo ✅ 2026-08-26 | No | `AyudaController.php`, `admin/ayuda/capacitacion.blade.php`, tabla `capacitaciones_vistas` | — | — |

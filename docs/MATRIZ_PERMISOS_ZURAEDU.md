@@ -138,14 +138,14 @@ Todas las rutas `/admin/*` comparten `EnsureAdminAccess`, que solo verifica "¿e
 
 ---
 
-## 4. Próximos pasos (Fase "PROPONER" — pendiente de aprobación, nada aplicado)
+## 4. Próximos pasos — ✅ todos ejecutados (actualizado 2026-08-27)
 
-Orden sugerido por impacto/riesgo, a confirmar contigo antes de tocar código:
+Esta sección listaba 5 pasos como "pendientes de aprobación, nada aplicado" — quedó desactualizada apenas se empezó a corregir cada punto. Estado real, con el detalle completo en "Progreso de corrección" (§1) y las actualizaciones de más abajo:
 
-1. **Fix del anti-patrón `hasRole('Docente')`** (§2.1) — el de mayor severidad real (acceso no autorizado a notas/asistencia ajenas). Requiere revisar los ~50 sitios uno por uno para decidir si el fix correcto es `hasAnyRole([...4 roles])` o `$user->docente !== null` según el contexto de cada archivo.
-2. **Segmentar por `can:`/`role:` los módulos de riesgo Alto de §2.2** (nomina, salud, disciplina, billing, registro_academico, perfiles, registro/guardar) — son los que exponen datos sensibles a roles que no deberían tenerlos.
-3. **Decidir el destino de las 3 Policies muertas** (§2.3): o se activan con `$this->authorize()` en los controladores correspondientes, o se documentan como redundantes y se elimina la ambigüedad (sin borrarlas sin confirmar contigo primero).
-4. **Corregir el bug de nombre de rol `'Admin'` → `'Administrador'`** (§2.4) — trivial, pero debe ir junto con el punto 3 para no activar una policy rota.
-5. **Módulos de riesgo Medio/Bajo de §2.2** — el resto de academico.php, seguimiento_social, riesgo, y los ~15 módulos menores.
+1. ✅ Anti-patrón `hasRole('Docente')` (§2.1) — corregido, 51+27 ocurrencias en 38 archivos.
+2. ✅ Segmentación `can:`/`role:` de los módulos de riesgo Alto de §2.2 — corregido (nómina, salud, disciplina, billing, registro-académico, perfiles, guardado de notas MINERD).
+3. ✅ Destino de las 3 Policies muertas (§2.3) — `BoletinPolicy` activada, `EstudiantePolicy`/`GrupoPolicy` eliminadas (eran código inalcanzable).
+4. ✅ Bug de nombre de rol `'Admin'` → `'Administrador'` (§2.4) — corregido, incluida la ocurrencia en `AcademicAlertService.php`.
+5. ✅ Módulos de riesgo Medio/Bajo de §2.2 — corregidos todos, incluyendo `comunicados` (único que había quedado sin auditar; ver actualización 2026-08-27 arriba).
 
-Ninguno de estos pasos se ha ejecutado. A la espera de tu confirmación sobre por dónde empezar.
+No queda ningún módulo de este documento sin auditar ni ninguna corrección de §2.1-§2.6 sin aplicar.

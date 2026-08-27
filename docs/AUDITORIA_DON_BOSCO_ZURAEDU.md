@@ -8,7 +8,7 @@
 
 # 1. Resumen ejecutivo
 
-De los 31 requerimientos de Don Bosco: **13 🟢 existen y funcionan**, **9 🟡 existen parcialmente**, **4 🟠 existen pero están defectuosos**, **4 🔴 no existen**, **1 ⚫ requiere decisión institucional** (ver tabla completa en la sección final). **Actualización 2026-08-26/27: las recomendaciones #1 a #8 (ver §16) ya fueron implementadas y verificadas — #22, #7, #15, #17, #1, #26, #29, #9, #10, #31 y #12 pasan a 🟢, quedando 24/5/0/1/1. La recomendación #8 (test de regresión de cierre de año) además destapó y corrigió un bug crítico activo: el cierre de año fallaba siempre por un valor de ENUM inválido en `alertas_sistema.tipo` — ver actualización en §5. Se amplió después la cobertura de tests a calificaciones/boletines/RBAC (59 tests en total) a pedido del usuario, completando el punto #12.**
+De los 31 requerimientos de Don Bosco: **13 🟢 existen y funcionan**, **9 🟡 existen parcialmente**, **4 🟠 existen pero están defectuosos**, **4 🔴 no existen**, **1 ⚫ requiere decisión institucional** (ver tabla completa en la sección final). **Actualización 2026-08-26/27: las recomendaciones #1 a #8 de §16 (numeración de recomendaciones) ya fueron implementadas y verificadas — #22, #7, #15, #17, #1, #26, #29, #9, #10, #31 y #12 pasan a 🟢, quedando 24/5/0/1/1. La recomendación §16.8 (test de regresión de cierre de año) además destapó y corrigió un bug crítico activo: el cierre de año fallaba siempre por un valor de ENUM inválido en `alertas_sistema.tipo` — ver actualización en §5. Se amplió después la cobertura de tests a calificaciones/boletines/RBAC (59 tests en total), completando el punto #12 de la tabla de 31. Finalmente se verificó el punto #8 de la tabla de 31 (optimización de calificaciones): el índice compuesto ya existía, confirmado con EXPLAIN — sin cambios de código, quedando 25/4/0/1/1.**
 
 **El hallazgo más grave de esta auditoría — ✅ ya corregido:** `CierreAnoController::ejecutar()` (`app/Http/Controllers/Admin/CierreAnoController.php:199-200`) intentaba guardar `matricula.estado = 'promovida'` o `'no_promovida'`, pero la columna `estado` de `matriculas` era un `ENUM('activa','retirada','transferida')` (`database/migrations/2026_03_17_000031_create_matriculas_table.php:18`) que nunca fue ampliado para aceptar esos dos valores, con la conexión MySQL en modo `strict => true` (`config/database.php:59`). El cierre de año escolar no podía persistir el resultado de la promoción de un estudiante sin fallar o corromper el dato — esto explicaba buena parte de las matrículas "sucias" que Don Bosco reporta al cruzar años. **Resuelto con la migración aditiva `2026_08_26_000001_add_promocion_states_to_matriculas_enum.php`** (ver actualización al final de §5).
 
@@ -210,9 +210,12 @@ Mismo patrón ya usado en `MatriculaController::store()`/`InscripcionController`
 
 **#31 Capacitación — ✅ RESUELTO (2026-08-26, recomendación #7).** Ver actualización más abajo.
 
-**#8 Optimización de calificaciones específica — no existe como esfuerzo dedicado (aunque el sistema en general sí tiene optimizaciones de otra sesión).**
-- La sesión "Optimizaciones de rendimiento" (memoria, 2026-03-19) atacó N+1 e índices de forma general en el sistema, pero no hay evidencia de un trabajo específico sobre `calificaciones`/`calificaciones_academicas` más allá de eso — no encontré, por ejemplo, índices compuestos dedicados a los patrones de consulta de boletín/planilla (`matricula_id + asignacion_id + periodo_id`, que es el patrón de consulta más repetido de todo el sistema, usado en `BoletinController`, `CalificacionController`, `PortalEstudianteController`, `PortalDocenteController`).
-- **Propuesta (no implementada):** migración aditiva con índice compuesto `(matricula_id, asignacion_id, periodo_id)` en `calificaciones` y `calificaciones_academicas` si no existe ya (no confirmado en esta pasada — requeriría inspeccionar los índices reales de la BD, fuera del alcance de "buscar en código" de esta auditoría).
+**#8 Optimización de calificaciones — ✅ RESUELTO, ya existía (verificado 2026-08-27).** La auditoría original no había inspeccionado los índices reales de la BD (lo dejó explícito: "no confirmado... fuera del alcance de esta auditoría"). Al inspeccionarlos:
+- `calificaciones` ya tiene `idx_cal_mat_asi_per (matricula_id, asignacion_id, periodo_id)` — exactamente el índice compuesto propuesto — más una unique key con las mismas 3 columnas.
+- `calificaciones_academicas` no tiene columna `periodo_id` (una fila por asignatura/año escolar, con las 4 notas del período como columnas `comp{n}_p{n}`), así que el índice equivalente real es `cal_ac_unique (matricula_id, asignacion_id, school_year_id)` — también ya existe.
+- Verificado con `EXPLAIN` sobre los 3 patrones de consulta reales (boletín de grupo — `matricula_id IN (...) + school_year_id`, notas legado por período, guardado individual vía `updateOrCreate`): los tres usan `type=const/range/ref` con el índice correcto, nunca full scan.
+- No se creó ninguna migración — habría sido un índice duplicado, con el único efecto de agregar overhead de escritura sin ninguna mejora de lectura.
+- **Hallazgo aparte (no parte de esta recomendación):** existen índices redundantes por pases de optimización previos que no se revisaron entre sí (ej. `idx_cal_asignacion_id` duplica `calificaciones_asignacion_id_index`). No afectan lecturas; limpiar el overhead de escritura quedaría como mejora aparte, no solicitada.
 
 ---
 
@@ -307,7 +310,7 @@ Crítica: 1, 2 (recomendaciones). Alta: 3, 4, 8. Media: 5, 6. Baja: 7.
 | 5 | UTF-8 / UTF8MB4 | 🟢 Completo | Sí | `config/database.php` | — | — |
 | 6 | Ñ y tildes | 🟢 Completo | Sí | utf8mb4 + DejaVu Sans en PDFs | — | — |
 | 7 | Concurrencia en matrícula | 🟢 Completo ✅ 2026-08-26 | Sí | `MatriculaController`/`InscripcionController`/`CierreAnoController`/`SchoolYearController`, todos con `lockForUpdate` | — | — |
-| 8 | Optimización de calificaciones | 🟡 Parcial | Sí (general) | Optimizaciones previas de sesión 2026-03-19 | Índice compuesto dedicado a boletín/planilla | Media |
+| 8 | Optimización de calificaciones | 🟢 Completo ✅ 2026-08-27 (ya existía) | Sí | `idx_cal_mat_asi_per`, `cal_ac_unique` — verificado con EXPLAIN | — | — |
 | 9 | Carga masiva de notas | 🟢 Completo ✅ 2026-08-26 | Sí, unificado a 1 flujo | `app/Jobs/ImportarCalificacionesJob.php`, `CalificacionController.php`, `ImportacionController.php` | — | — |
 | 10 | Procesamiento batch | 🟢 Completo ✅ 2026-08-26 | Sí (7 Jobs) | `app/Jobs/*.php` | — | — |
 | 11 | Staging / Sandbox | 🟡 Parcial | Sí (DemoMode) | `DemoMode` middleware | Ambiente de staging real separado | Baja |

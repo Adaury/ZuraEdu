@@ -9,6 +9,7 @@ use App\Models\SchoolYear;
 use App\Models\Seccion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class OnboardingWizardController extends Controller
 {
@@ -142,7 +143,8 @@ class OnboardingWizardController extends Controller
             'secciones.*.*'    => ['string', 'max:10'],
             'nuevo_grado'      => ['nullable', 'string', 'max:80'],
             'nuevo_nivel'      => ['nullable', 'integer', 'min:1', 'max:20'],
-            'nuevo_ciclo'      => ['nullable', 'in:primer_ciclo,segundo_ciclo,bachillerato'],
+            // 'inicial' queda fuera a propósito: esos grados los gestiona SuperAdmin, no el wizard de onboarding.
+            'nuevo_ciclo'      => ['nullable', Rule::in(array_diff(Grado::CICLOS, ['inicial']))],
         ]);
 
         $activos     = $request->input('grados_activos', []);

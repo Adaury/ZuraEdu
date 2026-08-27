@@ -206,7 +206,7 @@ class CierreAnoController extends Controller
             $schoolYear->update(['activo' => false]);
 
             AlertaSistema::create([
-                'tipo'             => 'cierre_ano',
+                'tipo'             => 'periodo_cierre',
                 'titulo'           => 'Cierre de Año Escolar Ejecutado',
                 'mensaje'          => "El año {$schoolYear->nombre} fue cerrado. {$promovidos} promovidos, {$noPromovidos} no promovidos.",
                 'nivel'            => 'info',

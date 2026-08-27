@@ -8,7 +8,7 @@
 
 # 1. Resumen ejecutivo
 
-De los 31 requerimientos de Don Bosco: **13 🟢 existen y funcionan**, **9 🟡 existen parcialmente**, **4 🟠 existen pero están defectuosos**, **4 🔴 no existen**, **1 ⚫ requiere decisión institucional** (ver tabla completa en la sección final). **Actualización 2026-08-26: las recomendaciones #1 a #7 (ver §16) ya fueron implementadas y verificadas — #22, #7, #15, #17, #1, #26, #29, #9, #10 y #31 pasan a 🟢, quedando 23/6/0/1/1.**
+De los 31 requerimientos de Don Bosco: **13 🟢 existen y funcionan**, **9 🟡 existen parcialmente**, **4 🟠 existen pero están defectuosos**, **4 🔴 no existen**, **1 ⚫ requiere decisión institucional** (ver tabla completa en la sección final). **Actualización 2026-08-26/27: las recomendaciones #1 a #8 (ver §16) ya fueron implementadas y verificadas — #22, #7, #15, #17, #1, #26, #29, #9, #10 y #31 pasan a 🟢, quedando 23/6/0/1/1. La recomendación #8 (test de regresión de cierre de año) además destapó y corrigió un bug crítico activo: el cierre de año fallaba siempre por un valor de ENUM inválido en `alertas_sistema.tipo` — ver actualización en §5.**
 
 **El hallazgo más grave de esta auditoría — ✅ ya corregido:** `CierreAnoController::ejecutar()` (`app/Http/Controllers/Admin/CierreAnoController.php:199-200`) intentaba guardar `matricula.estado = 'promovida'` o `'no_promovida'`, pero la columna `estado` de `matriculas` era un `ENUM('activa','retirada','transferida')` (`database/migrations/2026_03_17_000031_create_matriculas_table.php:18`) que nunca fue ampliado para aceptar esos dos valores, con la conexión MySQL en modo `strict => true` (`config/database.php:59`). El cierre de año escolar no podía persistir el resultado de la promoción de un estudiante sin fallar o corromper el dato — esto explicaba buena parte de las matrículas "sucias" que Don Bosco reporta al cruzar años. **Resuelto con la migración aditiva `2026_08_26_000001_add_promocion_states_to_matriculas_enum.php`** (ver actualización al final de §5).
 
@@ -177,6 +177,12 @@ Mismo patrón ya usado en `MatriculaController::store()`/`InscripcionController`
 - Tarjeta de acceso agregada en `/admin/ayuda/index.blade.php`, mismo patrón visual que la tarjeta existente de "Matriz de Accesos por Rol".
 - Verificado en navegador real (Playwright, cuenta `admin@demo.com`): las 5 pestañas cambian correctamente, marcar/desmarcar "visto" actualiza el botón y la barra de progreso sin recargar, el estado persiste tras recargar la página, el deep-link `?tab=sCfg` activa la pestaña correcta del manual, y el diseño se ve correcto en modo claro y oscuro. Suite completa: 29/29.
 
+**#8 (recomendación) Test de regresión para el cierre de año — RESUELTO, y destapó un bug crítico activo en producción.** `tests/Feature/CierreAnoRegressionTest.php`, 9 pruebas contra el flujo HTTP real de `CierreAnoController` (no contra el modelo directamente, a diferencia de la verificación manual de las recomendaciones #1/#2):
+- Cubre: cálculo de promoción (promovido ≥60 / no promovido / pendiente sin notas), que la académica no se mezcla con la técnica cuando ambas existen, que el año se desactiva, que un cierre sobre un año ya inactivo no hace nada, que un rol sin acceso a Dirección recibe 403, y el traslado masivo de fin de año (orden secuencial y no duplicar estudiantes ya trasladados).
+- **Hallazgo crítico:** al correr la prueba contra el controlador real (con datos comprometidos y un `queue:work`/request HTTP de verdad, no una transacción revertida), **el cierre de año fallaba siempre, en cualquier escenario** — `CierreAnoController::ejecutar()` (línea 209) crea una `AlertaSistema` con `'tipo' => 'cierre_ano'`, pero el ENUM de `alertas_sistema.tipo` (`database/migrations/2026_03_19_000006_create_alertas_sistema_table.php`) solo acepta `riesgo_academico, entrega_notas, baja_asistencia, periodo_cierre, evento_calendario, otro` — **`'cierre_ano'` no es un valor válido**. Con la conexión en modo `strict` (`config/database.php:59`, el mismo modo que expuso el bug del ENUM de matrículas en la recomendación #1), esto lanza `SQLSTATE[01000]: Data truncated for column 'tipo'`, el `catch` interno de `ejecutar()` revierte toda la transacción, y el usuario solo ve un mensaje genérico "Error al ejecutar el cierre" — **ninguna promoción se guarda, ninguna matrícula cambia de estado, el año no se desactiva**, sin importar qué tan bien esté calculada la promoción. Este bug es anterior a esta sesión y pasó inadvertido en la verificación de las recomendaciones #1/#2 porque esa verificación probó `Matricula::estado` directamente sobre el modelo (dentro de una transacción revertida), sin ejecutar nunca el controlador completo end-to-end — exactamente el riesgo que esta recomendación #8 buscaba prevenir.
+- **Corregido:** `'tipo' => 'cierre_ano'` → `'tipo' => 'periodo_cierre'` (valor existente del ENUM, semánticamente equivalente). Un solo carácter de diferencia en el fix, pero sin el test de regresión este bug habría llegado a producción sin que nadie lo notara hasta el primer cierre de año real de un cliente.
+- Suite completa: 38/38 (29 previos + 9 nuevos).
+
 ---
 
 # 6. Funciones inexistentes (🔴) — propuestas de diseño, sin implementar
@@ -276,7 +282,7 @@ Por impacto/riesgo, sin implementar nada todavía:
 5. ✅ Extender `TicketSoporte` con SLA y causa raíz (campos aditivos, sin módulo nuevo). (2026-08-26)
 6. ✅ Mover la carga masiva de calificaciones a un Job en cola, unificando los 2 flujos existentes en uno solo. (2026-08-26)
 7. ✅ Crear sección de capacitación dentro de `/admin/ayuda` (extensión, no módulo nuevo). (2026-08-26)
-8. Escribir al menos un test de regresión para el cierre de año antes de tocar el ENUM de estados (para no repetir el patrón de "corregir sin poder verificar").
+8. ✅ Escribir al menos un test de regresión para el cierre de año antes de tocar el ENUM de estados (para no repetir el patrón de "corregir sin poder verificar"). (2026-08-27 — implementado después del ENUM, no antes; ver hallazgo crítico que destapó en la actualización más abajo)
 
 # 17. Prioridad
 
@@ -299,7 +305,7 @@ Crítica: 1, 2 (recomendaciones). Alta: 3, 4, 8. Media: 5, 6. Baja: 7.
 | 9 | Carga masiva de notas | 🟢 Completo ✅ 2026-08-26 | Sí, unificado a 1 flujo | `app/Jobs/ImportarCalificacionesJob.php`, `CalificacionController.php`, `ImportacionController.php` | — | — |
 | 10 | Procesamiento batch | 🟢 Completo ✅ 2026-08-26 | Sí (7 Jobs) | `app/Jobs/*.php` | — | — |
 | 11 | Staging / Sandbox | 🟡 Parcial | Sí (DemoMode) | `DemoMode` middleware | Ambiente de staging real separado | Baja |
-| 12 | Pruebas de regresión | 🟡 Parcial | Sí (29 tests) | `tests/` | Cobertura de matrícula/calificaciones/boletines/RBAC | Alta |
+| 12 | Pruebas de regresión | 🟡 Parcial ✅ 2026-08-27 mejorado | Sí (38 tests, +9 de cierre de año) | `tests/`, `CierreAnoRegressionTest.php` | Cobertura de calificaciones/boletines/RBAC | Alta |
 | 13 | Git / control de versiones | 🟢 Completo | Sí | repo `master` + convención de commits | — | — |
 | 14 | RBAC | 🟢 Completo | Sí | `docs/MATRIZ_PERMISOS_ZURAEDU.md` | — | — |
 | 15 | Impresión de boletines | 🟢 Completo ✅ 2026-08-26 | Sí | `routes/admin/academico.php` — `imprimir-boletines` separado de `ver-boletines` | — | — |

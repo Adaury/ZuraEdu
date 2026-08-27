@@ -142,8 +142,9 @@ class CalificacionController extends Controller
         $this->authorize('verCalificaciones', $asignacion);
 
         // ── Área académica → planilla anual con 4 competencias ────────────
+        // planillaAcademica() vive en CalificacionAcademicaController, no aquí.
         if ($asignacion->area === 'academica') {
-            return $this->planillaAcademica($request);
+            return redirect()->route('admin.calificaciones.planilla-academica', $request->only('asignacion_id'));
         }
 
         // ── Área técnica → grilla por período ────────────────────────────

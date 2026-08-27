@@ -39,12 +39,17 @@ Route::prefix('mensajes')->name('mensajes.')->group(function () {
 });
 
 // ── Comunicados ───────────────────────────────────────────────────────────
-Route::get('comunicados/dashboard',        [ComunicadoController::class, 'dashboard'])->name('comunicados.dashboard');
-Route::get('comunicados/lista/pdf',        [ComunicadoController::class, 'listaPdf'])->name('comunicados.lista-pdf');
-Route::get('comunicados/lista/excel',      [ComunicadoController::class, 'listaExcel'])->name('comunicados.lista-excel');
+// "mis" (bandeja personal) y "{comunicado}/pdf" (descarga individual) quedan
+// abiertos a cualquier rol admin, igual que comunicaciones.php — el resto es
+// gestión (crear/editar/eliminar/enviar a todo el tenant) y sí requiere gate.
 Route::get('comunicados/mis',           [ComunicadoController::class, 'misComunicados'])->name('comunicados.mis');
 Route::get('comunicados/{comunicado}/pdf', [ComunicadoController::class, 'pdf'])->name('comunicados.pdf');
-Route::resource('comunicados', ComunicadoController::class)->except(['show']);
+Route::middleware('can:acceso-direccion-coordinacion')->group(function () {
+    Route::get('comunicados/dashboard',        [ComunicadoController::class, 'dashboard'])->name('comunicados.dashboard');
+    Route::get('comunicados/lista/pdf',        [ComunicadoController::class, 'listaPdf'])->name('comunicados.lista-pdf');
+    Route::get('comunicados/lista/excel',      [ComunicadoController::class, 'listaExcel'])->name('comunicados.lista-excel');
+    Route::resource('comunicados', ComunicadoController::class)->except(['show']);
+});
 
 // ── Año Escolar y Períodos ────────────────────────────────────────────────
 Route::get('school-years/lista/pdf',   [SchoolYearController::class, 'listaPdf'])->name('school-years.lista-pdf');

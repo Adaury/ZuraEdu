@@ -2381,7 +2381,7 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.comunicados.index') }}" class="{{ request()->routeIs('admin.comunicados*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.comunicados.mis') }}" class="{{ request()->routeIs('admin.comunicados.mis') ? 'active' : '' }}">
                         <i class="bi bi-megaphone"></i>Comunicados
                     </a>
                 </li>
@@ -2488,7 +2488,7 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.comunicados.index') }}" class="{{ request()->routeIs('admin.comunicados*') ? 'active' : '' }}">
+                    <a href="{{ route('admin.comunicados.mis') }}" class="{{ request()->routeIs('admin.comunicados.mis') ? 'active' : '' }}">
                         <i class="bi bi-megaphone"></i>Comunicados
                     </a>
                 </li>

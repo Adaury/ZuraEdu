@@ -36,8 +36,18 @@
   - **Revisados y confirmados sin necesidad de `can:` de ruta** — ambos siguen el mismo patrón que `riesgo.php` (autorización dentro del controlador, no en la ruta), y en ambos casos es el diseño correcto, no un gap:
     - `comunicaciones.php` — mensajería interna; por diseño cualquier usuario del panel debe poder escribirle a un colega de su tenant. `ComunicacionesController::show()`/`destroy()`/`descargarAdjunto()` ya verifican remitente/destinatario antes de dar acceso a un mensaje individual. Único detalle menor (no bloqueante): la pestaña "circulares" de `index()` lista el *asunto* de todas las circulares del tenant sin filtrar por destinatario (el cuerpo sigue protegido por `show()`) — parece intencional (transparencia institucional), se deja así salvo que se pida lo contrario.
     - `soporte.php` — tickets internos; `TicketController::esAdmin()` (Administrador/Director/Coordinador Académico) ya gatea listas Excel/PDF, asignación y ver/responder tickets ajenos; cualquier otro rol solo puede crear/ver/responder los suyos y cerrar los ya resueltos. Completo.
-    - `comunicados` (en `sistema.php`) — no revisado en este pase; sigue pendiente si se quiere auditar.
+    - `comunicados` (en `sistema.php`) — ✅ auditado y corregido (2026-08-27). Ver actualización más abajo.
 - ✅ Verificado tras todo el lote: `php artisan route:list` carga sin errores (930 rutas admin, 124 API) y la suite completa sigue en 29/29.
+
+### `comunicados` (sistema.php) — auditado y corregido (2026-08-27)
+
+Único módulo que había quedado marcado "no revisado" en el barrido original. `ComunicadoController` no tenía ningún control de acceso — ni `can:` en la ruta, ni Policy, ni `esAdmin()` interno (a diferencia de `comunicaciones.php`/`soporte.php`, que sí lo tienen). Efecto real: cualquier rol que llegara a `/admin` (Secretaría, Recepción, Biblioteca, Caja, etc.) podía crear/editar/eliminar comunicados institucionales, incluyendo el envío masivo real de notificaciones y correos a "todos" los usuarios del tenant.
+
+**Corregido:** rutas de gestión (`index`, `create`, `store`, `edit`, `update`, `destroy`, `dashboard`, `lista-pdf`, `lista-excel`) protegidas con `can:acceso-direccion-coordinacion` (Gate ya existente, Administrador/Director/Coordinador Académico/1/2 — mismo criterio que `reuniones.php`/`encuestas.php`, comunicación institucional formal). `comunicados/mis` (bandeja personal) y `comunicados/{id}/pdf` (descarga individual) quedaron sin cambios, abiertos a cualquier rol admin — mismo criterio de "transparencia institucional" ya documentado para `comunicaciones.php`.
+
+**Hallazgo adicional durante la corrección:** el sidebar tenía dos versiones inconsistentes entre sí — el menú combinado (Admin/Director/Coordinador) ya mostraba "Gestionar Comunicados" solo a esos 3 roles, pero los sidebars **exclusivos** de Secretaría y de Registrador Académico mostraban un enlace de gestión completa sin ninguna condición (`layouts/admin.blade.php`, antes en las líneas ~2384 y ~2491). Decisión del usuario: el alcance correcto es solo Admin/Director/Coordinador — se corrigieron esos 2 enlaces para apuntar a `comunicados.mis` en vez de `comunicados.index`, igual que el resto de roles sin ese permiso.
+
+Verificado: `route:list` carga las 19 rutas de `comunicados` sin error, sidebars sin enlaces rotos, suite completa 69/69 sin regresiones.
 
 ### Regresión encontrada y corregida al implementar la recomendación #3 de `AUDITORIA_DON_BOSCO_ZURAEDU.md` (2026-08-26)
 

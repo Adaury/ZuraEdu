@@ -222,6 +222,7 @@ class HorarioController extends Controller
                     'asignacion.asignatura',
                     'asignacion.docente',
                     'franja',
+                    'aula',
                 ])
                 ->get();
 

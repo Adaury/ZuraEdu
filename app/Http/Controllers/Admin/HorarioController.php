@@ -380,7 +380,7 @@ class HorarioController extends Controller
         $grupoId = $request->input('grupo_id');
         $docenteId = $request->input('docente_id');
 
-        $detalles = HorarioDetalle::with(['asignacion.grupo', 'asignacion.docente', 'asignacion.asignatura', 'aula', 'franja'])
+        $detalles = HorarioDetalle::with(['asignacion.grupo.grado', 'asignacion.grupo.seccion', 'asignacion.docente', 'asignacion.asignatura', 'aula', 'franja'])
             ->where('horario_id', $horario->id)
             ->when($grupoId,   fn($q) => $q->whereHas('asignacion', fn($q2) => $q2->where('grupo_id', $grupoId)))
             ->when($docenteId, fn($q) => $q->whereHas('asignacion', fn($q2) => $q2->where('docente_id', $docenteId)))
@@ -742,7 +742,7 @@ class HorarioController extends Controller
     // ── SUPLENCIAS ────────────────────────────────────────────────────────
     public function suplencias()
     {
-        $suplencias = Suplencia::with(['docenteOriginal', 'docenteSuplente', 'detalle.asignacion.grupo', 'detalle.asignacion.asignatura', 'detalle.franja'])
+        $suplencias = Suplencia::with(['docenteOriginal', 'docenteSuplente', 'detalle.asignacion.grupo.grado', 'detalle.asignacion.grupo.seccion', 'detalle.asignacion.asignatura', 'detalle.franja'])
             ->orderByDesc('fecha')
             ->paginate(20);
         $docentes = Docente::orderBy('apellidos')->get();

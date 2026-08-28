@@ -138,7 +138,7 @@ class HorarioValidatorService
 
     private function checkAsignaciones(int $schoolYearId, array $grupoIds): ?\Illuminate\Support\Collection
     {
-        $q = Asignacion::with(['asignatura', 'docente', 'grupo'])
+        $q = Asignacion::with(['asignatura', 'docente', 'grupo.grado', 'grupo.seccion'])
             ->where('school_year_id', $schoolYearId)
             ->where('activo', true)
             ->whereNotNull('horas_semana')

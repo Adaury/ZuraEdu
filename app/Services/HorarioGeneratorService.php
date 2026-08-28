@@ -202,7 +202,7 @@ class HorarioGeneratorService
         $this->cargarNoDisponibilidad($schoolYear->id);
 
         // ── 6. Asignaciones con horas configuradas ────────────────────────────
-        $asignaciones = Asignacion::with(['grupo', 'docente', 'asignatura'])
+        $asignaciones = Asignacion::with(['grupo.grado', 'grupo.seccion', 'docente', 'asignatura'])
             ->where('school_year_id', $schoolYear->id)
             ->where('activo', true)
             ->whereNotNull('horas_semana')

@@ -38,7 +38,8 @@ class HorarioIntegrityChecker
     {
         $detalles = HorarioDetalle::with([
             'asignacion.docente',
-            'asignacion.grupo',
+            'asignacion.grupo.grado',
+            'asignacion.grupo.seccion',
             'asignacion.asignatura',
             'aula',
             'franja',

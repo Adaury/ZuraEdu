@@ -108,4 +108,22 @@ return [
 
     'prefix' => env('CACHE_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_').'_cache_'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Serializable Classes
+    |--------------------------------------------------------------------------
+    |
+    | Laravel 13 introduce este ajuste con default `false` (bloquea la
+    | deserialización de cualquier objeto, previene ataques de gadget-chain).
+    | Se fija explícitamente en `true` porque el código cachea deliberadamente
+    | colecciones/modelos Eloquent en decenas de sitios (dashboards, rankings,
+    | listados de portal) — auditar y refactorizar cada uno queda fuera de
+    | alcance de este upgrade. El caché lo llena código propio, no input de
+    | usuario, así que el riesgo de gadget-chain real es bajo. Decisión
+    | tomada explícitamente el 2026-08-28 (ver plan de upgrade Laravel 10→13).
+    |
+    */
+
+    'serializable_classes' => true,
+
 ];

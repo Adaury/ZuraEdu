@@ -17,7 +17,7 @@ use App\Http\Requests\Admin\UpdateEstudianteRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Intervention\Image\Facades\Image;
+use Illuminate\Support\Facades\Image;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
@@ -1302,9 +1302,9 @@ class EstudianteController extends Controller
         $filename    = Str::uuid() . '.jpg';
         $storagePath = $directory . '/' . $filename;
 
-        $img = Image::make($file)->fit(300, 300)->encode('jpg', 85);
+        $bytes = Image::fromUpload($file)->cover(300, 300)->toJpeg()->quality(85)->toBytes();
 
-        Storage::disk('public')->put($storagePath, (string) $img);
+        Storage::disk('public')->put($storagePath, $bytes);
 
         return $storagePath;
     }

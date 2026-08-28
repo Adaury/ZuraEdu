@@ -53,7 +53,7 @@ class AsignacionesDemoSeeder extends Seeder
         // ── 3. Obtener grupos y asignaturas ───────────────────────────────
         $grupos     = Grupo::where('school_year_id', $schoolYear->id)
                           ->where('activo', true)
-                          ->with('grado')
+                          ->with(['grado', 'seccion'])
                           ->get();
         $asignaturas = Asignatura::where('activo', true)->get();
 

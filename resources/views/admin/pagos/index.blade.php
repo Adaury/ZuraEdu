@@ -259,7 +259,7 @@ new Chart(document.getElementById('chartCobros'), {
                 $est      = $pago->matricula->estudiante;
                 $grp      = $pago->matricula->grupo;
                 $diasMora = ($pago->estado === 'vencido' && $pago->fecha_vencimiento)
-                    ? (int) $pago->fecha_vencimiento->diffInDays(now())
+                    ? (int) abs($pago->fecha_vencimiento->diffInDays(now()))
                     : null;
                 $moraClass = match(true) {
                     $diasMora === null        => '',

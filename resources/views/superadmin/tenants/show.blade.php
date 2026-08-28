@@ -184,7 +184,7 @@
                         </div>
                         <div class="progress mt-1" style="height:4px;">
                             @php
-                                $total = $suscActiva->fecha_inicio->diffInDays($suscActiva->fecha_fin);
+                                $total = abs($suscActiva->fecha_inicio->diffInDays($suscActiva->fecha_fin));
                                 $pct   = $total > 0 ? round(($total - $diasRest) / $total * 100) : 0;
                             @endphp
                             <div class="progress-bar bg-success" style="width:{{ $pct }}%;border-radius:4px;"></div>

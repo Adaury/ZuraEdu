@@ -174,7 +174,7 @@
                                 {{ $prestamo->fecha_vencimiento?->format('d/m/Y') }}
                                 @if($prestamo->fecha_vencimiento < now())
                                 <br><span class="badge bg-danger" style="font-size:.65rem;">
-                                    {{ now()->diffInDays($prestamo->fecha_vencimiento) }}d vencido
+                                    {{ abs(now()->diffInDays($prestamo->fecha_vencimiento)) }}d vencido
                                 </span>
                                 @endif
                             </td>

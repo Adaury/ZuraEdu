@@ -221,7 +221,7 @@
             <td class="value">
                 {{ $prestamo->fecha_vencimiento->format('d/m/Y') }}
                 @if($prestamo->estado === 'activo' && $prestamo->fecha_vencimiento >= now())
-                    ({{ $prestamo->fecha_vencimiento->diffInDays(now()) }} días restantes)
+                    ({{ abs($prestamo->fecha_vencimiento->diffInDays(now())) }} días restantes)
                 @endif
             </td>
         </tr>

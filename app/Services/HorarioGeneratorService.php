@@ -63,6 +63,10 @@ class HorarioGeneratorService
 
     private Collection $franjas;    // FranjaHoraria activas, sin recreo, ordenadas
     private Collection $aulas;      // Aula disponibles, ordenadas por capacidad ASC
+
+    /** @var array<int, array{0: string, 1: \App\Models\FranjaHoraria}> Cross product
+     *  (día, franja) calculado una sola vez — ver comentario en ejecutarGeneracion(). */
+    private array $baseCombinaciones = [];
     private array      $noDisponible = []; // [docente_id][dia][franja_id] = true
 
     // =========================================================================
@@ -107,6 +111,14 @@ class HorarioGeneratorService
     private array $mejorParcial      = [];
     private int   $mejorParcialCount = 0;
 
+    /** Tope de tiempo real (segundos) para TODO el proceso (los MAX_REINTENTOS
+     *  intentos juntos) — red de seguridad independiente del límite de
+     *  iteraciones: con configuraciones grandes de franjas/aulas, cada
+     *  iteración cuesta más (ver getCombinaciones), así que el límite de
+     *  iteraciones solo no basta para acotar el tiempo real de ejecución. */
+    private float $maxTiempoSegundos;
+    private float $deadline;
+
     // =========================================================================
     //  API PÚBLICA
     // =========================================================================
@@ -129,6 +141,9 @@ class HorarioGeneratorService
         $this->maxIter   = (int) env('HORARIO_MAX_ITER', 150_000);
         $this->debugMode = (bool) env('HORARIO_DEBUG', false);
         $this->debugLog  = [];
+
+        $this->maxTiempoSegundos = (float) env('HORARIO_MAX_TIME', 30);
+        $this->deadline          = microtime(true) + $this->maxTiempoSegundos;
 
         $this->debug('=== INICIO GENERACIÓN ===', [
             'nombre'      => $nombre,
@@ -193,6 +208,20 @@ class HorarioGeneratorService
 
         if ($this->franjas->isEmpty()) {
             return ['error' => 'No hay franjas horarias activas. Ve a Horarios → Franjas Horarias.'];
+        }
+
+        // Base de combinaciones (día, franja) — se calcula UNA sola vez aquí en
+        // vez de reconstruirse en cada llamada de getCombinaciones(), que antes
+        // se ejecutaba en cada nodo del backtracking (hasta cientos de miles de
+        // veces): con configuraciones grandes de franjas/aulas eso multiplicaba
+        // el tiempo real de ejecución a minutos. El orden de preferencia sigue
+        // siendo dinámico (usort en getCombinaciones), solo la lista base deja
+        // de reconstruirse.
+        $this->baseCombinaciones = [];
+        foreach ($this->diasLaborales as $dia) {
+            foreach ($this->franjas as $franja) {
+                $this->baseCombinaciones[] = [$dia, $franja];
+            }
         }
 
         // ── 4. Aulas (ordenadas por capacidad ASC para elegir la más pequeña que sirva) ──
@@ -384,12 +413,12 @@ class HorarioGeneratorService
             return true;
         }
 
-        // ── Límite de seguridad ───────────────────────────────────────────────
+        // ── Límite de seguridad (iteraciones o tiempo real, lo que llegue antes) ──
         $this->iteraciones++;
-        if ($this->iteraciones > $this->maxIter) {
+        if ($this->iteraciones > $this->maxIter || microtime(true) >= $this->deadline) {
             $this->limitAlcanzado = true;
             $this->actualizarMejorParcial($asignados);
-            $this->debug('Límite de iteraciones alcanzado', ['iter' => $this->iteraciones]);
+            $this->debug('Límite alcanzado (iteraciones o tiempo)', ['iter' => $this->iteraciones]);
             return false;
         }
 
@@ -549,12 +578,7 @@ class HorarioGeneratorService
         $gId = $asig->grupo_id;
         $mId = $asig->asignatura_id;
 
-        $combinaciones = [];
-        foreach ($this->diasLaborales as $dia) {
-            foreach ($this->franjas as $franja) {
-                $combinaciones[] = [$dia, $franja];
-            }
-        }
+        $combinaciones = $this->baseCombinaciones; // copia barata (copy-on-write)
 
         usort($combinaciones, function (array $a, array $b) use ($dId, $gId, $mId): int {
             [$diaA, $franjaA] = $a;

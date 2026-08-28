@@ -188,7 +188,7 @@
 
             {{-- Retroalimentación --}}
             @if($entrega?->notas_docente)
-            @php $fbNuevo = $entrega->updated_at && $entrega->updated_at->diffInHours(now()) <= 72; @endphp
+            @php $fbNuevo = $entrega->updated_at && abs($entrega->updated_at->diffInHours(now())) <= 72; @endphp
             <div style="background:#f0fdf4;border-left:3px solid #10b981;border-radius:6px;padding:.45rem .7rem;margin-top:.55rem;font-size:.76rem;color:#065f46;">
                 <div style="display:flex;align-items:flex-start;gap:.4rem;">
                     <i class="bi bi-chat-left-text-fill mt-1" style="flex-shrink:0;"></i>

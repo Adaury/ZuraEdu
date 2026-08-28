@@ -723,7 +723,7 @@ Route::get('/offline',           [\App\Http\Controllers\PwaController::class, 'o
 Route::post('/webhook/stripe', [\App\Http\Controllers\WebhookStripeController::class, 'handle'])
     ->name('webhook.stripe')
     ->withoutMiddleware([
-        \App\Http\Middleware\VerifyCsrfToken::class,
+        \App\Http\Middleware\PreventRequestForgery::class,
         \App\Http\Middleware\ResolveTenant::class,
         \App\Http\Middleware\DemoMode::class,
     ]);
@@ -761,7 +761,7 @@ Route::get('/cardnet/checkout/{token}', [\App\Http\Controllers\CardNetController
 Route::get('/cardnet/retorno',          [\App\Http\Controllers\CardNetController::class, 'retorno'])->name('cardnet.retorno');
 Route::post('/cardnet/notify',          [\App\Http\Controllers\CardNetController::class, 'notify'])
     ->name('cardnet.notify')
-    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+    ->withoutMiddleware([\App\Http\Middleware\PreventRequestForgery::class]);
 
 // ══════════════════════════════════════════════════════════════════════════
 //  SUPER ADMIN — Panel de la Plataforma ZuraEdu

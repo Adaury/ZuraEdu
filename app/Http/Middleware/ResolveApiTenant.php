@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class ResolveApiTenant
 {
@@ -23,7 +22,9 @@ class ResolveApiTenant
             return response()->json(['message' => 'Tenant no resuelto para este usuario.'], 403);
         }
 
-        $tenant = Cache::remember("tenant_{$tenantId}", 300, fn () => Tenant::find($tenantId));
+        // Sin caché: cachear el modelo Eloquent rompe con serializable_classes=false
+        // (default desde Laravel 13); find() por PK ya es una consulta indexada barata.
+        $tenant = Tenant::find($tenantId);
 
         if (! $tenant) {
             return response()->json(['message' => 'Institución no encontrada.'], 404);

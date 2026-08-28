@@ -102,15 +102,16 @@ class Tenant extends Model
 
     public static function resolveFromHost(string $host): ?self
     {
-        // Intentar por dominio personalizado primero
-        $tenant = Cache::remember("tenant_host_{$host}", 300, function () use ($host) {
+        // Se cachea solo el ID (escalar) — cachear el modelo rompe con
+        // serializable_classes=false (default desde Laravel 13).
+        $tenantId = Cache::remember("tenant_host_resolve_{$host}", 300, function () use ($host) {
             return static::where('dominio_personalizado', $host)
                 ->orWhere('dominio', static::extractSubdomain($host))
                 ->where('estado', '!=', 'cancelado')
-                ->first();
+                ->value('id');
         });
 
-        return $tenant;
+        return $tenantId ? static::find($tenantId) : null;
     }
 
     private static function extractSubdomain(string $host): string

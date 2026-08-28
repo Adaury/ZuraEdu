@@ -646,10 +646,10 @@
                             {{ $boletinConfig->nivel_educativo ?? 'Nivel Secundario' }}
                         </div>
                         <div class="pv-lema" id="pv-lema">
-                            {{ $boletinConfig->lema ? '"'.$boletinConfig->lema.'"' : '' }}
+                            {{ $boletinConfig?->lema ? '"'.$boletinConfig->lema.'"' : '' }}
                         </div>
                         <div class="pv-sub" id="pv-contacto" style="margin-top:2px;">
-                            {{ implode(' · ', array_filter([$boletinConfig->municipio ?? '', $boletinConfig->telefono ? 'Tel. '.($boletinConfig->telefono ?? '') : ''])) }}
+                            {{ implode(' · ', array_filter([$boletinConfig->municipio ?? '', $boletinConfig?->telefono ? 'Tel. '.($boletinConfig->telefono ?? '') : ''])) }}
                         </div>
                     </div>
                     <div class="pv-title" id="pvTitleBar">&#9670; Boletín de Calificaciones &#9670;</div>

@@ -47,9 +47,12 @@ class SchoolYear extends Model
     public static function actual(): ?self
     {
         $tid = tenant_id();
-        return Cache::remember("t{$tid}_school_year_actual", 300, fn () =>
-            static::where('activo', true)->first()
+        // Se cachea solo el ID (escalar) — cachear el modelo rompe con
+        // serializable_classes=false (default desde Laravel 13).
+        $id = Cache::remember("t{$tid}_school_year_actual", 300, fn () =>
+            static::where('activo', true)->value('id')
         );
+        return $id ? static::find($id) : null;
     }
 
     public static function flushActualCache(): void

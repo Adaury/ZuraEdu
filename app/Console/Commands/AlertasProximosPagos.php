@@ -54,7 +54,8 @@ class AlertasProximosPagos extends Command
             $est         = $pago->matricula?->estudiante;
             if (! $est) continue;
 
-            $diasRestantes = (int) Carbon::parse($pago->fecha_vencimiento)->diffInDays(now());
+            // abs(): Carbon 3 puede devolver diffIn*() con signo según dirección.
+            $diasRestantes = (int) abs(Carbon::parse($pago->fecha_vencimiento)->diffInDays(now()));
             $cuando        = $diasRestantes === 0 ? 'hoy' : "en {$diasRestantes} día(s)";
             $monto         = 'RD$ ' . number_format($pago->monto, 2);
             $cacheKey      = "aviso_pago_{$pago->id}_" . now()->toDateString();

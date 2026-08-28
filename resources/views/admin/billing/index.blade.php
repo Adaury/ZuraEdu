@@ -103,7 +103,7 @@
                 @if($suscActiva)
                 @php
                     $diasRest = $suscActiva->diasRestantes();
-                    $total    = $suscActiva->fecha_inicio->diffInDays($suscActiva->fecha_fin) ?: 1;
+                    $total    = abs($suscActiva->fecha_inicio->diffInDays($suscActiva->fecha_fin)) ?: 1;
                     $usado    = $total - $diasRest;
                     $pct      = min(100, round($usado / $total * 100));
                     $barColor = $diasRest <= 3 ? '#ef4444' : ($diasRest <= 10 ? '#f59e0b' : '#22c55e');

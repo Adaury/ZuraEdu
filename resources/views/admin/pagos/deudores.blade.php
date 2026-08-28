@@ -117,7 +117,7 @@
             @foreach($matriculas as $i => $mat)
             @php
                 $diasMora = $mat->primera_mora
-                    ? (int) \Carbon\Carbon::parse($mat->primera_mora)->diffInDays(now())
+                    ? (int) abs(\Carbon\Carbon::parse($mat->primera_mora)->diffInDays(now()))
                     : 0;
                 [$dotClass, $textColor] = match(true) {
                     $diasMora <= 7  => ['mora-verde',    '#15803d'],

@@ -348,7 +348,7 @@
     </div>
     <div class="prt-card-body" style="padding:0;">
         @foreach($zuraClasesData['tareasPendientes'] as $tarea)
-        @php $urgente = $tarea['fecha_limite'] && $tarea['fecha_limite']->diffInDays(now()) <= 2; @endphp
+        @php $urgente = $tarea['fecha_limite'] && abs($tarea['fecha_limite']->diffInDays(now())) <= 2; @endphp
         <div style="padding:.75rem 1rem;border-bottom:1px solid #f1f5f9;display:flex;gap:.75rem;align-items:center;">
             <div style="width:36px;height:36px;background:{{ $urgente?'#fee2e2':'#eef2ff' }};border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="bi bi-pencil-fill" style="color:{{ $urgente?'#dc2626':'#4f46e5' }};font-size:.85rem;"></i>

@@ -44,7 +44,7 @@ class CalificacionRegressionTest extends TestCase
         // sin esto, SchoolYear::actual()/getPeriodos() de un test anterior
         // pueden filtrarse a este test vía la misma clave de caché.
         Cache::flush();
-        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        $this->withoutMiddleware(\App\Http\Middleware\PreventRequestForgery::class);
         Storage::fake('local');
     }
 

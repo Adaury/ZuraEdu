@@ -39,7 +39,7 @@ class CierreAnoRegressionTest extends TestCase
         // Las rutas de cierre de año son todas POST; sin esto cada request
         // fallaría la verificación CSRF y Laravel redirigiría silenciosamente
         // a "back" (sin Referer, a la raíz) en vez de ejecutar el controlador.
-        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        $this->withoutMiddleware(\App\Http\Middleware\PreventRequestForgery::class);
     }
 
     private function admin(): User

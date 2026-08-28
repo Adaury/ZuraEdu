@@ -65,11 +65,16 @@ class DashboardController extends Controller
         };
 
         // ── Horario publicado activo ───────────────────────────────────────
-        $horarioActivo = $schoolYear
-            ? Cache::remember("t{$tid}_dashboard_horario_{$syId}", 300, fn() =>
-                Horario::where('school_year_id', $syId)->where('estado', 'publicado')->latest()->first()
-              )
-            : null;
+        // Se cachea solo el ID (escalar) — cachear el modelo rompe con
+        // serializable_classes=false (default desde Laravel 13).
+        if ($schoolYear) {
+            $horarioActivoId = Cache::remember("t{$tid}_dashboard_horario_{$syId}", 300, fn() =>
+                Horario::where('school_year_id', $syId)->where('estado', 'publicado')->latest()->value('id')
+            );
+            $horarioActivo = $horarioActivoId ? Horario::find($horarioActivoId) : null;
+        } else {
+            $horarioActivo = null;
+        }
 
         // ── Panel específico para Docente ─────────────────────────────────
         if ($isDocente) {

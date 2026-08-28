@@ -39,7 +39,8 @@ class AlertasEntregaNotas extends Command
         $created  = 0;
 
         foreach ($eventos as $evento) {
-            $diasRestantes = (int) now()->startOfDay()->diffInDays($evento->fecha_inicio);
+            // abs(): Carbon 3 puede devolver diffIn*() con signo según dirección.
+            $diasRestantes = (int) abs(now()->startOfDay()->diffInDays($evento->fecha_inicio));
             $cuando = $diasRestantes === 0 ? 'hoy' : "en {$diasRestantes} día(s)";
 
             foreach ($docentes as $docente) {

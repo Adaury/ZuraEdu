@@ -93,18 +93,22 @@ class ResolveTenant
 
     private function resolve(string $host): ?Tenant
     {
-        return Cache::remember("tenant_host_{$host}", 300, function () use ($host) {
+        // Se cachea solo el ID (escalar), no el modelo — cachear instancias Eloquent
+        // rompe con serializable_classes=false (default desde Laravel 13).
+        $tenantId = Cache::remember("tenant_host_{$host}", 300, function () use ($host) {
             $tenant = Tenant::where('dominio_personalizado', $host)->first();
-            if ($tenant) return $tenant;
+            if ($tenant) return $tenant->id;
 
             $parts = explode('.', $host);
             if (count($parts) >= 3) {
-                $tenant = Tenant::where('dominio', $parts[0])->first();
-                if ($tenant) return $tenant;
+                $tenantId = Tenant::where('dominio', $parts[0])->value('id');
+                if ($tenantId) return $tenantId;
             }
 
-            return Tenant::where('dominio', $host)->first();
+            return Tenant::where('dominio', $host)->value('id');
         });
+
+        return $tenantId ? Tenant::find($tenantId) : null;
     }
 
     private function isLocal(string $host): bool

@@ -184,7 +184,9 @@ class TicketSoporte extends Model
             return 'vencido';
         }
 
-        return now()->diffInHours($this->sla_vencimiento_at) <= 4 ? 'por_vencer' : 'a_tiempo';
+        // abs(): Carbon 3 puede devolver diffIn*() con signo según dirección; el valor
+        // absoluto es lo que importa aquí (ya se descartó "vencido" arriba).
+        return abs(now()->diffInHours($this->sla_vencimiento_at)) <= 4 ? 'por_vencer' : 'a_tiempo';
     }
 
     public function getSlaEstadoNombreAttribute(): ?string

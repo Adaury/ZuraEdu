@@ -1,6 +1,13 @@
 @extends('layouts.admin')
 @section('page-title', 'Dashboard KPIs — Director')
 
+{{-- Chart.js no se carga globalmente en layouts.admin (solo admin/dashboard.blade.php
+     lo empuja por su cuenta) — sin esto, new Chart(...) más abajo falla con
+     "Chart is not defined" y las 3 gráficas de dona/barras quedan en blanco. --}}
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+@endpush
+
 @section('content')
 <div
     x-data="kpiDashboard()"
@@ -23,15 +30,15 @@
         class="btn btn-primary btn-sm d-flex align-items-center gap-2"
         style="border-radius:10px;padding:.45rem 1.1rem;"
     >
-        <span x-show="!cargando"><i class="bi bi-arrow-clockwise"></i> Actualizar</span>
-        <span x-show="cargando" class="d-flex align-items-center gap-2">
+        <span x-show="!cargando" x-cloak><i class="bi bi-arrow-clockwise"></i> Actualizar</span>
+        <span x-show="cargando" x-cloak class="d-flex align-items-center gap-2">
             <span class="spinner-border spinner-border-sm"></span> Cargando…
         </span>
     </button>
 </div>
 
 {{-- ── Alerta de error ──────────────────────────────────────────────────── --}}
-<div x-show="error" x-transition class="alert alert-danger d-flex align-items-center gap-2 py-2 mb-3" style="border-radius:10px;">
+<div x-show="error" x-cloak x-transition class="alert alert-danger d-flex align-items-center gap-2 py-2 mb-3" style="border-radius:10px;">
     <i class="bi bi-exclamation-triangle-fill"></i>
     <span x-text="error"></span>
 </div>

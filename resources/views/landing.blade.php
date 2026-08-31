@@ -11,6 +11,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
+    {{-- Bootstrap Icons — requerido por partials.support_chat_widget (botón/íconos del chat) --}}
+    <link href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
+
     {{-- Tailwind CDN --}}
     <script src="https://cdn.tailwindcss.com"></script>
     <script>

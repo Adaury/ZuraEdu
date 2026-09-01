@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\LoopsPerTenant;
 use App\Models\ConfigInstitucional;
 use App\Models\Notificacion;
 use App\Models\Pago;
@@ -12,20 +13,34 @@ use Illuminate\Console\Command;
 
 class AlertasProximosPagos extends Command
 {
+    use LoopsPerTenant;
+
     protected $signature   = 'pagos:aviso-proximo {--dias=3 : Días de anticipación}';
     protected $description = 'Avisa a representantes y estudiantes de pagos que vencen en los próximos días';
 
     public function handle(): int
     {
+        $totalPagos = $totalEnviados = 0;
+
+        $this->forEachTenant(function ($tenant) use (&$totalPagos, &$totalEnviados) {
+            [$p, $e] = $this->procesarTenant();
+            $totalPagos    += $p;
+            $totalEnviados += $e;
+        });
+
+        $this->info("Pagos próximos: {$totalPagos} | Notificaciones enviadas: {$totalEnviados}");
+        return self::SUCCESS;
+    }
+
+    private function procesarTenant(): array
+    {
         if (! ConfigInstitucional::moduloActivo('pagos')) {
-            $this->info('Módulo de pagos inactivo.');
-            return self::SUCCESS;
+            return [0, 0];
         }
 
         $sy = SchoolYear::actual();
         if (! $sy) {
-            $this->warn('Sin año escolar activo.');
-            return self::SUCCESS;
+            return [0, 0];
         }
 
         $dias        = (int) $this->option('dias');
@@ -44,8 +59,7 @@ class AlertasProximosPagos extends Command
             ->get();
 
         if ($pagos->isEmpty()) {
-            $this->info("Sin pagos próximos a vencer en los próximos {$dias} días.");
-            return self::SUCCESS;
+            return [0, 0];
         }
 
         $enviados = 0;
@@ -101,7 +115,6 @@ class AlertasProximosPagos extends Command
             }
         }
 
-        $this->info("Pagos próximos: {$pagos->count()} | Notificaciones enviadas: {$enviados}");
-        return self::SUCCESS;
+        return [$pagos->count(), $enviados];
     }
 }

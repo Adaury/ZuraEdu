@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\LoopsPerTenant;
 use App\Models\ConfigInstitucional;
 use App\Models\Notificacion;
 use App\Models\Pago;
@@ -13,25 +14,36 @@ use Illuminate\Support\Facades\Mail;
 
 class RecordatorioPagosVencidos extends Command
 {
+    use LoopsPerTenant;
+
     protected $signature   = 'pagos:recordatorio-vencidos';
     protected $description = 'Envía recordatorio por email/notificación a representantes con pagos vencidos';
 
     public function handle(): int
     {
+        $total = 0;
+
+        $this->forEachTenant(function ($tenant) use (&$total) {
+            $total += $this->procesarTenant();
+        });
+
+        $this->info("Recordatorios enviados: {$total}");
+        return self::SUCCESS;
+    }
+
+    private function procesarTenant(): int
+    {
         if (! ConfigInstitucional::moduloActivo('pagos')) {
-            $this->info('Módulo de pagos inactivo. Nada que hacer.');
-            return self::SUCCESS;
+            return 0;
         }
 
         if (\App\Helpers\Setting::get('email_notif_pagos', '1') !== '1') {
-            $this->info('Notificaciones de pagos desactivadas. Nada que hacer.');
-            return self::SUCCESS;
+            return 0;
         }
 
         $syActual = SchoolYear::actual();
         if (! $syActual) {
-            $this->warn('Sin año escolar activo.');
-            return self::SUCCESS;
+            return 0;
         }
 
         // Sincronizar vencidos primero
@@ -48,8 +60,7 @@ class RecordatorioPagosVencidos extends Command
             ->get();
 
         if ($pagosVencidos->isEmpty()) {
-            $this->info('Sin pagos vencidos. No se envían recordatorios.');
-            return self::SUCCESS;
+            return 0;
         }
 
         // Agrupar por representante para no enviar múltiples emails si tiene varios hijos
@@ -111,7 +122,6 @@ class RecordatorioPagosVencidos extends Command
             }
         }
 
-        $this->info("Recordatorios enviados: {$enviados}");
-        return self::SUCCESS;
+        return $enviados;
     }
 }

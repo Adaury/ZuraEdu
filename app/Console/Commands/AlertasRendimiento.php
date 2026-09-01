@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\LoopsPerTenant;
 use App\Models\AlertaSistema;
 use App\Models\Calificacion;
 use App\Models\CalificacionAcademica;
@@ -12,19 +13,34 @@ use Illuminate\Console\Command;
 
 class AlertasRendimiento extends Command
 {
+    use LoopsPerTenant;
+
     protected $signature   = 'alertas:rendimiento {--force : Regenerar aunque la alerta ya exista}';
     protected $description = 'Genera alertas de riesgo académico para estudiantes con calificaciones bajas (< 60)';
 
     public function handle(): int
     {
+        $totalCreadas = $totalOmitidas = 0;
+
+        $this->forEachTenant(function ($tenant) use (&$totalCreadas, &$totalOmitidas) {
+            [$c, $o] = $this->procesarTenant();
+            $totalCreadas  += $c;
+            $totalOmitidas += $o;
+        });
+
+        $this->info("Alertas creadas: {$totalCreadas} | Ya existían: {$totalOmitidas}");
+        return self::SUCCESS;
+    }
+
+    private function procesarTenant(): array
+    {
         $schoolYear = SchoolYear::actual();
 
         if (! $schoolYear) {
-            $this->warn('No hay año escolar activo.');
-            return self::SUCCESS;
+            return [0, 0];
         }
 
-        $this->info("Procesando año escolar: {$schoolYear->nombre}");
+        $this->line("  [{$schoolYear->nombre}]");
 
         $creadas  = 0;
         $omitidas = 0;
@@ -77,8 +93,7 @@ class AlertasRendimiento extends Command
             $created ? $creadas++ : $omitidas++;
         }
 
-        $this->info("Alertas creadas: {$creadas} | Ya existían: {$omitidas}");
-        return self::SUCCESS;
+        return [$creadas, $omitidas];
     }
 
     private function crearAlerta(

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\LoopsPerTenant;
 use App\Models\Notificacion;
 use App\Models\Matricula;
 use App\Models\SchoolYear;
@@ -11,15 +12,30 @@ use Illuminate\Console\Command;
 
 class AlertasCumpleanos extends Command
 {
+    use LoopsPerTenant;
+
     protected $signature   = 'alertas:cumpleanos {--force : Enviar aunque ya se haya enviado hoy}';
     protected $description = 'Felicita a estudiantes que cumplen años hoy y notifica a sus docentes y representantes';
 
     public function handle(): int
     {
+        $totalProcesados = $totalEnviados = 0;
+
+        $this->forEachTenant(function ($tenant) use (&$totalProcesados, &$totalEnviados) {
+            [$p, $e] = $this->procesarTenant();
+            $totalProcesados += $p;
+            $totalEnviados   += $e;
+        });
+
+        $this->info("Cumpleaños procesados: {$totalProcesados} | Notificaciones enviadas: {$totalEnviados}");
+        return self::SUCCESS;
+    }
+
+    private function procesarTenant(): array
+    {
         $sy = SchoolYear::actual();
         if (! $sy) {
-            $this->warn('Sin año escolar activo.');
-            return self::SUCCESS;
+            return [0, 0];
         }
 
         $hoy   = now()->format('m-d');
@@ -39,8 +55,7 @@ class AlertasCumpleanos extends Command
             ->get();
 
         if ($matriculas->isEmpty()) {
-            $this->info('Sin cumpleaños hoy.');
-            return self::SUCCESS;
+            return [0, 0];
         }
 
         $enviados = 0;
@@ -102,7 +117,6 @@ class AlertasCumpleanos extends Command
             $this->line(" ✓ {$nombre}");
         }
 
-        $this->info("Cumpleaños procesados: {$matriculas->count()} | Notificaciones enviadas: {$enviados}");
-        return self::SUCCESS;
+        return [$matriculas->count(), $enviados];
     }
 }

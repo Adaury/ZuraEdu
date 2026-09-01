@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\LoopsPerTenant;
 use App\Helpers\Setting;
 use App\Mail\AlertaInasistencia;
 use App\Models\AlertaSistema;
@@ -14,15 +15,31 @@ use Illuminate\Support\Facades\Mail;
 
 class AlertasAusencias extends Command
 {
+    use LoopsPerTenant;
+
     protected $signature   = 'alertas:ausencias {--force : Regenerar aunque la alerta ya exista}';
     protected $description = 'Detecta estudiantes con ausencias repetidas y genera alertas';
 
     public function handle(): int
     {
+        $totalCreadas = $totalOmitidas = $totalEmails = 0;
+
+        $this->forEachTenant(function ($tenant) use (&$totalCreadas, &$totalOmitidas, &$totalEmails) {
+            [$c, $o, $e] = $this->procesarTenant();
+            $totalCreadas  += $c;
+            $totalOmitidas += $o;
+            $totalEmails   += $e;
+        });
+
+        $this->info("Alertas creadas: {$totalCreadas} | Omitidas: {$totalOmitidas} | Emails enviados: {$totalEmails}");
+        return self::SUCCESS;
+    }
+
+    private function procesarTenant(): array
+    {
         $sy = SchoolYear::actual();
         if (! $sy) {
-            $this->warn('No hay año escolar activo.');
-            return self::SUCCESS;
+            return [0, 0, 0];
         }
 
         $diasVentana       = (int) Setting::get('alerta_ausencias_dias_ventana', '14');
@@ -40,8 +57,7 @@ class AlertasAusencias extends Command
             ->get();
 
         if ($ausenciasAgrupadas->isEmpty()) {
-            $this->info("Sin estudiantes con ≥{$minAusencias} ausencias en los últimos {$diasVentana} días.");
-            return self::SUCCESS;
+            return [0, 0, 0];
         }
 
         $matriculaIds = $ausenciasAgrupadas->pluck('matricula_id')->unique();
@@ -54,8 +70,7 @@ class AlertasAusencias extends Command
         $admins = User::role(['Administrador', 'Director', 'Coordinador Académico',
             'Coordinador Primer Ciclo', 'Coordinador Segundo Ciclo'])->get();
 
-        $inst     = \App\Models\ConfigInstitucional::withoutGlobalScopes()
-            ->where('clave', 'nombre_institucion')->value('valor') ?? config('app.name');
+        $inst     = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
         $creadas  = 0;
         $omitidas = 0;
         $emailsEnviados = 0;
@@ -127,7 +142,6 @@ class AlertasAusencias extends Command
             }
         }
 
-        $this->info("Alertas creadas: {$creadas} | Omitidas: {$omitidas} | Emails enviados: {$emailsEnviados}");
-        return self::SUCCESS;
+        return [$creadas, $omitidas, $emailsEnviados];
     }
 }

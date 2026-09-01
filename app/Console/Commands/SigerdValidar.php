@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\LoopsPerTenant;
 use App\Models\SchoolYear;
 use App\Models\SigerdConfig;
 use App\Models\User;
@@ -12,27 +13,39 @@ use Illuminate\Support\Facades\Log;
 
 class SigerdValidar extends Command
 {
+    use LoopsPerTenant;
+
     protected $signature = 'sigerd:validar {--grupo_id= : ID del grupo (opcional, valida todos si se omite)}';
     protected $description = 'Valida los datos del centro para exportación SIGERD y notifica al registrador';
 
+    private bool $hubErrores = false;
+
     public function handle(SigerdExportService $service): int
+    {
+        $this->forEachTenant(function ($tenant) use ($service) {
+            $this->procesarTenant($tenant, $service);
+        });
+
+        return $this->hubErrores ? self::FAILURE : self::SUCCESS;
+    }
+
+    private function procesarTenant($tenant, SigerdExportService $service): void
     {
         $schoolYear = SchoolYear::actual();
 
         if (! $schoolYear) {
-            $this->warn('No hay año escolar activo. Abortando.');
-            return self::FAILURE;
+            return;
         }
 
         $config = SigerdConfig::first();
         if (! $config || empty($config->codigo_centro)) {
-            $this->warn('SIGERD no configurado (falta código de centro). Ir a Integraciones → SIGERD → Configuración.');
-            return self::FAILURE;
+            $this->line("  [{$tenant->nombre_institucion}] SIGERD no configurado, omitido.");
+            return;
         }
 
         $grupoId = $this->option('grupo_id') ? (int) $this->option('grupo_id') : null;
 
-        $this->info("Validando datos SIGERD para año escolar: {$schoolYear->nombre}");
+        $this->info("Validando datos SIGERD ({$tenant->nombre_institucion}) para año escolar: {$schoolYear->nombre}");
 
         // Validar nómina
         $resultNomina = $service->validarNomina($schoolYear, $grupoId);
@@ -58,11 +71,11 @@ class SigerdValidar extends Command
 
         if ($hayErrores) {
             $this->warn('Validación completada con errores. Corrígelos antes de exportar a SIGERD.');
-            return self::FAILURE;
+            $this->hubErrores = true;
+            return;
         }
 
         $this->info('Validación completada. Datos listos para exportar a SIGERD.');
-        return self::SUCCESS;
     }
 
     private function notificarRegistrador(array $nomina, ?array $calif, string $syNombre): void

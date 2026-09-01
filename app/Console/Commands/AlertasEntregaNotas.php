@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\LoopsPerTenant;
 use App\Mail\RecordatorioCierrePeriodo;
 use App\Models\AlertaSistema;
 use App\Models\CalendarioAcademico;
@@ -12,15 +13,28 @@ use Illuminate\Support\Facades\Mail;
 
 class AlertasEntregaNotas extends Command
 {
+    use LoopsPerTenant;
+
     protected $signature   = 'alertas:entrega-notas';
     protected $description = 'Genera alertas para eventos de entrega de notas próximos (≤ 3 días)';
 
     public function handle(): int
     {
+        $total = 0;
+
+        $this->forEachTenant(function ($tenant) use (&$total) {
+            $total += $this->procesarTenant();
+        });
+
+        $this->info("Alertas generadas: {$total}");
+        return self::SUCCESS;
+    }
+
+    private function procesarTenant(): int
+    {
         $schoolYear = SchoolYear::actual();
         if (!$schoolYear) {
-            $this->warn('No hay año escolar activo.');
-            return self::SUCCESS;
+            return 0;
         }
 
         $eventos = CalendarioAcademico::where('school_year_id', $schoolYear->id)
@@ -31,8 +45,7 @@ class AlertasEntregaNotas extends Command
             ->get();
 
         if ($eventos->isEmpty()) {
-            $this->info('No hay eventos de entrega de notas próximos.');
-            return self::SUCCESS;
+            return 0;
         }
 
         $docentes = User::role(User::ROLES_DOCENTE)->get();
@@ -79,7 +92,6 @@ class AlertasEntregaNotas extends Command
             }
         }
 
-        $this->info("Alertas generadas: {$created}");
-        return self::SUCCESS;
+        return $created;
     }
 }

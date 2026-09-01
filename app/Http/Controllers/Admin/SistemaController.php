@@ -19,6 +19,44 @@ class SistemaController extends Controller
         \App\Helpers\Setting::set($key, $value);
     }
 
+    /**
+     * A diferencia de PNG/JPG, un SVG es XML y puede llevar <script>,
+     * <foreignObject> con HTML embebido, o atributos on*=/javascript: — se
+     * sirve directo por URL (storage público), así que si no se limpia,
+     * corre en el origen de la app para quien abra el enlace.
+     */
+    private function sanitizeSvg(string $content): string
+    {
+        $previous = libxml_use_internal_errors(true);
+        $dom = new \DOMDocument();
+        $ok = $dom->loadXML($content, LIBXML_NONET);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        if (! $ok) {
+            abort(422, 'El archivo SVG no es válido.');
+        }
+
+        foreach (['script', 'foreignObject', 'iframe', 'object', 'embed'] as $tag) {
+            $nodos = $dom->getElementsByTagName($tag);
+            for ($i = $nodos->length - 1; $i >= 0; $i--) {
+                $nodo = $nodos->item($i);
+                $nodo->parentNode?->removeChild($nodo);
+            }
+        }
+
+        $xpath = new \DOMXPath($dom);
+        foreach (iterator_to_array($xpath->query('//@*')) as $attr) {
+            $nombre = strtolower($attr->nodeName);
+            $valor  = trim($attr->nodeValue);
+            if (str_starts_with($nombre, 'on') || preg_match('/^\s*j\s*a\s*v\s*a\s*s\s*c\s*r\s*i\s*p\s*t\s*:/i', $valor)) {
+                $attr->ownerElement->removeAttribute($attr->nodeName);
+            }
+        }
+
+        return $dom->saveXML();
+    }
+
     public function index()
     {
         $settings = \App\Helpers\Setting::all();
@@ -130,7 +168,18 @@ class SistemaController extends Controller
             'logo' => 'required|image|mimes:png,jpg,jpeg,svg|max:512',
         ]);
 
-        $path = $request->file('logo')->storeAs('sistema/t' . tenant_id(), 'logo.' . $request->file('logo')->extension(), 'public');
+        $file = $request->file('logo');
+        $ext  = strtolower($file->extension());
+        $dir  = 'sistema/t' . tenant_id();
+
+        if ($ext === 'svg') {
+            $path = "{$dir}/logo.svg";
+            \Illuminate\Support\Facades\Storage::disk('public')
+                ->put($path, $this->sanitizeSvg(file_get_contents($file->getRealPath())));
+        } else {
+            $path = $file->storeAs($dir, "logo.{$ext}", 'public');
+        }
+
         $this->setSetting('system_logo', $path);
 
         return back()->with('success', 'Logotipo actualizado correctamente.');
@@ -158,8 +207,18 @@ class SistemaController extends Controller
             \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
         }
 
-        $ext  = $request->file('favicon')->getClientOriginalExtension();
-        $path = $request->file('favicon')->storeAs('sistema/t' . tenant_id(), 'favicon.' . $ext, 'public');
+        $file = $request->file('favicon');
+        $ext  = strtolower($file->getClientOriginalExtension());
+        $dir  = 'sistema/t' . tenant_id();
+
+        if ($ext === 'svg') {
+            $path = "{$dir}/favicon.svg";
+            \Illuminate\Support\Facades\Storage::disk('public')
+                ->put($path, $this->sanitizeSvg(file_get_contents($file->getRealPath())));
+        } else {
+            $path = $file->storeAs($dir, "favicon.{$ext}", 'public');
+        }
+
         $this->setSetting('system_favicon', $path);
         Cache::forget('system_favicon');
 

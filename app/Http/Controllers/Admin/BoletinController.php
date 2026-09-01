@@ -555,7 +555,7 @@ class BoletinController extends Controller
         $matriculas = $grupo->matriculas()
             ->activas()
             ->delAnio($schoolYear->id)
-            ->with('estudiante')
+            ->with('estudiante.representantes')
             ->orderBy('numero_orden')
             ->get();
 

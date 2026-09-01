@@ -11,6 +11,7 @@ use App\Models\Grado;
 use App\Models\Grupo;
 use App\Models\Matricula;
 use App\Models\Periodo;
+use App\Models\Representante;
 use App\Models\SchoolYear;
 use App\Models\Seccion;
 use App\Models\User;
@@ -157,6 +158,50 @@ class BoletinAccessRegressionTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('admin.boletines.ver', [$e['matricula'], $e['periodo']]))
+            ->assertOk();
+    }
+
+    /**
+     * Regresión (auditoría 2026-09-01): admin/boletines/grupo.blade.php:397
+     * llamaba $matricula->estudiante->representantes()->first() (método, no
+     * propiedad cargada) dentro de un @foreach — una query nueva por cada
+     * estudiante del grupo. El fix eager-carga estudiante.representantes en
+     * BoletinController::grupo() y la vista usa ahora ->representantes->first()
+     * (propiedad). Con Model::preventLazyLoading() activo fuera de producción,
+     * si el eager-load faltara esto lanzaría LazyLoadingViolationException
+     * (500), exactamente el patrón de los bugs de horarios de esta sesión.
+     */
+    public function test_vista_de_grupo_no_lanza_lazy_loading_violation_con_representante(): void
+    {
+        $schoolYear = SchoolYear::create([
+            'nombre' => '20' . random_int(26, 99) . '-' . chr(random_int(65, 90)) . random_int(0, 9),
+            'fecha_inicio' => '2025-08-01', 'fecha_fin' => '2026-06-30', 'activo' => true,
+        ]);
+
+        self::$nivel++;
+        $grado   = Grado::create(['nombre' => 'Grado LL' . self::$nivel, 'nivel' => self::$nivel, 'orden' => self::$nivel, 'ciclo' => 'primer_ciclo', 'activo' => true]);
+        $seccion = Seccion::firstOrCreate(['nombre' => 'A'], ['orden' => 1]);
+        $grupo   = Grupo::create(['school_year_id' => $schoolYear->id, 'grado_id' => $grado->id, 'seccion_id' => $seccion->id, 'activo' => true]);
+
+        $estudiante   = Estudiante::factory()->create();
+        $representante = Representante::factory()->create(['telefono' => '8091234567']);
+        $estudiante->representantes()->attach($representante->id, ['es_principal' => true]);
+
+        Matricula::create([
+            'school_year_id' => $schoolYear->id, 'estudiante_id' => $estudiante->id, 'grupo_id' => $grupo->id,
+            'fecha_matricula' => '2025-08-15', 'numero_orden' => 1, 'estado' => 'activa',
+        ]);
+
+        $periodo = Periodo::create([
+            'school_year_id' => $schoolYear->id, 'numero' => 1, 'nombre' => 'Período 1',
+            'fecha_inicio' => '2025-08-01', 'fecha_fin' => '2025-10-31', 'activo' => true, 'cerrado' => false,
+        ]);
+
+        $user = User::factory()->create(['activo' => true]);
+        $user->assignRole('Administrador');
+
+        $this->actingAs($user)
+            ->get(route('admin.boletines.grupo', ['grupo_id' => $grupo->id, 'periodo_id' => $periodo->id]))
             ->assertOk();
     }
 

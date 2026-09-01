@@ -24,8 +24,7 @@ class SistemaController extends Controller
         $settings = \App\Helpers\Setting::all();
 
         // Datos institucionales
-        $inst = \App\Models\ConfigInstitucional::withoutGlobalScopes()
-            ->pluck('valor', 'clave');
+        $inst = \App\Models\ConfigInstitucional::pluck('valor', 'clave');
 
         // Módulos disponibles
         $modulos = [
@@ -90,16 +89,15 @@ class SistemaController extends Controller
         ]);
 
         foreach ($data as $clave => $valor) {
-            \App\Models\ConfigInstitucional::withoutGlobalScopes()->updateOrCreate(
+            \App\Models\ConfigInstitucional::updateOrCreate(
                 ['clave' => $clave],
                 ['valor' => $valor ?? '', 'tipo' => 'string', 'grupo' => 'institucional']
             );
         }
 
         // Limpiar caché para que se reflejen los cambios inmediatamente
-        \Illuminate\Support\Facades\Cache::forget('config_t_nombre_institucion');
         foreach (array_keys($data) as $k) {
-            \Illuminate\Support\Facades\Cache::forget("config_t_{$k}");
+            \Illuminate\Support\Facades\Cache::forget('config_t' . tenant_id() . "_{$k}");
         }
 
         return back()->with('success', 'Datos institucionales actualizados correctamente.')->with('tab', 'institucional');
@@ -116,11 +114,11 @@ class SistemaController extends Controller
 
         foreach ($modulos as $modulo) {
             $activo = $request->boolean("modulo_{$modulo}") ? '1' : '0';
-            \App\Models\ConfigInstitucional::withoutGlobalScopes()->updateOrCreate(
+            \App\Models\ConfigInstitucional::updateOrCreate(
                 ['clave' => "modulo_{$modulo}_activo"],
                 ['valor' => $activo, 'tipo' => 'boolean', 'grupo' => 'modulos']
             );
-            \Illuminate\Support\Facades\Cache::forget("config_t_modulo_{$modulo}_activo");
+            \Illuminate\Support\Facades\Cache::forget('config_t' . tenant_id() . "_modulo_{$modulo}_activo");
         }
 
         return back()->with('success', 'Módulos actualizados correctamente.')->with('tab', 'modulos');
@@ -537,7 +535,7 @@ class SistemaController extends Controller
             ->orderBy('hora')
             ->pluck('total', 'hora');
 
-        $inst = \App\Models\ConfigInstitucional::withoutGlobalScopes()->where('clave', 'nombre_institucion')->value('valor')
+        $inst = \App\Models\ConfigInstitucional::where('clave', 'nombre_institucion')->value('valor')
             ?? config('app.name');
 
         return view('admin.sistema.estadisticas', compact(
@@ -553,7 +551,7 @@ class SistemaController extends Controller
         $sy = \App\Models\SchoolYear::actual();
 
         $rows = [
-            ['REPORTE DE ESTADÍSTICAS — ' . (\App\Models\ConfigInstitucional::withoutGlobalScopes()->where('clave','nombre_institucion')->value('valor') ?? config('app.name'))],
+            ['REPORTE DE ESTADÍSTICAS — ' . (\App\Models\ConfigInstitucional::where('clave','nombre_institucion')->value('valor') ?? config('app.name'))],
             ['Año escolar: ' . ($sy?->nombre ?? '—'), '', 'Generado: ' . now()->format('d/m/Y H:i')],
             [],
             ['ACADÉMICO', ''],

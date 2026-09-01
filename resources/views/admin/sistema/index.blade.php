@@ -367,8 +367,7 @@
     <div class="modulo-grid">
         @foreach($modulos as $key => $modulo)
         @php
-            $activo = \App\Models\ConfigInstitucional::withoutGlobalScopes()
-                ->where('clave', "modulo_{$key}_activo")
+            $activo = \App\Models\ConfigInstitucional::where('clave', "modulo_{$key}_activo")
                 ->value('valor') === '1';
         @endphp
         <div class="modulo-card {{ $activo ? 'activo' : '' }}" id="card-{{ $key }}">

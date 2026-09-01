@@ -264,8 +264,7 @@ class PreMatriculaAdminController extends Controller
     private function generarNumeroMatricula(string $anio): string
     {
         $prefix = 'MAT-' . substr($anio, -2);
-        $ultimo = Estudiante::withoutGlobalScopes()
-            ->where('numero_matricula', 'like', "{$prefix}%")
+        $ultimo = Estudiante::where('numero_matricula', 'like', "{$prefix}%")
             ->max('numero_matricula');
 
         $siguiente = 1;

@@ -79,10 +79,7 @@ class HomepageController extends Controller
         // Guardar system settings (sidebar branding)
         foreach (['system_name', 'system_abbr', 'system_sub'] as $key) {
             if ($request->filled($key)) {
-                \Illuminate\Support\Facades\DB::table('system_settings')->updateOrInsert(
-                    ['key' => $key],
-                    ['value' => $request->input($key), 'updated_at' => now()]
-                );
+                \App\Helpers\Setting::set($key, $request->input($key));
             }
         }
 

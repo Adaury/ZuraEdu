@@ -11,21 +11,17 @@ class SistemaController extends Controller
 {
     private function getSetting(string $key, $default = null)
     {
-        $row = DB::table('system_settings')->where('key', $key)->first();
-        return $row ? $row->value : $default;
+        return \App\Helpers\Setting::get($key, $default);
     }
 
     private function setSetting(string $key, $value): void
     {
-        DB::table('system_settings')->updateOrInsert(
-            ['key' => $key],
-            ['value' => $value, 'updated_at' => now()]
-        );
+        \App\Helpers\Setting::set($key, $value);
     }
 
     public function index()
     {
-        $settings = DB::table('system_settings')->pluck('value', 'key');
+        $settings = \App\Helpers\Setting::all();
 
         // Datos institucionales
         $inst = \App\Models\ConfigInstitucional::withoutGlobalScopes()
@@ -136,7 +132,7 @@ class SistemaController extends Controller
             'logo' => 'required|image|mimes:png,jpg,jpeg,svg|max:512',
         ]);
 
-        $path = $request->file('logo')->storeAs('sistema', 'logo.' . $request->file('logo')->extension(), 'public');
+        $path = $request->file('logo')->storeAs('sistema/t' . tenant_id(), 'logo.' . $request->file('logo')->extension(), 'public');
         $this->setSetting('system_logo', $path);
 
         return back()->with('success', 'Logotipo actualizado correctamente.');
@@ -165,7 +161,7 @@ class SistemaController extends Controller
         }
 
         $ext  = $request->file('favicon')->getClientOriginalExtension();
-        $path = $request->file('favicon')->storeAs('sistema', 'favicon.' . $ext, 'public');
+        $path = $request->file('favicon')->storeAs('sistema/t' . tenant_id(), 'favicon.' . $ext, 'public');
         $this->setSetting('system_favicon', $path);
         Cache::forget('system_favicon');
 
@@ -264,7 +260,7 @@ class SistemaController extends Controller
 
     public function landingIndex()
     {
-        $settings = DB::table('system_settings')->pluck('value', 'key');
+        $settings = \App\Helpers\Setting::all();
         return view('admin.sistema.landing', compact('settings'));
     }
 
@@ -298,8 +294,6 @@ class SistemaController extends Controller
             $this->setSetting($key, $value ?? '');
         }
 
-        Cache::forget('system_settings_all');
-
         return back()->with('success', 'Página de inicio actualizada correctamente.');
     }
 
@@ -307,7 +301,7 @@ class SistemaController extends Controller
 
     public function loginIndex()
     {
-        $settings = DB::table('system_settings')->pluck('value', 'key');
+        $settings = \App\Helpers\Setting::all();
         return view('admin.sistema.login-config', compact('settings'));
     }
 
@@ -330,8 +324,6 @@ class SistemaController extends Controller
         $this->setSetting('login_color_bg2', $data['login_color_bg2'] ?? '#1e3a8a');
         $this->setSetting('login_color_bg3', $data['login_color_bg3'] ?? '#1d4ed8');
         $this->setSetting('login_color_acc', $data['login_color_acc'] ?? '#10b981');
-
-        Cache::forget('system_settings_all');
 
         return back()->with('success', 'Configuración del login actualizada.');
     }

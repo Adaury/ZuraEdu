@@ -12,21 +12,18 @@ class DemoTrialController extends Controller
 {
     private function setSetting(string $key, $value): void
     {
-        DB::table('system_settings')->updateOrInsert(
-            ['key' => $key],
-            ['value' => $value, 'updated_at' => now()]
-        );
+        \App\Helpers\Setting::set($key, $value);
     }
 
     private function getSetting(string $key, $default = null)
     {
-        return DB::table('system_settings')->where('key', $key)->value('value') ?? $default;
+        return \App\Helpers\Setting::get($key, $default);
     }
 
     // ── Vista principal ────────────────────────────────────────────────────
     public function index()
     {
-        $settings = DB::table('system_settings')->pluck('value', 'key');
+        $settings = \App\Helpers\Setting::all();
 
         // Calcular estado del período de prueba
         $trialActivo = ($settings['trial_activo'] ?? '0') === '1';

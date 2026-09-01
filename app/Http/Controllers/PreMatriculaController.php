@@ -20,9 +20,7 @@ class PreMatriculaController extends Controller
         $logo = ConfigInstitucional::withoutGlobalScopes()
             ->where('clave', 'logo_url')->value('valor');
 
-        $settings = \Illuminate\Support\Facades\DB::table('system_settings')
-            ->whereIn('key', ['system_name', 'system_abbr', 'system_logo'])
-            ->pluck('value', 'key');
+        $settings = collect(\App\Helpers\Setting::all())->only(['system_name', 'system_abbr', 'system_logo']);
 
         // Logo: prioridad logo de system_settings, luego ConfigInstitucional
         $logoFinal = $settings['system_logo'] ?? $logo ?? null;

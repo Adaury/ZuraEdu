@@ -203,9 +203,7 @@
                     <div class="card-header fw-semibold"><i class="bi bi-mortarboard me-1"></i>Institución</div>
                     <div class="card-body">
                         @php
-                            $ss = \Illuminate\Support\Facades\DB::table('system_settings')
-                                ->whereIn('key', ['system_name','system_abbr','system_sub'])
-                                ->pluck('value','key');
+                            $ss = collect(\App\Helpers\Setting::all())->only(['system_name','system_abbr','system_sub']);
                         @endphp
                         <div class="mb-3">
                             <label class="form-label small">Nombre de la Institución <span class="text-muted">(landing)</span></label>

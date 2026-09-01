@@ -734,8 +734,8 @@
 
 {{-- ── Topbar ────────────────────────────────────────────────────────── --}}
 @php
-$sysAbbr = \Illuminate\Support\Facades\Cache::remember('system_abbr',600,fn()=>\Illuminate\Support\Facades\DB::table('system_settings')->where('key','system_abbr')->value('value')) ?? 'SGE';
-$sysName = \Illuminate\Support\Facades\Cache::remember('system_name',600,fn()=>\Illuminate\Support\Facades\DB::table('system_settings')->where('key','system_name')->value('value')) ?? config('app.name','SGE');
+$sysAbbr = \App\Helpers\Setting::get('system_abbr', 'SGE');
+$sysName = \App\Helpers\Setting::get('system_name', config('app.name','SGE'));
 @endphp
 <nav class="prt-topbar">
     <a href="{{ route('admin.dashboard') }}" class="prt-logo" style="background:rgba(255,255,255,.18);font-size:.78rem;">{{ $sysAbbr }}</a>

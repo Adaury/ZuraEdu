@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.min.css">
 
     @php
-        $ls   = \Illuminate\Support\Facades\DB::table('system_settings')->pluck('value','key');
+        $ls   = \App\Helpers\Setting::all();
         $lBg1 = $ls['login_color_bg1'] ?? '#0a0f2e';
         $lBg2 = $ls['login_color_bg2'] ?? '#1e3a8a';
         $lBg3 = $ls['login_color_bg3'] ?? '#1d4ed8';

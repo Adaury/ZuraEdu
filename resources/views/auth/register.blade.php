@@ -1,5 +1,5 @@
 @php
-    $ls = \Illuminate\Support\Facades\DB::table('system_settings')->pluck('value','key');
+    $ls = \App\Helpers\Setting::all();
 @endphp
 <!DOCTYPE html>
 <html lang="es">

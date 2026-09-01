@@ -58,8 +58,7 @@ class DemoAutoController extends Controller
     public function enter(Request $request, TenantProvisioningService $provisioning)
     {
         // Verificar que el modo demo está activo
-        $demoActivo = \Illuminate\Support\Facades\DB::table('system_settings')
-            ->where('key', 'demo_activo')->value('value');
+        $demoActivo = \App\Helpers\Setting::get('demo_activo');
         if ($demoActivo !== '1') {
             return redirect('/')->with('error', '⚠ El modo demo no está disponible en este momento.');
         }

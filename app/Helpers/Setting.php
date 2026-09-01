@@ -25,7 +25,7 @@ class Setting
     public static function set(string $key, mixed $value): void
     {
         DB::table('system_settings')->updateOrInsert(
-            ['key' => $key],
+            ['tenant_id' => tenant_id(), 'key' => $key],
             ['value' => $value, 'updated_at' => now()]
         );
         Cache::forget(static::cacheKey());
@@ -36,7 +36,7 @@ class Setting
     {
         foreach ($data as $key => $value) {
             DB::table('system_settings')->updateOrInsert(
-                ['key' => $key],
+                ['tenant_id' => tenant_id(), 'key' => $key],
                 ['value' => $value, 'updated_at' => now()]
             );
         }
@@ -49,7 +49,9 @@ class Setting
         if (static::$loaded !== null) return static::$loaded;
 
         return static::$loaded = Cache::remember(static::cacheKey(), static::CACHE_TTL, function () {
-            return DB::table('system_settings')->pluck('value', 'key')->toArray();
+            return DB::table('system_settings')
+                ->where('tenant_id', tenant_id())
+                ->pluck('value', 'key')->toArray();
         });
     }
 

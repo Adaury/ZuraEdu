@@ -11,7 +11,7 @@
     <script>(function(){var t=localStorage.getItem('sge-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
 
     {{-- Dynamic favicon — tenant-scoped cache --}}
-    @php $__tid = tenant_id(); $faviconPath = \Illuminate\Support\Facades\Cache::remember("t{$__tid}_system_favicon", 600, fn () => \Illuminate\Support\Facades\DB::table('system_settings')->where('key','system_favicon')->value('value')); @endphp
+    @php $faviconPath = \App\Helpers\Setting::get('system_favicon'); @endphp
     @if($faviconPath)
     <link rel="icon" href="{{ asset('storage/' . $faviconPath) }}" type="image/x-icon">
     @else
@@ -3553,9 +3553,7 @@ if (auth()->check()) {
         {{-- ── Barra de Período de Prueba ──────────────────────────── --}}
         @php
             try {
-                $trialSetting = \Illuminate\Support\Facades\DB::table('system_settings')
-                    ->whereIn('key', ['trial_activo','trial_inicio','trial_dias','trial_mensaje'])
-                    ->pluck('value','key');
+                $trialSetting = collect(\App\Helpers\Setting::all())->only(['trial_activo','trial_inicio','trial_dias','trial_mensaje']);
                 $showTrial = ($trialSetting['trial_activo'] ?? '0') === '1'
                     && !empty($trialSetting['trial_inicio']);
                 if ($showTrial) {

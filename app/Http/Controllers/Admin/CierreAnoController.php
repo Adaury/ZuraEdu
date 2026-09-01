@@ -487,9 +487,8 @@ class CierreAnoController extends Controller
             ];
         }
 
-        $tid       = tenant_id() ?? 0;
-        $logoPath  = Cache::remember("t{$tid}_system_logo", 600, fn () => DB::table('system_settings')->where('key', 'system_logo')->value('value'));
-        $instNombre = Cache::remember("t{$tid}_system_name", 600, fn () => DB::table('system_settings')->where('key', 'system_name')->value('value') ?? 'Institución');
+        $logoPath   = \App\Helpers\Setting::get('system_logo');
+        $instNombre = \App\Helpers\Setting::get('system_name', 'Institución');
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.cierre_ano.acta_pdf', compact(
             'grupo', 'schoolYear', 'asignaciones', 'filas', 'periodos', 'logoPath', 'instNombre'
@@ -678,9 +677,8 @@ class CierreAnoController extends Controller
             $totalesGlobales['pendientes']   += $pd;
         }
 
-        $tid        = tenant_id() ?? 0;
-        $logoPath   = Cache::remember("t{$tid}_system_logo", 600, fn () => DB::table('system_settings')->where('key', 'system_logo')->value('value'));
-        $instNombre = Cache::remember("t{$tid}_system_name", 600, fn () => DB::table('system_settings')->where('key', 'system_name')->value('value') ?? 'Institución');
+        $logoPath   = \App\Helpers\Setting::get('system_logo');
+        $instNombre = \App\Helpers\Setting::get('system_name', 'Institución');
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.cierre_ano.reporte_pdf', compact(
             'schoolYear', 'resumen', 'totalesGlobales', 'logoPath', 'instNombre'

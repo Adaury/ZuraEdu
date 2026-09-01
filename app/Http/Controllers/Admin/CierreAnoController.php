@@ -691,11 +691,8 @@ class CierreAnoController extends Controller
 
     private function calcularPromedioFinal(int $matriculaId, $calAcBulk, $calBulk): ?float
     {
-        $calAcs = ($calAcBulk->get($matriculaId) ?? collect())->map(fn ($c) => (float) $c->nota_final);
-        if ($calAcs->isNotEmpty()) return round($calAcs->avg(), 2);
-
-        $notas = ($calBulk->get($matriculaId) ?? collect())->map(fn ($c) => (float) $c->nota_final);
-        return $notas->isNotEmpty() ? round($notas->avg(), 2) : null;
+        return (new \App\Services\PromedioEstudianteService())
+            ->calcularDesdeBulk($matriculaId, $calAcBulk, $calBulk);
     }
 
     private function determinarEstadoPromocion(?float $promedio): string

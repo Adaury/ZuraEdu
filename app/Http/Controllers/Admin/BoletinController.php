@@ -152,18 +152,13 @@ class BoletinController extends Controller
             ->where('periodo_id', $periodo->id)
             ->get()->groupBy('matricula_id');
 
+        $servicio = new \App\Services\PromedioEstudianteService();
         foreach ($matriculaIds as $mid) {
-            $notas = [];
-            if ($allCalAc->has($mid)) {
-                foreach ($allCalAc[$mid] as $ca) {
-                    if ($ca->nota_final !== null) $notas[] = (float) $ca->nota_final;
-                }
-            } elseif ($allCalLeg->has($mid)) {
-                foreach ($allCalLeg[$mid] as $cal) {
-                    if ($cal->nota_final !== null) $notas[] = (float) $cal->nota_final;
-                }
-            }
-            $promedios[$mid] = count($notas) ? round(array_sum($notas) / count($notas), 2) : 0;
+            $promedio = $servicio->calcular(
+                $allCalAc->get($mid) ?? collect(),
+                $allCalLeg->get($mid) ?? collect(),
+            );
+            $promedios[$mid] = $promedio ?? 0;
         }
 
         arsort($promedios);

@@ -335,16 +335,14 @@ class GamificacionController extends Controller
         $notasTec = Calificacion::where('matricula_id', $matricula->id)
             ->where('publicado', true)
             ->whereNotNull('nota_final')
-            ->pluck('nota_final');
+            ->get(['nota_final']);
 
         $notasAcad = CalificacionAcademica::where('matricula_id', $matricula->id)
             ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
             ->whereNotNull('nota_final')
-            ->pluck('nota_final');
+            ->get(['nota_final']);
 
-        $todas = $notasTec->merge($notasAcad)->filter();
-
-        return $todas->count() ? round($todas->avg(), 2) : null;
+        return (new \App\Services\PromedioEstudianteService())->calcular($notasAcad, $notasTec);
     }
 
     private function calcularPorcentajeAsistencia(Matricula $matricula): ?float

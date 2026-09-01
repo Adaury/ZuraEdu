@@ -709,23 +709,31 @@ class CalificacionController extends Controller
         if ($grupo) {
             $tid = tenant_id() ?? 0;
             $cacheKey = "t{$tid}_ranking_{$grupoId}_p{$periodoId}_sy{$schoolYear->id}";
-            $ranking  = Cache::remember($cacheKey, 1800, function () use ($grupo, $periodoId) {
-                $matriculas = $grupo->matriculas()->activas()->with('estudiante')->orderBy('numero_orden')->get();
+            $ranking  = Cache::remember($cacheKey, 1800, function () use ($grupo, $periodoId, $schoolYear) {
+                $matriculas   = $grupo->matriculas()->activas()->with('estudiante')->orderBy('numero_orden')->get();
+                $matriculaIds = $matriculas->pluck('id');
 
-                $calsQuery = Calificacion::whereIn('matricula_id', $matriculas->pluck('id'))
-                    ->whereNotNull('nota_final');
-                if ($periodoId) $calsQuery->where('periodo_id', $periodoId);
-                $allCals = $calsQuery->get()->groupBy('matricula_id');
+                $calTecQuery = Calificacion::whereIn('matricula_id', $matriculaIds)->whereNotNull('nota_final');
+                if ($periodoId) $calTecQuery->where('periodo_id', $periodoId);
+                $allCalTec = $calTecQuery->get()->groupBy('matricula_id');
 
+                // calificaciones_academicas es una nota anual por asignatura (no tiene
+                // periodo_id) — siempre es del año completo, igual que en BoletinController.
+                $allCalAc = CalificacionAcademica::whereIn('matricula_id', $matriculaIds)
+                    ->where('school_year_id', $schoolYear->id)
+                    ->whereNotNull('nota_final')
+                    ->get()->groupBy('matricula_id');
+
+                $servicio = new \App\Services\PromedioEstudianteService();
                 $result = collect();
                 foreach ($matriculas as $m) {
-                    $cals     = $allCals->get($m->id, collect());
-                    $promedio = $cals->avg('nota_final');
+                    $notasAc  = $allCalAc->get($m->id) ?? collect();
+                    $notasTec = $allCalTec->get($m->id) ?? collect();
                     $result->push([
                         'matricula'  => $m,
                         'estudiante' => $m->estudiante,
-                        'promedio'   => $promedio ? round($promedio, 2) : null,
-                        'materias'   => $cals->count(),
+                        'promedio'   => $servicio->calcular($notasAc, $notasTec),
+                        'materias'   => $notasAc->isNotEmpty() ? $notasAc->count() : $notasTec->count(),
                     ]);
                 }
                 return $result->sortByDesc('promedio')->values();
@@ -889,20 +897,28 @@ class CalificacionController extends Controller
         $grupo      = Grupo::with(['grado','seccion'])->findOrFail($request->grupo_id);
         $periodo    = $periodoId ? Periodo::find($periodoId) : null;
 
-        $matriculas = $grupo->matriculas()->activas()->with('estudiante')->orderBy('numero_orden')->get();
-        $calsQuery  = Calificacion::whereIn('matricula_id', $matriculas->pluck('id'))->whereNotNull('nota_final');
-        if ($periodoId) $calsQuery->where('periodo_id', $periodoId);
-        $allCals = $calsQuery->get()->groupBy('matricula_id');
+        $matriculas   = $grupo->matriculas()->activas()->with('estudiante')->orderBy('numero_orden')->get();
+        $matriculaIds = $matriculas->pluck('id');
 
+        $calTecQuery = Calificacion::whereIn('matricula_id', $matriculaIds)->whereNotNull('nota_final');
+        if ($periodoId) $calTecQuery->where('periodo_id', $periodoId);
+        $allCalTec = $calTecQuery->get()->groupBy('matricula_id');
+
+        $allCalAc = CalificacionAcademica::whereIn('matricula_id', $matriculaIds)
+            ->where('school_year_id', $schoolYear->id)
+            ->whereNotNull('nota_final')
+            ->get()->groupBy('matricula_id');
+
+        $servicio = new \App\Services\PromedioEstudianteService();
         $ranking = collect();
         foreach ($matriculas as $m) {
-            $cals     = $allCals->get($m->id, collect());
-            $promedio = $cals->avg('nota_final');
+            $notasAc  = $allCalAc->get($m->id) ?? collect();
+            $notasTec = $allCalTec->get($m->id) ?? collect();
             $ranking->push([
                 'matricula'  => $m,
                 'estudiante' => $m->estudiante,
-                'promedio'   => $promedio ? round($promedio, 2) : null,
-                'materias'   => $cals->count(),
+                'promedio'   => $servicio->calcular($notasAc, $notasTec),
+                'materias'   => $notasAc->isNotEmpty() ? $notasAc->count() : $notasTec->count(),
             ]);
         }
         $ranking = $ranking->sortByDesc('promedio')->values();
@@ -929,19 +945,27 @@ class CalificacionController extends Controller
         $grupo      = Grupo::with(['grado','seccion'])->findOrFail($request->grupo_id);
         $periodo    = $periodoId ? Periodo::find($periodoId) : null;
 
-        $matriculas = $grupo->matriculas()->activas()->with('estudiante')->orderBy('numero_orden')->get();
-        $calsQuery  = Calificacion::whereIn('matricula_id', $matriculas->pluck('id'))->whereNotNull('nota_final');
-        if ($periodoId) $calsQuery->where('periodo_id', $periodoId);
-        $allCals = $calsQuery->get()->groupBy('matricula_id');
+        $matriculas   = $grupo->matriculas()->activas()->with('estudiante')->orderBy('numero_orden')->get();
+        $matriculaIds = $matriculas->pluck('id');
 
+        $calTecQuery = Calificacion::whereIn('matricula_id', $matriculaIds)->whereNotNull('nota_final');
+        if ($periodoId) $calTecQuery->where('periodo_id', $periodoId);
+        $allCalTec = $calTecQuery->get()->groupBy('matricula_id');
+
+        $allCalAc = CalificacionAcademica::whereIn('matricula_id', $matriculaIds)
+            ->where('school_year_id', $schoolYear->id)
+            ->whereNotNull('nota_final')
+            ->get()->groupBy('matricula_id');
+
+        $servicio = new \App\Services\PromedioEstudianteService();
         $ranking = collect();
         foreach ($matriculas as $m) {
-            $cals     = $allCals->get($m->id, collect());
-            $promedio = $cals->avg('nota_final');
+            $notasAc  = $allCalAc->get($m->id) ?? collect();
+            $notasTec = $allCalTec->get($m->id) ?? collect();
             $ranking->push([
                 'estudiante' => $m->estudiante,
-                'promedio'   => $promedio ? round($promedio, 2) : null,
-                'materias'   => $cals->count(),
+                'promedio'   => $servicio->calcular($notasAc, $notasTec),
+                'materias'   => $notasAc->isNotEmpty() ? $notasAc->count() : $notasTec->count(),
             ]);
         }
         $ranking = $ranking->sortByDesc('promedio')->values();

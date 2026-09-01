@@ -76,8 +76,12 @@ class SanitizeInput
         $value = preg_replace('/<\s*(script|iframe|object|embed|base|form|meta|link|style|img|svg|body|math)[^>]*\/?>/i', '', $value);
         // Remove event handler attributes (on*=), quoted or unquoted
         $value = preg_replace('/\bon\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $value);
-        // Remove javascript: and data: URIs in attributes
-        $value = preg_replace('/javascript\s*:/i', '', $value);
+        // Remove javascript: URIs — tolerante a espacios/tabs/saltos de línea
+        // intercalados DENTRO de la propia palabra ("java\tscript:"), no solo
+        // entre la palabra y los dos puntos: los navegadores descartan tab/CR/LF
+        // en cualquier punto de una URL antes de interpretar el esquema (spec
+        // WHATWG URL), así que un "\s*" solo entre "javascript" y ":" no bastaba.
+        $value = preg_replace('/j\s*a\s*v\s*a\s*s\s*c\s*r\s*i\s*p\s*t\s*:/i', '', $value);
         return trim($value);
     }
 }

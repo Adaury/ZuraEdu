@@ -34,6 +34,16 @@ class CalificacionAudit extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function matricula()
+    {
+        return $this->belongsTo(Matricula::class);
+    }
+
+    public function asignacion()
+    {
+        return $this->belongsTo(Asignacion::class);
+    }
+
     /**
      * Registra los campos numéricos que cambiaron entre el registro anterior y el nuevo.
      * Llama desde el controlador justo antes de updateOrCreate.

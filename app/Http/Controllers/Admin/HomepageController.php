@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ConfigInstitucional;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class HomepageController extends Controller
@@ -82,9 +81,6 @@ class HomepageController extends Controller
                 \App\Helpers\Setting::set($key, $request->input($key));
             }
         }
-
-        // Clear all config cache
-        Cache::flush();
 
         return redirect()->route('admin.homepage.edit')
             ->with('success', 'Página principal actualizada correctamente.');

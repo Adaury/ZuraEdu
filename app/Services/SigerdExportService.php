@@ -6,6 +6,7 @@ use App\Models\CalificacionAcademica;
 use App\Models\Matricula;
 use App\Models\SchoolYear;
 use Barryvdh\DomPDF\Facade\Pdf;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -15,6 +16,35 @@ class SigerdExportService
 {
     private string $headerColor = '1e3a6e';
     private string $altRowColor = 'f0f4ff';
+
+    /**
+     * Campos de texto libre (nombre, lugar de nacimiento, especialidad del
+     * docente...) se vuelcan directo a celdas de estos exports, que además
+     * se suben al portal oficial SIGERD/MINERD — un valor que empiece con
+     * =/+/-/@ se interpreta como fórmula al abrirse en Excel ("CSV/Excel
+     * injection" clásico). Solo toca strings que realmente empiezan con uno
+     * de esos caracteres — números y texto normal pasan sin cambios.
+     */
+    private function esFormulaPeligrosa(mixed $valor): bool
+    {
+        return is_string($valor) && $valor !== '' && in_array($valor[0], ['=', '+', '-', '@', "\t", "\r"], true);
+    }
+
+    /** Fuerza tipo texto explícito en la celda — evita que PhpSpreadsheet interprete el valor como fórmula, sin alterar el contenido visible. */
+    private function setCellSeguro($sheet, string $coord, mixed $valor): void
+    {
+        if ($this->esFormulaPeligrosa($valor)) {
+            $sheet->setCellValueExplicit($coord, $valor, DataType::TYPE_STRING);
+        } else {
+            $sheet->setCellValue($coord, $valor);
+        }
+    }
+
+    /** Prefijo de comilla simple — convención estándar (OWASP) para neutralizar fórmulas en CSV, que no tiene tipos de celda explícitos. */
+    private function sanitizarCeldaCsv(mixed $valor): mixed
+    {
+        return $this->esFormulaPeligrosa($valor) ? ("'" . $valor) : $valor;
+    }
 
     public function exportarNomina(SchoolYear $sy, ?int $grupoId, string $formato)
     {
@@ -77,7 +107,7 @@ class SigerdExportService
                     $p4 = $cal ? round(((float)$cal->avg_comp1_p4 + (float)$cal->avg_comp2_p4 + (float)$cal->avg_comp3_p4 + (float)$cal->avg_comp4_p4) / 4, 2) : '';
                     $rd = [$i+1, $m->estudiante?->cedula??'', $m->estudiante?->apellidos??'', $m->estudiante?->nombres??'', $p1,$p2,$p3,$p4, $cal?->nota_final??'', $cal?->situacion??''];
                     $col = 'A';
-                    foreach ($rd as $val) { $sheet->setCellValue($col . $row, $val); $col++; }
+                    foreach ($rd as $val) { $this->setCellSeguro($sheet, $col . $row, $val); $col++; }
                     if ($row % 2 === 0) {
                         $lc = chr(ord('A') + count($rd) - 1);
                         $sheet->getStyle('A' . $row . ':' . $lc . $row)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($this->altRowColor);
@@ -96,7 +126,11 @@ class SigerdExportService
         foreach ($asignaciones as $asig) {
             foreach ($matriculas as $m) {
                 $cal = $calMap->get($m->id . '_' . $asig->id);
-                $rows[] = [$idx++, $m->estudiante?->cedula??'', $m->estudiante?->apellidos??'', $m->estudiante?->nombres??'', $asig->asignatura?->nombre??'', $cal?->nota_final??'', $cal?->nota_final??'', $cal?->nota_final??'', $cal?->nota_final??'', $cal?->nota_final??'', $cal?->situacion??''];
+                $p1 = $cal ? round(((float)$cal->avg_comp1_p1 + (float)$cal->avg_comp2_p1 + (float)$cal->avg_comp3_p1 + (float)$cal->avg_comp4_p1) / 4, 2) : '';
+                $p2 = $cal ? round(((float)$cal->avg_comp1_p2 + (float)$cal->avg_comp2_p2 + (float)$cal->avg_comp3_p2 + (float)$cal->avg_comp4_p2) / 4, 2) : '';
+                $p3 = $cal ? round(((float)$cal->avg_comp1_p3 + (float)$cal->avg_comp2_p3 + (float)$cal->avg_comp3_p3 + (float)$cal->avg_comp4_p3) / 4, 2) : '';
+                $p4 = $cal ? round(((float)$cal->avg_comp1_p4 + (float)$cal->avg_comp2_p4 + (float)$cal->avg_comp3_p4 + (float)$cal->avg_comp4_p4) / 4, 2) : '';
+                $rows[] = [$idx++, $m->estudiante?->cedula??'', $m->estudiante?->apellidos??'', $m->estudiante?->nombres??'', $asig->asignatura?->nombre??'', $p1, $p2, $p3, $p4, $cal?->nota_final??'', $cal?->situacion??''];
             }
         }
         if ($formato === 'csv') return $this->csvResponse($headers, $rows, $filename . '.csv');
@@ -244,7 +278,7 @@ class SigerdExportService
         $row = 2;
         foreach ($rows as $rowData) {
             $col = 'A';
-            foreach ($rowData as $val) { $sheet->setCellValue($col . $row, $val); $col++; }
+            foreach ($rowData as $val) { $this->setCellSeguro($sheet, $col . $row, $val); $col++; }
             if ($row % 2 === 0) {
                 $lc = chr(ord('A') + count($rowData) - 1);
                 $sheet->getStyle('A' . $row . ':' . $lc . $row)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($this->altRowColor);
@@ -275,7 +309,7 @@ class SigerdExportService
         $handle = fopen('php://temp', 'r+');
         fwrite($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
         fputcsv($handle, $headers);
-        foreach ($rows as $row) { fputcsv($handle, $row); }
+        foreach ($rows as $row) { fputcsv($handle, array_map($this->sanitizarCeldaCsv(...), $row)); }
         rewind($handle);
         $content = stream_get_contents($handle);
         fclose($handle);

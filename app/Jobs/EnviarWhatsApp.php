@@ -3,18 +3,11 @@
 namespace App\Jobs;
 
 use App\Helpers\Setting;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class EnviarWhatsApp implements ShouldQueue
+class EnviarWhatsApp extends TenantJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
     public int $tries   = 3;
     public int $backoff = 60; // segundos entre reintentos
 
@@ -22,6 +15,7 @@ class EnviarWhatsApp implements ShouldQueue
         public readonly string $to,
         public readonly string $message,
     ) {
+        parent::__construct();
         $this->onQueue('whatsapp');
     }
 

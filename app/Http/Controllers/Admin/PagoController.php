@@ -255,6 +255,13 @@ class PagoController extends Controller
             'referencia'  => 'nullable|string|max:100',
         ]);
 
+        // Idempotencia — mismo patrón que WebhookStripeController/CardNetController:
+        // un doble clic o un reintento del request no debe volver a disparar
+        // PagoConfirmado (WhatsApp + notificación duplicados a la familia).
+        if ($pago->estado === 'pagado') {
+            return response()->json(['ok' => true, 'message' => 'El pago ya estaba registrado.']);
+        }
+
         $pago->update([
             'estado'         => 'pagado',
             'fecha_pago'     => today(),

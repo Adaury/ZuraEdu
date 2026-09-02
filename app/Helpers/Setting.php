@@ -9,8 +9,15 @@ class Setting
 {
     private const CACHE_TTL = 300;
 
-    /** Per-request in-memory store — eliminates repeated cache-driver reads within one request. */
-    private static ?array $loaded = null;
+    /**
+     * In-memory store, indexado por tenant_id — NO un solo array plano.
+     * En un proceso de vida corta (request HTTP normal) da igual, pero en un
+     * proceso de larga duración que atiende varios tenants (queue worker,
+     * o un comando de consola que itera tenants vía LoopsPerTenant) un
+     * array plano sin la clave de tenant arrastraba los settings del primer
+     * tenant leído a todos los siguientes hasta el próximo set()/flush().
+     */
+    private static array $loaded = [];
 
     private static function cacheKey(): string
     {
@@ -28,8 +35,7 @@ class Setting
             ['tenant_id' => tenant_id(), 'key' => $key],
             ['value' => $value, 'updated_at' => now()]
         );
-        Cache::forget(static::cacheKey());
-        static::$loaded = null;
+        static::flush();
     }
 
     public static function setMany(array $data): void
@@ -40,17 +46,20 @@ class Setting
                 ['value' => $value, 'updated_at' => now()]
             );
         }
-        Cache::forget(static::cacheKey());
-        static::$loaded = null;
+        static::flush();
     }
 
     public static function all(): array
     {
-        if (static::$loaded !== null) return static::$loaded;
+        $tid = tenant_id() ?? 0;
 
-        return static::$loaded = Cache::remember(static::cacheKey(), static::CACHE_TTL, function () {
+        if (array_key_exists($tid, static::$loaded)) {
+            return static::$loaded[$tid];
+        }
+
+        return static::$loaded[$tid] = Cache::remember(static::cacheKey(), static::CACHE_TTL, function () use ($tid) {
             return DB::table('system_settings')
-                ->where('tenant_id', tenant_id())
+                ->where('tenant_id', $tid)
                 ->pluck('value', 'key')->toArray();
         });
     }
@@ -68,6 +77,6 @@ class Setting
     public static function flush(): void
     {
         Cache::forget(static::cacheKey());
-        static::$loaded = null;
+        unset(static::$loaded[tenant_id() ?? 0]);
     }
 }

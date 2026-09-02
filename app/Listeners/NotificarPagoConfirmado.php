@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Events\PagoConfirmado;
 use App\Models\Notificacion;
+use App\Models\Tenant;
 use App\Services\WhatsAppService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +15,30 @@ class NotificarPagoConfirmado implements ShouldQueue
     public int    $tries = 2;
 
     public function handle(PagoConfirmado $event): void
+    {
+        // El worker de cola no vincula ningún tenant al contenedor (a diferencia
+        // de un request HTTP, que pasa por ResolveTenant) — sin esto, Setting::get()
+        // más abajo caería al tenant por defecto (id=1) en vez del dueño real del
+        // pago. El propio Pago ya trae su tenant_id, así que lo usamos directo.
+        $tenant = Tenant::find($event->pago->tenant_id);
+        if ($tenant) {
+            app()->instance('tenant', $tenant);
+            app()->instance(Tenant::class, $tenant);
+            config([
+                'tenant.id'     => $tenant->id,
+                'tenant.nombre' => $tenant->nombre_institucion,
+            ]);
+        }
+
+        try {
+            $this->notificar($event);
+        } finally {
+            app()->forgetInstance('tenant');
+            app()->forgetInstance(Tenant::class);
+        }
+    }
+
+    private function notificar(PagoConfirmado $event): void
     {
         $pago = $event->pago->load([
             'matricula.estudiante.representantes',

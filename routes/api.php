@@ -277,7 +277,7 @@ Route::prefix('v1')->group(function () {
             Route::get('hijo/{estudiante}',           [\App\Http\Controllers\Api\CarnetApiController::class, 'hijoCarnet'])->name('hijo');
             Route::get('historial',                   [\App\Http\Controllers\Api\CarnetApiController::class, 'historial'])->name('historial');
             Route::get('historial-hijo/{estudiante}', [\App\Http\Controllers\Api\CarnetApiController::class, 'historialHijo'])->name('historial-hijo');
-            Route::post('scan',                       [\App\Http\Controllers\Api\CarnetApiController::class, 'scan'])->name('scan');
+            Route::post('scan',                       [\App\Http\Controllers\Api\CarnetApiController::class, 'scan'])->name('scan')->middleware('can:ver-servicios');
         });
     });
 });

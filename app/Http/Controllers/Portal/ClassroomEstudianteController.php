@@ -155,7 +155,7 @@ class ClassroomEstudianteController extends Controller
         $data = $request->validate([
             'contenido'    => 'nullable|string|max:5000',
             'url_entrega'  => 'nullable|url|max:500',
-            'archivos.*'   => 'nullable|file|max:20480',
+            'archivos.*'   => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip|max:20480',
         ]);
 
         // Verificar si ya entregó y si puede reenviar

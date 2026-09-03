@@ -116,7 +116,7 @@ class ClassroomDocenteController extends Controller
             'publicar_en'       => 'nullable|date',
             'periodo_id'        => 'nullable|exists:periodos,id',
             'competencia_id'    => 'nullable|exists:competencias_especificas,id',
-            'archivos.*'        => 'nullable|file|max:10240',
+            'archivos.*'        => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip|max:10240',
         ]);
 
         $data['clase_virtual_id']  = $claseVirtual->id;
@@ -252,7 +252,7 @@ class ClassroomDocenteController extends Controller
             'fecha_limite' => 'nullable|date',
             'puntos'       => 'nullable|integer|min:0|max:100',
             'publicado'    => 'boolean',
-            'archivos.*'   => 'nullable|file|max:10240',
+            'archivos.*'   => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip|max:10240',
         ]);
 
         $data['publicado'] = $request->boolean('publicado');
@@ -538,7 +538,7 @@ class ClassroomDocenteController extends Controller
             'tipo'      => 'required|in:pdf,video,enlace,imagen,presentacion,otro',
             'descripcion'=> 'nullable|string|max:500',
             'url'       => 'nullable|url|max:500',
-            'archivo'   => 'nullable|file|max:20480',
+            'archivo'   => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip|max:20480',
         ]);
 
         $data['clase_virtual_id'] = $claseVirtual->id;

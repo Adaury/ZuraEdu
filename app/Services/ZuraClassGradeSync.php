@@ -26,24 +26,7 @@ class ZuraClassGradeSync
             return false;
         }
 
-        // Convertir nota de la tarea (sobre puntos) a escala 100
-        $notaSobre100 = $material->puntos
-            ? round(($entrega->calificacion / $material->puntos) * 100, 2)
-            : $entrega->calificacion;
-
-        $calificacion = Calificacion::firstOrNew([
-            'matricula_id'  => $entrega->matricula_id,
-            'asignacion_id' => $asignacionId,
-            'periodo_id'    => $material->periodo_id,
-        ]);
-
-        // Acumular en campo "tareas" como promedio ponderado
-        $tareaActual  = (float) ($calificacion->tareas ?? 0);
-        $contadorKey  = "classroom_tareas_count_{$asignacionId}_{$material->periodo_id}";
-
-        // Guardar en campo tareas (promedio simple con entregas previas)
-        $calificacion->tareas = $notaSobre100;
-        $calificacion->save();
+        $this->actualizarPromedioTareas($entrega->matricula_id, $asignacionId, $material->periodo_id);
 
         return true;
     }
@@ -63,22 +46,47 @@ class ZuraClassGradeSync
             return;
         }
 
-        $entregas = EntregaClassroom::where('material_id', $material->id)
+        $matriculaIds = EntregaClassroom::where('material_id', $material->id)
             ->where('estado', 'calificado')
             ->whereNotNull('calificacion')
-            ->get();
+            ->pluck('matricula_id')
+            ->unique();
 
-        foreach ($entregas as $entrega) {
-            $notaSobre100 = round(($entrega->calificacion / $material->puntos) * 100, 2);
-
-            Calificacion::updateOrCreate(
-                [
-                    'matricula_id'  => $entrega->matricula_id,
-                    'asignacion_id' => $asignacionId,
-                    'periodo_id'    => $material->periodo_id,
-                ],
-                ['tareas' => $notaSobre100]
-            );
+        foreach ($matriculaIds as $matriculaId) {
+            $this->actualizarPromedioTareas($matriculaId, $asignacionId, $material->periodo_id);
         }
+    }
+
+    /**
+     * calificaciones.tareas debe representar el promedio de TODAS las tareas
+     * de ZuraClass del estudiante en esta asignación+período — no solo la
+     * última entrega sincronizada. Antes de este fix, cada sincronización
+     * sobrescribía el campo con la nota de una sola tarea: si un docente
+     * creaba 2+ tareas en el mismo período, solo la última calificada
+     * contaba, perdiendo silenciosamente la contribución de las demás.
+     */
+    private function actualizarPromedioTareas(int $matriculaId, int $asignacionId, int $periodoId): void
+    {
+        $materialIds = MaterialClase::whereHas('claseVirtual', fn ($q) => $q->where('asignacion_id', $asignacionId))
+            ->where('periodo_id', $periodoId)
+            ->whereNotNull('puntos')
+            ->pluck('id');
+
+        $notas = EntregaClassroom::whereIn('material_id', $materialIds)
+            ->where('matricula_id', $matriculaId)
+            ->where('estado', 'calificado')
+            ->whereNotNull('calificacion')
+            ->with('material')
+            ->get()
+            ->map(fn ($e) => round(($e->calificacion / $e->material->puntos) * 100, 2));
+
+        if ($notas->isEmpty()) {
+            return;
+        }
+
+        Calificacion::updateOrCreate(
+            ['matricula_id' => $matriculaId, 'asignacion_id' => $asignacionId, 'periodo_id' => $periodoId],
+            ['tareas' => round($notas->avg(), 2)]
+        );
     }
 }

@@ -10,7 +10,7 @@ use App\Models\Matricula;
 use App\Models\Asistencia;
 use App\Models\SchoolYear;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 
 class AcademicRiskScoreService
 {
@@ -23,6 +23,11 @@ class AcademicRiskScoreService
     /**
      * Calcula y persiste el score de riesgo para todos los estudiantes activos
      * del año escolar indicado (o el actual). Devuelve la cantidad procesada.
+     *
+     * Carga en bulk las 4 fuentes de datos (calificaciones académicas/técnicas,
+     * asistencia, faltas disciplinarias) ANTES del loop — antes hacía 4-5
+     * queries individuales por estudiante dentro del loop (1200+ queries para
+     * 300 estudiantes en esta misma corrida síncrona vía HTTP).
      */
     public function calcularTodos(?int $schoolYearId = null): int
     {
@@ -34,7 +39,6 @@ class AcademicRiskScoreService
 
         $tenantId = tenant_id() ?? 0;
 
-        // Obtener todas las matrículas activas del año
         $matriculas = Matricula::with([
             'estudiante',
             'grupo.grado',
@@ -44,12 +48,44 @@ class AcademicRiskScoreService
         ->where('estado', 'activa')
         ->get();
 
+        if ($matriculas->isEmpty()) return 0;
+
+        $matriculaIds  = $matriculas->pluck('id');
+        $estudianteIds = $matriculas->pluck('estudiante.id')->filter()->unique();
+
+        $bulkCalAcademicas = CalificacionAcademica::whereIn('matricula_id', $matriculaIds)
+            ->get()->groupBy('matricula_id');
+        $bulkCalTecnicas = Calificacion::whereIn('matricula_id', $matriculaIds)
+            ->get()->groupBy('matricula_id');
+
+        $bulkAsistencia = Asistencia::whereIn('matricula_id', $matriculaIds)
+            ->selectRaw("matricula_id, COUNT(*) as total,
+                         SUM(CASE WHEN estado IN ('presente','tardanza') THEN 1 ELSE 0 END) as asistidos")
+            ->groupBy('matricula_id')
+            ->get()
+            ->keyBy('matricula_id');
+
+        $desde = $schoolYear->fecha_inicio ?? Carbon::now()->startOfYear();
+        $hasta = $schoolYear->fecha_fin    ?? Carbon::now()->endOfYear();
+        $bulkFaltas = FaltaDisciplinaria::whereIn('estudiante_id', $estudianteIds)
+            ->whereBetween('fecha', [$desde, $hasta])
+            ->get()
+            ->groupBy('estudiante_id');
+
         $count = 0;
         foreach ($matriculas as $matricula) {
             $estudiante = $matricula->estudiante;
             if (! $estudiante) continue;
 
-            $data = $this->calcularParaEstudiante($estudiante->id, $schoolYear->id);
+            $notasAcademicas = $bulkCalAcademicas->get($matricula->id) ?? collect();
+            $notasTecnicas   = $bulkCalTecnicas->get($matricula->id) ?? collect();
+
+            [$dimAcad, $acadMeta]        = $this->dimensionAcademicaDesdeNotas($notasAcademicas, $notasTecnicas);
+            [$dimAsist, $pctAsistencia]  = $this->dimensionAsistenciaDesdeBulk($notasAcademicas, $bulkAsistencia->get($matricula->id));
+            [$dimDisc, $discMeta]        = $this->dimensionDisciplinaDesdeFaltas($bulkFaltas->get($estudiante->id) ?? collect());
+            $dimTend                     = $this->dimensionTendenciaDesdeNotas($notasAcademicas);
+
+            $data = $this->componerScore($dimAcad, $dimAsist, $dimDisc, $dimTend, $acadMeta, $pctAsistencia, $discMeta);
 
             AcademicRiskScore::updateOrCreate(
                 [
@@ -85,7 +121,13 @@ class AcademicRiskScoreService
         // ── 4. Tendencia ─────────────────────────────────────────────────
         $dimTend = $this->dimensionTendencia($estudianteId, $schoolYearId);
 
-        // ── Componer score final ─────────────────────────────────────────
+        return $this->componerScore($dimAcad, $dimAsist, $dimDisc, $dimTend, $acadMeta, $pctAsistencia, $discMeta);
+    }
+
+    private function componerScore(
+        float $dimAcad, float $dimAsist, float $dimDisc, float $dimTend,
+        array $acadMeta, ?float $pctAsistencia, array $discMeta
+    ): array {
         $score = (int) round(
             $dimAcad  * self::W_ACADEMICO  +
             $dimAsist * self::W_ASISTENCIA +
@@ -116,21 +158,29 @@ class AcademicRiskScoreService
 
     private function dimensionAcademica(int $estudianteId, int $schoolYearId): array
     {
-        // Intentar con CalificacionAcademica (secundaria/técnica 2do ciclo)
-        $cals = CalificacionAcademica::whereHas('matricula', function ($q) use ($estudianteId, $schoolYearId) {
+        $notasAcademicas = CalificacionAcademica::whereHas('matricula', function ($q) use ($estudianteId, $schoolYearId) {
             $q->where('estudiante_id', $estudianteId)
               ->where('school_year_id', $schoolYearId)
               ->where('estado', 'activa');
-        })->whereNotNull('nota_final')->get();
+        })->get();
 
-        // Si no hay, intentar con Calificacion (1er ciclo técnico)
-        if ($cals->isEmpty()) {
-            $cals = Calificacion::whereHas('matricula', function ($q) use ($estudianteId, $schoolYearId) {
-                $q->where('estudiante_id', $estudianteId)
-                  ->where('school_year_id', $schoolYearId)
-                  ->where('estado', 'activa');
-            })->whereNotNull('nota_final')->get();
-        }
+        $notasTecnicas = Calificacion::whereHas('matricula', function ($q) use ($estudianteId, $schoolYearId) {
+            $q->where('estudiante_id', $estudianteId)
+              ->where('school_year_id', $schoolYearId)
+              ->where('estado', 'activa');
+        })->get();
+
+        return $this->dimensionAcademicaDesdeNotas($notasAcademicas, $notasTecnicas);
+    }
+
+    /**
+     * Prioridad académica-sobre-técnica delegada a PromedioEstudianteService
+     * (la misma regla consolidada el 2026-09-02 tras encontrarla duplicada 4
+     * veces) — antes era una 5ª reimplementación independiente aquí.
+     */
+    private function dimensionAcademicaDesdeNotas(Collection $notasAcademicas, Collection $notasTecnicas): array
+    {
+        $cals = (new PromedioEstudianteService())->resolverNotas($notasAcademicas, $notasTecnicas);
 
         $total    = $cals->count();
         $enRiesgo = $cals->where('nota_final', '<', 70)->count();
@@ -166,32 +216,39 @@ class AcademicRiskScoreService
 
     private function dimensionAsistencia(int $estudianteId, int $schoolYearId): array
     {
-        // Primero intentar con pct_asistencia de CalificacionAcademica
-        $pctFromCal = CalificacionAcademica::whereHas('matricula', function ($q) use ($estudianteId, $schoolYearId) {
+        $notasAcademicas = CalificacionAcademica::whereHas('matricula', function ($q) use ($estudianteId, $schoolYearId) {
             $q->where('estudiante_id', $estudianteId)
               ->where('school_year_id', $schoolYearId);
-        })->whereNotNull('pct_asistencia')->avg('pct_asistencia');
+        })->get();
 
-        if ($pctFromCal !== null) {
-            return [$this->scorePorPctAsistencia((float) $pctFromCal), round((float) $pctFromCal, 2)];
-        }
-
-        // Calcular desde registros de Asistencia diaria
         $matriculaIds = Matricula::where('estudiante_id', $estudianteId)
             ->where('school_year_id', $schoolYearId)
             ->where('estado', 'activa')
             ->pluck('id');
 
-        if ($matriculaIds->isEmpty()) return [0, null];
-
-        $stats = Asistencia::whereIn('matricula_id', $matriculaIds)
+        $stats = $matriculaIds->isEmpty() ? null : Asistencia::whereIn('matricula_id', $matriculaIds)
             ->selectRaw("COUNT(*) as total,
                          SUM(CASE WHEN estado IN ('presente','tardanza') THEN 1 ELSE 0 END) as asistidos")
             ->first();
 
-        if (! $stats || $stats->total === 0) return [0, null];
+        return $this->dimensionAsistenciaDesdeBulk($notasAcademicas, $stats);
+    }
 
-        $pct = round($stats->asistidos / $stats->total * 100, 2);
+    private function dimensionAsistenciaDesdeBulk(Collection $notasAcademicas, ?object $statsAsistencia): array
+    {
+        // Primero intentar con pct_asistencia de CalificacionAcademica
+        $pctValues = $notasAcademicas->pluck('pct_asistencia')->filter(fn ($v) => $v !== null);
+        if ($pctValues->isNotEmpty()) {
+            $pct = (float) $pctValues->avg();
+            return [$this->scorePorPctAsistencia($pct), round($pct, 2)];
+        }
+
+        // Calcular desde registros de Asistencia diaria
+        if (! $statsAsistencia || (int) $statsAsistencia->total === 0) {
+            return [0, null];
+        }
+
+        $pct = round($statsAsistencia->asistidos / $statsAsistencia->total * 100, 2);
         return [$this->scorePorPctAsistencia($pct), $pct];
     }
 
@@ -211,7 +268,6 @@ class AcademicRiskScoreService
 
     private function dimensionDisciplina(int $estudianteId, int $schoolYearId): array
     {
-        // Buscar faltas en el año escolar actual
         $school = SchoolYear::find($schoolYearId);
         $desde  = $school?->fecha_inicio ?? Carbon::now()->startOfYear();
         $hasta  = $school?->fecha_fin    ?? Carbon::now()->endOfYear();
@@ -220,6 +276,11 @@ class AcademicRiskScoreService
             ->whereBetween('fecha', [$desde, $hasta])
             ->get();
 
+        return $this->dimensionDisciplinaDesdeFaltas($faltas);
+    }
+
+    private function dimensionDisciplinaDesdeFaltas(Collection $faltas): array
+    {
         $tardanzas   = $faltas->where('tipo', 'tardanza')->count();
         $leves       = $faltas->where('tipo', 'falta_leve')->count();
         $graves      = $faltas->where('tipo', 'falta_grave')->count();
@@ -241,12 +302,16 @@ class AcademicRiskScoreService
 
     private function dimensionTendencia(int $estudianteId, int $schoolYearId): float
     {
-        // Calcular promedio por período usando avg_comp{n}_p{k}
         $cals = CalificacionAcademica::whereHas('matricula', function ($q) use ($estudianteId, $schoolYearId) {
             $q->where('estudiante_id', $estudianteId)
               ->where('school_year_id', $schoolYearId);
         })->get();
 
+        return $this->dimensionTendenciaDesdeNotas($cals);
+    }
+
+    private function dimensionTendenciaDesdeNotas(Collection $cals): float
+    {
         if ($cals->isEmpty()) return 20.0; // sin datos = estable/neutro
 
         $avgPorPeriodo = [];

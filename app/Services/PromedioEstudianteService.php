@@ -34,21 +34,28 @@ class PromedioEstudianteService
      */
     public function calcular(Collection $notasAcademicas, Collection $notasTecnicas): ?float
     {
-        $academicas = $notasAcademicas
+        $notas = $this->resolverNotas($notasAcademicas, $notasTecnicas)
             ->pluck('nota_final')
-            ->filter(fn ($n) => $n !== null)
             ->map(fn ($n) => (float) $n);
 
+        return $notas->isNotEmpty() ? round($notas->avg(), 2) : null;
+    }
+
+    /**
+     * Aplica la regla de prioridad y devuelve la colección de FILAS resultante
+     * (no solo el promedio) — para callers que necesiten más que el promedio:
+     * conteo de materias, materias en riesgo, etc. (ver
+     * AcademicRiskScoreService::dimensionAcademicaDesdeNotas). Garantiza que
+     * usan exactamente las mismas notas que entrarían al promedio de calcular().
+     */
+    public function resolverNotas(Collection $notasAcademicas, Collection $notasTecnicas): Collection
+    {
+        $academicas = $notasAcademicas->filter(fn ($c) => $c->nota_final !== null);
         if ($academicas->isNotEmpty()) {
-            return round($academicas->avg(), 2);
+            return $academicas;
         }
 
-        $tecnicas = $notasTecnicas
-            ->pluck('nota_final')
-            ->filter(fn ($n) => $n !== null)
-            ->map(fn ($n) => (float) $n);
-
-        return $tecnicas->isNotEmpty() ? round($tecnicas->avg(), 2) : null;
+        return $notasTecnicas->filter(fn ($c) => $c->nota_final !== null);
     }
 
     /**

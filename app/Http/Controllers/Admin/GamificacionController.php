@@ -56,10 +56,12 @@ class GamificacionController extends Controller
             ])->sortByDesc('total')->values();
         }
 
-        // Estadísticas globales del año
-        $totalPuntos    = PuntoEstudiante::count();
-        $totalInsignias = InsigniaEstudiante::count();
-        $matriculasConPuntos = PuntoEstudiante::distinct('matricula_id')->count('matricula_id');
+        // Estadísticas globales del año — puntos_estudiante/insignias_estudiante no
+        // tienen columna tenant_id propia (solo matricula_id), así que el scope se
+        // aplica vía la relación con Matricula, que sí es tenant-scoped.
+        $totalPuntos    = PuntoEstudiante::whereHas('matricula')->count();
+        $totalInsignias = InsigniaEstudiante::whereHas('matricula')->count();
+        $matriculasConPuntos = PuntoEstudiante::whereHas('matricula')->distinct('matricula_id')->count('matricula_id');
 
         return view('admin.gamificacion.index', compact(
             'grupos', 'grupoId', 'ranking',

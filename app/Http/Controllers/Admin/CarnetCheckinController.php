@@ -122,8 +122,16 @@ class CarnetCheckinController extends Controller
         ]);
     }
 
-    // ── Scan via URL pública (desde app móvil / wallet) ───────────────────────
-
+    // ── Scan via URL pública (cualquier cámara, sin login) ────────────────────
+    // El QR impreso en el carnet físico es literalmente esta URL — cualquiera
+    // que lo escanee (o tenga una foto del carnet) llega aquí sin sesión. El
+    // token es permanente (dura hasta que se reimprime el carnet), así que
+    // NO debe devolver datos que identifiquen a la persona (nombre, grupo) —
+    // hallazgo Alto de auditoría 2026-09-04 (H2): antes devolvía nombre
+    // completo y grupo, exponiendo esa información indefinidamente a quien
+    // sea que tuviera el token. La app móvil (docente) NO usa este endpoint
+    // — usa el autenticado scan() vía carnetApi.scan() — así que reducir la
+    // respuesta aquí no rompe ningún cliente real del sistema.
     public function scanPublico(string $qrToken)
     {
         $tenant   = app()->bound('tenant') ? app('tenant') : null;
@@ -132,17 +140,13 @@ class CarnetCheckinController extends Controller
         $carnet = CarnetQrService::resolverQrPermanente($qrToken, $tenantId);
 
         if (! $carnet) {
-            return response()->json(['error' => 'QR inválido.'], 403);
+            return response()->json(['valido' => false], 404);
         }
 
-        $carnet->load(['user', 'matricula.grupo.grado', 'matricula.grupo.seccion']);
-
         return response()->json([
-            'nombre'        => $carnet->nombre_completo,
+            'valido'        => $carnet->estado === 'activo',
             'numero_carnet' => $carnet->numero_carnet,
             'tipo'          => $carnet->tipo,
-            'grupo'         => $carnet->matricula?->grupo?->nombre_completo,
-            'estado'        => $carnet->estado,
         ]);
     }
 }

@@ -52,7 +52,15 @@ Route::get('/health', function () {
         ->hget(config('horizon.prefix') . 'masters', 'master')
         ? 'running' : 'stopped';
 
-    $status = in_array('fail', $checks) ? 503 : 200;
+    // La cola "sync" no rompe nada visiblemente (Horizon puede seguir
+    // "running" sin nada que consumir): los jobs (WhatsApp, PDFs,
+    // importaciones masivas) simplemente corren dentro de cada request en
+    // vez de en background. En producción eso es un problema real aunque
+    // silencioso, así que se marca explícitamente como degradado.
+    $checks['queue'] = config('queue.default');
+    $colaSincronicaEnProduccion = app()->environment('production') && config('queue.default') === 'sync';
+
+    $status = (in_array('fail', $checks, true) || $colaSincronicaEnProduccion) ? 503 : 200;
 
     return response()->json([
         'status'  => $status === 200 ? 'ok' : 'degraded',

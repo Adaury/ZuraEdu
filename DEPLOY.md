@@ -313,8 +313,15 @@ php artisan up
 | URL | Descripción |
 |---|---|
 | `/horizon` | Panel Horizon — queues, workers, métricas, failed jobs |
-| `/health` | JSON con estado de DB, Redis y Horizon |
+| `/health` | JSON con estado de DB, Redis, Horizon y `queue` (driver de cola activo) |
 | `/superadmin` | Panel SuperAdmin — tenants, planes, feature flags |
+
+> **`/health` y `QUEUE_CONNECTION`**: si `APP_ENV=production` y la cola
+> configurada es `sync` (el `.env` real no sobreescribió el default de
+> `.env.example`), `/health` responde `503` con `"status": "degraded"` y
+> `checks.queue: "sync"` — es la señal de que WhatsApp/PDFs/importaciones
+> masivas están corriendo dentro de cada request en vez de en background.
+> Revisar esto en el primer chequeo post-deploy.
 
 ---
 

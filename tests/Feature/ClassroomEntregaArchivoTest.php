@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Asignacion;
 use App\Models\Asignatura;
 use App\Models\ClaseVirtual;
+use App\Models\Docente;
 use App\Models\Estudiante;
 use App\Models\Grado;
 use App\Models\Grupo;
@@ -24,8 +25,14 @@ use Tests\TestCase;
  * módulos grandes del 2026-09-03): la validación de archivos de entrega
  * solo comprobaba el tamaño (`max:20480`), sin `mimes:` — un estudiante
  * podía subir cualquier tipo de archivo (incluyendo .html/.svg) como
- * entrega. El mismo hueco existía en 3 sitios más de subida de materiales
- * del lado docente en ClassroomDocenteController, corregidos igual.
+ * entrega. El mismo hueco existía en 3 sitios de subida de materiales del
+ * lado docente en ClassroomDocenteController, corregidos igual en esa
+ * ronda — pero se pasó por alto un 4º punto, subirArchivo() (agregar un
+ * archivo suelto a un material ya creado), encontrado y corregido en la
+ * pasada dedicada de subida de archivos de la auditoría completa
+ * 2026-09-04: sin mimes:, aceptaba cualquier tipo de archivo, y como se
+ * guarda en el disco 'public' (servido directo bajo el docroot), un .php
+ * subido ahí era ejecutable de verdad — RCE real, no solo teórico.
  */
 class ClassroomEntregaArchivoTest extends TestCase
 {
@@ -48,6 +55,10 @@ class ClassroomEntregaArchivoTest extends TestCase
         $estudiante->user->assignRole('Estudiante');
         $estudiante->user->update(['activo' => true]);
 
+        $docente = Docente::factory()->create();
+        $docente->user->assignRole('Docente');
+        $docente->user->update(['activo' => true]);
+
         $matricula = Matricula::create([
             'school_year_id' => $sy->id, 'estudiante_id' => $estudiante->id, 'grupo_id' => $grupo->id,
             'fecha_matricula' => '2025-08-15', 'numero_orden' => 1, 'estado' => 'activa',
@@ -55,7 +66,7 @@ class ClassroomEntregaArchivoTest extends TestCase
         $asignatura = Asignatura::create(['codigo' => 'CE1', 'nombre' => 'Lengua Española', 'area' => 'academica', 'activo' => true]);
         $asignacion = Asignacion::create([
             'school_year_id' => $sy->id, 'grupo_id' => $grupo->id, 'asignatura_id' => $asignatura->id,
-            'activo' => true, 'area' => 'academica',
+            'docente_id' => $docente->id, 'activo' => true, 'area' => 'academica',
         ]);
         Periodo::create([
             'school_year_id' => $sy->id, 'numero' => 1, 'nombre' => 'Período 1',
@@ -66,7 +77,7 @@ class ClassroomEntregaArchivoTest extends TestCase
             'clase_virtual_id' => $clase->id, 'titulo' => 'Tarea 1', 'tipo' => 'tarea', 'publicado' => true,
         ]);
 
-        return compact('estudiante', 'matricula', 'clase', 'material');
+        return compact('estudiante', 'docente', 'matricula', 'clase', 'material');
     }
 
     public function test_rechaza_un_archivo_html_como_entrega(): void
@@ -91,5 +102,30 @@ class ClassroomEntregaArchivoTest extends TestCase
             ]);
 
         $response->assertSessionDoesntHaveErrors();
+    }
+
+    public function test_docente_no_puede_subir_un_php_como_archivo_de_material(): void
+    {
+        $e = $this->crearEscenario();
+
+        $response = $this->actingAs($e['docente']->user)
+            ->postJson(route('portal.docente.classroom.subir_archivo', [$e['clase'], $e['material']]), [
+                'archivo' => UploadedFile::fake()->create('shell.php', 10, 'application/x-php'),
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('archivo');
+    }
+
+    public function test_docente_si_puede_subir_un_pdf_como_archivo_de_material(): void
+    {
+        $e = $this->crearEscenario();
+
+        $response = $this->actingAs($e['docente']->user)
+            ->postJson(route('portal.docente.classroom.subir_archivo', [$e['clase'], $e['material']]), [
+                'archivo' => UploadedFile::fake()->create('ficha.pdf', 100, 'application/pdf'),
+            ]);
+
+        $response->assertOk();
     }
 }

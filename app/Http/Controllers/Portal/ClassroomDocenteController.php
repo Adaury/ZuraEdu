@@ -442,7 +442,12 @@ class ClassroomDocenteController extends Controller
 
         abort_unless($material->clase_virtual_id === $claseVirtual->id, 404);
 
-        $request->validate(['archivo' => 'required|file|max:10240']);
+        // Hallazgo Bajo de auditoría 2026-09-04 (pasada dedicada de subida de
+        // archivos): sin mimes:, aceptaba cualquier tipo de archivo — el disco
+        // 'public' se sirve directo bajo el docroot, así que un .php subido
+        // aquí era ejecutable de verdad, no solo una falla teórica. Misma
+        // whitelist que ya usan los otros 3 puntos de subida de este archivo.
+        $request->validate(['archivo' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip|max:10240']);
 
         $file = $request->file('archivo');
         $ruta = $file->store("classroom/{$claseVirtual->id}", 'public');

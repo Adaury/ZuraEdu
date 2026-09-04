@@ -54,26 +54,38 @@ Route::middleware('can:ver-estadisticas')->group(function () {
 require __DIR__ . '/rendimiento_comparativo.php';
 
 // ── Alertas ───────────────────────────────────────────────────────────────
+// index/pdf/excel/conteo/leer/leerTodas quedan abiertas a cualquier rol
+// admin (son "mis alertas", igual que "mis comunicados" en sistema.php).
+// destroy y los generar-* SÍ requieren gate — hallazgo de auditoría
+// 2026-09-04: cualquier rol admin podía disparar la generación masiva de
+// alertas (jobs) o borrar alertas ajenas por URL directa, sin permiso.
 Route::get('alertas',                      [AlertaController::class, 'index'])->name('alertas.index');
 Route::get('alertas/pdf',                  [AlertaController::class, 'pdf'])->name('alertas.pdf');
 Route::get('alertas/excel',                [AlertaController::class, 'excel'])->name('alertas.excel');
 Route::get('alertas/conteo',               [AlertaController::class, 'conteo'])->name('alertas.conteo');
 Route::patch('alertas/{alerta}/leer',      [AlertaController::class, 'marcarLeida'])->name('alertas.leer');
 Route::post('alertas/leer-todas',          [AlertaController::class, 'marcarTodasLeidas'])->name('alertas.leerTodas');
-Route::delete('alertas/{alerta}',          [AlertaController::class, 'destroy'])->name('alertas.destroy');
-Route::post('alertas/generar-academicas',      [AlertaController::class, 'generarAcademicas'])->name('alertas.generarAcademicas');
-Route::post('alertas/generar-ausencias',       [AlertaController::class, 'generarAusencias'])->name('alertas.generarAusencias');
-Route::post('alertas/generar-rendimiento',     [AlertaController::class, 'generarRendimiento'])->name('alertas.generarRendimiento');
-Route::post('alertas/generar-entrega-notas',   [AlertaController::class, 'generarEntregaNotas'])->name('alertas.generarEntregaNotas');
-Route::post('alertas/recordatorio-pagos',      [AlertaController::class, 'generarRecordatorioPagos'])->name('alertas.recordatorioPagos');
+Route::middleware('can:supervisar-registros')->group(function () {
+    Route::delete('alertas/{alerta}',          [AlertaController::class, 'destroy'])->name('alertas.destroy');
+    Route::post('alertas/generar-academicas',      [AlertaController::class, 'generarAcademicas'])->name('alertas.generarAcademicas');
+    Route::post('alertas/generar-ausencias',       [AlertaController::class, 'generarAusencias'])->name('alertas.generarAusencias');
+    Route::post('alertas/generar-rendimiento',     [AlertaController::class, 'generarRendimiento'])->name('alertas.generarRendimiento');
+    Route::post('alertas/generar-entrega-notas',   [AlertaController::class, 'generarEntregaNotas'])->name('alertas.generarEntregaNotas');
+    Route::post('alertas/recordatorio-pagos',      [AlertaController::class, 'generarRecordatorioPagos'])->name('alertas.recordatorioPagos');
+});
 
 // ── Calendario Académico ──────────────────────────────────────────────────
+// Ver el calendario queda abierto a cualquier rol admin; crear/editar/
+// eliminar eventos del calendario institucional requiere gate (mismo
+// hallazgo: antes cualquier rol admin podía borrar eventos por URL directa).
 Route::get('calendario',               [CalendarioController::class, 'index'])->name('calendario.index');
 Route::get('calendario/excel',         [CalendarioController::class, 'excel'])->name('calendario.excel');
 Route::get('calendario/pdf',           [CalendarioController::class, 'pdf'])->name('calendario.pdf');
 Route::get('calendario/api',           [CalendarioController::class, 'api'])->name('calendario.api');
-Route::get('calendario/create',        [CalendarioController::class, 'create'])->name('calendario.create');
-Route::post('calendario',              [CalendarioController::class, 'store'])->name('calendario.store');
-Route::get('calendario/{evento}/edit', [CalendarioController::class, 'edit'])->name('calendario.edit');
-Route::put('calendario/{evento}',      [CalendarioController::class, 'update'])->name('calendario.update');
-Route::delete('calendario/{evento}',   [CalendarioController::class, 'destroy'])->name('calendario.destroy');
+Route::middleware('can:acceso-direccion-coordinacion')->group(function () {
+    Route::get('calendario/create',        [CalendarioController::class, 'create'])->name('calendario.create');
+    Route::post('calendario',              [CalendarioController::class, 'store'])->name('calendario.store');
+    Route::get('calendario/{evento}/edit', [CalendarioController::class, 'edit'])->name('calendario.edit');
+    Route::put('calendario/{evento}',      [CalendarioController::class, 'update'])->name('calendario.update');
+    Route::delete('calendario/{evento}',   [CalendarioController::class, 'destroy'])->name('calendario.destroy');
+});

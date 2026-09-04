@@ -52,17 +52,25 @@ Route::middleware('can:acceso-direccion-coordinacion')->group(function () {
 });
 
 // ── Año Escolar y Períodos ────────────────────────────────────────────────
-Route::get('school-years/lista/pdf',   [SchoolYearController::class, 'listaPdf'])->name('school-years.lista-pdf');
-Route::get('school-years/lista/excel', [SchoolYearController::class, 'listaExcel'])->name('school-years.lista-excel');
-Route::resource('school-years', SchoolYearController::class)->except(['show']);
-Route::get('school-years/{schoolYear}/matricula-masiva',  [SchoolYearController::class, 'matriculaMasivaIndex'])->name('school-years.matricula-masiva');
-Route::post('school-years/{schoolYear}/matricula-masiva', [SchoolYearController::class, 'matriculaMasivaStore'])->name('school-years.matricula-masiva.store');
-Route::get('periodos/lista/pdf',   [PeriodoController::class, 'listaPdf'])->name('periodos.lista-pdf');
-Route::get('periodos/lista/excel', [PeriodoController::class, 'listaExcel'])->name('periodos.lista-excel');
-Route::resource('periodos', PeriodoController::class)->except(['show']);
-Route::get('periodos/{periodo}/checklist',  [\App\Http\Controllers\Admin\PeriodoController::class, 'checklist'])->name('periodos.checklist');
-Route::post('periodos/{periodo}/cerrar',   [\App\Http\Controllers\Admin\PeriodoController::class, 'cerrar'])->name('periodos.cerrar');
-Route::post('periodos/{periodo}/reabrir',  [\App\Http\Controllers\Admin\PeriodoController::class, 'reabrir'])->name('periodos.reabrir');
+// Hallazgo de auditoría 2026-09-04: estas rutas solo dependían del gate
+// genérico admin.access, sin el permiso gestionar-school-years/
+// gestionar-periodos que ya existe en RolesSeeder — Biblioteca o Recepción
+// podían cerrar/reabrir un período o eliminar un año escolar por URL directa.
+Route::middleware('can:gestionar-school-years')->group(function () {
+    Route::get('school-years/lista/pdf',   [SchoolYearController::class, 'listaPdf'])->name('school-years.lista-pdf');
+    Route::get('school-years/lista/excel', [SchoolYearController::class, 'listaExcel'])->name('school-years.lista-excel');
+    Route::resource('school-years', SchoolYearController::class)->except(['show']);
+    Route::get('school-years/{schoolYear}/matricula-masiva',  [SchoolYearController::class, 'matriculaMasivaIndex'])->name('school-years.matricula-masiva');
+    Route::post('school-years/{schoolYear}/matricula-masiva', [SchoolYearController::class, 'matriculaMasivaStore'])->name('school-years.matricula-masiva.store');
+});
+Route::middleware('can:gestionar-periodos')->group(function () {
+    Route::get('periodos/lista/pdf',   [PeriodoController::class, 'listaPdf'])->name('periodos.lista-pdf');
+    Route::get('periodos/lista/excel', [PeriodoController::class, 'listaExcel'])->name('periodos.lista-excel');
+    Route::resource('periodos', PeriodoController::class)->except(['show']);
+    Route::get('periodos/{periodo}/checklist',  [\App\Http\Controllers\Admin\PeriodoController::class, 'checklist'])->name('periodos.checklist');
+    Route::post('periodos/{periodo}/cerrar',   [\App\Http\Controllers\Admin\PeriodoController::class, 'cerrar'])->name('periodos.cerrar');
+    Route::post('periodos/{periodo}/reabrir',  [\App\Http\Controllers\Admin\PeriodoController::class, 'reabrir'])->name('periodos.reabrir');
+});
 
 // ── Áreas ─────────────────────────────────────────────────────────────────
 Route::get('areas',            [AreaController::class, 'index'])->name('areas.index');
@@ -70,35 +78,48 @@ Route::get('areas/academica',  [AreaController::class, 'academica'])->name('area
 Route::get('areas/tecnica',    [AreaController::class, 'tecnica'])->name('areas.tecnica');
 
 // ── Especialidades Técnicas ───────────────────────────────────────────────
-Route::get('areas/especialidades',                                       [EspecialidadTecnicaController::class, 'index'])->name('especialidades.index');
-Route::get('areas/especialidades/create',                                [EspecialidadTecnicaController::class, 'create'])->name('especialidades.create');
-Route::post('areas/especialidades',                                      [EspecialidadTecnicaController::class, 'store'])->name('especialidades.store');
-Route::get('areas/especialidades/{especialidad}/edit',                   [EspecialidadTecnicaController::class, 'edit'])->name('especialidades.edit');
-Route::put('areas/especialidades/{especialidad}',                        [EspecialidadTecnicaController::class, 'update'])->name('especialidades.update');
-Route::delete('areas/especialidades/{especialidad}',                     [EspecialidadTecnicaController::class, 'destroy'])->name('especialidades.destroy');
-Route::post('areas/especialidades/{especialidad}/asignar-docente',       [EspecialidadTecnicaController::class, 'asignarDocente'])->name('especialidades.asignarDocente');
-Route::delete('areas/especialidades/{especialidad}/docentes/{docente}',  [EspecialidadTecnicaController::class, 'removerDocente'])->name('especialidades.removerDocente');
+// Mismo hallazgo: CRUD completo sin gate. gestionar-asignaturas es el
+// permiso existente más cercano (estructura curricular) y ya lo tienen los
+// mismos roles que deberían poder tocar esto (Administrador, Director,
+// Coordinador Académico, Coord. Primer/Segundo Ciclo, Encargado de Área).
+Route::middleware('can:gestionar-asignaturas')->group(function () {
+    Route::get('areas/especialidades',                                       [EspecialidadTecnicaController::class, 'index'])->name('especialidades.index');
+    Route::get('areas/especialidades/create',                                [EspecialidadTecnicaController::class, 'create'])->name('especialidades.create');
+    Route::post('areas/especialidades',                                      [EspecialidadTecnicaController::class, 'store'])->name('especialidades.store');
+    Route::get('areas/especialidades/{especialidad}/edit',                   [EspecialidadTecnicaController::class, 'edit'])->name('especialidades.edit');
+    Route::put('areas/especialidades/{especialidad}',                        [EspecialidadTecnicaController::class, 'update'])->name('especialidades.update');
+    Route::delete('areas/especialidades/{especialidad}',                     [EspecialidadTecnicaController::class, 'destroy'])->name('especialidades.destroy');
+    Route::post('areas/especialidades/{especialidad}/asignar-docente',       [EspecialidadTecnicaController::class, 'asignarDocente'])->name('especialidades.asignarDocente');
+    Route::delete('areas/especialidades/{especialidad}/docentes/{docente}',  [EspecialidadTecnicaController::class, 'removerDocente'])->name('especialidades.removerDocente');
 
-// ── Malla Curricular ──────────────────────────────────────────────────────
-Route::get('malla-curricular',              [MallaCurricularController::class, 'index'])->name('malla.index');
-Route::get('malla-curricular/matriz',       [MallaCurricularController::class, 'matriz'])->name('malla.matriz');
-Route::get('malla-curricular/matriz/pdf',   [MallaCurricularController::class, 'matrizPdf'])->name('malla.matriz.pdf');
-Route::get('malla-curricular/matriz/excel', [MallaCurricularController::class, 'matrizExcel'])->name('malla.matriz.excel');
-Route::get('malla-curricular/create',       [MallaCurricularController::class, 'create'])->name('malla.create');
-Route::post('malla-curricular',             [MallaCurricularController::class, 'store'])->name('malla.store');
-Route::get('malla-curricular/{malla}/edit', [MallaCurricularController::class, 'edit'])->name('malla.edit');
-Route::put('malla-curricular/{malla}',      [MallaCurricularController::class, 'update'])->name('malla.update');
-Route::delete('malla-curricular/{malla}',   [MallaCurricularController::class, 'destroy'])->name('malla.destroy');
+    // ── Malla Curricular ──────────────────────────────────────────────────
+    Route::get('malla-curricular',              [MallaCurricularController::class, 'index'])->name('malla.index');
+    Route::get('malla-curricular/matriz',       [MallaCurricularController::class, 'matriz'])->name('malla.matriz');
+    Route::get('malla-curricular/matriz/pdf',   [MallaCurricularController::class, 'matrizPdf'])->name('malla.matriz.pdf');
+    Route::get('malla-curricular/matriz/excel', [MallaCurricularController::class, 'matrizExcel'])->name('malla.matriz.excel');
+    Route::get('malla-curricular/create',       [MallaCurricularController::class, 'create'])->name('malla.create');
+    Route::post('malla-curricular',             [MallaCurricularController::class, 'store'])->name('malla.store');
+    Route::get('malla-curricular/{malla}/edit', [MallaCurricularController::class, 'edit'])->name('malla.edit');
+    Route::put('malla-curricular/{malla}',      [MallaCurricularController::class, 'update'])->name('malla.update');
+    Route::delete('malla-curricular/{malla}',   [MallaCurricularController::class, 'destroy'])->name('malla.destroy');
+});
 
 // ── Log de actividad ──────────────────────────────────────────────────────
-Route::get('sistema/actividad',          [SistemaController::class, 'activityLog'])->name('sistema.actividad');
-Route::get('sistema/actividad/excel',    [SistemaController::class, 'activityLogExcel'])->name('sistema.actividad.excel');
-Route::get('sistema/actividad/pdf',     [SistemaController::class, 'activityLogPdf'])->name('sistema.actividad.pdf');
-Route::get('sistema/estadisticas',       [SistemaController::class, 'estadisticas'])->name('sistema.estadisticas');
-Route::get('sistema/estadisticas/excel', [SistemaController::class, 'estadisticasExcel'])->name('sistema.estadisticas.excel');
-Route::get('sistema/reporte-ejecutivo',  [SistemaController::class, 'reporteEjecutivoPdf'])->name('sistema.reporte-ejecutivo');
-Route::get('sistema/reporte-anual',      [SistemaController::class, 'reporteAnualPdf'])->name('sistema.reporte-anual');
-Route::get('sistema/ficha-institucional',[SistemaController::class, 'fichaInstitucionalPdf'])->name('sistema.ficha-institucional');
+// El log de auditoría completo del tenant es sensible — restringido al
+// mismo nivel que el resto de acciones de Dirección (Administrador/Director),
+// no al gate genérico admin.access que dejaba entrar a cualquier rol admin.
+Route::middleware('can:acceso-direccion')->group(function () {
+    Route::get('sistema/actividad',          [SistemaController::class, 'activityLog'])->name('sistema.actividad');
+    Route::get('sistema/actividad/excel',    [SistemaController::class, 'activityLogExcel'])->name('sistema.actividad.excel');
+    Route::get('sistema/actividad/pdf',     [SistemaController::class, 'activityLogPdf'])->name('sistema.actividad.pdf');
+});
+Route::middleware('can:ver-reportes-institucionales')->group(function () {
+    Route::get('sistema/estadisticas',       [SistemaController::class, 'estadisticas'])->name('sistema.estadisticas');
+    Route::get('sistema/estadisticas/excel', [SistemaController::class, 'estadisticasExcel'])->name('sistema.estadisticas.excel');
+    Route::get('sistema/reporte-ejecutivo',  [SistemaController::class, 'reporteEjecutivoPdf'])->name('sistema.reporte-ejecutivo');
+    Route::get('sistema/reporte-anual',      [SistemaController::class, 'reporteAnualPdf'])->name('sistema.reporte-anual');
+    Route::get('sistema/ficha-institucional',[SistemaController::class, 'fichaInstitucionalPdf'])->name('sistema.ficha-institucional');
+});
 
 // ── Gestión de Usuarios ───────────────────────────────────────────────────
 Route::middleware('can:gestionar-usuarios')->group(function () {

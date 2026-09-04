@@ -13,6 +13,16 @@ use App\Models\Seccion;
 use App\Traits\AsignaMateriasBasicas;
 use Illuminate\Http\Request;
 
+/**
+ * Nota de nomenclatura (auditoría 2026-09-04, hallazgo bajo): "curso" aquí
+ * es sinónimo informal de {@see \App\Models\Grupo} (año → curso → materias),
+ * NO tiene relación con "Cursos Técnicos" de
+ * {@see \App\Http\Controllers\Admin\BachilleratoTecnicoController} (submódulo
+ * de Bachillerato Técnico: áreas técnicas → cursos técnicos → módulos
+ * formativos). Son dos entidades distintas que comparten nombre — no
+ * confundir storeCurso()/updateCurso()/destroyCurso() (operan sobre Grupo)
+ * con los métodos homónimos de BachilleratoTecnicoController.
+ */
 class AcademicoController extends Controller
 {
     use AsignaMateriasBasicas;

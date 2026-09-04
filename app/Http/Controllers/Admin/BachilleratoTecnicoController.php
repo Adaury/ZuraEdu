@@ -8,6 +8,14 @@ use App\Models\CursoTecnico;
 use App\Models\ModuloFormativo;
 use Illuminate\Http\Request;
 
+/**
+ * Nota de nomenclatura (auditoría 2026-09-04, hallazgo bajo): "curso" aquí
+ * es {@see \App\Models\CursoTecnico} (área técnica → curso técnico → módulos
+ * formativos), NO tiene relación con "curso" como sinónimo de
+ * {@see \App\Models\Grupo} usado en
+ * {@see \App\Http\Controllers\Admin\AcademicoController} (wizard
+ * año → curso → materias). Son dos entidades distintas que comparten nombre.
+ */
 class BachilleratoTecnicoController extends Controller
 {
     // ── Vista principal ──────────────────────────────────────────────────────

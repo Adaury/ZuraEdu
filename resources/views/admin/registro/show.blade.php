@@ -116,8 +116,9 @@
            class="btn btn-success btn-sm">
             <i class="bi bi-file-earmark-excel-fill me-1"></i>Excel
         </a>
-        <button class="btn btn-success btn-sm" onclick="calcularPromociones({{ $grupo->id }})">
-            <i class="bi bi-trophy me-1"></i>Calcular Promoción
+        <button class="btn btn-success btn-sm" onclick="calcularPromociones({{ $grupo->id }})"
+                title="Evalúa promedio + asistencia según la regla MINERD (65% y 75% de asistencia). Actualiza el mismo registro de promoción que usa el Cierre de Año oficial — coordina con Dirección antes de recalcular si el año ya está cerrado.">
+            <i class="bi bi-trophy me-1"></i>Calcular Promoción (Registro MINERD)
         </button>
     </div>
 </div>
@@ -439,11 +440,22 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content rounded-4">
             <div class="modal-header">
-                <h5 class="modal-title fw-800"><i class="bi bi-trophy me-2 text-warning"></i>Resultado de Promoción</h5>
+                <h5 class="modal-title fw-800"><i class="bi bi-trophy me-2 text-warning"></i>Resultado — Registro MINERD</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="modalPromocionBody">
-                <div class="text-center py-4"><div class="spinner-border text-primary"></div></div>
+            <div class="modal-body">
+                <div class="alert alert-warning py-2 px-3 small mb-3">
+                    <i class="bi bi-info-circle-fill me-1"></i>
+                    Esto evalúa promedio + asistencia según la regla MINERD (65% y 75%
+                    de asistencia, con estado "condicionado" en segundo ciclo) y
+                    <strong>sobrescribe el mismo registro de promoción</strong> que usa
+                    el Cierre de Año oficial de Dirección (Admin → Cierre de Año), que
+                    usa su propia regla (promedio ≥ 60%). Si el año ya se cerró
+                    oficialmente, coordina con Dirección antes de recalcular aquí.
+                </div>
+                <div id="modalPromocionBody">
+                    <div class="text-center py-4"><div class="spinner-border text-primary"></div></div>
+                </div>
             </div>
         </div>
     </div>

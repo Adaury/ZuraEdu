@@ -170,6 +170,21 @@ Route::prefix('registro')->name('registro.')->middleware('can:ver-calificaciones
         Route::post('/guardar',                      [RegistroController::class, 'guardar'])->name('guardar');
         Route::post('/guardar-lote',                 [RegistroController::class, 'guardarLote'])->name('guardar-lote');
         Route::post('/observacion',                  [RegistroController::class, 'guardarObservacion'])->name('observacion');
+    });
+    // Hallazgo Alto de auditoría 2026-09-04 (H1): calcular-promociones
+    // escribe en la misma tabla `promociones` que el cierre de año oficial
+    // (Admin\CierreAnoController::ejecutar(), protegido por acceso-direccion)
+    // pero solo exigía ingresar-calificaciones — cualquier Coordinador
+    // (Académico, Primer o Segundo Ciclo) podía sobrescribir silenciosamente
+    // la promoción oficial de un grupo con un cálculo distinto
+    // (RegistroAcademicoService usa su propio promedio por competencias/
+    // CE-IL, no PromedioEstudianteService, y otro umbral). Los roles
+    // Docente/Docente Académico/Técnico/Guía nunca llegan aquí — tienen
+    // ingresar-calificaciones pero EnsureAdminAccess los redirige a su
+    // portal antes de entrar a /admin.
+    // Se restringe al mismo nivel que el cierre de año oficial mientras se
+    // decide si ambos cálculos deben unificarse.
+    Route::middleware('can:acceso-direccion')->group(function () {
         Route::post('/{grupo}/calcular-promociones', [RegistroController::class, 'calcularPromociones'])->name('calcular-promociones');
     });
     Route::get('/{grupo}/exportar-pdf',          [RegistroController::class, 'exportarPdf'])->name('exportarPdf');

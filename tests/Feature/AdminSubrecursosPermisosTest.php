@@ -29,6 +29,12 @@ class AdminSubrecursosPermisosTest extends TestCase
 
     private function usuario(string $rol): User
     {
+        return $this->usuarioConTenant($rol)[0];
+    }
+
+    /** @return array{0: User, 1: Tenant} */
+    private function usuarioConTenant(string $rol): array
+    {
         $tenant = Tenant::create([
             'nombre_institucion' => 'Colegio Permisos',
             'dominio'            => 'colegiopermisos' . random_int(10000, 99999),
@@ -39,7 +45,7 @@ class AdminSubrecursosPermisosTest extends TestCase
 
         $user = User::factory()->create(['activo' => true, 'tenant_id' => $tenant->id]);
         $user->assignRole($rol);
-        return $user;
+        return [$user, $tenant];
     }
 
     public static function rutasBloqueadasProvider(): array
@@ -126,5 +132,55 @@ class AdminSubrecursosPermisosTest extends TestCase
         $this->actingAs($user)
             ->get(route('admin.calendario.create'))
             ->assertForbidden();
+    }
+
+    public function test_coordinador_no_puede_recalcular_promociones_de_su_grupo(): void
+    {
+        // Coordinador Académico tiene ingresar-calificaciones (necesario
+        // para capturar notas) pero calcular-promociones escribe en la
+        // misma tabla `promociones` que el cierre de año oficial (solo
+        // Dirección) — un coordinador no debe poder sobrescribirla desde
+        // /registro. (Docente/Docente Académico/Técnico/Guía no se prueban
+        // aquí porque EnsureAdminAccess los redirige fuera de /admin antes
+        // de llegar a esta ruta — nunca podrían intentarlo siquiera.)
+        [$docente, $tenant] = $this->usuarioConTenant('Coordinador Académico');
+
+        app()->instance('tenant', $tenant);
+        $schoolYear = \App\Models\SchoolYear::create([
+            'nombre' => '2026-2027', 'fecha_inicio' => now(), 'fecha_fin' => now()->addMonths(10), 'activo' => true,
+        ]);
+        $grado = \App\Models\Grado::create(['nombre' => '1ro', 'nivel' => 1, 'ciclo' => 'primer_ciclo', 'orden' => 1, 'activo' => true]);
+        $seccion = \App\Models\Seccion::create(['nombre' => 'A', 'orden' => 1]);
+        $grupo = \App\Models\Grupo::create([
+            'school_year_id' => $schoolYear->id, 'grado_id' => $grado->id, 'seccion_id' => $seccion->id, 'activo' => true,
+        ]);
+        app()->forgetInstance('tenant');
+
+        $this->actingAs($docente)
+            ->post(route('admin.registro.calcular-promociones', $grupo))
+            ->assertForbidden();
+    }
+
+    public function test_administrador_si_puede_recalcular_promociones_de_su_grupo(): void
+    {
+        [$admin, $tenant] = $this->usuarioConTenant('Administrador');
+
+        app()->instance('tenant', $tenant);
+        $schoolYear = \App\Models\SchoolYear::create([
+            'nombre' => '2026-2027', 'fecha_inicio' => now(), 'fecha_fin' => now()->addMonths(10), 'activo' => true,
+        ]);
+        $grado = \App\Models\Grado::create(['nombre' => '1ro', 'nivel' => 1, 'ciclo' => 'primer_ciclo', 'orden' => 1, 'activo' => true]);
+        $seccion = \App\Models\Seccion::create(['nombre' => 'A', 'orden' => 1]);
+        $grupo = \App\Models\Grupo::create([
+            'school_year_id' => $schoolYear->id, 'grado_id' => $grado->id, 'seccion_id' => $seccion->id, 'activo' => true,
+        ]);
+        app()->forgetInstance('tenant');
+
+        $response = $this->actingAs($admin)
+            ->post(route('admin.registro.calcular-promociones', $grupo));
+
+        // No debe ser 403 (bloqueado por permiso) — puede ser 200 con lista
+        // vacía de resultados, ya que el grupo no tiene matrículas.
+        $response->assertStatus(200);
     }
 }

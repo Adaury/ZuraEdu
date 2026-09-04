@@ -114,6 +114,16 @@
 </div>
 @endif
 
+<div class="alert alert-secondary py-2 px-3 small mb-3">
+    <i class="bi bi-info-circle-fill me-1"></i>
+    Esta es la promoción <strong>oficial</strong> (regla: promedio ≥ 60%,
+    ajustable manualmente por fila). El Registro Académico MINERD tiene su
+    propio botón "Calcular Promoción" que usa otra regla (65% + asistencia
+    75% + condicionado) y escribe al mismo registro — si alguien lo corrió
+    ahí después de este cierre, revisa que el estado siga siendo el
+    correcto antes de imprimir actas.
+</div>
+
 {{-- Header --}}
 <div class="pg-header">
     <div class="d-flex align-items-center gap-3 flex-wrap">

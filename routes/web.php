@@ -237,7 +237,7 @@ Route::prefix('portal/estudiante')->name('portal.estudiante.')->middleware(['aut
 
     // Tutor IA — Asistente académico estudiante
     Route::get('/tutor-ia',        fn() => view('portal.estudiante.tutor_ia'))->name('tutor-ia');
-    Route::post('/asistente/chat', [\App\Http\Controllers\Portal\AsistenteIAController::class, 'chatEstudiante'])->name('asistente.chat');
+    Route::post('/asistente/chat', [\App\Http\Controllers\Portal\AsistenteIAController::class, 'chatEstudiante'])->name('asistente.chat')->middleware('throttle:30,1');
     // Mi Risk Score
     Route::get('/mi-riesgo', [PortalEstudianteController::class, 'miRiesgo'])->name('mi-riesgo');
     // Registro MINERD (lectura)
@@ -315,7 +315,7 @@ Route::prefix('portal/padre')->name('portal.padre.')->middleware(['auth', 'activ
 
     // Tutor IA — Asistente académico representante
     Route::get('/tutor-ia',        fn() => view('portal.padre.tutor_ia'))->name('tutor-ia');
-    Route::post('/asistente/chat', [\App\Http\Controllers\Portal\AsistenteIAController::class, 'chatPadre'])->name('asistente.chat');
+    Route::post('/asistente/chat', [\App\Http\Controllers\Portal\AsistenteIAController::class, 'chatPadre'])->name('asistente.chat')->middleware('throttle:30,1');
 });
 
 // ── Portal Docente ────────────────────────────────────────────────────────
@@ -593,13 +593,13 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::patch('/{planificacion}/publicado',[PlanificacionDocenteController::class, 'togglePublicado'])->name('toggle-publicado');
         Route::delete('/{planificacion}',        [PlanificacionDocenteController::class, 'destroy'])->name('destroy');
         // IA endpoints
-        Route::post('/ia/ra',       [PlanificacionAIController::class, 'generarRA'])->name('ia.ra');
-        Route::post('/ia/actividad',[PlanificacionAIController::class, 'generarActividad'])->name('ia.actividad');
-        Route::post('/ia/mejorar',  [PlanificacionAIController::class, 'mejorarTexto'])->name('ia.mejorar');
+        Route::post('/ia/ra',       [PlanificacionAIController::class, 'generarRA'])->name('ia.ra')->middleware('throttle:30,1');
+        Route::post('/ia/actividad',[PlanificacionAIController::class, 'generarActividad'])->name('ia.actividad')->middleware('throttle:30,1');
+        Route::post('/ia/mejorar',  [PlanificacionAIController::class, 'mejorarTexto'])->name('ia.mejorar')->middleware('throttle:30,1');
     });
 
     // ZuraAI — Asistente académico
-    Route::post('/asistente/chat', [\App\Http\Controllers\Portal\AsistenteIAController::class, 'chat'])->name('asistente.chat');
+    Route::post('/asistente/chat', [\App\Http\Controllers\Portal\AsistenteIAController::class, 'chat'])->name('asistente.chat')->middleware('throttle:30,1');
 });
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -702,7 +702,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.acc
 
     // ── ZuraAI ────────────────────────────────────────────────────────────
     Route::get('asistente',       fn() => view('admin.asistente.index'))->name('asistente.index');
-    Route::post('asistente/chat', [\App\Http\Controllers\Portal\AsistenteIAController::class, 'chatAdmin'])->name('asistente.chat');
+    Route::post('asistente/chat', [\App\Http\Controllers\Portal\AsistenteIAController::class, 'chatAdmin'])->name('asistente.chat')->middleware('throttle:30,1');
 });
 
 // ── Galería pública ───────────────────────────────────────────────────────

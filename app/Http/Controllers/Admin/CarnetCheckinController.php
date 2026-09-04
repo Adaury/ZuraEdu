@@ -57,6 +57,29 @@ class CarnetCheckinController extends Controller
             }
         }
 
+        // Dedupe: el mismo carnet+evento escaneado dos veces seguidas (doble-tap,
+        // glitch del kiosco) no debe generar dos registros ni dos WhatsApp al padre.
+        if ($existente = CarnetAcceso::recienteParaCarnet($carnet->id, $tipoEvento)) {
+            return response()->json([
+                'success'       => true,
+                'estado'        => $existente->estado,
+                'tipo_evento'   => $existente->tipo_evento,
+                'nombre'        => $carnet->nombre_completo,
+                'numero_carnet' => $carnet->numero_carnet,
+                'grupo'         => $carnet->matricula?->grupo?->nombre_completo,
+                'hora'          => $existente->hora,
+                'foto'          => $carnet->user?->foto ? asset('storage/' . $carnet->user->foto) : null,
+                'color'         => match($existente->estado) {
+                    'tardanza'          => 'warning',
+                    'denegado'          => 'danger',
+                    'salida_anticipada' => 'info',
+                    default             => 'success',
+                },
+                'mensaje'       => "Ya registrado hace un momento — {$carnet->nombre_completo}",
+                'duplicado'     => true,
+            ]);
+        }
+
         $acceso = CarnetAcceso::create([
             'carnet_identidad_id' => $carnet->id,
             'tipo_evento'         => $tipoEvento,

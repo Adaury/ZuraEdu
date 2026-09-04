@@ -174,6 +174,19 @@ class CarnetApiController extends Controller
         }
         if ($tipoEvento === 'salida') $estado = 'salida_anticipada';
 
+        // Dedupe: el mismo carnet+evento escaneado dos veces seguidas no debe
+        // generar dos registros ni dos WhatsApp al padre.
+        if ($existente = CarnetAcceso::recienteParaCarnet($carnet->id, $tipoEvento)) {
+            return response()->json([
+                'success'   => true,
+                'nombre'    => $carnet->nombre_completo,
+                'carnet'    => $carnet->numero_carnet,
+                'estado'    => $existente->estado,
+                'hora'      => $existente->hora,
+                'duplicado' => true,
+            ]);
+        }
+
         $acceso = CarnetAcceso::create([
             'carnet_identidad_id' => $carnet->id,
             'tipo_evento'         => $tipoEvento,

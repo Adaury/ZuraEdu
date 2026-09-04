@@ -68,6 +68,24 @@ class CarnetAcceso extends Model
         return $q->where('tipo_evento', 'salida');
     }
 
+    /**
+     * Ventana de dedupe para escaneos repetidos del mismo carnet+evento
+     * (doble-tap del lector, glitch del kiosco, o el mismo QR escaneado dos
+     * veces seguidas) — hallazgo Medio de auditoría 2026-09-04: sin esto,
+     * dos escaneos seguidos generaban dos registros de acceso y dos
+     * notificaciones WhatsApp duplicadas al padre.
+     */
+    public const VENTANA_DEDUPE_SEGUNDOS = 20;
+
+    public static function recienteParaCarnet(int $carnetIdentidadId, string $tipoEvento): ?self
+    {
+        return static::where('carnet_identidad_id', $carnetIdentidadId)
+            ->where('tipo_evento', $tipoEvento)
+            ->where('created_at', '>=', now()->subSeconds(self::VENTANA_DEDUPE_SEGUNDOS))
+            ->latest('created_at')
+            ->first();
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     public function getEstadoBadgeAttribute(): array

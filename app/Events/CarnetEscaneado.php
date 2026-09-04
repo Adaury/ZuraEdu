@@ -4,8 +4,8 @@ namespace App\Events;
 
 use App\Models\CarnetAcceso;
 use App\Models\CarnetIdentidad;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -27,7 +27,7 @@ class CarnetEscaneado implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [new Channel("carnet.{$this->tenantId}")];
+        return [new PrivateChannel("carnet.{$this->tenantId}")];
     }
 
     public function broadcastAs(): string

@@ -151,14 +151,11 @@
         :root { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
     </style>
 
-    <!-- Tailwind CSS — Play CDN con preflight desactivado para convivir con Bootstrap -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: ['attribute', '[data-theme="dark"]'],
-            corePlugins: { preflight: false }
-        }
-    </script>
+    <!-- Tailwind CSS compilado (sin preflight, para convivir con Bootstrap) —
+         antes cargaba el script CDN https://cdn.tailwindcss.com, no apto
+         para producción (recompila el CSS en el navegador en cada carga de
+         página). Modo oscuro por data-theme="dark", ver resources/css/admin.css. -->
+    @vite('resources/css/admin.css')
     <!-- x-cloak: ocultar elementos Alpine hasta que inicialice -->
     <style>[x-cloak] { display: none !important; }</style>
 

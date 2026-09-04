@@ -1,0 +1,13 @@
+/* Tailwind para el panel admin/portal — SIN preflight (capa "base"), para
+   convivir con Bootstrap 5 que ya se carga en layouts/admin.blade.php.
+   Reemplaza al script CDN https://cdn.tailwindcss.com (no apto para
+   producción: recompila el CSS de utilidades en el navegador en cada carga
+   de página — hallazgo de auditoría 2026-09-04). */
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities);
+
+/* Modo oscuro por atributo data-theme="dark" en <html>/<body>, no por
+   prefers-color-scheme ni por la clase .dark por defecto de Tailwind —
+   coincide con el toggle existente en layouts/admin.blade.php
+   (localStorage + data-theme). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));

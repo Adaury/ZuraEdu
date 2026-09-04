@@ -1,0 +1,24 @@
+/* Tailwind para la portada pública (landing) — con preflight completo
+   (esta página no usa Bootstrap). Reemplaza al script CDN
+   https://cdn.tailwindcss.com (no apto para producción — hallazgo de
+   auditoría 2026-09-04). Config equivalente al `tailwind.config` inline
+   que tenía landing.blade.php. */
+@import "tailwindcss";
+
+@theme {
+    --font-sans: Inter, system-ui, sans-serif;
+
+    --color-dark: #0f172a;
+    --color-primary: #2563eb;
+    --color-primary-dark: #1d4ed8;
+    --color-success: #22c55e;
+    --color-success-dark: #16a34a;
+
+    --animate-float: float 4s ease-in-out infinite alternate;
+    --animate-pulse-slow: pulse 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%   { transform: translateY(0); }
+    100% { transform: translateY(-8px); }
+}

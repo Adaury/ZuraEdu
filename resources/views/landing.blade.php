@@ -14,31 +14,11 @@
     {{-- Bootstrap Icons — requerido por partials.support_chat_widget (botón/íconos del chat) --}}
     <link href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
 
-    {{-- Tailwind CDN --}}
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
-                    colors: {
-                        dark:    '#0f172a',
-                        primary: '#2563eb',
-                        'primary-dark': '#1d4ed8',
-                        success: '#22c55e',
-                        'success-dark': '#16a34a',
-                    },
-                    animation: {
-                        'float': 'float 4s ease-in-out infinite alternate',
-                        'pulse-slow': 'pulse 3s ease-in-out infinite',
-                    },
-                    keyframes: {
-                        float: { '0%': { transform: 'translateY(0)' }, '100%': { transform: 'translateY(-8px)' } },
-                    },
-                },
-            },
-        }
-    </script>
+    {{-- Tailwind CSS compilado — antes cargaba el script CDN
+         https://cdn.tailwindcss.com, no apto para producción (recompila el
+         CSS en el navegador en cada carga de página). Config equivalente
+         en resources/css/landing.css. --}}
+    @vite('resources/css/landing.css')
     <style>
         [x-cloak] { display: none; }
         .gradient-text {

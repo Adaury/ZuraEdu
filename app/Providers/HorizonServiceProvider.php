@@ -30,7 +30,7 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     {
         Gate::define('viewHorizon', function ($user) {
             // SuperAdmin siempre puede ver Horizon
-            if (method_exists($user, 'hasRole') && $user->hasRole('SuperAdmin')) {
+            if (method_exists($user, 'hasRole') && $user->hasRole('super_admin')) {
                 return true;
             }
             // En local/staging, todos los admins autenticados pueden ver Horizon

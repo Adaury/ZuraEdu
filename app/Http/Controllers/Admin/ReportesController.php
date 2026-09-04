@@ -7,8 +7,10 @@ use App\Models\SchoolYear;
 use App\Models\Grupo;
 use App\Models\Matricula;
 use App\Models\Asignacion;
+use App\Models\Calificacion;
 use App\Models\CalificacionAcademica;
 use App\Models\BoletinConfig;
+use App\Services\PromedioEstudianteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -129,15 +131,20 @@ class ReportesController extends Controller
             ->whereIn('matricula_id', $matriculaIds)
             ->get()
             ->groupBy('matricula_id');
+        $calTec = Calificacion::whereIn('matricula_id', $matriculaIds)
+            ->when($schoolYear, fn($q) => $q->whereIn('periodo_id', $schoolYear->periodos()->pluck('id')))
+            ->get()
+            ->groupBy('matricula_id');
 
+        $promedioService = new PromedioEstudianteService();
         $registros = [];
         foreach ($grupo->matriculas as $m) {
             $cals     = $calAc[$m->id] ?? collect();
-            $promedio = $cals->whereNotNull('nota_final')->avg('nota_final');
+            $promedio = $promedioService->calcular($cals, $calTec[$m->id] ?? collect());
             $registros[$m->id] = [
                 'estudiante' => $m->estudiante,
                 'academicas' => $cals,
-                'promedio'   => $promedio ? round($promedio, 2) : null,
+                'promedio'   => $promedio,
                 'situacion'  => $cals->where('situacion', 'R')->count() > 0 ? 'R' : ($cals->where('situacion', 'A')->count() > 0 ? 'A' : null),
             ];
         }
@@ -178,14 +185,19 @@ class ReportesController extends Controller
                 ->whereIn('matricula_id', $matriculaIds)
                 ->get()
                 ->groupBy('matricula_id');
+            $calTec = Calificacion::whereIn('matricula_id', $matriculaIds)
+                ->when($schoolYear, fn($q) => $q->whereIn('periodo_id', $schoolYear->periodos()->pluck('id')))
+                ->get()
+                ->groupBy('matricula_id');
 
+            $promedioService = new PromedioEstudianteService();
             foreach ($grupo->matriculas as $m) {
                 $regs        = $calAc[$m->id] ?? collect();
                 $aprobadas   = $regs->where('situacion', 'A')->count();
                 $reprobadas  = $regs->where('situacion', 'R')->count();
                 $sinRegistro = $regs->whereNull('situacion')->count();
                 $totalAsig   = $regs->count();
-                $promedio    = $regs->whereNotNull('nota_final')->avg('nota_final');
+                $promedio    = $promedioService->calcular($regs, $calTec[$m->id] ?? collect());
 
                 $datos[] = [
                     'matricula'         => $m,
@@ -194,7 +206,7 @@ class ReportesController extends Controller
                     'reprobadas'        => $reprobadas,
                     'sin_registro'      => $sinRegistro,
                     'total'             => $totalAsig,
-                    'promedio'          => $promedio ? round($promedio, 2) : null,
+                    'promedio'          => $promedio,
                     'pct_aprobadas'     => $totalAsig > 0 ? round($aprobadas / $totalAsig * 100) : 0,
                     'situacion_general' => $reprobadas === 0 && $aprobadas > 0
                         ? 'Aprobado'
@@ -227,14 +239,19 @@ class ReportesController extends Controller
             ->whereIn('matricula_id', $matriculaIds)
             ->get()
             ->groupBy('matricula_id');
+        $calTec = Calificacion::whereIn('matricula_id', $matriculaIds)
+            ->when($schoolYear, fn($q) => $q->whereIn('periodo_id', $schoolYear->periodos()->pluck('id')))
+            ->get()
+            ->groupBy('matricula_id');
 
+        $promedioService = new PromedioEstudianteService();
         $datos = [];
         foreach ($grupo->matriculas as $m) {
             $regs        = $calAc[$m->id] ?? collect();
             $aprobadas   = $regs->where('situacion', 'A')->count();
             $reprobadas  = $regs->where('situacion', 'R')->count();
             $totalAsig   = $regs->count();
-            $promedio    = $regs->whereNotNull('nota_final')->avg('nota_final');
+            $promedio    = $promedioService->calcular($regs, $calTec[$m->id] ?? collect());
 
             $datos[] = [
                 'matricula'         => $m,
@@ -242,7 +259,7 @@ class ReportesController extends Controller
                 'aprobadas'         => $aprobadas,
                 'reprobadas'        => $reprobadas,
                 'total'             => $totalAsig,
-                'promedio'          => $promedio ? round($promedio, 2) : null,
+                'promedio'          => $promedio,
                 'pct_aprobadas'     => $totalAsig > 0 ? round($aprobadas / $totalAsig * 100) : 0,
                 'situacion_general' => $reprobadas === 0 && $aprobadas > 0
                     ? 'Aprobado'
@@ -329,6 +346,11 @@ class ReportesController extends Controller
             ->whereIn('matricula_id', $matriculaIds)
             ->get()
             ->groupBy('matricula_id');
+        $calTec = Calificacion::whereIn('matricula_id', $matriculaIds)
+            ->when($schoolYear, fn($q) => $q->whereIn('periodo_id', $schoolYear->periodos()->pluck('id')))
+            ->get()
+            ->groupBy('matricula_id');
+        $promedioService = new PromedioEstudianteService();
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -369,7 +391,7 @@ class ReportesController extends Controller
         $num = 1;
         foreach ($grupo->matriculas as $m) {
             $cals    = $calAc[$m->id] ?? collect();
-            $promedio = $cals->whereNotNull('nota_final')->avg('nota_final');
+            $promedio = $promedioService->calcular($cals, $calTec[$m->id] ?? collect());
             $sit      = $cals->where('situacion', 'R')->count() > 0 ? 'REPROBADO' : ($cals->whereNotNull('situacion')->count() > 0 ? 'APROBADO' : '—');
 
             $col = 1;
@@ -544,6 +566,11 @@ class ReportesController extends Controller
             ->whereIn('matricula_id', $matriculaIds)
             ->get()
             ->groupBy('matricula_id');
+        $calTec = Calificacion::whereIn('matricula_id', $matriculaIds)
+            ->when($schoolYear, fn($q) => $q->whereIn('periodo_id', $schoolYear->periodos()->pluck('id')))
+            ->get()
+            ->groupBy('matricula_id');
+        $promedioService = new PromedioEstudianteService();
 
         $ss    = new Spreadsheet();
         $sheet = $ss->getActiveSheet();
@@ -570,7 +597,7 @@ class ReportesController extends Controller
             $aprobadas  = $regs->where('situacion', 'A')->count();
             $reprobadas = $regs->where('situacion', 'R')->count();
             $total      = $regs->count();
-            $promedio   = $regs->whereNotNull('nota_final')->avg('nota_final');
+            $promedio   = $promedioService->calcular($regs, $calTec[$m->id] ?? collect());
             $sit        = $reprobadas === 0 && $aprobadas > 0
                 ? 'Aprobado' : ($reprobadas > 0 ? 'Con materias reprobadas' : 'Sin registro');
 

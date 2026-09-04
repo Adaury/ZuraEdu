@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Calificacion;
 use App\Models\CalificacionAcademica;
 use App\Models\Docente;
 use App\Models\Matricula;
@@ -10,6 +11,7 @@ use App\Models\Observacion;
 use App\Models\Planificacion;
 use App\Models\PlanClase;
 use App\Models\SchoolYear;
+use App\Services\PromedioEstudianteService;
 use Illuminate\Support\Facades\Auth;
 
 class PerfilDocenteController extends Controller
@@ -239,16 +241,26 @@ class PerfilDocenteController extends Controller
             ->when($allMatIds->isNotEmpty(), fn($q) => $q->whereIn('matricula_id', $allMatIds))
             ->get()
             ->groupBy('asignacion_id');
+        // Asignaturas técnicas no tienen filas en CalificacionAcademica —
+        // sin esto su promedio quedaba en blanco (hallazgo de auditoría
+        // 2026-09-04).
+        $calTecPorAsig = Calificacion::whereIn('asignacion_id', $asignacionIds)
+            ->whereNotNull('nota_final')
+            ->when($allMatIds->isNotEmpty(), fn($q) => $q->whereIn('matricula_id', $allMatIds))
+            ->get()
+            ->groupBy('asignacion_id');
 
+        $promedioService = new PromedioEstudianteService();
         $result = [];
         foreach ($asignaciones as $asig) {
             $total  = $matriculasPorGrupo->get($asig->grupo_id, collect())->count();
             $califs = $califsPorAsig->get($asig->id, collect());
+            $calTec = $calTecPorAsig->get($asig->id, collect());
 
             $result[$asig->id] = [
                 'total'      => $total,
-                'con_nota'   => $califs->count(),
-                'promedio'   => $califs->avg('nota_final') ? round($califs->avg('nota_final'), 1) : null,
+                'con_nota'   => $califs->isNotEmpty() ? $califs->count() : $calTec->count(),
+                'promedio'   => $promedioService->calcular($califs, $calTec),
                 'aprobados'  => $califs->where('situacion', 'A')->count(),
                 'reprobados' => $califs->where('situacion', 'R')->count(),
             ];

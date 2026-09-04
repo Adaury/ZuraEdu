@@ -27,6 +27,7 @@ use App\Models\SchoolYear;
 use App\Models\InsigniaEstudiante;
 use App\Models\PuntoEstudiante;
 use App\Models\Suplencia;
+use App\Services\PromedioEstudianteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -4503,9 +4504,16 @@ class PortalDocenteController extends Controller
             $totalEst   = Matricula::where('grupo_id', $asig->grupo_id)
                 ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
                 ->where('estado', 'activa')->count();
-            $promedio   = CalificacionAcademica::where('asignacion_id', $asig->id)->avg('nota_final');
-            $aprobados  = CalificacionAcademica::where('asignacion_id', $asig->id)
-                ->where('nota_final', '>=', 70)->count();
+            // Una asignación es académica o técnica, nunca ambas — si no hay
+            // notas en CalificacionAcademica (asignatura técnica), usar
+            // Calificacion en su lugar (mismo criterio de prioridad que
+            // PromedioEstudianteService, aplicado aquí por asignación en vez
+            // de por estudiante).
+            $notasAcad  = CalificacionAcademica::where('asignacion_id', $asig->id)->get();
+            $notasTec   = Calificacion::where('asignacion_id', $asig->id)->get();
+            $notasEfectivas = $notasAcad->whereNotNull('nota_final')->isNotEmpty() ? $notasAcad : $notasTec;
+            $promedio   = (new PromedioEstudianteService())->calcular($notasAcad, $notasTec);
+            $aprobados  = $notasEfectivas->where('nota_final', '>=', 70)->count();
             $asistClases= Asistencia::where('asignacion_id', $asig->id)->distinct('fecha')->count('fecha');
 
             $stats[$asig->id] = [

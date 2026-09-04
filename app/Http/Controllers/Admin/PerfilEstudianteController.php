@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Asistencia;
+use App\Models\Calificacion;
 use App\Models\CalificacionAcademica;
 use App\Models\CasoSeguimiento;
 use App\Models\Estudiante;
@@ -14,6 +15,7 @@ use App\Models\Observacion;
 use App\Models\Pago;
 use App\Models\Reconocimiento;
 use App\Models\SchoolYear;
+use App\Services\PromedioEstudianteService;
 
 class PerfilEstudianteController extends Controller
 {
@@ -36,21 +38,27 @@ class PerfilEstudianteController extends Controller
 
         // Calificaciones académicas del año actual
         $calificaciones = collect();
+        $calificacionesTecnicas = collect();
         if ($matriculaActual) {
             $calificaciones = CalificacionAcademica::where('matricula_id', $matriculaActual->id)
                 ->where('school_year_id', $schoolYear->id)
                 ->with(['asignacion.asignatura'])
                 ->get();
+            $calificacionesTecnicas = Calificacion::where('matricula_id', $matriculaActual->id)
+                ->whereIn('periodo_id', $schoolYear->periodos()->pluck('id'))
+                ->get();
         }
 
-        // Promedio general
-        $promedio = $calificaciones->whereNotNull('nota_final')->avg('nota_final');
+        // Promedio general — académica tiene prioridad, técnica solo si el
+        // estudiante no tiene ninguna nota académica (ver PromedioEstudianteService).
+        $promedio = (new PromedioEstudianteService())->calcular($calificaciones, $calificacionesTecnicas);
+        $notasParaEstado = (new PromedioEstudianteService())->resolverNotas($calificaciones, $calificacionesTecnicas);
 
         // Estado académico
         $estado = 'activo';
         if ($promedio !== null) {
             if ($promedio < 70) $estado = 'riesgo';
-            if ($calificaciones->where('nota_final', '<', 70)->count() >= 3) $estado = 'baja';
+            if ($notasParaEstado->where('nota_final', '<', 70)->count() >= 3) $estado = 'baja';
         }
 
         // Asistencia del año actual
@@ -102,14 +110,16 @@ class PerfilEstudianteController extends Controller
         $matIds       = $estudiante->matriculas->pluck('id');
         $califsPorMat = CalificacionAcademica::with('asignacion.asignatura')
             ->whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
+        $calTecPorMat = Calificacion::whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
 
-        $historialAnios = $estudiante->matriculas->map(function ($m) use ($califsPorMat) {
+        $promedioService = new PromedioEstudianteService();
+        $historialAnios = $estudiante->matriculas->map(function ($m) use ($califsPorMat, $calTecPorMat, $promedioService) {
             $califs = $califsPorMat->get($m->id, collect());
             return [
                 'matricula'  => $m,
                 'schoolYear' => $m->schoolYear,
                 'califs'     => $califs,
-                'promedio'   => $califs->whereNotNull('nota_final')->avg('nota_final'),
+                'promedio'   => $promedioService->calcular($califs, $calTecPorMat->get($m->id, collect())),
             ];
         })->filter(fn($h) => $h['schoolYear'] !== null);
 
@@ -172,9 +182,11 @@ class PerfilEstudianteController extends Controller
         $matIds       = $estudiante->matriculas->pluck('id');
         $califsPorMat = CalificacionAcademica::with('asignacion.asignatura')
             ->whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
+        $calTecPorMat = Calificacion::whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
         $asisPorMat   = Asistencia::whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
 
-        $historial = $estudiante->matriculas->map(function ($m) use ($califsPorMat, $asisPorMat) {
+        $promedioService = new PromedioEstudianteService();
+        $historial = $estudiante->matriculas->map(function ($m) use ($califsPorMat, $calTecPorMat, $asisPorMat, $promedioService) {
             $calAcad     = $califsPorMat->get($m->id, collect());
             $asistencias = $asisPorMat->get($m->id, collect());
             $totalAs     = $asistencias->count();
@@ -184,7 +196,9 @@ class PerfilEstudianteController extends Controller
                 'matricula'  => $m,
                 'schoolYear' => $m->schoolYear,
                 'califs'     => $calAcad,
-                'promedio'   => $calAcad->whereNotNull('nota_final')->avg('nota_final'),
+                // aprobadas/reprobadas usan solo académica: situacion (A/R) no
+                // existe en el área técnica (Calificacion no tiene esa columna).
+                'promedio'   => $promedioService->calcular($calAcad, $calTecPorMat->get($m->id, collect())),
                 'aprobadas'  => $calAcad->where('situacion', 'A')->count(),
                 'reprobadas' => $calAcad->where('situacion', 'R')->count(),
                 'asistencia' => $totalAs > 0 ? round($presentesAs / $totalAs * 100, 1) : null,
@@ -218,9 +232,11 @@ class PerfilEstudianteController extends Controller
         $matIds       = $estudiante->matriculas->pluck('id');
         $califsPorMat = CalificacionAcademica::with('asignacion.asignatura')
             ->whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
+        $calTecPorMat = Calificacion::whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
         $asisPorMat   = Asistencia::whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
 
-        $historial = $estudiante->matriculas->map(function ($m) use ($califsPorMat, $asisPorMat) {
+        $promedioService = new PromedioEstudianteService();
+        $historial = $estudiante->matriculas->map(function ($m) use ($califsPorMat, $calTecPorMat, $asisPorMat, $promedioService) {
             $calAcad     = $califsPorMat->get($m->id, collect());
             $asistencias = $asisPorMat->get($m->id, collect());
             $totalAs     = $asistencias->count();
@@ -229,7 +245,7 @@ class PerfilEstudianteController extends Controller
                 'matricula'  => $m,
                 'schoolYear' => $m->schoolYear,
                 'califs'     => $calAcad,
-                'promedio'   => $calAcad->whereNotNull('nota_final')->avg('nota_final'),
+                'promedio'   => $promedioService->calcular($calAcad, $calTecPorMat->get($m->id, collect())),
                 'aprobadas'  => $calAcad->where('situacion', 'A')->count(),
                 'reprobadas' => $calAcad->where('situacion', 'R')->count(),
                 'asistencia' => $totalAs > 0 ? round($presentesAs / $totalAs * 100, 1) : null,
@@ -310,15 +326,23 @@ class PerfilEstudianteController extends Controller
         $calAcad = CalificacionAcademica::with('asignacion.asignatura')
             ->where('matricula_id', $matricula->id)
             ->where('school_year_id', $schoolYear->id)
-            ->get()
-            ->sortBy('asignacion.asignatura.nombre');
+            ->get();
+        $calTec = Calificacion::with('asignacion.asignatura')
+            ->where('matricula_id', $matricula->id)
+            ->whereIn('periodo_id', $schoolYear->periodos()->pluck('id'))
+            ->get();
 
         $si     = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
         $dir    = \App\Models\ConfigInstitucional::get('nombre_director', '');
         $cod    = \App\Models\ConfigInstitucional::get('codigo_centro', '');
         $config = \App\Models\BoletinConfig::getOrCreate($schoolYear->id);
 
-        $promedio   = $calAcad->whereNotNull('nota_final')->avg('nota_final');
+        $promedioService = new PromedioEstudianteService();
+        $promedio = $promedioService->calcular($calAcad, $calTec);
+        // Prioridad académica/fallback técnica también en la tabla mostrada
+        // (no solo en el promedio): un estudiante 100% técnico no debe ver
+        // "Sin calificaciones registradas" en su certificado.
+        $calAcad    = $promedioService->resolverNotas($calAcad, $calTec)->sortBy('asignacion.asignatura.nombre');
         $aprobadas  = $calAcad->where('situacion', 'A')->count();
         $reprobadas = $calAcad->where('situacion', 'R')->count();
 
@@ -424,9 +448,11 @@ class PerfilEstudianteController extends Controller
         $matIds       = $estudiante->matriculas->pluck('id');
         $califsPorMat = CalificacionAcademica::with('asignacion.asignatura')
             ->whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
+        $calTecPorMat = Calificacion::whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
         $asisPorMat   = Asistencia::whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
 
-        $historial = $estudiante->matriculas->map(function ($m) use ($califsPorMat, $asisPorMat) {
+        $promedioService = new PromedioEstudianteService();
+        $historial = $estudiante->matriculas->map(function ($m) use ($califsPorMat, $calTecPorMat, $asisPorMat, $promedioService) {
             $calAcad     = $califsPorMat->get($m->id, collect())
                 ->sortBy(fn($c) => $c->asignacion?->asignatura?->nombre);
             $asistencias = $asisPorMat->get($m->id, collect());
@@ -440,7 +466,7 @@ class PerfilEstudianteController extends Controller
                 'seccion'    => $m->grupo?->seccion?->nombre ?? '',
                 'grupo'      => $m->grupo?->nombre_completo ?? '—',
                 'califs'     => $calAcad,
-                'promedio'   => $calAcad->whereNotNull('nota_final')->avg('nota_final'),
+                'promedio'   => $promedioService->calcular($calAcad, $calTecPorMat->get($m->id, collect())),
                 'aprobadas'  => $calAcad->where('situacion', 'A')->count(),
                 'reprobadas' => $calAcad->where('situacion', 'R')->count(),
                 'total_asig' => $calAcad->count(),
@@ -477,9 +503,11 @@ class PerfilEstudianteController extends Controller
         $matIds       = $estudiante->matriculas->pluck('id');
         $califsPorMat = CalificacionAcademica::with('asignacion.asignatura')
             ->whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
+        $calTecPorMat = Calificacion::whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
         $asisPorMat   = Asistencia::whereIn('matricula_id', $matIds)->get()->groupBy('matricula_id');
 
-        $historial = $estudiante->matriculas->map(function ($m) use ($califsPorMat, $asisPorMat) {
+        $promedioService = new PromedioEstudianteService();
+        $historial = $estudiante->matriculas->map(function ($m) use ($califsPorMat, $calTecPorMat, $asisPorMat, $promedioService) {
             $calAcad     = $califsPorMat->get($m->id, collect())
                 ->sortBy(fn($c) => $c->asignacion?->asignatura?->nombre);
             $asistencias = $asisPorMat->get($m->id, collect());
@@ -493,7 +521,7 @@ class PerfilEstudianteController extends Controller
                 'seccion'    => $m->grupo?->seccion?->nombre ?? '',
                 'grupo'      => $m->grupo?->nombre_completo ?? '—',
                 'califs'     => $calAcad,
-                'promedio'   => $calAcad->whereNotNull('nota_final')->avg('nota_final'),
+                'promedio'   => $promedioService->calcular($calAcad, $calTecPorMat->get($m->id, collect())),
                 'aprobadas'  => $calAcad->where('situacion', 'A')->count(),
                 'reprobadas' => $calAcad->where('situacion', 'R')->count(),
                 'total_asig' => $calAcad->count(),

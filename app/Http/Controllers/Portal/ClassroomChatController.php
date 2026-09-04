@@ -87,6 +87,8 @@ class ClassroomChatController extends Controller
 
     public function togglePin(ClaseVirtual $claseVirtual, ClassroomMessage $message)
     {
+        abort_unless($message->clase_virtual_id === $claseVirtual->id, 404);
+
         abort_unless(
             $this->esDocente($claseVirtual),
             403, 'Solo el docente puede fijar mensajes.'
@@ -101,6 +103,8 @@ class ClassroomChatController extends Controller
 
     public function destroy(ClaseVirtual $claseVirtual, ClassroomMessage $message)
     {
+        abort_unless($message->clase_virtual_id === $claseVirtual->id, 404);
+
         abort_unless(
             $message->user_id === auth()->id() || $this->esDocente($claseVirtual),
             403

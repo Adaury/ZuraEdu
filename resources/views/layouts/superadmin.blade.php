@@ -50,7 +50,35 @@
             overflow-y: hidden;
             border-right: 1px solid rgba(99,102,241,.12);
             box-shadow: 4px 0 28px rgba(0,0,0,.32);
+            transition: transform .3s cubic-bezier(.4,0,.2,1);
         }
+
+        /* ── Overlay (móvil) ── */
+        .sa-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.45);
+            z-index: 1039;
+        }
+        .sa-overlay.open { display: block; }
+
+        /* ── Botón hamburguesa (móvil) ── */
+        .sa-hamburger {
+            display: none;
+            background: transparent;
+            border: none;
+            color: #64748b;
+            font-size: 1.3rem;
+            padding: .25rem;
+            line-height: 1;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: color .18s, background .18s;
+        }
+        .sa-hamburger:hover { color: #0f172a; background: #f1f5f9; }
+        [data-theme="dark"] .sa-hamburger { color: #94a3b8; }
+        [data-theme="dark"] .sa-hamburger:hover { color: #e2e8f0; background: #1e293b; }
 
         /* ── Logo ── */
         .sa-logo {
@@ -220,7 +248,9 @@
         /* ── Responsive ── */
         @media (max-width: 768px) {
             .sa-sidebar { transform: translateX(-100%); }
+            .sa-sidebar.open { transform: translateX(0); }
             .sa-main    { margin-left: 0; }
+            .sa-hamburger { display: flex; align-items: center; }
         }
 
         /* ══ Dark Mode ══════════════════════════════════════════ */
@@ -267,7 +297,7 @@
 <body>
 
 {{-- ── Sidebar ─────────────────────────────────────────────── --}}
-<aside class="sa-sidebar">
+<aside class="sa-sidebar" id="saSidebar">
     <div class="sa-logo">
         <div class="sa-logo-icon">ZE</div>
         <div class="sa-logo-text">
@@ -331,11 +361,17 @@
     </div>
 </aside>
 
+{{-- Overlay para cerrar el sidebar en móvil --}}
+<div class="sa-overlay" id="saOverlay" aria-label="Cerrar menú"></div>
+
 {{-- ── Main ────────────────────────────────────────────────── --}}
 <div class="sa-main">
 
     {{-- Topbar --}}
     <div class="sa-topbar">
+        <button class="sa-hamburger" id="saHamburger" aria-label="Abrir menú" aria-controls="saSidebar" aria-expanded="false">
+            <i class="bi bi-list"></i>
+        </button>
         <div class="sa-topbar-title">
             <i class="bi bi-shield-fill-check" style="color:#6366f1;font-size:1.05rem;"></i>
             @yield('title', 'Panel ZuraEdu')
@@ -410,6 +446,40 @@
     applyTheme(localStorage.getItem('sge-theme') || 'light');
     btn.addEventListener('click', function () {
         applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+})();
+</script>
+
+<script>
+(function () {
+    // ── Sidebar toggle (móvil) — hallazgo Bajo de auditoría 2026-09-04:
+    // el sidebar se ocultaba por debajo de 768px sin ningún botón para
+    // volver a abrirlo, dejando el panel SuperAdmin sin navegación en
+    // celular. Mismo patrón que layouts/admin.blade.php.
+    var sidebar   = document.getElementById('saSidebar');
+    var overlay   = document.getElementById('saOverlay');
+    var hamburger = document.getElementById('saHamburger');
+    if (!sidebar || !overlay || !hamburger) return;
+
+    function openSidebar() {
+        sidebar.classList.add('open');
+        overlay.classList.add('open');
+        hamburger.setAttribute('aria-expanded', 'true');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeSidebar() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('open');
+        hamburger.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
+    }
+
+    hamburger.addEventListener('click', function () {
+        sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+    });
+    overlay.addEventListener('click', closeSidebar);
+    window.addEventListener('resize', function () {
+        if (window.innerWidth > 768) closeSidebar();
     });
 })();
 </script>

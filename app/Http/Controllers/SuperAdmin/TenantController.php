@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Grado;
 use App\Models\Tenant;
 use App\Models\TenantFeature;
@@ -189,6 +190,15 @@ class TenantController extends Controller
         $tenant->update(['estado' => $nuevoEstado]);
         Cache::forget("tenant_host_{$tenant->dominio}");
 
+        try {
+            ActivityLog::registrar(
+                'tenant_' . $nuevoEstado,
+                Tenant::class,
+                $tenant->id,
+                "SuperAdmin cambió el estado de «{$tenant->nombre_institucion}» a {$nuevoEstado}."
+            );
+        } catch (\Exception $e) {}
+
         $label = $nuevoEstado === 'activo' ? 'activada' : 'suspendida';
         return back()->with('success', "Institución {$label} correctamente.");
     }
@@ -198,7 +208,20 @@ class TenantController extends Controller
         if ($tenant->id === 1) {
             return back()->withErrors(['error' => 'No se puede eliminar el tenant principal.']);
         }
+
+        $tenantId = $tenant->id;
+        $nombre   = $tenant->nombre_institucion;
         $tenant->delete();
+
+        try {
+            ActivityLog::registrar(
+                'tenant_eliminado',
+                Tenant::class,
+                $tenantId,
+                "SuperAdmin eliminó permanentemente la institución «{$nombre}» (id={$tenantId})."
+            );
+        } catch (\Exception $e) {}
+
         return redirect()->route('superadmin.tenants.index')
             ->with('success', 'Institución eliminada.');
     }
@@ -207,6 +230,16 @@ class TenantController extends Controller
     public function enterPanel(Tenant $tenant, \Illuminate\Http\Request $request)
     {
         session(['sa_tenant_id' => $tenant->id, 'sa_tenant_nombre' => $tenant->nombre_institucion]);
+
+        try {
+            ActivityLog::registrar(
+                'tenant_impersonar_entrar',
+                Tenant::class,
+                $tenant->id,
+                "SuperAdmin entró a administrar el panel de «{$tenant->nombre_institucion}»."
+            );
+        } catch (\Exception $e) {}
+
         $destino = $request->input('destino', '/admin/dashboard');
         return redirect($destino)
             ->with('info', "Estás administrando «{$tenant->nombre_institucion}» como SuperAdmin.");
@@ -250,8 +283,21 @@ class TenantController extends Controller
     /** Sale del panel de la institución y regresa al panel de la plataforma */
     public function exitPanel()
     {
-        $nombre = session('sa_tenant_nombre', 'la institución');
+        $tenantId = session('sa_tenant_id');
+        $nombre   = session('sa_tenant_nombre', 'la institución');
         session()->forget(['sa_tenant_id', 'sa_tenant_nombre']);
+
+        if ($tenantId) {
+            try {
+                ActivityLog::registrar(
+                    'tenant_impersonar_salir',
+                    Tenant::class,
+                    $tenantId,
+                    "SuperAdmin salió del panel de «{$nombre}»."
+                );
+            } catch (\Exception $e) {}
+        }
+
         return redirect()->route('superadmin.tenants.index')
             ->with('success', "Saliste del panel de «{$nombre}».");
     }

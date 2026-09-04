@@ -23,7 +23,7 @@ class NotificationCreated implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel("private-user.{$this->userId}")];
+        return [new PrivateChannel("user.{$this->userId}")];
     }
 
     public function broadcastAs(): string

@@ -22,7 +22,7 @@ class CalificacionesPublicadas implements ShouldBroadcast
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel("private-grupo.{$this->grupoId}")];
+        return [new PrivateChannel("grupo.{$this->grupoId}")];
     }
 
     public function broadcastAs(): string

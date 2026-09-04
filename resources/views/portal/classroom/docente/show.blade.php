@@ -828,7 +828,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const claseId = {{ $claseVirtual->id }};
     function initPresence() {
         if (!window.Echo) return;
-        window.Echo.join('presence-classroom.' + claseId)
+        window.Echo.join('classroom-presence.' + claseId)
             .here(function (members) {
                 updatePresence(members.length);
             })

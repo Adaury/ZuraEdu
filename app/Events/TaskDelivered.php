@@ -22,7 +22,7 @@ class TaskDelivered implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel("private-docente.{$this->docenteUserId}")];
+        return [new PrivateChannel("docente.{$this->docenteUserId}")];
     }
 
     public function broadcastAs(): string

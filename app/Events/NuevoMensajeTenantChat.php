@@ -17,7 +17,7 @@ class NuevoMensajeTenantChat implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel("private-tenant.{$this->mensaje->tenant_id}.chat")];
+        return [new PrivateChannel("tenant.{$this->mensaje->tenant_id}.chat")];
     }
 
     public function broadcastAs(): string

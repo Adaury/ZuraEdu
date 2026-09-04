@@ -374,7 +374,7 @@ function subscribeEcho() {
     try {
         const tid = {{ tenant_id() ?? 0 }};
         _echoSub = window.Echo
-            .private(`private-tenant.${tid}.support`)
+            .private(`tenant.${tid}.support`)
             .listen('.support.message', async (data) => {
                 // Recargar lista (actualiza sin_leer)
                 await loadSessions(true);

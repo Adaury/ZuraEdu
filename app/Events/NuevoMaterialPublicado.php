@@ -17,7 +17,7 @@ class NuevoMaterialPublicado implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel("private-classroom.{$this->material->clase_virtual_id}")];
+        return [new PrivateChannel("classroom.{$this->material->clase_virtual_id}")];
     }
 
     public function broadcastAs(): string

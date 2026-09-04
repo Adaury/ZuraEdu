@@ -21,7 +21,7 @@ class ClassroomMeetingUpdated implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel("private-classroom.{$this->claseVirtualId}"),
+            new PrivateChannel("classroom.{$this->claseVirtualId}"),
         ];
     }
 

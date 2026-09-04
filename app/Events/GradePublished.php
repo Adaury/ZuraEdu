@@ -23,10 +23,10 @@ class GradePublished implements ShouldBroadcast
 
     public function broadcastOn(): array
     {
-        $channels = [new PrivateChannel("private-grupo.{$this->grupoId}")];
+        $channels = [new PrivateChannel("grupo.{$this->grupoId}")];
 
         if ($this->estudianteUserId) {
-            $channels[] = new PrivateChannel("private-user.{$this->estudianteUserId}");
+            $channels[] = new PrivateChannel("user.{$this->estudianteUserId}");
         }
 
         return $channels;

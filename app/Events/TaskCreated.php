@@ -23,7 +23,7 @@ class TaskCreated implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel("private-classroom.{$this->claseId}")];
+        return [new PrivateChannel("classroom.{$this->claseId}")];
     }
 
     public function broadcastAs(): string

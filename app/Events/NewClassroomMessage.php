@@ -18,7 +18,7 @@ class NewClassroomMessage implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel("private-classroom.{$this->message->clase_virtual_id}"),
+            new PrivateChannel("classroom.{$this->message->clase_virtual_id}"),
         ];
     }
 

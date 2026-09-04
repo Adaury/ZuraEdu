@@ -17,7 +17,7 @@ class NotificacionEnviada implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel("private-user.{$this->notificacion->user_id}")];
+        return [new PrivateChannel("user.{$this->notificacion->user_id}")];
     }
 
     public function broadcastAs(): string

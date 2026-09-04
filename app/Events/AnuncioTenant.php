@@ -22,7 +22,7 @@ class AnuncioTenant implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel("private-tenant.{$this->tenantId}.notifications")];
+        return [new PrivateChannel("tenant.{$this->tenantId}.notifications")];
     }
 
     public function broadcastAs(): string

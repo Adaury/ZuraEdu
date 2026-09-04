@@ -21,15 +21,29 @@ if (! defined('ROLES_ADMIN_CAPACES')) {
     ]);
 }
 
-// ── 1. Canal personal de notificaciones ──────────────────────────────────────
-// Cada usuario escucha su propio canal; solo él puede suscribirse.
-Broadcast::channel('private-user.{id}', function ($user, $id) {
+// Convención de nombres: los patrones de este archivo NO llevan el prefijo
+// private-/presence-. Laravel se lo quita al nombre de canal entrante antes
+// de compararlo contra los patrones registrados (ver
+// Broadcaster::normalizeChannelName + verifyUserCanAccessChannel), así que
+// un patrón registrado CON el prefijo nunca puede matchear — hallazgo de
+// auditoría 2026-09-03: los 9 canales de este archivo estaban registrados
+// con el prefijo incluido (p.ej. 'private-user.{id}'), lo que en teoría los
+// dejaba inutilizables. En la práctica "funcionaban" porque resources/js/
+// echo.js cometía el error espejo del lado cliente (Echo.private() ya
+// antepone 'private-' por su cuenta, y el código llamaba
+// .private('private-user.'+id), así que el canal real en el cable quedaba
+// 'private-private-user.5' — Laravel le quita un solo prefijo y el patrón
+// con el prefijo baked-in volvía a matchear). Ambos lados se corrigieron
+// juntos: aquí los patrones ya no llevan el prefijo, y echo.js ya no lo
+// antepone manualmente. Al escribir un canal nuevo, seguir esta convención:
+// Broadcast::channel('recurso.{id}', ...) + cliente Echo.private('recurso.'+id).
+Broadcast::channel('user.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
 
 // ── 2. Canal del tenant — admins y coordinadores ──────────────────────────────
 // Usado para DashboardActualizado y eventos de gestión global.
-Broadcast::channel('private-tenant.{tenantId}', function ($user, $tenantId) {
+Broadcast::channel('tenant.{tenantId}', function ($user, $tenantId) {
     if ((int) (tenant_id() ?? 0) !== (int) $tenantId) {
         return false;
     }
@@ -38,7 +52,7 @@ Broadcast::channel('private-tenant.{tenantId}', function ($user, $tenantId) {
 
 // ── 3. Canal de classroom — docente o estudiante matriculado ─────────────────
 // Usado para NewClassroomMessage, NuevoMaterialPublicado, ClassroomMeetingUpdated.
-Broadcast::channel('private-classroom.{claseId}', function ($user, $claseId) {
+Broadcast::channel('classroom.{claseId}', function ($user, $claseId) {
     $clase = ClaseVirtual::with('asignacion.docente')->find($claseId);
     if (! $clase) {
         return false;
@@ -62,7 +76,7 @@ Broadcast::channel('private-classroom.{claseId}', function ($user, $claseId) {
 
 // ── 4. Canal de grupo — calificaciones y eventos del grupo ───────────────────
 // Usado para CalificacionesPublicadas.
-Broadcast::channel('private-grupo.{grupoId}', function ($user, $grupoId) {
+Broadcast::channel('grupo.{grupoId}', function ($user, $grupoId) {
     // Docente con al menos una asignación en este grupo
     if ($user->docente) {
         if (Asignacion::where('grupo_id', $grupoId)
@@ -85,14 +99,20 @@ Broadcast::channel('private-grupo.{grupoId}', function ($user, $grupoId) {
 // ── 5. Canal personal del docente — confirmaciones inmediatas ────────────────
 // Usado para AsistenciaRegistrada y otras confirmaciones operativas del docente.
 // Admins también pueden escuchar para monitoreo.
-Broadcast::channel('private-docente.{userId}', function ($user, $userId) {
+Broadcast::channel('docente.{userId}', function ($user, $userId) {
     return (int) $user->id === (int) $userId
         || $user->hasAnyRole(ROLES_ADMIN_CAPACES);
 });
 
 // ── 6. Presence channel — live classroom ─────────────────────────────────────
 // Devuelve datos del usuario para mostrar quién está en línea en la clase.
-Broadcast::channel('presence-classroom.{claseId}', function ($user, $claseId) {
+// Nombre distinto a 'classroom.{claseId}' (canal 3) a propósito: aunque
+// private-classroom.5 y presence-classroom.5 son nombres de canal distintos
+// en el cable (protocolo Pusher), Laravel los guarda en el mismo array
+// $channels indexado solo por el patrón — si ambos usaran el mismo patrón
+// 'classroom.{claseId}' tras quitarle el prefijo, el segundo registro
+// pisaría al primero silenciosamente.
+Broadcast::channel('classroom-presence.{claseId}', function ($user, $claseId) {
     $clase = ClaseVirtual::with('asignacion.docente')->find($claseId);
     if (! $clase) {
         return false;
@@ -118,18 +138,18 @@ Broadcast::channel('presence-classroom.{claseId}', function ($user, $claseId) {
 
 // ── 7. Chat interno del tenant ────────────────────────────────────────────────
 // Cualquier usuario activo del tenant puede enviar y recibir mensajes.
-Broadcast::channel('private-tenant.{tenantId}.chat', function ($user, $tenantId) {
+Broadcast::channel('tenant.{tenantId}.chat', function ($user, $tenantId) {
     return (int) (tenant_id() ?? 0) === (int) $tenantId;
 });
 
 // ── 8. Notificaciones tenant-wide ─────────────────────────────────────────────
 // Canal de difusión masiva para anuncios del admin a todos los usuarios del tenant.
-Broadcast::channel('private-tenant.{tenantId}.notifications', function ($user, $tenantId) {
+Broadcast::channel('tenant.{tenantId}.notifications', function ($user, $tenantId) {
     return (int) (tenant_id() ?? 0) === (int) $tenantId;
 });
 
 // Canal privado de soporte — solo admins/coordinadores del tenant pueden escuchar mensajes entrantes.
-Broadcast::channel('private-tenant.{tenantId}.support', function ($user, $tenantId) {
+Broadcast::channel('tenant.{tenantId}.support', function ($user, $tenantId) {
     if ((int) (tenant_id() ?? 0) !== (int) $tenantId) return false;
     return $user->hasAnyRole(ROLES_ADMIN_CAPACES);
 });

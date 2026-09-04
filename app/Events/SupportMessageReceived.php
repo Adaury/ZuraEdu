@@ -24,7 +24,7 @@ class SupportMessageReceived implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel("private-tenant.{$this->tenantId}.support")];
+        return [new PrivateChannel("tenant.{$this->tenantId}.support")];
     }
 
     public function broadcastAs(): string

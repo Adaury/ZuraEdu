@@ -20,7 +20,7 @@ class DashboardActualizado implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [new PrivateChannel("private-tenant.{$this->tenantId}")];
+        return [new PrivateChannel("tenant.{$this->tenantId}")];
     }
 
     public function broadcastAs(): string

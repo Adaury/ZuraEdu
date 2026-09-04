@@ -2,11 +2,16 @@
  * ZuraEdu Realtime — Laravel Echo + Reverb
  *
  * Maneja:
- *  - Notificaciones push (private-user.{id}) → toast + badge sin polling
- *  - Calificaciones publicadas (private-grupo.{id}) → toast al estudiante/docente
- *  - Nuevo material en classroom (private-classroom.{id}) → toast al estudiante
- *  - Asistencia registrada (private-docente.{id}) → confirmación al docente
- *  - Mensajes de classroom (private-classroom.{id}) → actualización del chat
+ *  - Notificaciones push (user.{id}) → toast + badge sin polling
+ *  - Calificaciones publicadas (grupo.{id}) → toast al estudiante/docente
+ *  - Nuevo material en classroom (classroom.{id}) → toast al estudiante
+ *  - Asistencia registrada (docente.{id}) → confirmación al docente
+ *  - Mensajes de classroom (classroom.{id}) → actualización del chat
+ *
+ * Nota: Echo.private(name) antepone 'private-' automáticamente, así que los
+ * nombres usados aquí NO deben incluirlo (debe coincidir con el patrón
+ * registrado en routes/channels.php, que tampoco lo lleva — ver el
+ * comentario de convención al inicio de ese archivo).
  */
 
 import Echo from 'laravel-echo';
@@ -87,7 +92,7 @@ const rolLower  = (window._SGE_ROL ?? '').toLowerCase();
 // 1. Notificaciones personales
 if (userId) {
     window.Echo
-        .private(`private-user.${userId}`)
+        .private(`user.${userId}`)
         .listen('.notification.created', (data) => {
             toast(`<i class="bi ${data.icono ?? 'bi-bell'} me-1"></i>${data.titulo}`, 'info', 6000);
             actualizarBadgeNotif(1);
@@ -98,7 +103,7 @@ if (userId) {
 // 2. Calificaciones publicadas en grupos del usuario
 grupoIds.forEach(grupoId => {
     window.Echo
-        .private(`private-grupo.${grupoId}`)
+        .private(`grupo.${grupoId}`)
         .listen('.grade.published', (data) => {
             toast(
                 `<i class="bi bi-journal-check me-1"></i>${data.mensaje}`,
@@ -111,7 +116,7 @@ grupoIds.forEach(grupoId => {
 // 3. Material nuevo, mensajes y tareas en classrooms del usuario
 claseIds.forEach(claseId => {
     window.Echo
-        .private(`private-classroom.${claseId}`)
+        .private(`classroom.${claseId}`)
         .listen('.material.nuevo', (data) => {
             toast(
                 `<i class="bi bi-folder-fill me-1"></i>Nuevo material: <strong>${data.titulo}</strong>`,
@@ -151,7 +156,7 @@ claseIds.forEach(claseId => {
 // 4. Canal personal del docente — asistencia y QR realtime
 if (userId && rolLower === 'docente') {
     window.Echo
-        .private(`private-docente.${userId}`)
+        .private(`docente.${userId}`)
         .listen('.asistencia.registrada', (data) => {
             toast(
                 `<i class="bi bi-check-circle-fill me-1"></i>Asistencia guardada: ` +
@@ -181,7 +186,7 @@ if (userId && rolLower === 'docente') {
 // 5. Canal de soporte público — admins reciben mensajes de visitantes
 if (tenantId && (rolLower === 'admin' || rolLower === 'superadmin' || rolLower === 'coordinator' || rolLower === 'director')) {
     window.Echo
-        .private(`private-tenant.${tenantId}.support`)
+        .private(`tenant.${tenantId}.support`)
         .listen('.support.message', (data) => {
             toast(
                 `<i class="bi bi-headset me-1"></i><strong>${data.visitor_nombre}</strong>: ${data.mensaje}`,
@@ -202,7 +207,7 @@ if (tenantId && (rolLower === 'admin' || rolLower === 'superadmin' || rolLower =
 // 7. Canal del tenant para admins (eventos de gestión global)
 if (tenantId && (rolLower === 'admin' || rolLower === 'superadmin' || rolLower === 'coordinator')) {
     window.Echo
-        .private(`private-tenant.${tenantId}`)
+        .private(`tenant.${tenantId}`)
         .listen('.dashboard.updated', (data) => {
             window.dispatchEvent(new CustomEvent('sge:dashboard-updated', { detail: data }));
         });
@@ -211,7 +216,7 @@ if (tenantId && (rolLower === 'admin' || rolLower === 'superadmin' || rolLower =
 // 8. Chat interno del tenant (todos los usuarios autenticados)
 if (tenantId) {
     window.Echo
-        .private(`private-tenant.${tenantId}.chat`)
+        .private(`tenant.${tenantId}.chat`)
         .listen('.chat.message', (data) => {
             // El widget de chat escucha este evento DOM para renderizar la burbuja
             window.dispatchEvent(new CustomEvent('tenant:chat-message', { detail: data }));
@@ -238,7 +243,7 @@ if (tenantId) {
 // 9. Notificaciones masivas del tenant (anuncios admin → todos los usuarios)
 if (tenantId) {
     window.Echo
-        .private(`private-tenant.${tenantId}.notifications`)
+        .private(`tenant.${tenantId}.notifications`)
         .listen('.anuncio', (data) => {
             const tipos = { info: 'info', warning: 'warning', danger: 'danger', success: 'success' };
             const tipo  = tipos[data.tipo] ?? 'info';

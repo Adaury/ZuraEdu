@@ -55,6 +55,14 @@ class Kernel extends ConsoleKernel
 
         // ── SIGERD: validación semanal y notificación al registrador (viernes 09:00) ──
         $schedule->command('sigerd:validar')->weeklyOn(5, '09:00');
+
+        // ── Backup automático diario de BD + archivos (ver docs/BACKUP_ZURAEDU.md) ──
+        if (config('backup.enabled', true)) {
+            $schedule->command('sge:backup')
+                     ->dailyAt(config('backup.hora', '02:30'))
+                     ->withoutOverlapping()
+                     ->onOneServer();
+        }
     }
 
     /**

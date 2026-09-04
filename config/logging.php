@@ -126,6 +126,14 @@ return [
             'replace_placeholders'=> true,
         ],
 
+        'backup' => [
+            'driver'              => 'daily',
+            'path'                => storage_path('logs/backup.log'),
+            'level'               => 'debug',
+            'days'                => 90,
+            'replace_placeholders'=> true,
+        ],
+
         'null' => [
             'driver' => 'monolog',
             'handler' => NullHandler::class,

@@ -266,6 +266,35 @@
     {{-- RIGHT: Create backup + Info --}}
     <div class="col-lg-4">
 
+        {{-- Estado del backup automático --}}
+        <div class="card-panel">
+            <div class="section-title">
+                <i class="bi bi-clock-history me-1"></i>
+                Backup Automático
+            </div>
+
+            @if($ultimoExitoso)
+                <div class="alert alert-success d-flex align-items-start gap-2 mb-0" style="font-size:.84rem; border-radius:8px;">
+                    <i class="bi bi-check-circle-fill flex-shrink-0 mt-1"></i>
+                    <span>
+                        Último backup exitoso:
+                        <strong>{{ $ultimoExitoso->iniciado_en->format('d/m/Y H:i') }}</strong>
+                        @if($ultimoExitoso->bd_archivo)
+                            <br>BD: {{ $ultimoExitoso->bd_archivo }}
+                        @endif
+                        @if($ultimoExitoso->archivos_archivo)
+                            <br>Archivos: {{ $ultimoExitoso->archivos_archivo }}
+                        @endif
+                    </span>
+                </div>
+            @else
+                <div class="alert alert-warning d-flex align-items-start gap-2 mb-0" style="font-size:.84rem; border-radius:8px;">
+                    <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                    <span>Todavía no se ha registrado ningún backup exitoso.</span>
+                </div>
+            @endif
+        </div>
+
         {{-- Crear Nuevo Backup --}}
         <div class="card-panel">
             <div class="section-title">
@@ -299,7 +328,11 @@
             <ul class="info-list">
                 <li>
                     <i class="bi bi-hdd-fill"></i>
-                    <span>Los backups se guardan en el servidor.</span>
+                    <span>Los backups se guardan en el servidor (no en carpetas públicas).</span>
+                </li>
+                <li>
+                    <i class="bi bi-arrow-repeat"></i>
+                    <span>Además de este botón manual, corre automáticamente todos los días (ver docs/BACKUP_ZURAEDU.md).</span>
                 </li>
                 <li>
                     <i class="bi bi-file-earmark-arrow-down"></i>
@@ -311,7 +344,7 @@
                 </li>
                 <li>
                     <i class="bi bi-trash3"></i>
-                    <span>Elimina backups antiguos para liberar espacio en el servidor.</span>
+                    <span>El backup automático elimina por sí solo los respaldos con más de {{ config('backup.retencion_dias', 7) }} días.</span>
                 </li>
             </ul>
         </div>

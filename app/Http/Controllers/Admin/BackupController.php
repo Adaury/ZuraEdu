@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\BackupRun;
+use App\Services\BackupService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -25,59 +27,40 @@ class BackupController extends Controller
             ->sortByDesc('ts')
             ->values();
 
-        return view('admin.sistema.backup', compact('backups'));
+        $ultimoExitoso = BackupRun::ultimoExitoso();
+
+        return view('admin.sistema.backup', compact('backups', 'ultimoExitoso'));
     }
 
-    public function crear()
+    public function crear(BackupService $service)
     {
-        $db   = config('database.connections.mysql.database');
-        $user = config('database.connections.mysql.username');
-        $pass = config('database.connections.mysql.password');
-        $host = config('database.connections.mysql.host');
-        $port = config('database.connections.mysql.port', '3306');
+        $inicio     = now();
+        $bd         = $service->respaldarBaseDatos();
+        $finalizado = now();
 
-        $filename  = 'backup_' . now()->format('Y-m-d_H-i-s') . '.sql';
-        $backupDir = storage_path('app/backups');
-        $localPath = $backupDir . DIRECTORY_SEPARATOR . $filename;
+        if (! $bd['ok']) {
+            BackupRun::create([
+                'iniciado_en'       => $inicio,
+                'finalizado_en'     => $finalizado,
+                'duracion_segundos' => max(0, $finalizado->getTimestamp() - $inicio->getTimestamp()),
+                'estado'            => 'fallido',
+                'etapa_fallo'       => 'backup_bd',
+                'error_mensaje'     => $bd['error'],
+            ]);
 
-        if (! is_dir($backupDir)) {
-            mkdir($backupDir, 0755, true);
+            return back()->with('error', 'Error al generar el backup: ' . $bd['error']);
         }
 
-        // Pasamos la contraseña via variable de entorno para que no aparezca
-        // en la lista de procesos del sistema operativo ni en los logs de shell.
-        $cmd = sprintf(
-            'mysqldump --host=%s --port=%s -u%s --single-transaction --routines --triggers %s',
-            escapeshellarg($host),
-            escapeshellarg($port),
-            escapeshellarg($user),
-            escapeshellarg($db)
-        );
+        BackupRun::create([
+            'iniciado_en'       => $inicio,
+            'finalizado_en'     => $finalizado,
+            'duracion_segundos' => max(0, $finalizado->getTimestamp() - $inicio->getTimestamp()),
+            'estado'            => 'exitoso',
+            'bd_archivo'        => $bd['filename'],
+            'bd_tamano_bytes'   => $bd['size'],
+        ]);
 
-        $descriptors = [
-            0 => ['pipe', 'r'],
-            1 => ['file', $localPath, 'w'],
-            2 => ['pipe', 'w'],
-        ];
-
-        $env = array_merge($_ENV, ['MYSQL_PWD' => (string) $pass]);
-
-        $process = proc_open($cmd, $descriptors, $pipes, null, $env);
-
-        if (! is_resource($process)) {
-            return back()->with('error', 'No se pudo iniciar mysqldump. Verifica que esté disponible en el PATH.');
-        }
-
-        fclose($pipes[0]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[2]);
-        $code = proc_close($process);
-
-        if ($code !== 0 || ! file_exists($localPath) || filesize($localPath) < 100) {
-            return back()->with('error', 'Error al generar el backup: ' . ($stderr ?: 'resultado vacío.'));
-        }
-
-        return back()->with('success', "Backup creado: $filename (" . $this->formatBytes(filesize($localPath)) . ')');
+        return back()->with('success', "Backup creado: {$bd['filename']} (" . $this->formatBytes($bd['size']) . ')');
     }
 
     public function descargar(Request $request)

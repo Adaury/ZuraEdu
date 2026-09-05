@@ -10,6 +10,9 @@
     {{-- Aplicar tema antes de renderizar para evitar FOUC --}}
     <script>(function(){var t=localStorage.getItem('sge-theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
 
+    {{-- Aplicar preferencia de sidebar colapsado antes de renderizar (evita FOUC) --}}
+    <script>(function(){if(localStorage.getItem('sidebarCollapsed')==='1'){document.documentElement.classList.add('sidebar-collapsed');}})();</script>
+
     {{-- Dynamic favicon — tenant-scoped cache --}}
     @php $faviconPath = \App\Helpers\Setting::get('system_favicon'); @endphp
     @if($faviconPath)
@@ -1186,7 +1189,7 @@
             transition: max-height .35s ease;
         }
         .sidebar-submenu.sidebar-submenu-open {
-            max-height: 600px;
+            max-height: 700px;
         }
 
         .nav-section-title {
@@ -1199,15 +1202,55 @@
             margin-top: .1rem;
         }
 
+        /* ── Secciones del menú colapsables (aplicado por JS a los
+           .nav-section-title existentes, ver script al final del layout) ── */
+        .nav-section-title.nav-section-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+            border-radius: 6px;
+            margin: .1rem .5rem 0;
+            padding-left: .6rem;
+            padding-right: .6rem;
+        }
+        .nav-section-title.nav-section-toggle:hover { background: rgba(255,255,255,.05); }
+        .nav-section-chevron {
+            font-size: .6rem;
+            opacity: .6;
+            transition: transform .2s ease;
+            flex-shrink: 0;
+        }
+        .nav-section-label {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            min-width: 0;
+        }
+        .nav-section-label i {
+            font-size: .78rem;
+            opacity: .85;
+            flex-shrink: 0;
+        }
+
+        /* ── Toggle de sidebar completo (ocultar/mostrar en desktop) ─── */
+        #sidebarCollapseBtn { display: none; }
+        @media (min-width: 992px) {
+            html.sidebar-collapsed .sidebar { transform: translateX(-100%); }
+            html.sidebar-collapsed { --sidebar-width: 0px; }
+            #sidebarCollapseBtn { display: inline-flex; }
+        }
+
         .nav-item a,
         .nav-item button.nav-link-btn {
             display: flex;
             align-items: center;
-            gap: .7rem;
-            padding: .48rem 1rem;
+            gap: .8rem;
+            padding: .62rem 1rem;
             color: #94a3b8;
             text-decoration: none;
-            font-size: .82rem;
+            font-size: .85rem;
             font-weight: 500;
             border-radius: 0;
             transition: all .17s ease;
@@ -1216,7 +1259,7 @@
             border: none;
             cursor: pointer;
             text-align: left;
-            margin: 1px .6rem;
+            margin: 2px .6rem;
             width: calc(100% - 1.2rem);
             border-radius: 8px;
         }
@@ -1238,9 +1281,9 @@
 
         .nav-item a i,
         .nav-item button.nav-link-btn i {
-            font-size: 1rem;
+            font-size: 1.05rem;
             flex-shrink: 0;
-            width: 18px;
+            width: 19px;
             text-align: center;
             opacity: .75;
         }
@@ -3461,6 +3504,10 @@ if (auth()->check()) {
             <i class="bi bi-list"></i>
         </button>
 
+        <button class="dark-toggle" id="sidebarCollapseBtn" title="Ocultar/mostrar menú" aria-label="Ocultar/mostrar menú" aria-controls="sidebar" aria-expanded="true">
+            <i class="bi bi-layout-sidebar-inset" id="sidebarCollapseIcon"></i>
+        </button>
+
         <div class="topbar-title d-none d-md-block">
             <i class="bi bi-chevron-right me-1" style="font-size:.7rem;opacity:.5;"></i>
             @yield('page-title', 'Dashboard')
@@ -3754,12 +3801,126 @@ if (auth()->check()) {
             // Save scroll position on every link click (before unload)
             nav.addEventListener('click', e => {
                 const link = e.target.closest('a[href]');
-                if (link) sessionStorage.setItem(KEY, nav.scrollTop);
+                if (link) {
+                    sessionStorage.setItem(KEY, nav.scrollTop);
+                    // Al entrar a un ítem del menú, colapsar el sidebar
+                    // completo para dar más espacio a la página destino
+                    // (en desktop — en móvil ya se cierra solo al navegar).
+                    // Se vuelve a mostrar con el botón del topbar.
+                    localStorage.setItem('sidebarCollapsed', '1');
+                }
             });
 
             // Also save when browser navigates away (back/forward)
             window.addEventListener('pagehide', () => {
                 sessionStorage.setItem(KEY, nav.scrollTop);
+            });
+        })();
+
+        // ── Secciones del menú colapsables (auto-aplicado a cada
+        // .nav-section-title + <ul> siguiente, sin tocar el HTML de cada
+        // sección — reutiliza el mismo patrón .sidebar-submenu de abajo) ──
+        (function () {
+            // Icono por sección, por texto — evita tocar los 39 bloques
+            // Blade uno por uno. "bi-collection" es el genérico de respaldo
+            // para cualquier título nuevo que no esté en este mapa.
+            const ICONOS_SECCION = {
+                'Registro de Estudiantes':   'bi-person-vcard',
+                'Matrículas y Grupos':       'bi-diagram-3',
+                'Documentos y Registros':    'bi-folder2-open',
+                'Reportes':                  'bi-bar-chart-line',
+                'Exportación SIGERD':        'bi-cloud-arrow-up',
+                'Comunicación':              'bi-chat-dots',
+                'Documentos':                'bi-file-earmark-text',
+                'Gestión Académica':         'bi-mortarboard',
+                'Calificaciones':            'bi-journal-check',
+                'Supervisión':               'bi-eye',
+                'Planificación':             'bi-calendar2-week',
+                'Pagos y Colegiaturas':      'bi-cash-coin',
+                'Biblioteca':                'bi-book',
+                'Estudiantes':               'bi-people',
+                'Gestión Institucional':     'bi-building',
+                'Mi Espacio':                'bi-house-door',
+                'Rendimiento':               'bi-graph-up-arrow',
+                'Planificación Docente':     'bi-clipboard-data',
+                'Calendario':                'bi-calendar3',
+                'Comunicados y Mensajes':    'bi-megaphone',
+                'Inscripciones':             'bi-pencil-square',
+                'Solicitudes':               'bi-inbox',
+                'Servicios Institucionales': 'bi-gear-wide-connected',
+                'Soporte':                   'bi-life-preserver',
+                'Configuración':             'bi-sliders',
+                'Página de Inicio':          'bi-globe',
+                'Integraciones':             'bi-plug',
+                'Sistema':                   'bi-hdd-stack',
+                'ZuraEdu Platform':          'bi-stars',
+            };
+
+            const titles = document.querySelectorAll('.sidebar-nav .nav-section-title');
+            titles.forEach((title, idx) => {
+                const list = title.nextElementSibling;
+                if (!list || list.tagName !== 'UL') return;
+
+                const key = 'sidebarSection:' + idx;
+                const hasActive = !!list.querySelector('a.active, a[aria-current="page"]');
+                const stored = localStorage.getItem(key);
+                const open = stored !== null ? stored === '1' : hasActive;
+
+                const labelText = title.textContent.trim();
+                const iconClass = ICONOS_SECCION[labelText] || 'bi-collection';
+                const label = document.createElement('span');
+                label.className = 'nav-section-label';
+                label.innerHTML = '<i class="bi ' + iconClass + '"></i>' + labelText;
+                title.textContent = '';
+                title.appendChild(label);
+
+                title.classList.add('nav-section-toggle');
+                title.setAttribute('role', 'button');
+                title.setAttribute('tabindex', '0');
+                title.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+                const chevron = document.createElement('i');
+                chevron.className = 'bi bi-chevron-down nav-section-chevron';
+                title.appendChild(chevron);
+
+                list.classList.add('sidebar-submenu');
+                if (open) {
+                    list.classList.add('sidebar-submenu-open');
+                    chevron.style.transform = 'rotate(180deg)';
+                }
+
+                const toggle = () => {
+                    const nowOpen = list.classList.toggle('sidebar-submenu-open');
+                    title.setAttribute('aria-expanded', nowOpen ? 'true' : 'false');
+                    chevron.style.transform = nowOpen ? 'rotate(180deg)' : '';
+                    localStorage.setItem(key, nowOpen ? '1' : '0');
+                };
+
+                title.addEventListener('click', toggle);
+                title.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+                });
+            });
+        })();
+
+        // ── Toggle de sidebar completo (ocultar/mostrar en desktop) ───
+        (function () {
+            const btn  = document.getElementById('sidebarCollapseBtn');
+            const icon = document.getElementById('sidebarCollapseIcon');
+            if (!btn) return;
+
+            function aplicar(colapsado) {
+                document.documentElement.classList.toggle('sidebar-collapsed', colapsado);
+                btn.setAttribute('aria-expanded', colapsado ? 'false' : 'true');
+                if (icon) icon.className = colapsado ? 'bi bi-layout-sidebar' : 'bi bi-layout-sidebar-inset';
+            }
+
+            aplicar(document.documentElement.classList.contains('sidebar-collapsed'));
+
+            btn.addEventListener('click', () => {
+                const colapsado = !document.documentElement.classList.contains('sidebar-collapsed');
+                aplicar(colapsado);
+                localStorage.setItem('sidebarCollapsed', colapsado ? '1' : '0');
             });
         })();
 

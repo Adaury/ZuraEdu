@@ -1,0 +1,100 @@
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  phpunit:
+    name: PHPUnit (suite completa, incluye RouteSmokeTest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    # ZuraEdu requiere MySQL 8+ y Redis 6+ en producción (ver DEPLOY.md) —
+    # el mismo par de servicios se levanta aquí para que /health y todo lo
+    # que dependa de Redis (Horizon, cache) se comporte igual que en real.
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: sge_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: sge_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      # predis (paquete PHP puro, ya usado en producción según DEPLOY.md) en
+      # vez de la extensión nativa ext-redis, para no depender de compilarla.
+      REDIS_CLIENT: predis
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, zip, gd, bcmath, intl, exif, curl, dom, fileinfo
+          coverage: none
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Cache de dependencias de Composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Instalar dependencias PHP
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Instalar dependencias de Node
+        run: npm ci
+
+      - name: Compilar assets (los layouts usan @vite)
+        run: npm run build
+
+      - name: Preparar .env
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Ejecutar suite de PHPUnit
+        run: vendor/bin/phpunit

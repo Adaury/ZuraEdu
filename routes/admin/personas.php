@@ -25,19 +25,33 @@ Route::middleware('can:gestionar-docentes')->group(function () {
     Route::resource('docentes', DocenteController::class);
 });
 
-// ── Estudiantes ───────────────────────────────────────────────────────────
+// ── Estudiantes: consulta (ver-estudiantes) vs. mutación (gestionar-estudiantes) ──
+// Separado para que roles de solo-consulta (ej: Caja/Finanzas, que necesita
+// ver quién debe pero no crear/editar/eliminar estudiantes) no reciban de
+// forma implícita permiso de escritura completo sobre el recurso.
+//
+// IMPORTANTE — orden: el grupo con 'create' (segmento literal) debe
+// registrarse ANTES que el grupo con 'show' (comodín {estudiante}), porque
+// Route::resource() ya no garantiza ese orden relativo al partirlo en dos
+// llamadas — si 'show' se registra primero, un GET a estudiantes/create
+// hace match con estudiantes/{estudiante} (tratando "create" como ID) y
+// devuelve 404 antes de llegar al chequeo de permiso.
 Route::middleware('can:gestionar-estudiantes')->group(function () {
     Route::get('estudiantes/import',              [EstudianteController::class, 'import'])->name('estudiantes.import');
     Route::post('estudiantes/import',             [EstudianteController::class, 'importStore'])->name('estudiantes.importStore');
     Route::post('estudiantes/import/preview',     [EstudianteController::class, 'importPreview'])->name('estudiantes.importPreview');
     Route::post('estudiantes/import/confirm',     [EstudianteController::class, 'importConfirm'])->name('estudiantes.importConfirm');
     Route::get('estudiantes/plantilla/descargar', [EstudianteController::class, 'downloadTemplate'])->name('estudiantes.plantilla.descargar');
-    Route::get('estudiantes/lista/excel',         [EstudianteController::class, 'listaExcel'])->name('estudiantes.lista-excel');
-    Route::get('estudiantes/lista/pdf',           [EstudianteController::class, 'listaPdf'])->name('estudiantes.lista-pdf');
-    Route::get('representantes/lista/pdf',         [EstudianteController::class, 'representantesPdf'])->name('representantes.lista-pdf');
-    Route::get('representantes/lista/excel',      [EstudianteController::class, 'representantesExcel'])->name('representantes.lista-excel');
     Route::get('estudiantes/wizard',               [EstudianteController::class, 'wizard'])->name('estudiantes.wizard');
-    Route::resource('estudiantes', EstudianteController::class);
+    Route::resource('estudiantes', EstudianteController::class)->except(['index', 'show']);
+});
+
+Route::middleware('can:ver-estudiantes')->group(function () {
+    Route::get('estudiantes/lista/excel',    [EstudianteController::class, 'listaExcel'])->name('estudiantes.lista-excel');
+    Route::get('estudiantes/lista/pdf',      [EstudianteController::class, 'listaPdf'])->name('estudiantes.lista-pdf');
+    Route::get('representantes/lista/pdf',   [EstudianteController::class, 'representantesPdf'])->name('representantes.lista-pdf');
+    Route::get('representantes/lista/excel', [EstudianteController::class, 'representantesExcel'])->name('representantes.lista-excel');
+    Route::resource('estudiantes', EstudianteController::class)->only(['index', 'show']);
 });
 
 // ── Grupos / Secciones ────────────────────────────────────────────────────
@@ -99,7 +113,7 @@ Route::middleware('can:gestionar-docentes')->group(function () {
     Route::get('perfiles/docentes/{docente}/informe-excel', [PerfilDocenteController::class, 'informeExcel'])->name('perfiles.docente.informe-excel');
 });
 
-Route::middleware('can:gestionar-estudiantes')->group(function () {
+Route::middleware('can:ver-estudiantes')->group(function () {
     Route::get('perfiles/estudiantes/{estudiante}',   [PerfilEstudianteController::class, 'show'])->name('perfiles.estudiante');
     Route::get('perfiles/estudiantes/{estudiante}/informe-pdf',     [PerfilEstudianteController::class, 'informePdf'])->name('perfiles.estudiante.informe-pdf');
     Route::get('perfiles/estudiantes/{estudiante}/informe-excel',   [PerfilEstudianteController::class, 'informeExcel'])->name('perfiles.estudiante.informe-excel');

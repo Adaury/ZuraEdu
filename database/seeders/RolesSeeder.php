@@ -29,6 +29,7 @@ class RolesSeeder extends Seeder
             // Personas
             'gestionar-docentes',
             'gestionar-estudiantes',
+            'ver-estudiantes',
             'gestionar-matriculas',
             // Calificaciones y asistencia
             'ingresar-calificaciones',
@@ -75,6 +76,7 @@ class RolesSeeder extends Seeder
             'gestionar-grupos',
             'gestionar-docentes',
             'gestionar-estudiantes',
+            'ver-estudiantes',
             'gestionar-matriculas',
             'gestionar-asignaturas',
             'gestionar-asignaciones',
@@ -107,6 +109,7 @@ class RolesSeeder extends Seeder
         $secretaria->syncPermissions([
             'ver-dashboard',
             'gestionar-estudiantes',
+            'ver-estudiantes',
             'gestionar-matriculas',
             'ver-calificaciones',
             'ver-asistencia',
@@ -165,6 +168,7 @@ class RolesSeeder extends Seeder
             'gestionar-grupos',
             'gestionar-docentes',
             'gestionar-estudiantes',
+            'ver-estudiantes',
             'gestionar-matriculas',
             'gestionar-asignaturas',
             'gestionar-asignaciones',
@@ -188,6 +192,7 @@ class RolesSeeder extends Seeder
             'gestionar-grupos',
             'gestionar-docentes',
             'gestionar-estudiantes',
+            'ver-estudiantes',
             'gestionar-matriculas',
             'gestionar-asignaturas',
             'gestionar-asignaciones',
@@ -209,6 +214,7 @@ class RolesSeeder extends Seeder
         $secretariaDocente->syncPermissions([
             'ver-dashboard',
             'gestionar-estudiantes',
+            'ver-estudiantes',
             'gestionar-matriculas',
             'ver-calificaciones',
             'ver-asistencia',
@@ -220,6 +226,7 @@ class RolesSeeder extends Seeder
         $registradorPerms = [
             'ver-dashboard',
             'gestionar-estudiantes',
+            'ver-estudiantes',
             'gestionar-matriculas',
             'ver-calificaciones',
             'ver-asistencia',
@@ -242,7 +249,7 @@ class RolesSeeder extends Seeder
             'ver-pagos',
             'gestionar-pagos',
             'ver-reportes-institucionales',
-            'gestionar-estudiantes', // solo lectura en práctica (ver quién debe)
+            'ver-estudiantes', // ver quién debe — ya no puede crear/editar/eliminar estudiantes
         ]);
 
         // Biblioteca — gestión de préstamos e inventario
@@ -258,6 +265,7 @@ class RolesSeeder extends Seeder
         $recepcion->syncPermissions([
             'ver-dashboard',
             'gestionar-estudiantes',
+            'ver-estudiantes',
             'gestionar-matriculas',
             'ver-servicios',
         ]);

@@ -97,6 +97,7 @@
             'ver-reportes-institucionales' => 'Reportes Institucionales',
             'ver-pagos' => 'Pagos',
             'ver-servicios' => 'Servicios',
+            'ver-estudiantes' => 'Estudiantes (solo lectura)',
         ],
     ];
 

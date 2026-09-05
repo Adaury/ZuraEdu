@@ -32,7 +32,7 @@
 
 @forelse($schoolYears as $sy)
 <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header py-3 d-flex align-items-center justify-content-between" style="background:linear-gradient(90deg,var(--primary),#2a4f96);color:#fff;">
+    <div class="card-header py-3 d-flex align-items-center justify-content-between" style="background:linear-gradient(90deg,var(--primary),#2a4f96) !important;color:#fff;">
         <div class="d-flex align-items-center gap-2">
             <i class="bi bi-mortarboard"></i>
             <span class="fw-bold">{{ $sy->nombre }}</span>

@@ -55,7 +55,7 @@
             {{-- Cabecera colapsable --}}
             <div
                 class="card-header d-flex align-items-center justify-content-between py-2 px-3"
-                style="border-radius:16px 16px 0 0;background:linear-gradient(135deg,#0ea5e9,#0369a1);cursor:pointer;"
+                style="border-radius:16px 16px 0 0;background:linear-gradient(135deg,#0ea5e9,#0369a1) !important;cursor:pointer;"
                 @click="toggleWidget('asistencia')"
             >
                 <span class="fw-semibold text-white fs-6">
@@ -117,7 +117,7 @@
 
             <div
                 class="card-header d-flex align-items-center justify-content-between py-2 px-3"
-                style="border-radius:16px 16px 0 0;background:linear-gradient(135deg,#f59e0b,#d97706);cursor:pointer;"
+                style="border-radius:16px 16px 0 0;background:linear-gradient(135deg,#f59e0b,#d97706) !important;cursor:pointer;"
                 @click="toggleWidget('notas')"
             >
                 <span class="fw-semibold text-white fs-6">
@@ -185,7 +185,7 @@
 
             <div
                 class="card-header d-flex align-items-center justify-content-between py-2 px-3"
-                style="border-radius:16px 16px 0 0;background:linear-gradient(135deg,#ef4444,#b91c1c);cursor:pointer;"
+                style="border-radius:16px 16px 0 0;background:linear-gradient(135deg,#e11d48,#9f1239) !important;cursor:pointer;"
                 @click="toggleWidget('alertas')"
             >
                 <span class="fw-semibold text-white fs-6">
@@ -262,7 +262,7 @@
 
             <div
                 class="card-header d-flex align-items-center justify-content-between py-2 px-3"
-                style="border-radius:16px 16px 0 0;background:linear-gradient(135deg,#10b981,#059669);cursor:pointer;"
+                style="border-radius:16px 16px 0 0;background:linear-gradient(135deg,#10b981,#059669) !important;cursor:pointer;"
                 @click="toggleWidget('pagos')"
             >
                 <span class="fw-semibold text-white fs-6">
@@ -331,7 +331,7 @@
 
             <div
                 class="card-header d-flex align-items-center justify-content-between py-2 px-3"
-                style="border-radius:16px 16px 0 0;background:linear-gradient(135deg,#7c3aed,#5b21b6);cursor:pointer;"
+                style="border-radius:16px 16px 0 0;background:linear-gradient(135deg,#7c3aed,#5b21b6) !important;cursor:pointer;"
                 @click="toggleWidget('situacion')"
             >
                 <span class="fw-semibold text-white fs-6">
@@ -401,7 +401,7 @@
 
             <div
                 class="card-header d-flex align-items-center justify-content-between py-2 px-3"
-                style="border-radius:16px 16px 0 0;background:linear-gradient(135deg,#0f172a,#1e3a8a);cursor:pointer;"
+                style="border-radius:16px 16px 0 0;background:linear-gradient(135deg,#0f172a,#1e3a8a) !important;cursor:pointer;"
                 @click="toggleWidget('grupos')"
             >
                 <span class="fw-semibold text-white fs-6">

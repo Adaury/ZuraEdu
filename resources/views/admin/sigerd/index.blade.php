@@ -239,7 +239,7 @@
     {{-- Nómina de Matrícula ─── --}}
     <div class="col-md-6">
         <div class="export-card">
-            <div class="card-header" style="background:linear-gradient(90deg,#1d4ed8,#3b82f6);color:#fff;">
+            <div class="card-header" style="background:linear-gradient(90deg,#1d4ed8,#3b82f6) !important;color:#fff;">
                 <i class="bi bi-people-fill"></i> Nómina de Matrícula
             </div>
             <div class="card-body">
@@ -281,7 +281,7 @@
     {{-- Libro de Calificaciones ─── --}}
     <div class="col-md-6">
         <div class="export-card">
-            <div class="card-header" style="background:linear-gradient(90deg,#059669,#10b981);color:#fff;">
+            <div class="card-header" style="background:linear-gradient(90deg,#059669,#10b981) !important;color:#fff;">
                 <i class="bi bi-journal-check"></i> Libro de Calificaciones
             </div>
             <div class="card-body">
@@ -325,7 +325,7 @@
     {{-- Nómina de Docentes ─── --}}
     <div class="col-md-6">
         <div class="export-card">
-            <div class="card-header" style="background:linear-gradient(90deg,#7c3aed,#a78bfa);color:#fff;">
+            <div class="card-header" style="background:linear-gradient(90deg,#7c3aed,#a78bfa) !important;color:#fff;">
                 <i class="bi bi-person-badge"></i> Nómina de Docentes
             </div>
             <div class="card-body">
@@ -355,7 +355,7 @@
     {{-- Registro de Asistencia ─── --}}
     <div class="col-md-6">
         <div class="export-card">
-            <div class="card-header" style="background:linear-gradient(90deg,#b45309,#f59e0b);color:#fff;">
+            <div class="card-header" style="background:linear-gradient(90deg,#b45309,#f59e0b) !important;color:#fff;">
                 <i class="bi bi-calendar-check"></i> Registro de Asistencia
             </div>
             <div class="card-body">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\NotificarPadreAccesoJob;
 use App\Models\CarnetAcceso;
 use App\Models\CarnetIdentidad;
 use App\Models\Estudiante;
@@ -196,6 +197,20 @@ class CarnetApiController extends Controller
             'ip_address'          => $request->ip(),
             'registrado_por'      => $request->user()?->id,
         ]);
+
+        // Notificar al padre en background — mismo flujo que el kiosco admin
+        // (CarnetCheckinController::scan()). Antes esta ruta creaba el
+        // registro pero nunca disparaba la notificación, inconsistencia
+        // entre el escaneo desde el panel admin y desde la app/API.
+        if ($carnet->matricula_id) {
+            dispatch(new NotificarPadreAccesoJob(
+                carnetId:   $carnet->id,
+                tipoEvento: $tipoEvento,
+                estado:     $acceso->estado,
+                hora:       $acceso->hora,
+                tenantId:   $tenantId,
+            ));
+        }
 
         return response()->json([
             'success'  => true,

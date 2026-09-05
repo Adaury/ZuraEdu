@@ -6,6 +6,7 @@ use App\Models\CarnetAcceso;
 use App\Models\CarnetIdentidad;
 use App\Models\Matricula;
 use App\Models\User;
+use App\Services\WhatsAppService;
 
 class NotificarPadreAccesoJob extends TenantJob
 {
@@ -52,19 +53,24 @@ class NotificarPadreAccesoJob extends TenantJob
                     ->get();
 
                 foreach ($representantes as $rep) {
-                    if (! $rep->user_id) continue;
-                    dispatch(new EnviarNotificacionJob(
-                        userId:   $rep->user_id,
-                        tipo:     'carnet_acceso',
-                        titulo:   $titulo,
-                        mensaje:  $mensaje,
-                        datos:    [
-                            'tipo_evento' => $this->tipoEvento,
-                            'estado'      => $this->estado,
-                            'hora'        => $this->hora,
-                        ],
-                        tenantId: $this->tenantId,
-                    ));
+                    if ($rep->user_id) {
+                        dispatch(new EnviarNotificacionJob(
+                            userId:   $rep->user_id,
+                            tipo:     'carnet_acceso',
+                            titulo:   $titulo,
+                            mensaje:  $mensaje,
+                            datos:    [
+                                'tipo_evento' => $this->tipoEvento,
+                                'estado'      => $this->estado,
+                                'hora'        => $this->hora,
+                            ],
+                            tenantId: $this->tenantId,
+                        ));
+                    }
+
+                    if (! empty($rep->telefono)) {
+                        WhatsAppService::send($rep->telefono, $mensaje);
+                    }
                 }
             }
         }

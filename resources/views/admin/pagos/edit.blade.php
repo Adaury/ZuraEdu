@@ -82,6 +82,17 @@
                 <input type="text" name="referencia" class="form-control form-control-sm"
                        value="{{ old('referencia', $pago->referencia) }}" placeholder="Opcional">
             </div>
+            <div class="mb-3">
+                <label class="form-label-custom">NCF / e-CF</label>
+                <input type="text" name="numero_comprobante_fiscal" class="form-control form-control-sm"
+                       value="{{ old('numero_comprobante_fiscal', $pago->numero_comprobante_fiscal) }}"
+                       placeholder="Ej: B0200001234 o E310000001234" maxlength="20">
+                <div class="form-text" style="font-size:.75rem;">
+                    Número del comprobante fiscal que ya emitiste por tu cuenta (tu software de
+                    facturación, el Facturador Gratuito de la DGII, o tu proveedor certificado).
+                    ZuraEdu solo lo guarda y lo imprime en el recibo — no lo genera ni lo valida.
+                </div>
+            </div>
         </div>
 
         <div class="mb-4">

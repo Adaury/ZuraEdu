@@ -14,6 +14,8 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
 .recibo-title { text-align:center; background:#1e3a6e; color:#fff; border-radius:6px;
                padding:.5rem 0; font-size:10pt; font-weight:800; margin:.6rem 0; }
 .num-recibo   { text-align:center; font-size:8pt; color:#6b7280; margin-bottom:.8rem; }
+.ncf-box      { text-align:center; font-size:8pt; font-weight:700; color:#1e3a6e; background:#f0f4ff;
+                border:1px solid #bfdbfe; border-radius:4px; padding:.3rem .5rem; margin-bottom:.8rem; }
 
 .section { border:1px solid #e5e7eb; border-radius:6px; margin-bottom:.65rem; overflow:hidden; }
 .section-title { background:#f0f4ff; font-size:7pt; font-weight:800; text-transform:uppercase;
@@ -62,6 +64,10 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
     No. {{ str_pad($pago->id, 6, '0', STR_PAD_LEFT) }}
     @if($pago->referencia) &nbsp;·&nbsp; Ref: {{ $pago->referencia }} @endif
 </div>
+
+@if($pago->numero_comprobante_fiscal)
+<div class="ncf-box">NCF/e-CF: {{ $pago->numero_comprobante_fiscal }}</div>
+@endif
 
 <div class="section">
     <div class="section-title">Datos del Estudiante</div>
@@ -114,6 +120,9 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
 <div style="text-align:center;margin-bottom:.4rem;">
     <strong style="font-size:9pt;">{{ $inst }}</strong><br>
     <span style="font-size:7.5pt;color:#6b7280;">RECIBO No. {{ str_pad($pago->id,6,'0',STR_PAD_LEFT) }}</span>
+    @if($pago->numero_comprobante_fiscal)
+        <br><span style="font-size:7.5pt;color:#1e3a6e;font-weight:700;">NCF/e-CF: {{ $pago->numero_comprobante_fiscal }}</span>
+    @endif
 </div>
 <div style="display:flex;justify-content:space-between;font-size:8pt;padding:0 .5rem;">
     <span><b>{{ $est?->nombre_completo ?? '—' }}</b></span>

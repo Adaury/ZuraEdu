@@ -210,6 +210,7 @@ class PagoController extends Controller
             'estado'            => 'required|in:pendiente,pagado,vencido,cancelado',
             'metodo_pago'       => 'nullable|in:efectivo,transferencia,tarjeta,stripe,cardnet,otro',
             'referencia'        => 'nullable|string|max:100',
+            'numero_comprobante_fiscal' => 'nullable|string|max:20',
             'notas'             => 'nullable|string|max:500',
         ]);
 
@@ -239,6 +240,7 @@ class PagoController extends Controller
             'estado'            => 'required|in:pendiente,pagado,vencido,cancelado',
             'metodo_pago'       => 'nullable|in:efectivo,transferencia,tarjeta,stripe,cardnet,otro',
             'referencia'        => 'nullable|string|max:100',
+            'numero_comprobante_fiscal' => 'nullable|string|max:20',
             'notas'             => 'nullable|string|max:500',
         ]);
 
@@ -557,7 +559,7 @@ class PagoController extends Controller
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(12);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-        $headers = ['#', 'Estudiante', 'Grupo', 'Concepto', 'Monto', 'Vencimiento', 'F. Pago', 'Estado', 'Recibo', 'Moneda'];
+        $headers = ['#', 'Estudiante', 'Grupo', 'Concepto', 'Monto', 'Vencimiento', 'F. Pago', 'Estado', 'NCF/e-CF', 'Moneda'];
         foreach ($headers as $i => $h) {
             $sheet->setCellValue(chr(65 + $i) . '2', $h);
         }
@@ -579,7 +581,7 @@ class PagoController extends Controller
             $sheet->setCellValue("F{$row}", $pago->fecha_vencimiento ? Carbon::parse($pago->fecha_vencimiento)->format('d/m/Y') : '');
             $sheet->setCellValue("G{$row}", $pago->fecha_pago ? Carbon::parse($pago->fecha_pago)->format('d/m/Y') : '');
             $sheet->setCellValue("H{$row}", ucfirst($pago->estado ?? ''));
-            $sheet->setCellValue("I{$row}", $pago->numero_recibo ?? '');
+            $sheet->setCellValue("I{$row}", $pago->numero_comprobante_fiscal ?? '');
             $sheet->setCellValue("J{$row}", $mon);
 
             $bg = $colorEstado[$pago->estado] ?? 'ffffff';

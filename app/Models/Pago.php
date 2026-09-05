@@ -23,6 +23,7 @@ class Pago extends Model
         'estado',
         'metodo_pago',
         'referencia',
+        'numero_comprobante_fiscal',
         'notas',
         'registrado_por',
     ];

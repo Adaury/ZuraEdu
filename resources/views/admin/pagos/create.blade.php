@@ -110,6 +110,12 @@
                 <input type="text" name="referencia" class="form-control form-control-sm"
                        value="{{ old('referencia') }}" placeholder="Opcional">
             </div>
+            <div class="mb-3">
+                <label class="form-label-custom">NCF / e-CF</label>
+                <input type="text" name="numero_comprobante_fiscal" class="form-control form-control-sm"
+                       value="{{ old('numero_comprobante_fiscal') }}"
+                       placeholder="Opcional — si ya lo tienes" maxlength="20">
+            </div>
         </div>
 
         <div class="mb-4">

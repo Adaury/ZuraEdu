@@ -282,6 +282,20 @@ chown -R www-data:www-data storage bootstrap/cache
 
 ## 9. Checklist de deploy (actualizaciones)
 
+Este checklist manual ahora está automatizado en `deploy.sh` (raíz del
+proyecto) — agrega, además de estos pasos, un **backup automático antes de
+tocar nada** (`sge:backup`, ver [[BACKUP_ZURAEDU]]) y un **tag de git para
+poder revertir** con `rollback.sh` (sección 13). Se recomienda usar el
+script en vez de correr los pasos a mano:
+
+```bash
+./deploy.sh                # deploy completo: backup + código + migrar + assets
+./deploy.sh --sin-migrar   # solo código, sin tocar la BD
+./deploy.sh --sin-assets   # sin recompilar assets (usa los ya compilados)
+```
+
+El checklist manual equivalente, por si se necesita correr paso a paso:
+
 ```bash
 # 1. Modo mantenimiento
 php artisan down
@@ -369,3 +383,42 @@ REVERB_SCHEME=http
 VITE_REVERB_HOST=localhost
 VITE_REVERB_SCHEME=http
 ```
+
+---
+
+## 13. Rollback
+
+Cada corrida de `deploy.sh` crea (y publica a `origin`) un tag
+`deploy-YYYYMMDD-HHMMSS` **antes** de actualizar el código, y genera un
+backup completo (BD + archivos) antes de tocar nada — mismo patrón ya usado
+para los cutovers grandes del proyecto (`pre-l12`, `pre-l13`,
+`pre-cutover`).
+
+```bash
+# Ver los tags de deploy disponibles (más reciente primero)
+git tag --list 'deploy-*' --sort=-creatordate
+
+# Revertir solo el código (deja la BD intacta)
+./rollback.sh deploy-20260905-020000
+
+# Revertir código Y restaurar la BD al estado de ese backup
+# (pide confirmación explícita — nunca sobrescribe datos sin ella)
+./rollback.sh deploy-20260905-020000 --restaurar-bd=storage/app/backups/backup_2026-09-05_02-00-00.sql
+```
+
+**Importante:**
+
+- `rollback.sh` deja el repositorio en **detached HEAD** sobre el tag —
+  es esperado, no se debe seguir commiteando ahí. Una vez resuelto el
+  problema, hay que decidir cómo seguir (volver a `master` y corregir hacia
+  adelante, o cortar una rama desde el tag si el rollback necesita convivir
+  un tiempo).
+- La restauración de BD es un paso **separado y explícito**: revertir el
+  código sin restaurar la BD es seguro por defecto; restaurar la BD
+  sobrescribe datos reales y siempre pide escribir `CONFIRMAR`.
+- El backup a restaurar es el que generó `deploy.sh` justo antes de crear
+  ese mismo tag — está en `storage/app/backups/` o se puede descargar desde
+  `/admin/sistema/backup` (ver [[BACKUP_ZURAEDU]]).
+- Ninguno de los dos scripts corre `migrate:rollback` — revertir migraciones
+  de esquema automáticamente es más riesgoso que restaurar desde el backup
+  pre-deploy cuando hay datos reales de por medio.

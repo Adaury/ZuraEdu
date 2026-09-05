@@ -1,5 +1,17 @@
 # Guía de Despliegue — ZuraEdu
 
+> **Ramas — decisión (2026-09-05):** hoy todo el trabajo va directo a
+> `master` y no existe un servidor de staging real. Se decidió **no crear
+> una rama `staging` todavía** — sin un servidor donde desplegarla, sería
+> una rama más que mantener sincronizada sin ningún propósito. Cuando
+> exista ese servidor, el flujo acordado es `master → staging →
+> producción`: el trabajo nuevo sigue yendo directo a `master` igual que
+> ahora, y `staging` se actualiza deliberadamente (merge desde `master`)
+> cuando algo está listo para probarse antes de tocar producción real.
+> `deploy.sh`/`rollback.sh` (sección 13) ya funcionan sobre la rama que
+> esté activa en cada servidor, así que no necesitan cambios cuando se
+> cree la rama.
+
 ## Requisitos del servidor
 
 | Componente | Versión mínima |

@@ -68,6 +68,24 @@
                     </div>
                 </div>
 
+                {{-- Carrusel --}}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold"><i class="bi bi-images me-1"></i>Carrusel de Fotos</span>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" name="hp_carrusel_visible" id="carrusel_vis" value="1"
+                                @checked(($config['hp_carrusel_visible'] ?? '1') == '1')>
+                            <label class="form-check-label small" for="carrusel_vis">Visible</label>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-2">Las fotos del carrusel se administran desde Galería — marca un álbum como "carrusel del sitio" ahí.</p>
+                        <a href="{{ route('admin.galeria.index') }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-images me-1"></i>Ir a Galería
+                        </a>
+                    </div>
+                </div>
+
                 {{-- Sobre la Institución --}}
                 <div class="card shadow-sm mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -145,6 +163,24 @@
                     </div>
                 </div>
 
+                {{-- Noticias y Publicaciones --}}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold"><i class="bi bi-newspaper me-1"></i>Noticias y Publicaciones</span>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" name="hp_noticias_visible" id="noticias_vis" value="1"
+                                @checked(($config['hp_noticias_visible'] ?? '1') == '1')>
+                            <label class="form-check-label small" for="noticias_vis">Visible</label>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-2">Las noticias, avisos, actividades y demás publicaciones se administran aparte.</p>
+                        <a href="{{ route('admin.publicaciones.index') }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-newspaper me-1"></i>Ir a Publicaciones
+                        </a>
+                    </div>
+                </div>
+
                 {{-- Contacto --}}
                 <div class="card shadow-sm mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -212,9 +248,11 @@
                 @php
                     $etiquetasOrden = [
                         'hero'     => ['Hero (Portada)', 'bi-display'],
+                        'carrusel' => ['Carrusel de Fotos', 'bi-images'],
                         'about'    => ['Sobre la Institución', 'bi-building'],
                         'stats'    => ['Estadísticas', 'bi-bar-chart'],
                         'features' => ['Características', 'bi-stars'],
+                        'noticias' => ['Noticias y Publicaciones', 'bi-newspaper'],
                         'contacto' => ['Contacto y Redes', 'bi-geo-alt'],
                     ];
                 @endphp

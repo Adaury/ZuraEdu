@@ -21,10 +21,12 @@ class Album extends Model
         'portada',
         'activo',
         'orden',
+        'mostrar_en_sitio',
     ];
 
     protected $casts = [
-        'activo' => 'boolean',
+        'activo'           => 'boolean',
+        'mostrar_en_sitio' => 'boolean',
     ];
 
     // ── Relaciones ────────────────────────────────────────────────────────
@@ -61,5 +63,11 @@ class Album extends Model
     public function scopeOrdenados($query)
     {
         return $query->orderBy('orden')->orderBy('created_at', 'desc');
+    }
+
+    /** El único álbum (si existe) marcado para mostrarse como carrusel en /sitio. */
+    public function scopeCarruselDelSitio($query)
+    {
+        return $query->where('mostrar_en_sitio', true)->where('activo', true);
     }
 }

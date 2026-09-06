@@ -142,6 +142,8 @@ Route::get('/inscripcion/consulta',                 [\App\Http\Controllers\PreMa
 
 // ── Sitio público institucional del tenant (sin login) ────────────────────
 Route::get('/sitio', [\App\Http\Controllers\PublicSiteController::class, 'show'])->name('sitio.show');
+Route::get('/sitio/noticias', [\App\Http\Controllers\PublicSiteController::class, 'noticias'])->name('sitio.noticias');
+Route::get('/sitio/noticias/{publicacion}', [\App\Http\Controllers\PublicSiteController::class, 'noticiaShow'])->name('sitio.noticias.show');
 
 // ══════════════════════════════════════════════════════════════════════════
 //  PORTALES AUTENTICADOS (multi-rol)
@@ -642,6 +644,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.acc
     require __DIR__ . '/admin/importaciones.php';
     require __DIR__ . '/admin/pre_matriculas.php';
     require __DIR__ . '/admin/galeria.php';
+    require __DIR__ . '/admin/publicaciones.php';
     require __DIR__ . '/admin/eventos.php';
     require __DIR__ . '/admin/encuestas.php';
     require __DIR__ . '/admin/avisos_emergencia.php';

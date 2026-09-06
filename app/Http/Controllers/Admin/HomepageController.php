@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 class HomepageController extends Controller
 {
     /** Claves de sección ordenables en /sitio, en el orden por defecto. */
-    public const SECCIONES_ORDENABLES = ['hero', 'about', 'stats', 'features', 'contacto'];
+    public const SECCIONES_ORDENABLES = ['hero', 'carrusel', 'about', 'stats', 'features', 'noticias', 'contacto'];
 
     private array $sections = [
         'hero'     => ['titulo' => 'Sección Hero (Portada)'],
@@ -100,8 +100,8 @@ class HomepageController extends Controller
         // el bloque nunca se ocultaría. Se guardan explícitamente en cada
         // submit ('1' si viene marcado, '0' si no) en vez de con has().
         $visibleKeys = [
-            'hp_hero_visible', 'hp_about_visible', 'hp_stats_visible',
-            'hp_features_visible', 'hp_contacto_visible',
+            'hp_hero_visible', 'hp_carrusel_visible', 'hp_about_visible', 'hp_stats_visible',
+            'hp_features_visible', 'hp_noticias_visible', 'hp_contacto_visible',
         ];
         foreach ($visibleKeys as $key) {
             ConfigInstitucional::set($key, $request->has($key) ? '1' : '0');

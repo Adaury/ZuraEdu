@@ -76,6 +76,12 @@ class GaleriaController extends Controller
         $data['activo'] = $request->boolean('activo', true);
         $data['orden']  = $data['orden'] ?? 0;
 
+        // Solo un álbum puede ser el carrusel del sitio público a la vez.
+        $data['mostrar_en_sitio'] = $request->boolean('mostrar_en_sitio');
+        if ($data['mostrar_en_sitio']) {
+            Album::where('mostrar_en_sitio', true)->update(['mostrar_en_sitio' => false]);
+        }
+
         $album = Album::create($data);
 
         return redirect()->route('admin.galeria.show', $album)
@@ -119,6 +125,12 @@ class GaleriaController extends Controller
 
         $data['activo'] = $request->boolean('activo', true);
         $data['orden']  = $data['orden'] ?? 0;
+
+        // Solo un álbum puede ser el carrusel del sitio público a la vez.
+        $data['mostrar_en_sitio'] = $request->boolean('mostrar_en_sitio');
+        if ($data['mostrar_en_sitio']) {
+            Album::where('mostrar_en_sitio', true)->where('id', '!=', $galeria->id)->update(['mostrar_en_sitio' => false]);
+        }
 
         $galeria->update($data);
 
@@ -187,11 +199,22 @@ class GaleriaController extends Controller
     // ── Galería pública ───────────────────────────────────────────────────
     public function galeriaPublica()
     {
+        $tenant = app('tenant');
+
+        if (! $tenant->can('modo_publico')) {
+            return view('public.sitio-no-disponible', compact('tenant'));
+        }
+
         $albumes = Album::with(['fotos' => fn($q) => $q->orderBy('orden')->limit(12)])
             ->activos()
             ->ordenados()
             ->get();
 
-        return view('galeria', compact('albumes'));
+        $nombre = \App\Models\ConfigInstitucional::get('nombre_institucion', '') ?: $tenant->nombre_institucion;
+        $colorPrimario = \App\Models\ConfigInstitucional::get('hp_color_primario', $tenant->color_primario ?? '#1d4ed8');
+        $logoPath = \App\Models\ConfigInstitucional::get('hp_logo_path');
+        $logoUrl  = $logoPath ? \Illuminate\Support\Facades\Storage::url($logoPath) : $tenant->logo_url;
+
+        return view('galeria', compact('albumes', 'nombre', 'colorPrimario', 'logoUrl'));
     }
 }

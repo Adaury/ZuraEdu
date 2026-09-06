@@ -34,6 +34,29 @@
     .btn-light { background: #fff; color: var(--primary); }
     .btn-outline { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.7); }
 
+    .carrusel { position: relative; max-width: 72rem; margin: 0 auto; padding: 2.5rem 1.5rem; }
+    .carrusel-track { position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 16/7; background: var(--g100); }
+    .carrusel-slide { position: absolute; inset: 0; opacity: 0; transition: opacity .6s ease; }
+    .carrusel-slide.activa { opacity: 1; }
+    .carrusel-slide img { width: 100%; height: 100%; object-fit: cover; }
+    .carrusel-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 1.5rem; background: linear-gradient(0deg, rgba(0,0,0,.65), transparent); color: #fff; font-weight: 600; }
+    .carrusel-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.85); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--g900); font-size: 1.1rem; }
+    .carrusel-nav.prev { left: 1rem; }
+    .carrusel-nav.next { right: 1rem; }
+    .carrusel-dots { display: flex; gap: .4rem; justify-content: center; margin-top: 1rem; }
+    .carrusel-dots button { width: 8px; height: 8px; border-radius: 50%; border: none; background: var(--g200); cursor: pointer; padding: 0; }
+    .carrusel-dots button.activa { background: var(--primary); }
+
+    .noticias-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
+    .noticia-card { border-radius: 14px; overflow: hidden; border: 1px solid var(--g200); text-decoration: none; color: inherit; display: flex; flex-direction: column; transition: box-shadow .15s; }
+    .noticia-card:hover { box-shadow: 0 8px 24px rgba(15,23,42,.08); }
+    .noticia-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
+    .noticia-card .cuerpo { padding: 1.1rem; }
+    .noticia-tipo { display: inline-block; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--primary); margin-bottom: .4rem; }
+    .noticia-titulo { font-weight: 700; font-size: 1.02rem; margin-bottom: .3rem; }
+    .noticia-fecha { font-size: .78rem; color: var(--g500); }
+    .noticias-vertodas { display: block; text-align: center; margin-top: 2rem; }
+
     section { padding: 4rem 1.5rem; }
     .section-inner { max-width: 64rem; margin: 0 auto; }
     .section-title { font-size: 1.8rem; font-weight: 800; margin-bottom: 1rem; text-align: center; }
@@ -71,9 +94,11 @@
 @php
     $mostrar = [
         'hero'     => $config['hero_visible'],
+        'carrusel' => $config['carrusel_visible'] && $config['carrusel'] && $config['carrusel']->fotos->isNotEmpty(),
         'about'    => $config['about_visible'] && ($config['about_titulo'] || $config['about_texto']),
         'stats'    => $config['stats_visible'] && $config['stats']->isNotEmpty(),
         'features' => $config['features_visible'] && $config['features_titulo'],
+        'noticias' => $config['noticias_visible'] && $config['noticias']->isNotEmpty(),
         'contacto' => $config['contacto_visible'] && ($config['contacto_direccion'] || $config['contacto_telefono'] || $config['contacto_email']),
     ];
 @endphp
@@ -92,6 +117,42 @@
 @endif
 
 <footer>{{ $config['nombre'] }} &middot; {{ now()->year }}</footer>
+
+<script>
+(function () {
+    var track = document.querySelector('.carrusel-track');
+    if (!track) return;
+
+    var slides = Array.prototype.slice.call(track.querySelectorAll('.carrusel-slide'));
+    var dots   = Array.prototype.slice.call(document.querySelectorAll('.carrusel-dots button'));
+    if (slides.length < 2) return;
+
+    var actual = 0, timer;
+
+    function mostrar(i) {
+        slides[actual].classList.remove('activa');
+        if (dots[actual]) dots[actual].classList.remove('activa');
+        actual = (i + slides.length) % slides.length;
+        slides[actual].classList.add('activa');
+        if (dots[actual]) dots[actual].classList.add('activa');
+    }
+
+    function auto() {
+        clearInterval(timer);
+        timer = setInterval(function () { mostrar(actual + 1); }, 5000);
+    }
+
+    var prev = document.querySelector('.carrusel-nav.prev');
+    var next = document.querySelector('.carrusel-nav.next');
+    if (prev) prev.addEventListener('click', function () { mostrar(actual - 1); auto(); });
+    if (next) next.addEventListener('click', function () { mostrar(actual + 1); auto(); });
+    dots.forEach(function (dot, i) {
+        dot.addEventListener('click', function () { mostrar(i); auto(); });
+    });
+
+    auto();
+})();
+</script>
 
 </body>
 </html>

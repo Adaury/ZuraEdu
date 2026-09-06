@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galería — {{ env('APP_PRODUCT_NAME', config('app.name')) }}</title>
+    <title>Galería — {{ $nombre ?? env('APP_PRODUCT_NAME', config('app.name')) }}</title>
     <link href="/vendor/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet">
     <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -118,8 +118,12 @@
 <nav class="nav">
     <div class="nav-inner">
         <a href="/" class="nav-logo">
-            <div class="nav-logo-icon"><i class="bi bi-mortarboard-fill"></i></div>
-            <span class="nav-logo-name">{{ env('APP_PRODUCT_NAME', 'SGE') }}</span>
+            @if(!empty($logoUrl))
+                <img src="{{ $logoUrl }}" alt="{{ $nombre }}" style="width:34px;height:34px;border-radius:9px;object-fit:contain;">
+            @else
+                <div class="nav-logo-icon" style="background:{{ $colorPrimario ?? '#1e3a8a' }};"><i class="bi bi-mortarboard-fill"></i></div>
+            @endif
+            <span class="nav-logo-name">{{ $nombre ?? env('APP_PRODUCT_NAME', 'SGE') }}</span>
         </a>
         <a href="/" class="nav-back">
             <i class="bi bi-arrow-left"></i>Volver al inicio
@@ -191,7 +195,7 @@
 
 {{-- FOOTER --}}
 <div class="footer-mini">
-    <p>© {{ date('Y') }} {{ env('APP_PRODUCT_NAME', config('app.name')) }} &mdash; <a href="/">Volver al inicio</a></p>
+    <p>© {{ date('Y') }} {{ $nombre ?? env('APP_PRODUCT_NAME', config('app.name')) }} &mdash; <a href="/">Volver al inicio</a></p>
 </div>
 
 <script>

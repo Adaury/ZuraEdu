@@ -28,6 +28,7 @@ class ResolveTenant
         'health',
         'portal/representante/*',
         'sitio', 'sitio/*',
+        'galeria',
     ];
 
     public function handle(Request $request, Closure $next): Response

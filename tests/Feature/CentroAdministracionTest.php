@@ -52,6 +52,7 @@ class CentroAdministracionTest extends TestCase
         $response->assertSee('Configuración');
         $response->assertSee('Página Web');
         $response->assertSee('Galería');
+        $response->assertSee('Noticias y Publicaciones');
         $response->assertSee('Docentes');
         $response->assertSee('Editor de Página Principal');
     }

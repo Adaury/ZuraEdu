@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Admin\HomepageController;
+use App\Models\Album;
 use App\Models\ConfigInstitucional;
+use App\Models\Publicacion;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -58,6 +60,12 @@ class PublicSiteController extends Controller
 
         $logoPath = ConfigInstitucional::get('hp_logo_path');
 
+        $carrusel = Album::with(['fotos' => fn ($q) => $q->orderBy('orden')])
+            ->carruselDelSitio()
+            ->first();
+
+        $noticias = Publicacion::visiblesPublico()->recientes()->limit(6)->get();
+
         $config = [
             'hero_visible'    => ConfigInstitucional::get('hp_hero_visible', '1') == '1',
             'hero_titulo'     => ConfigInstitucional::get('hp_hero_titulo', ''),
@@ -77,6 +85,12 @@ class PublicSiteController extends Controller
             'features_visible' => ConfigInstitucional::get('hp_features_visible', '1') == '1',
             'features_titulo'  => ConfigInstitucional::get('hp_features_titulo', ''),
 
+            'carrusel_visible' => ConfigInstitucional::get('hp_carrusel_visible', '1') == '1',
+            'carrusel'         => $carrusel,
+
+            'noticias_visible' => ConfigInstitucional::get('hp_noticias_visible', '1') == '1',
+            'noticias'         => $noticias,
+
             'contacto_visible'   => ConfigInstitucional::get('hp_contacto_visible', '1') == '1',
             'contacto_direccion' => ConfigInstitucional::get('hp_contacto_direccion', ''),
             'contacto_telefono'  => ConfigInstitucional::get('hp_contacto_telefono', ''),
@@ -93,5 +107,53 @@ class PublicSiteController extends Controller
         ];
 
         return view('public.sitio', compact('tenant', 'config', 'orden'));
+    }
+
+    /** Listado completo, paginado, de publicaciones ("Ver todas las noticias"). */
+    public function noticias()
+    {
+        $tenant = app('tenant');
+
+        if (! $tenant->can('modo_publico')) {
+            return view('public.sitio-no-disponible', compact('tenant'));
+        }
+
+        $publicaciones = Publicacion::visiblesPublico()->recientes()->paginate(12);
+        $nombre = ConfigInstitucional::get('nombre_institucion', '') ?: $tenant->nombre_institucion;
+        $colorPrimario = ConfigInstitucional::get('hp_color_primario', $tenant->color_primario ?? '#0d6efd');
+        $logoPath = ConfigInstitucional::get('hp_logo_path');
+        $logoUrl  = $logoPath ? Storage::url($logoPath) : $tenant->logo_url;
+
+        return view('public.noticias-index', compact('publicaciones', 'nombre', 'colorPrimario', 'logoUrl'));
+    }
+
+    /** Detalle público de una publicación — respeta el mismo criterio de visibilidad que la portada. */
+    public function noticiaShow(Publicacion $publicacion)
+    {
+        $tenant = app('tenant');
+
+        if (! $tenant->can('modo_publico')) {
+            return view('public.sitio-no-disponible', compact('tenant'));
+        }
+
+        // El scope automático de BelongsToTenant no basta aquí: SubstituteBindings
+        // (donde Laravel resuelve {publicacion} vía route model binding) corre
+        // ANTES que ResolveTenant en el pipeline de middleware, así que el scope
+        // se aplica con el tenant de la request ANTERIOR (o ninguno) — se verifica
+        // el tenant_id explícitamente, mismo patrón usado en el resto del código
+        // para no depender solo del scope automático en verificaciones de acceso.
+        abort_unless(
+            $publicacion->tenant_id === $tenant->id
+                && $publicacion->estado === 'publicado' && $publicacion->visible
+                && $publicacion->fecha->lte(now()->toDateString()),
+            404
+        );
+
+        $nombre = ConfigInstitucional::get('nombre_institucion', '') ?: $tenant->nombre_institucion;
+        $colorPrimario = ConfigInstitucional::get('hp_color_primario', $tenant->color_primario ?? '#0d6efd');
+        $logoPath = ConfigInstitucional::get('hp_logo_path');
+        $logoUrl  = $logoPath ? Storage::url($logoPath) : $tenant->logo_url;
+
+        return view('public.noticia-show', compact('publicacion', 'nombre', 'colorPrimario', 'logoUrl'));
     }
 }

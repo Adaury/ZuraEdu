@@ -52,7 +52,7 @@ class HomepageOrdenTest extends TestCase
         $orden = \App\Http\Controllers\Admin\HomepageController::ordenActual();
         app()->forgetInstance('tenant');
 
-        $this->assertSame(['hero', 'about', 'stats', 'features', 'contacto'], $orden);
+        $this->assertSame(['hero', 'carrusel', 'about', 'stats', 'features', 'noticias', 'contacto'], $orden);
     }
 
     public function test_mover_una_seccion_arriba_actualiza_hp_orden(): void
@@ -64,7 +64,7 @@ class HomepageOrdenTest extends TestCase
         $response->assertRedirect(route('admin.homepage.edit'));
 
         app()->instance('tenant', $tenant);
-        $this->assertSame('hero,stats,about,features,contacto', ConfigInstitucional::get('hp_orden'));
+        $this->assertSame('hero,carrusel,stats,about,features,noticias,contacto', ConfigInstitucional::get('hp_orden'));
     }
 
     public function test_mover_una_seccion_abajo_actualiza_hp_orden(): void
@@ -76,7 +76,7 @@ class HomepageOrdenTest extends TestCase
         $response->assertRedirect(route('admin.homepage.edit'));
 
         app()->instance('tenant', $tenant);
-        $this->assertSame('hero,stats,about,features,contacto', ConfigInstitucional::get('hp_orden'));
+        $this->assertSame('hero,carrusel,stats,about,features,noticias,contacto', ConfigInstitucional::get('hp_orden'));
     }
 
     public function test_mover_la_primera_seccion_hacia_arriba_no_cambia_nada(): void
@@ -87,7 +87,7 @@ class HomepageOrdenTest extends TestCase
 
         app()->instance('tenant', $tenant);
         $orden = \App\Http\Controllers\Admin\HomepageController::ordenActual();
-        $this->assertSame(['hero', 'about', 'stats', 'features', 'contacto'], $orden);
+        $this->assertSame(['hero', 'carrusel', 'about', 'stats', 'features', 'noticias', 'contacto'], $orden);
     }
 
     public function test_mover_la_ultima_seccion_hacia_abajo_no_cambia_nada(): void
@@ -98,7 +98,7 @@ class HomepageOrdenTest extends TestCase
 
         app()->instance('tenant', $tenant);
         $orden = \App\Http\Controllers\Admin\HomepageController::ordenActual();
-        $this->assertSame(['hero', 'about', 'stats', 'features', 'contacto'], $orden);
+        $this->assertSame(['hero', 'carrusel', 'about', 'stats', 'features', 'noticias', 'contacto'], $orden);
     }
 
     public function test_seccion_invalida_responde_404(): void
@@ -180,7 +180,7 @@ class HomepageOrdenTest extends TestCase
         $ordenB = \App\Http\Controllers\Admin\HomepageController::ordenActual();
         app()->forgetInstance('tenant');
 
-        $this->assertSame(['hero', 'stats', 'about', 'features', 'contacto'], $ordenA);
-        $this->assertSame(['hero', 'about', 'stats', 'features', 'contacto'], $ordenB);
+        $this->assertSame(['hero', 'carrusel', 'stats', 'about', 'features', 'noticias', 'contacto'], $ordenA);
+        $this->assertSame(['hero', 'carrusel', 'about', 'stats', 'features', 'noticias', 'contacto'], $ordenB);
     }
 }

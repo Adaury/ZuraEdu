@@ -104,6 +104,12 @@
     <div class="col-lg-7">
         <div class="card-panel">
             <div class="section-title"><i class="bi bi-building me-1"></i>Identidad del Sistema</div>
+            <div class="info-note mb-3">
+                <i class="bi bi-info-circle"></i>
+                Estos mismos campos también se editan desde
+                <a href="{{ route('admin.homepage.edit') }}">Branding / Institución</a> —
+                cambiarlos aquí o allá actualiza el mismo dato.
+            </div>
             <div class="mb-3">
                 <label class="form-label-custom">Nombre Completo del Centro</label>
                 <input type="text" name="system_name" class="form-control form-control-custom"

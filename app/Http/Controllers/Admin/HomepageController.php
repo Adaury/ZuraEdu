@@ -88,6 +88,11 @@ class HomepageController extends Controller
             if ($old) Storage::disk('public')->delete($old);
             $path = $request->file('logo')->store('branding', 'public');
             ConfigInstitucional::set('hp_logo_path', $path);
+            // Sincronizado con el logo del sidebar/portal (Setting.system_logo,
+            // subido desde /admin/sistema) — eran dos logos independientes sin
+            // relación; subirlo desde cualquiera de los dos lugares actualiza
+            // ambos para que no queden desincronizados.
+            \App\Helpers\Setting::set('system_logo', $path);
         }
 
         // Checkboxes de visibilidad: un checkbox desmarcado NO se envía en el

@@ -63,6 +63,7 @@ class CentroAdministracionController extends Controller
         'Página Web' => [
             ['Editor de Página Principal', 'admin.homepage.edit', 'bi-palette', 'gestionar-configuracion'],
             ['Ver Portal Público', 'sitio.show', 'bi-globe', 'gestionar-configuracion'],
+            ['Galería', 'admin.galeria.index', 'bi-images', 'ver-servicios'],
         ],
     ];
 

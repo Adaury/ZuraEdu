@@ -181,6 +181,10 @@ class SistemaController extends Controller
         }
 
         $this->setSetting('system_logo', $path);
+        // Sincronizado con el logo del portal público (ConfigInstitucional.
+        // hp_logo_path, editor Branding/Institución) — eran dos logos
+        // independientes sin relación entre sí.
+        \App\Models\ConfigInstitucional::set('hp_logo_path', $path);
 
         return back()->with('success', 'Logotipo actualizado correctamente.');
     }
@@ -192,6 +196,11 @@ class SistemaController extends Controller
             \Illuminate\Support\Facades\Storage::disk('public')->delete($logo);
         }
         $this->setSetting('system_logo', null);
+        // El archivo físico ya se borró arriba — si hp_logo_path seguía
+        // apuntando al mismo path quedaría roto en el portal público.
+        if (\App\Models\ConfigInstitucional::get('hp_logo_path') === $logo) {
+            \App\Models\ConfigInstitucional::set('hp_logo_path', null);
+        }
         return back()->with('success', 'Logotipo eliminado.');
     }
 

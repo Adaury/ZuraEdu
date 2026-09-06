@@ -284,6 +284,11 @@
                             </div>
                         </div>
                         <div class="form-text mt-1">Logo y badge visibles en la parte superior del sidebar.</div>
+                        <div class="form-text">
+                            Estos 3 campos también se editan desde
+                            <a href="{{ route('admin.sistema.index') }}">Configuración del Sistema</a> —
+                            es el mismo dato en ambos lugares.
+                        </div>
                     </div>
                 </div>
 

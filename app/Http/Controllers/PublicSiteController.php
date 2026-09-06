@@ -44,7 +44,9 @@ class PublicSiteController extends Controller
             'hero_titulo'     => ConfigInstitucional::get('hp_hero_titulo', ''),
             'hero_subtitulo'  => ConfigInstitucional::get('hp_hero_subtitulo', ''),
             'hero_btn_texto'  => ConfigInstitucional::get('hp_hero_btn_texto', ''),
+            'hero_btn_url'    => ConfigInstitucional::get('hp_hero_btn_url', '') ?: route('login'),
             'hero_btn2_texto' => ConfigInstitucional::get('hp_hero_btn2_texto', ''),
+            'hero_btn2_url'   => ConfigInstitucional::get('hp_hero_btn2_url', '') ?: route('inscripcion'),
 
             'about_visible'   => ConfigInstitucional::get('hp_about_visible', '1') == '1',
             'about_titulo'    => ConfigInstitucional::get('hp_about_titulo', ''),

@@ -6,10 +6,10 @@
     @if($config['hero_btn_texto'] || $config['hero_btn2_texto'])
     <div class="actions">
         @if($config['hero_btn_texto'])
-            <a href="{{ route('inscripcion') }}" class="btn btn-light">{{ $config['hero_btn_texto'] }}</a>
+            <a href="{{ $config['hero_btn_url'] }}" class="btn btn-light">{{ $config['hero_btn_texto'] }}</a>
         @endif
         @if($config['hero_btn2_texto'])
-            <a href="#contacto" class="btn btn-outline">{{ $config['hero_btn2_texto'] }}</a>
+            <a href="{{ $config['hero_btn2_url'] }}" class="btn btn-outline">{{ $config['hero_btn2_texto'] }}</a>
         @endif
     </div>
     @endif

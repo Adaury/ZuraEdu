@@ -46,13 +46,23 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label small">Texto Botón 1</label>
-                                <input type="text" name="hp_hero_btn_texto" class="form-control"
+                                <input type="text" name="hp_hero_btn_texto" class="form-control mb-2"
                                     value="{{ old('hp_hero_btn_texto', $config['hp_hero_btn_texto'] ?? '') }}" maxlength="80">
+                                <label class="form-label small text-muted">Destino del Botón 1</label>
+                                <input type="text" name="hp_hero_btn_url" class="form-control form-control-sm"
+                                    value="{{ old('hp_hero_btn_url', $config['hp_hero_btn_url'] ?? '') }}" maxlength="255"
+                                    placeholder="Ej: /login o https://...">
+                                <div class="form-text">Vacío = Iniciar Sesión por defecto.</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small">Texto Botón 2</label>
-                                <input type="text" name="hp_hero_btn2_texto" class="form-control"
+                                <input type="text" name="hp_hero_btn2_texto" class="form-control mb-2"
                                     value="{{ old('hp_hero_btn2_texto', $config['hp_hero_btn2_texto'] ?? '') }}" maxlength="80">
+                                <label class="form-label small text-muted">Destino del Botón 2</label>
+                                <input type="text" name="hp_hero_btn2_url" class="form-control form-control-sm"
+                                    value="{{ old('hp_hero_btn2_url', $config['hp_hero_btn2_url'] ?? '') }}" maxlength="255"
+                                    placeholder="Ej: /inscripcion o https://...">
+                                <div class="form-text">Vacío = Pre-matrícula por defecto.</div>
                             </div>
                         </div>
                     </div>

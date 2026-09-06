@@ -66,7 +66,9 @@ class HomepageController extends Controller
             'hp_hero_titulo'       => 'nullable|string|max:200',
             'hp_hero_subtitulo'    => 'nullable|string|max:500',
             'hp_hero_btn_texto'    => 'nullable|string|max:80',
+            'hp_hero_btn_url'      => 'nullable|string|max:255',
             'hp_hero_btn2_texto'   => 'nullable|string|max:80',
+            'hp_hero_btn2_url'     => 'nullable|string|max:255',
             'hp_about_titulo'      => 'nullable|string|max:200',
             'hp_about_texto'       => 'nullable|string|max:1000',
             'hp_contacto_direccion'=> 'nullable|string|max:200',
@@ -102,7 +104,9 @@ class HomepageController extends Controller
 
         // Save all text fields
         $keys = [
-            'hp_hero_titulo', 'hp_hero_subtitulo', 'hp_hero_btn_texto', 'hp_hero_btn2_texto',
+            'hp_hero_titulo', 'hp_hero_subtitulo',
+            'hp_hero_btn_texto', 'hp_hero_btn_url',
+            'hp_hero_btn2_texto', 'hp_hero_btn2_url',
             'hp_about_titulo', 'hp_about_texto',
             'hp_stat1_numero', 'hp_stat1_label',
             'hp_stat2_numero', 'hp_stat2_label',

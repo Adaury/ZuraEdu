@@ -317,18 +317,122 @@
     @endif
 </div>
 
-{{-- ── Acceso rápido: Asistencia del día ──────────────────────────── --}}
-<a href="{{ route('portal.docente.asistencia-rapida') }}"
-   style="display:flex;align-items:center;gap:.85rem;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:12px;padding:.85rem 1.1rem;color:#fff;text-decoration:none;margin-bottom:1rem;box-shadow:0 3px 10px rgba(217,119,6,.3);">
-    <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.3rem;">
-        <i class="bi bi-lightning-charge-fill"></i>
+{{-- ══════════════════════════════════════════════════════════════════
+     HOY — qué tengo hoy y qué requiere mi atención (todo dato ya
+     calculado en PortalDocenteController::dashboard(), sin páginas
+     nuevas — los enlaces van a rutas ya existentes).
+════════════════════════════════════════════════════════════════════ --}}
+@php
+    $totalPendientesHoy = $asistenciaPendienteHoy + $entregasPendientes + $asignacionesSinNotas->count();
+    $horaActualCmp = now()->format('H:i:s');
+@endphp
+<div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:1.1rem 1.3rem;margin-bottom:1rem;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.9rem;">
+        <div style="font-size:1rem;font-weight:800;color:#1e293b;">
+            <i class="bi bi-calendar-day-fill me-1" style="color:#2563eb;"></i>
+            Hoy, {{ ucfirst($diaHoy) }} {{ now()->format('d/m/Y') }}
+        </div>
+        @if($proximaClase)
+        <span style="background:#eff6ff;color:#1d4ed8;border-radius:20px;padding:.3rem .8rem;font-size:.75rem;font-weight:700;">
+            <i class="bi bi-clock-fill me-1"></i>
+            Próxima: {{ $proximaClase['detalle']->asignacion?->asignatura?->nombre ?? '—' }}
+            · {{ \Carbon\Carbon::parse($proximaClase['franja']->hora_inicio)->format('h:i A') }}
+        </span>
+        @endif
     </div>
-    <div style="flex:1;min-width:0;">
-        <div style="font-size:.92rem;font-weight:800;line-height:1.2;">Asistencia Rápida</div>
-        <div style="font-size:.73rem;opacity:.88;margin-top:.1rem;">Toma la asistencia de todas tus clases de hoy en un solo lugar</div>
+
+    {{-- Horario de hoy --}}
+    @if($horarioHoy->isNotEmpty())
+    <div style="display:flex;gap:.6rem;overflow-x:auto;padding-bottom:.4rem;margin-bottom:1rem;">
+        @foreach($horarioHoy as $item)
+        @php
+            $hIni = \Carbon\Carbon::parse($item['franja']->hora_inicio)->format('H:i:s');
+            $hFin = \Carbon\Carbon::parse($item['franja']->hora_fin)->format('H:i:s');
+            $esActual = $hIni <= $horaActualCmp && $hFin >= $horaActualCmp;
+            $asig = $item['detalle']->asignacion;
+        @endphp
+        <div style="flex-shrink:0;min-width:160px;border-radius:10px;padding:.6rem .8rem;background:{{ $esActual ? '#dbeafe' : '#f8fafc' }};border:1px solid {{ $esActual ? '#93c5fd' : '#e2e8f0' }};">
+            <div style="font-size:.68rem;color:#64748b;font-weight:700;">
+                {{ \Carbon\Carbon::parse($item['franja']->hora_inicio)->format('h:i A') }}
+                @if($esActual)<span style="color:#1d4ed8;">· EN CURSO</span>@endif
+            </div>
+            <div style="font-size:.85rem;font-weight:700;color:#1e293b;">{{ $asig?->asignatura?->nombre ?? '—' }}</div>
+            <div style="font-size:.72rem;color:#64748b;">
+                {{ $asig?->grupo?->nombre_completo ?? '' }}
+                @if($item['detalle']->aula) · {{ $item['detalle']->aula->nombre }} @endif
+            </div>
+        </div>
+        @endforeach
     </div>
-    <i class="bi bi-arrow-right-circle-fill" style="font-size:1.4rem;opacity:.85;flex-shrink:0;"></i>
-</a>
+    @else
+    <div style="text-align:center;color:#94a3b8;padding:.75rem 0 1rem;font-size:.85rem;">
+        <i class="bi bi-calendar-x d-block mb-1" style="font-size:1.5rem;"></i>
+        No tienes clases programadas hoy.
+    </div>
+    @endif
+
+    {{-- Requiere tu atención --}}
+    <div style="border-top:1px solid #f1f5f9;padding-top:.9rem;">
+        <div style="font-size:.75rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.6rem;">
+            @if($totalPendientesHoy > 0)
+                <i class="bi bi-exclamation-triangle-fill me-1" style="color:#d97706;"></i>Requiere tu atención
+            @else
+                <i class="bi bi-check-circle-fill me-1" style="color:#16a34a;"></i>Estás al día
+            @endif
+        </div>
+
+        @if($totalPendientesHoy > 0)
+        <div style="display:flex;flex-direction:column;gap:.5rem;">
+            @if($asistenciaPendienteHoy > 0)
+            <a href="{{ route('portal.docente.asistencia-rapida') }}" style="display:flex;align-items:center;justify-content:space-between;background:#fef3c7;border-radius:10px;padding:.6rem .9rem;text-decoration:none;color:#92400e;">
+                <span style="font-size:.83rem;font-weight:600;">
+                    <i class="bi bi-clipboard-check me-2"></i>{{ $asistenciaPendienteHoy }} {{ Str::plural('grupo', $asistenciaPendienteHoy) }} sin asistencia hoy
+                </span>
+                <i class="bi bi-arrow-right"></i>
+            </a>
+            @endif
+            @if($entregasPendientes > 0)
+            <a href="{{ route('portal.docente.classroom.index') }}" style="display:flex;align-items:center;justify-content:space-between;background:#dbeafe;border-radius:10px;padding:.6rem .9rem;text-decoration:none;color:#1e40af;">
+                <span style="font-size:.83rem;font-weight:600;">
+                    <i class="bi bi-inbox-fill me-2"></i>{{ $entregasPendientes }} {{ Str::plural('entrega', $entregasPendientes) }} sin revisar en ZuraClass
+                </span>
+                <i class="bi bi-arrow-right"></i>
+            </a>
+            @endif
+            @if($asignacionesSinNotas->isNotEmpty())
+            <div style="background:#fee2e2;border-radius:10px;padding:.6rem .9rem;color:#991b1b;">
+                <span style="font-size:.83rem;font-weight:600;">
+                    <i class="bi bi-journal-x me-2"></i>{{ $asignacionesSinNotas->count() }} {{ Str::plural('asignación', $asignacionesSinNotas->count()) }} con estudiantes sin nota
+                </span>
+            </div>
+            @endif
+        </div>
+        @else
+        <div style="color:#16a34a;font-size:.83rem;">Sin pendientes urgentes para hoy.</div>
+        @endif
+    </div>
+
+    {{-- Planificación de hoy — solo PlanifUnidad vigente, sin inferir fecha para otras líneas --}}
+    @if($asignacionesHoy->isNotEmpty())
+    <div style="border-top:1px solid #f1f5f9;margin-top:.9rem;padding-top:.9rem;">
+        <div style="font-size:.75rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.6rem;">
+            <i class="bi bi-journal-bookmark-fill me-1" style="color:#7c3aed;"></i>Planificación de hoy
+        </div>
+        @foreach($asignacionesHoy as $asigHoy)
+        @php $unidadHoy = $planificacionHoy->get($asigHoy->id); @endphp
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.4rem 0;border-bottom:1px solid #f8fafc;font-size:.83rem;">
+            <span style="color:#475569;">{{ $asigHoy->asignatura->nombre ?? '—' }}</span>
+            @if($unidadHoy)
+                <span style="color:#1e293b;font-weight:600;text-align:right;">{{ $unidadHoy->titulo }}</span>
+            @else
+                <span style="color:#94a3b8;font-style:italic;">Sin planificación registrada</span>
+            @endif
+        </div>
+        @endforeach
+    </div>
+    @endif
+</div>
 
 {{-- ── Stats ────────────────────────────────────────────────────────── --}}
 <div class="prt-stats doc-stats" style="grid-template-columns:repeat(3,1fr);">

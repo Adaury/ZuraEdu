@@ -117,6 +117,74 @@ $asig  = $claseVirtual->asignacion;
         </div>
     </div>
 
+    {{-- ══ Planificación de esta asignatura (roadmap: conexión Planificación → ZuraClass) ══ --}}
+    <div class="card border-0 shadow-sm mb-4" style="border-radius:14px;">
+        <div class="card-body">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <i class="bi bi-diagram-3-fill" style="color:{{ $color }};"></i>
+                <h6 class="fw-bold mb-0">Planificación de esta asignatura</h6>
+            </div>
+
+            <div class="row g-3">
+                {{-- Unidad activa hoy (PlanifUnidad) --}}
+                <div class="col-md-4">
+                    <div class="p-3 h-100" style="background:#F8FAFC;border-radius:10px;border:1px solid #E5E7EB;">
+                        <div class="text-muted text-uppercase fw-semibold mb-1" style="font-size:.68rem;letter-spacing:.03em;">Unidad activa hoy</div>
+                        @if($planificacion['unidad_hoy'])
+                            <div class="fw-semibold" style="font-size:.85rem;">{{ $planificacion['unidad_hoy']->titulo }}</div>
+                            <div class="text-muted" style="font-size:.75rem;">
+                                {{ \Carbon\Carbon::parse($planificacion['unidad_hoy']->fecha_inicio)->format('d/m/Y') }}
+                                –
+                                {{ \Carbon\Carbon::parse($planificacion['unidad_hoy']->fecha_fin)->format('d/m/Y') }}
+                            </div>
+                            <span class="badge mt-1" style="background:#DCFCE7;color:#15803d;font-weight:600;font-size:.68rem;">Disponible</span>
+                        @else
+                            <div class="text-muted" style="font-size:.8rem;">Sin planificación registrada</div>
+                            <span class="badge mt-1" style="background:#F1F5F9;color:#64748b;font-weight:600;font-size:.68rem;">No disponible</span>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Plan de Clase --}}
+                <div class="col-md-4">
+                    <a href="{{ route('portal.docente.planes-clase.index', $asig) }}" class="text-decoration-none">
+                        <div class="p-3 h-100" style="background:#F8FAFC;border-radius:10px;border:1px solid #E5E7EB;">
+                            <div class="text-muted text-uppercase fw-semibold mb-1" style="font-size:.68rem;letter-spacing:.03em;">Plan de Clase</div>
+                            @if($planificacion['plan_clase_count'] > 0)
+                                <div class="fw-semibold text-dark" style="font-size:.85rem;">{{ $planificacion['plan_clase_count'] }} {{ Str::plural('registro', $planificacion['plan_clase_count']) }}</div>
+                                <span class="badge mt-1" style="background:#DCFCE7;color:#15803d;font-weight:600;font-size:.68rem;">Disponible</span>
+                            @else
+                                <div class="text-muted" style="font-size:.8rem;">Ninguno registrado</div>
+                                <span class="badge mt-1" style="background:#F1F5F9;color:#64748b;font-weight:600;font-size:.68rem;">No disponible</span>
+                            @endif
+                        </div>
+                    </a>
+                </div>
+
+                {{-- Planificación Técnica --}}
+                <div class="col-md-4">
+                    <a href="{{ route('portal.docente.planificacion.index', $asig) }}" class="text-decoration-none">
+                        <div class="p-3 h-100" style="background:#F8FAFC;border-radius:10px;border:1px solid #E5E7EB;">
+                            <div class="text-muted text-uppercase fw-semibold mb-1" style="font-size:.68rem;letter-spacing:.03em;">Planificación Técnica</div>
+                            @if($planificacion['planificacion_count'] > 0)
+                                <div class="fw-semibold text-dark" style="font-size:.85rem;">{{ $planificacion['planificacion_count'] }} {{ Str::plural('registro', $planificacion['planificacion_count']) }}</div>
+                                <span class="badge mt-1" style="background:#DCFCE7;color:#15803d;font-weight:600;font-size:.68rem;">Disponible</span>
+                            @else
+                                <div class="text-muted" style="font-size:.8rem;">Ninguna registrada</div>
+                                <span class="badge mt-1" style="background:#F1F5F9;color:#64748b;font-weight:600;font-size:.68rem;">No disponible</span>
+                            @endif
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="mt-3 d-flex align-items-center gap-2 text-muted" style="font-size:.75rem;">
+                <i class="bi bi-info-circle"></i>
+                Esta planificación sirve como referencia para preparar tu clase.
+            </div>
+        </div>
+    </div>
+
     {{-- Feed de materiales --}}
     @forelse($materiales as $material)
     @php

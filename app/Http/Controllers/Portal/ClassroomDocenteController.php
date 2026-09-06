@@ -16,6 +16,9 @@ use App\Models\Docente;
 use App\Models\EntregaClassroom;
 use App\Models\MaterialClase;
 use App\Models\Periodo;
+use App\Models\PlanClase;
+use App\Models\Planificacion;
+use App\Models\PlanifUnidad;
 use App\Models\SchoolYear;
 use App\Models\ZcRecurso;
 use App\Models\ZcRubric;
@@ -75,7 +78,30 @@ class ClassroomDocenteController extends Controller
         $matriculas = $claseVirtual->estudiantesMatriculados()->with('estudiante')->get();
         $recursos   = $claseVirtual->recursos()->get();
 
-        return view('portal.classroom.docente.show', compact('claseVirtual', 'materiales', 'matriculas', 'recursos'));
+        $planificacion = $this->planificacionDeLaAsignacion($claseVirtual->asignacion_id);
+
+        return view('portal.classroom.docente.show', compact('claseVirtual', 'materiales', 'matriculas', 'recursos', 'planificacion'));
+    }
+
+    /**
+     * Conexión de solo lectura Planificación → ZuraClass (roadmap punto 7):
+     * unidad de PlanifUnidad activa hoy (mismo query que Vista Hoy Docente) y
+     * conteos de PlanClase/Planificación técnica de la asignación. No infiere
+     * fecha para PlanClase/Planificación técnica porque sus fechas son
+     * nullable y no hay mapeo confiable — solo cuenta lo que existe.
+     */
+    private function planificacionDeLaAsignacion(int $asignacionId): array
+    {
+        $unidadHoy = PlanifUnidad::whereHas('planifAnual', fn($q) => $q->where('asignacion_id', $asignacionId))
+            ->whereDate('fecha_inicio', '<=', today())
+            ->whereDate('fecha_fin', '>=', today())
+            ->first();
+
+        return [
+            'unidad_hoy'         => $unidadHoy,
+            'plan_clase_count'   => PlanClase::where('asignacion_id', $asignacionId)->count(),
+            'planificacion_count'=> Planificacion::where('asignacion_id', $asignacionId)->count(),
+        ];
     }
 
     // ── crearMaterial ─────────────────────────────────────────────────────

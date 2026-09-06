@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ConfigInstitucional;
 use App\Models\Tenant;
+use App\Models\TenantFeature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -36,6 +37,9 @@ class HomepageVisibilidadTest extends TestCase
             'dominio'            => strtolower(preg_replace('/[^a-z0-9]/i', '', $nombreTenant)) . random_int(10000, 99999),
             'estado'             => 'activo', 'tipo' => 'privado', 'plan' => 'free',
         ]);
+        // Fase 2: /sitio ahora exige el feature modo_publico activo — estos
+        // tests verifican visibilidad de contenido, no el gate en sí.
+        TenantFeature::create(['tenant_id' => $tenant->id, 'feature' => 'modo_publico', 'activo' => true]);
 
         $user = User::factory()->create(['activo' => true, 'tenant_id' => $tenant->id]);
         $user->assignRole('Administrador');

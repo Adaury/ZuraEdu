@@ -248,6 +248,7 @@ Route::middleware('can:ingresar-calificaciones')->group(function () {
 Route::middleware('can:gestionar-configuracion')->group(function () {
     Route::get('homepage',  [HomepageController::class, 'edit'])->name('homepage.edit');
     Route::post('homepage', [HomepageController::class, 'update'])->name('homepage.update');
+    Route::post('homepage/orden/{seccion}/{direccion}', [HomepageController::class, 'moverOrden'])->name('homepage.orden');
 });
 
 // ── Planificaciones Área Técnica ──────────────────────────────────────────

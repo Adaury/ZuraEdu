@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ConfigInstitucional;
 use App\Models\Tenant;
+use App\Models\TenantFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -24,12 +25,20 @@ class PublicSiteTest extends TestCase
 
     private function crearTenant(string $nombre): Tenant
     {
-        return Tenant::create([
+        $tenant = Tenant::create([
             'nombre_institucion' => $nombre,
             'dominio'            => strtolower(preg_replace('/[^a-z0-9]/i', '', $nombre)) . random_int(10000, 99999),
             'estado'             => 'activo', 'tipo' => 'privado', 'plan' => 'free',
             'color_primario' => '#123456', 'color_secundario' => '#654321',
         ]);
+
+        // Fase 2: /sitio ahora exige el feature modo_publico activo. Estos
+        // tests verifican el CONTENIDO renderizado, no el gate en sí (que
+        // tiene su propio archivo de tests) — se activa aquí para no
+        // duplicar esa cobertura en cada test de contenido.
+        TenantFeature::create(['tenant_id' => $tenant->id, 'feature' => 'modo_publico', 'activo' => true]);
+
+        return $tenant;
     }
 
     private function urlSitio(Tenant $tenant): string

@@ -103,9 +103,9 @@
                     <i class="bi bi-mortarboard-fill me-1"></i>Bachillerato Técnico
                 </button>
             </form>
-            <a href="{{ $tenant->url }}" target="_blank"
+            <a href="{{ $tenant->url }}/sitio" target="_blank"
                class="btn btn-sm btn-outline-secondary" style="border-radius:8px;">
-                <i class="bi bi-globe me-1"></i>Ver página pública
+                <i class="bi bi-globe me-1"></i>Ver portal público
             </a>
         </div>
     </div>

@@ -198,6 +198,48 @@
             {{-- Right Column --}}
             <div class="col-lg-4">
 
+                {{-- Orden de secciones en el sitio público --}}
+                @php
+                    $etiquetasOrden = [
+                        'hero'     => ['Hero (Portada)', 'bi-display'],
+                        'about'    => ['Sobre la Institución', 'bi-building'],
+                        'stats'    => ['Estadísticas', 'bi-bar-chart'],
+                        'features' => ['Características', 'bi-stars'],
+                        'contacto' => ['Contacto y Redes', 'bi-geo-alt'],
+                    ];
+                @endphp
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header fw-semibold"><i class="bi bi-list-ol me-1"></i>Orden en el Sitio Público</div>
+                    <div class="card-body p-2">
+                        <div class="list-group list-group-flush">
+                            @foreach($orden as $i => $clave)
+                            <div class="list-group-item d-flex align-items-center justify-content-between px-2 py-2">
+                                <span class="small">
+                                    <span class="text-muted me-1">{{ $i + 1 }}.</span>
+                                    <i class="bi {{ $etiquetasOrden[$clave][1] ?? 'bi-square' }} me-1"></i>
+                                    {{ $etiquetasOrden[$clave][0] ?? $clave }}
+                                </span>
+                                <div class="d-flex gap-1">
+                                    <form method="POST" action="{{ route('admin.homepage.orden', [$clave, 'arriba']) }}">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary py-0 px-2" {{ $i === 0 ? 'disabled' : '' }} title="Subir">
+                                            <i class="bi bi-arrow-up"></i>
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.homepage.orden', [$clave, 'abajo']) }}">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary py-0 px-2" {{ $i === count($orden) - 1 ? 'disabled' : '' }} title="Bajar">
+                                            <i class="bi bi-arrow-down"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                        <div class="form-text px-2 pt-2">Define en qué orden aparecen las secciones en el sitio público.</div>
+                    </div>
+                </div>
+
                 {{-- Institución --}}
                 <div class="card shadow-sm mb-4">
                     <div class="card-header fw-semibold"><i class="bi bi-mortarboard me-1"></i>Institución</div>

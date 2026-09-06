@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Admin\HomepageController;
 use App\Models\ConfigInstitucional;
 use Illuminate\Support\Facades\Storage;
 
@@ -18,6 +19,15 @@ class PublicSiteController extends Controller
     public function show()
     {
         $tenant = app('tenant');
+
+        // Feature flag "modo_publico" (SuperAdmin\TenantController::ALL_FEATURES)
+        // — existía sin usar antes de esta fase. Si el centro no lo tiene
+        // activo, se muestra una página informativa en vez del contenido.
+        if (! $tenant->can('modo_publico')) {
+            return view('public.sitio-no-disponible', compact('tenant'));
+        }
+
+        $orden = HomepageController::ordenActual();
 
         $stats = collect(range(1, 4))
             ->map(fn ($i) => [
@@ -61,6 +71,6 @@ class PublicSiteController extends Controller
             'nombre'           => ConfigInstitucional::get('nombre_institucion', '') ?: $tenant->nombre_institucion,
         ];
 
-        return view('public.sitio', compact('tenant', 'config'));
+        return view('public.sitio', compact('tenant', 'config', 'orden'));
     }
 }

@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Storage;
 
 class HomepageController extends Controller
 {
+    /** Claves de sección ordenables en /sitio, en el orden por defecto. */
+    public const SECCIONES_ORDENABLES = ['hero', 'about', 'stats', 'features', 'contacto'];
+
     private array $sections = [
         'hero'     => ['titulo' => 'Sección Hero (Portada)'],
         'about'    => ['titulo' => 'Sobre la Institución'],
@@ -21,7 +24,40 @@ class HomepageController extends Controller
     public function edit()
     {
         $config = ConfigInstitucional::all()->pluck('valor', 'clave')->toArray();
-        return view('admin.homepage.edit', compact('config'));
+        $orden  = $this->ordenActual();
+        return view('admin.homepage.edit', compact('config', 'orden'));
+    }
+
+    /**
+     * Orden guardado en hp_orden (string CSV, ej. "hero,about,stats,features,contacto").
+     * Se sanea contra SECCIONES_ORDENABLES por si quedó una clave obsoleta:
+     * las válidas van primero en el orden guardado, cualquier sección nueva
+     * que falte se agrega al final.
+     */
+    public static function ordenActual(): array
+    {
+        $guardado = array_filter(explode(',', ConfigInstitucional::get('hp_orden', '') ?: ''));
+        $validas  = array_values(array_intersect($guardado, self::SECCIONES_ORDENABLES));
+        $faltantes = array_values(array_diff(self::SECCIONES_ORDENABLES, $validas));
+
+        return array_merge($validas, $faltantes) ?: self::SECCIONES_ORDENABLES;
+    }
+
+    public function moverOrden(Request $request, string $seccion, string $direccion)
+    {
+        abort_unless(in_array($seccion, self::SECCIONES_ORDENABLES), 404);
+        abort_unless(in_array($direccion, ['arriba', 'abajo']), 404);
+
+        $orden = $this->ordenActual();
+        $pos   = array_search($seccion, $orden);
+        $vecino = $direccion === 'arriba' ? $pos - 1 : $pos + 1;
+
+        if ($vecino >= 0 && $vecino < count($orden)) {
+            [$orden[$pos], $orden[$vecino]] = [$orden[$vecino], $orden[$pos]];
+            ConfigInstitucional::set('hp_orden', implode(',', $orden));
+        }
+
+        return redirect()->route('admin.homepage.edit');
     }
 
     public function update(Request $request)

@@ -27,11 +27,16 @@ use App\Models\Matricula;
 use App\Models\PreMatricula;
 use App\Models\Reunion;
 use App\Models\RutaTransporte;
+use App\Services\KpiDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
+    public function __construct(private readonly KpiDashboardService $kpiService)
+    {
+    }
+
     public function index()
     {
         $schoolYear = SchoolYear::actual();
@@ -233,6 +238,23 @@ class DashboardController extends Controller
                                             ->latest()->take(5)->get(),
                 ];
             });
+        }
+
+        // ── KPIs institucionales fusionados desde /admin/kpis (solo admin —
+        // Administrador y Director, que comparten este mismo bucket) ────────
+        // Roadmap de producto (docs/ZURAEDU_IMPLEMENTATION_ROADMAP.md, punto
+        // 3): mismo servicio que usa KpiController, sin duplicar consultas.
+        // Se omite kpiPagosMes() a propósito — ya cubierto por $statsPagos
+        // más abajo, con los mismos números (cobrado/pendiente/vencido).
+        $kpisHoy = null;
+        if (!$isDocente && $rolDashboard === 'admin' && $schoolYear) {
+            $kpisHoy = [
+                'asistencia_hoy'        => $this->kpiService->kpiAsistenciaHoy(),
+                'notas_pendientes'      => $this->kpiService->kpiNotasPendientes($syId),
+                'alertas_activas'       => $this->kpiService->kpiAlertasActivas($syId),
+                'situacion_estudiantes' => $this->kpiService->kpiSituacionEstudiantes($syId),
+                'grupos_ranking'        => $this->kpiService->kpiGruposRanking($syId),
+            ];
         }
 
         // Estadísticas de planificación y observaciones (solo admin/director/coordinador)
@@ -499,6 +521,7 @@ class DashboardController extends Controller
             'statsRegistroAcad',
             'statsBiblioteca',
             'statsCoord',
+            'kpisHoy',
         ));
     }
 

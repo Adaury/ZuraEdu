@@ -346,6 +346,128 @@
 @endif
 @endif
 
+{{-- ══════════════════════════════════════════════════════════════════
+     KPIs institucionales (fusionados desde /admin/kpis — Roadmap de
+     producto, punto 3). Solo Administrador/Director (rolDashboard
+     'admin'). Se omite pagos_mes a propósito: ya está cubierto por el
+     widget de Pagos y Colegiaturas de abajo, con los mismos números.
+════════════════════════════════════════════════════════════════════ --}}
+@if($kpisHoy)
+<div class="card border-0 mb-4" style="border-radius:20px;box-shadow:0 4px 24px rgba(0,0,0,.06);overflow:hidden;">
+    <div class="card-header border-0 py-3 px-4 d-flex align-items-center gap-2"
+         style="background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;">
+        <i class="bi bi-speedometer2" style="font-size:1.1rem;"></i>
+        <span style="font-weight:700;">Hoy en el Centro</span>
+        <a href="{{ route('admin.kpis.index') }}" class="ms-auto"
+           style="font-size:.75rem;color:rgba(255,255,255,.9);text-decoration:none;display:flex;align-items:center;gap:.3rem;">
+            Ver detalle <i class="bi bi-arrow-right"></i>
+        </a>
+    </div>
+    <div class="card-body py-3 px-4">
+        <div class="row g-4">
+            {{-- Asistencia de hoy --}}
+            <div class="col-md-4">
+                <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin-bottom:.5rem;">
+                    <i class="bi bi-person-check-fill me-1"></i>Asistencia de Hoy
+                </div>
+                @php $ah = $kpisHoy['asistencia_hoy']; @endphp
+                @if($ah['total'] > 0)
+                <div class="row g-2 text-center">
+                    <div class="col-6"><div style="font-weight:800;color:#16a34a;">{{ $ah['presentes'] }}</div><div class="text-muted" style="font-size:.68rem;">Presentes</div></div>
+                    <div class="col-6"><div style="font-weight:800;color:#dc2626;">{{ $ah['ausentes'] }}</div><div class="text-muted" style="font-size:.68rem;">Ausentes</div></div>
+                </div>
+                <div class="text-center mt-2">
+                    <span class="badge" style="background:#dbeafe;color:#1d4ed8;font-size:.75rem;">{{ $ah['pct_asistencia'] }}% asistencia</span>
+                </div>
+                @else
+                <div class="text-muted text-center" style="font-size:.82rem;">Sin registros de asistencia hoy.</div>
+                @endif
+            </div>
+
+            {{-- Notas pendientes --}}
+            <div class="col-md-4">
+                <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin-bottom:.5rem;">
+                    <i class="bi bi-journal-x me-1"></i>Notas Pendientes
+                </div>
+                @php $np = $kpisHoy['notas_pendientes']; @endphp
+                <div class="text-center">
+                    <div style="font-size:1.6rem;font-weight:900;color:{{ $np['total'] > 0 ? '#d97706' : '#16a34a' }};">{{ $np['total'] }}</div>
+                    <div class="text-muted" style="font-size:.75rem;">
+                        asignaciones sin notas @if(!empty($np['periodo'])) · {{ $np['periodo'] }} @endif
+                    </div>
+                </div>
+            </div>
+
+            {{-- Alertas activas --}}
+            <div class="col-md-4">
+                <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin-bottom:.5rem;">
+                    <i class="bi bi-bell-fill me-1"></i>Alertas Activas
+                </div>
+                @php $aa = $kpisHoy['alertas_activas']; @endphp
+                <div class="text-center">
+                    <div style="font-size:1.6rem;font-weight:900;color:{{ $aa['total'] > 0 ? '#dc2626' : '#16a34a' }};">{{ $aa['total'] }}</div>
+                    <div class="text-muted" style="font-size:.75rem;">
+                        @if($aa['total'] > 0)
+                            {{ collect($aa['por_tipo'])->pluck('label')->take(2)->implode(' · ') }}
+                        @else
+                            Sin alertas pendientes
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Rendimiento institucional (situación + ranking de grupos) --}}
+<div class="card border-0 mb-4" style="border-radius:20px;box-shadow:0 4px 24px rgba(0,0,0,.06);overflow:hidden;">
+    <div class="card-header border-0 py-3 px-4 d-flex align-items-center gap-2"
+         style="background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff;">
+        <i class="bi bi-bar-chart-fill" style="font-size:1.1rem;"></i>
+        <span style="font-weight:700;">Rendimiento Institucional</span>
+        <a href="{{ route('admin.kpis.index') }}" class="ms-auto"
+           style="font-size:.75rem;color:rgba(255,255,255,.9);text-decoration:none;display:flex;align-items:center;gap:.3rem;">
+            Ver detalle <i class="bi bi-arrow-right"></i>
+        </a>
+    </div>
+    <div class="card-body py-3 px-4">
+        <div class="row g-4">
+            {{-- Situación de estudiantes --}}
+            <div class="col-md-5">
+                @php $se = $kpisHoy['situacion_estudiantes']; @endphp
+                @if($se['total'] > 0)
+                <div class="row g-2 text-center">
+                    <div class="col-4"><div style="font-weight:800;color:#16a34a;">{{ $se['aprobados'] }}</div><div class="text-muted" style="font-size:.68rem;">Aprobados</div></div>
+                    <div class="col-4"><div style="font-weight:800;color:#dc2626;">{{ $se['reprobados'] }}</div><div class="text-muted" style="font-size:.68rem;">Reprobados</div></div>
+                    <div class="col-4"><div style="font-weight:800;color:#6b7280;">{{ $se['sin_nota'] }}</div><div class="text-muted" style="font-size:.68rem;">Sin nota</div></div>
+                </div>
+                @else
+                <div class="text-muted text-center" style="font-size:.82rem;">Sin datos de situación académica todavía.</div>
+                @endif
+            </div>
+
+            {{-- Ranking de grupos --}}
+            <div class="col-md-7">
+                @php $gr = $kpisHoy['grupos_ranking']; @endphp
+                @if(!empty($gr['top']))
+                <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin-bottom:.4rem;">
+                    Mejor promedio
+                </div>
+                @foreach(array_slice($gr['top'], 0, 3) as $g)
+                <div class="d-flex justify-content-between" style="font-size:.83rem;padding:.2rem 0;">
+                    <span>{{ $g['nombre'] }}</span>
+                    <strong style="color:#15803d;">{{ $g['promedio'] }}</strong>
+                </div>
+                @endforeach
+                @else
+                <div class="text-muted" style="font-size:.82rem;">Sin ranking disponible todavía.</div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 {{-- ── Widget: Pagos y Colegiaturas ───────────────────────────────── --}}
 @if(!empty($statsPagos))
 <div class="card border-0 mb-4" style="border-radius:20px;box-shadow:0 4px 24px rgba(0,0,0,.06);overflow:hidden;">

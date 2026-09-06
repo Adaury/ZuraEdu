@@ -99,6 +99,26 @@
                 </div>
             </div>
         </div>
+
+        {{-- Usuario Administrador --}}
+        <div class="card border-0 shadow-sm mb-3" style="border-radius:16px;">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3" style="color:#6366f1;"><i class="bi bi-person-badge me-2"></i>Usuario Administrador</h6>
+                <p class="text-muted small mb-3">Se creará automáticamente con una contraseña generada — la verás una sola vez después de crear la institución, para enviársela al centro.</p>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Nombre Completo <span class="text-danger">*</span></label>
+                        <input type="text" name="nombre_admin" class="form-control @error('nombre_admin') is-invalid @enderror" value="{{ old('nombre_admin') }}" required>
+                        @error('nombre_admin')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Correo (login) <span class="text-danger">*</span></label>
+                        <input type="email" name="email_admin" class="form-control @error('email_admin') is-invalid @enderror" value="{{ old('email_admin') }}" required>
+                        @error('email_admin')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     {{-- Features --}}

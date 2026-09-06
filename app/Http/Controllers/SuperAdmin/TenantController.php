@@ -97,9 +97,11 @@ class TenantController extends Controller
             'max_estudiantes'       => 'required|integer|min:1',
             'max_docentes'          => 'required|integer|min:1',
             'features'              => 'nullable|array',
+            'nombre_admin'          => 'required|string|max:150',
+            'email_admin'           => 'required|email|max:200|unique:users,email',
         ]);
 
-        $tenant = Tenant::create($data);
+        $tenant = Tenant::create(collect($data)->except(['nombre_admin', 'email_admin'])->all());
 
         // Guardar features seleccionados
         $selectedFeatures = $request->input('features', []);
@@ -111,8 +113,42 @@ class TenantController extends Controller
             ]);
         }
 
+        // Usuario Administrador — sin esto la institución no tiene forma de
+        // entrar a su propio panel. La contraseña se genera aquí (no la
+        // define el SuperAdmin) y se muestra una sola vez en la página
+        // siguiente para que se le envíe a la institución; must_change_password
+        // obliga a definir una propia en el primer inicio de sesión.
+        $passwordGenerada = \Illuminate\Support\Str::password(14);
+
+        $adminUser = new \App\Models\User([
+            'name'                 => $data['nombre_admin'],
+            'email'                => $data['email_admin'],
+            'password'             => bcrypt($passwordGenerada),
+            'activo'               => true,
+            'pendiente_aprobacion' => false,
+            'must_change_password' => true,
+        ]);
+        $adminUser->tenant_id = $tenant->id;
+        $adminUser->save();
+        $adminUser->assignRole(\Spatie\Permission\Models\Role::firstOrCreate(
+            ['name' => 'Administrador', 'guard_name' => 'web']
+        ));
+
+        try {
+            ActivityLog::registrar(
+                'tenant_crear',
+                Tenant::class,
+                $tenant->id,
+                "SuperAdmin creó la institución «{$tenant->nombre_institucion}» con administrador {$adminUser->email}."
+            );
+        } catch (\Exception $e) {}
+
         return redirect()->route('superadmin.tenants.show', $tenant)
-            ->with('success', "Institución «{$tenant->nombre_institucion}» creada correctamente.");
+            ->with('success', "Institución «{$tenant->nombre_institucion}» creada correctamente.")
+            ->with('credenciales_admin', [
+                'email'    => $adminUser->email,
+                'password' => $passwordGenerada,
+            ]);
     }
 
     public function show(Tenant $tenant)

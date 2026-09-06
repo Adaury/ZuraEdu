@@ -118,6 +118,23 @@
 </div>
 @endif
 
+@if(session('credenciales_admin'))
+@php $cred = session('credenciales_admin'); @endphp
+<div class="alert alert-warning border-0 shadow-sm" role="alert" style="border-radius:14px;">
+    <div class="d-flex align-items-start gap-2">
+        <i class="bi bi-key-fill mt-1"></i>
+        <div>
+            <strong>Credenciales del administrador — se muestran una sola vez.</strong>
+            <p class="mb-2 small">Envíaselas a la institución ahora; no podrás volver a ver esta contraseña después.</p>
+            <div class="d-flex flex-wrap gap-3">
+                <span><strong>Correo:</strong> <code>{{ $cred['email'] }}</code></span>
+                <span><strong>Contraseña:</strong> <code>{{ $cred['password'] }}</code></span>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 {{-- Stats de uso --}}
 <div class="row g-3 mb-4">
     @foreach([

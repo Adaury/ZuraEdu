@@ -736,9 +736,16 @@
 @php
 $sysAbbr = \App\Helpers\Setting::get('system_abbr', 'SGE');
 $sysName = \App\Helpers\Setting::get('system_name', config('app.name','SGE'));
+$sysLogo = \App\Helpers\Setting::get('system_logo');
 @endphp
 <nav class="prt-topbar">
-    <a href="{{ route('admin.dashboard') }}" class="prt-logo" style="background:rgba(255,255,255,.18);font-size:.78rem;">{{ $sysAbbr }}</a>
+    <a href="{{ route('admin.dashboard') }}" class="prt-logo" style="background:rgba(255,255,255,.18);font-size:.78rem;">
+        @if($sysLogo)
+            <img src="{{ Storage::url($sysLogo) }}" alt="{{ $sysAbbr }}" style="width:100%;height:100%;object-fit:contain;border-radius:9px;">
+        @else
+            {{ $sysAbbr }}
+        @endif
+    </a>
     <div>
         <div class="prt-brand">@yield('portal-name', 'Portal')</div>
         <div class="prt-brand-sub">{{ $sysName }}</div>

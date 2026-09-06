@@ -95,6 +95,63 @@ class PortalPadreController extends Controller
                 ->keyBy('matricula_id')
             : collect();
 
+        // ── Bloque "Hoy" (Roadmap de producto, docs/ZURAEDU_ROLE_EXPERIENCE.md) —
+        // Carnet+ de hoy, tareas pendientes y próximo pago, por hijo. Todo en
+        // consultas en bloque para TODOS los hijos a la vez, mismo patrón que
+        // el resto de este método (sin N+1).
+
+        // Carnet+ — último evento de hoy por hijo
+        $userIdsHijos = $hijosBase->pluck('user_id')->filter()->unique();
+        $carnetsPorUserId = $userIdsHijos->isNotEmpty()
+            ? \App\Models\CarnetIdentidad::whereIn('user_id', $userIdsHijos)
+                ->where('tipo', 'estudiante')
+                ->get()->keyBy('user_id')
+            : collect();
+        $carnetIds = $carnetsPorUserId->pluck('id');
+        $accesosHoyPorCarnet = $carnetIds->isNotEmpty()
+            ? \App\Models\CarnetAcceso::whereIn('carnet_identidad_id', $carnetIds)
+                ->hoy()
+                ->orderByDesc('created_at')
+                ->get()
+                ->groupBy('carnet_identidad_id')
+            : collect();
+
+        // Tareas pendientes — Tarea activa, no vencida, sin EntregaTarea del
+        // estudiante todavía (EntregaTarea solo se crea al entregar, nunca
+        // por adelantado — confirmado en AgendaDocenteController::store()).
+        $grupoIdsHijos = $hijosBase->flatMap(fn($e) => $e->matriculas->pluck('grupo_id'))->filter()->unique()->values();
+        $asignacionesPorGrupo = $grupoIdsHijos->isNotEmpty()
+            ? Asignacion::whereIn('grupo_id', $grupoIdsHijos)
+                ->where('activo', true)
+                ->when($syId, fn($q) => $q->where('school_year_id', $syId))
+                ->get()
+                ->groupBy('grupo_id')
+            : collect();
+        $todasAsignacionIds = $asignacionesPorGrupo->flatten(1)->pluck('id');
+        $tareasPorAsignacion = $todasAsignacionIds->isNotEmpty()
+            ? \App\Models\Tarea::whereIn('asignacion_id', $todasAsignacionIds)
+                ->where('activo', true)
+                ->where('fecha_limite', '>=', today())
+                ->get()
+                ->groupBy('asignacion_id')
+            : collect();
+        $todasTareaIds = $tareasPorAsignacion->flatten(1)->pluck('id');
+        $entregasPorTareaYEstudiante = $todasTareaIds->isNotEmpty()
+            ? \App\Models\EntregaTarea::whereIn('tarea_id', $todasTareaIds)
+                ->whereIn('estudiante_id', $hijosBase->pluck('id'))
+                ->get()
+                ->groupBy(fn($e) => "{$e->tarea_id}_{$e->estudiante_id}")
+            : collect();
+
+        // Próximo pago pendiente por hijo
+        $proximosPagosPorMatricula = $matriculaIds->isNotEmpty()
+            ? Pago::whereIn('matricula_id', $matriculaIds)
+                ->where('estado', 'pendiente')
+                ->orderBy('fecha_vencimiento')
+                ->get()
+                ->groupBy('matricula_id')
+            : collect();
+
         // Gamificación bulk (1 query) — solo si el módulo está activo
         $gamificacionActiva  = tenant_can('gamificacion');
         $puntosPorMatriculaDash = collect();
@@ -110,7 +167,13 @@ class PortalPadreController extends Controller
                 ->pluck('total', 'matricula_id');
         }
 
-        $hijos = $hijosBase->map(function ($estudiante) use ($califsPorMatricula, $califsAcadPorMatricula, $asistenciaStats, $gamificacionActiva, $puntosPorMatriculaDash, $insigniasPorMatriculaDash) {
+        $hijos = $hijosBase->map(function ($estudiante) use (
+            $califsPorMatricula, $califsAcadPorMatricula, $asistenciaStats,
+            $gamificacionActiva, $puntosPorMatriculaDash, $insigniasPorMatriculaDash,
+            $carnetsPorUserId, $accesosHoyPorCarnet,
+            $asignacionesPorGrupo, $tareasPorAsignacion, $entregasPorTareaYEstudiante,
+            $proximosPagosPorMatricula
+        ) {
             $matricula       = $estudiante->matriculas->first();
             $promedioGeneral = null;
             $alertas         = [];
@@ -142,6 +205,31 @@ class PortalPadreController extends Controller
             $estudiante->_alertas   = $alertas;
             $estudiante->_puntos    = $gamificacionActiva && $matricula ? (int) ($puntosPorMatriculaDash->get($matricula->id, 0)) : null;
             $estudiante->_insignias = $gamificacionActiva && $matricula ? (int) ($insigniasPorMatriculaDash->get($matricula->id, 0)) : null;
+
+            // ── "Hoy": Carnet+, tareas pendientes, próximo pago ────────────
+            $carnet = $carnetsPorUserId->get($estudiante->user_id);
+            $estudiante->_carnetHoy = $carnet
+                ? $accesosHoyPorCarnet->get($carnet->id, collect())->first()
+                : null;
+
+            $tareasPendientes = 0;
+            if ($matricula) {
+                $asignacionesGrupo = $asignacionesPorGrupo->get($matricula->grupo_id, collect());
+                foreach ($asignacionesGrupo as $asig) {
+                    $tareasAsig = $tareasPorAsignacion->get($asig->id, collect());
+                    foreach ($tareasAsig as $tarea) {
+                        $key = "{$tarea->id}_{$estudiante->id}";
+                        if (! $entregasPorTareaYEstudiante->has($key)) {
+                            $tareasPendientes++;
+                        }
+                    }
+                }
+            }
+            $estudiante->_tareasPendientes = $tareasPendientes;
+
+            $estudiante->_proximoPago = $matricula
+                ? $proximosPagosPorMatricula->get($matricula->id, collect())->first()
+                : null;
 
             return $estudiante;
         });

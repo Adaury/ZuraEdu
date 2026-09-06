@@ -68,6 +68,9 @@
         $hijosPuntos   = $hijo->_puntos;
         $hijosInsignia = $hijo->_insignias;
         $promedioColor = $promedio === null ? '#6b7280' : ($promedio >= 80 ? '#15803d' : ($promedio >= 60 ? '#d97706' : '#dc2626'));
+        $carnetHoy     = $hijo->_carnetHoy;
+        $tareasPend    = $hijo->_tareasPendientes;
+        $proximoPago   = $hijo->_proximoPago;
     @endphp
     <a href="{{ route('portal.padre.hijo', $hijo) }}" class="prt-card hijo-card" style="margin-bottom:1rem;display:block;text-decoration:none;cursor:pointer;transition:box-shadow .2s,transform .15s;" onmouseover="this.style.boxShadow='0 6px 20px rgba(0,0,0,.1)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='';this.style.transform=''">
         {{-- Alertas importantes --}}
@@ -97,6 +100,32 @@
             </div>
             @endif
             <div style="color:#94a3b8;flex-shrink:0;"><i class="bi bi-chevron-right"></i></div>
+        </div>
+
+        {{-- ── Hoy: Carnet+, tareas pendientes, próximo pago ──────────── --}}
+        <div style="padding:.6rem 1rem;border-top:1px solid #f1f5f9;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;font-size:.76rem;">
+            @if($carnetHoy)
+                <span style="background:{{ $carnetHoy->tipo_evento === 'entrada' ? '#f0fdf4' : '#eff6ff' }};color:{{ $carnetHoy->tipo_evento === 'entrada' ? '#15803d' : '#1d4ed8' }};border-radius:8px;padding:.3rem .7rem;font-weight:600;display:inline-flex;align-items:center;gap:.35rem;">
+                    <i class="bi bi-{{ $carnetHoy->tipo_evento === 'entrada' ? 'box-arrow-in-right' : 'box-arrow-right' }}"></i>
+                    {{ $carnetHoy->tipo_evento === 'entrada' ? 'Entró' : 'Salió' }} a las {{ $carnetHoy->hora }}
+                </span>
+            @else
+                <span style="background:#f8fafc;color:#94a3b8;border-radius:8px;padding:.3rem .7rem;font-weight:600;display:inline-flex;align-items:center;gap:.35rem;">
+                    <i class="bi bi-dash-circle"></i>Sin registro de acceso hoy
+                </span>
+            @endif
+
+            @if($tareasPend > 0)
+                <span style="background:#fef3c7;color:#92400e;border-radius:8px;padding:.3rem .7rem;font-weight:600;display:inline-flex;align-items:center;gap:.35rem;">
+                    <i class="bi bi-journal-text"></i>{{ $tareasPend }} {{ Str::plural('tarea', $tareasPend) }} pendiente{{ $tareasPend === 1 ? '' : 's' }}
+                </span>
+            @endif
+
+            @if($proximoPago)
+                <span style="background:#fee2e2;color:#991b1b;border-radius:8px;padding:.3rem .7rem;font-weight:600;display:inline-flex;align-items:center;gap:.35rem;">
+                    <i class="bi bi-cash-coin"></i>RD$ {{ number_format($proximoPago->monto, 0) }} · vence {{ \Carbon\Carbon::parse($proximoPago->fecha_vencimiento)->format('d/m') }}
+                </span>
+            @endif
         </div>
 
         {{-- Gamificación mini --}}

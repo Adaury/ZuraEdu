@@ -52,18 +52,28 @@ class HomepageController extends Controller
             ConfigInstitucional::set('hp_logo_path', $path);
         }
 
+        // Checkboxes de visibilidad: un checkbox desmarcado NO se envía en el
+        // POST, así que $request->has($key) sería siempre false al apagarlo y
+        // el bloque nunca se ocultaría. Se guardan explícitamente en cada
+        // submit ('1' si viene marcado, '0' si no) en vez de con has().
+        $visibleKeys = [
+            'hp_hero_visible', 'hp_about_visible', 'hp_stats_visible',
+            'hp_features_visible', 'hp_contacto_visible',
+        ];
+        foreach ($visibleKeys as $key) {
+            ConfigInstitucional::set($key, $request->has($key) ? '1' : '0');
+        }
+
         // Save all text fields
         $keys = [
             'hp_hero_titulo', 'hp_hero_subtitulo', 'hp_hero_btn_texto', 'hp_hero_btn2_texto',
-            'hp_hero_visible',
-            'hp_about_titulo', 'hp_about_texto', 'hp_about_visible',
+            'hp_about_titulo', 'hp_about_texto',
             'hp_stat1_numero', 'hp_stat1_label',
             'hp_stat2_numero', 'hp_stat2_label',
             'hp_stat3_numero', 'hp_stat3_label',
             'hp_stat4_numero', 'hp_stat4_label',
-            'hp_stats_visible',
-            'hp_features_titulo', 'hp_features_visible',
-            'hp_contacto_direccion', 'hp_contacto_telefono', 'hp_contacto_email', 'hp_contacto_visible',
+            'hp_features_titulo',
+            'hp_contacto_direccion', 'hp_contacto_telefono', 'hp_contacto_email',
             'hp_social_facebook', 'hp_social_instagram', 'hp_social_twitter',
             'hp_color_primario', 'hp_color_secundario',
             'nombre_institucion',

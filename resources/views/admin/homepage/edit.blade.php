@@ -284,9 +284,9 @@
                 <div class="card shadow-sm mb-4 border-info">
                     <div class="card-body text-center">
                         <i class="bi bi-eye display-6 text-info d-block mb-2"></i>
-                        <p class="small text-muted mb-3">Ver cómo luce la página principal en este momento.</p>
-                        <a href="{{ route('landing') }}" target="_blank" class="btn btn-outline-info btn-sm w-100">
-                            <i class="bi bi-box-arrow-up-right me-1"></i> Ver Página Principal
+                        <p class="small text-muted mb-3">Ver cómo luce el sitio público de tu institución en este momento.</p>
+                        <a href="{{ route('sitio.show') }}" target="_blank" class="btn btn-outline-info btn-sm w-100">
+                            <i class="bi bi-box-arrow-up-right me-1"></i> Ver Sitio Público
                         </a>
                     </div>
                 </div>

@@ -27,6 +27,7 @@ class ResolveTenant
         'encuesta',
         'health',
         'portal/representante/*',
+        'sitio', 'sitio/*',
     ];
 
     public function handle(Request $request, Closure $next): Response

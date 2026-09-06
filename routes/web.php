@@ -140,6 +140,9 @@ Route::post('/inscripcion',                         [\App\Http\Controllers\PreMa
 Route::get('/inscripcion/confirmacion/{codigo}',    [\App\Http\Controllers\PreMatriculaController::class, 'confirmacion'])->name('inscripcion.confirmacion');
 Route::get('/inscripcion/consulta',                 [\App\Http\Controllers\PreMatriculaController::class, 'consulta'])->name('inscripcion.consulta')->middleware('throttle:20,1');
 
+// ── Sitio público institucional del tenant (sin login) ────────────────────
+Route::get('/sitio', [\App\Http\Controllers\PublicSiteController::class, 'show'])->name('sitio.show');
+
 // ══════════════════════════════════════════════════════════════════════════
 //  PORTALES AUTENTICADOS (multi-rol)
 // ══════════════════════════════════════════════════════════════════════════

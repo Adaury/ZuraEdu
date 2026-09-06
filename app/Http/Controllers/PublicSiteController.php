@@ -16,6 +16,25 @@ use Illuminate\Support\Facades\Storage;
  */
 class PublicSiteController extends Controller
 {
+    /**
+     * Ruta raíz "/". ResolveTenant marca tenant.dominio_propio=true solo
+     * cuando el host identificó a ESTA institución específica (subdominio o
+     * dominio personalizado, o sesión de SuperAdmin gestionándola) — no
+     * cuando cayó al tenant por defecto genérico de un host no reconocido.
+     * En ese segundo caso se sigue mostrando el landing de marketing del
+     * SaaS; solo el dominio propio de una institución real muestra su sitio.
+     */
+    public function raiz()
+    {
+        $dominioPropio = app()->bound('tenant.dominio_propio') && app('tenant.dominio_propio');
+
+        if (! $dominioPropio) {
+            return view('landing');
+        }
+
+        return $this->show();
+    }
+
     public function show()
     {
         $tenant = app('tenant');

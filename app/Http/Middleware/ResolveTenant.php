@@ -35,17 +35,21 @@ class ResolveTenant
         $host   = $request->getHost();
 
         // SuperAdmin gestionando un tenant → su sesión tiene prioridad sobre el dominio
-        $tenant = null;
+        $tenant       = null;
+        $dominioPropio = false; // true = el host identificó a ESTE tenant específico (no un default genérico)
+
         if (
             auth()->check() &&
             auth()->user()->hasRole('super_admin') &&
             $saId = session('sa_tenant_id')
         ) {
             $tenant = Tenant::find($saId);
+            $dominioPropio = (bool) $tenant;
         }
 
         if (! $tenant) {
             $tenant = $this->resolve($host);
+            $dominioPropio = (bool) $tenant;
         }
 
         if (! $tenant) {
@@ -56,10 +60,14 @@ class ResolveTenant
 
                 if ($userTenantId && $userTenantId != config('tenancy.fallback_tenant_id', 1)) {
                     $tenant = Tenant::find($userTenantId);
+                    $dominioPropio = (bool) $tenant;
                 }
 
                 if (! $tenant) {
+                    // Guest sin sesión en un host local no identificable —
+                    // se usa el tenant por defecto genérico, no el propio.
                     $tenant = Tenant::find(config('tenancy.fallback_tenant_id', 1));
+                    $dominioPropio = false;
                 }
             }
 
@@ -71,6 +79,11 @@ class ResolveTenant
         // Registrar en el contenedor ANTES de verificar estado
         app()->instance('tenant', $tenant);
         app()->instance(Tenant::class, $tenant);
+        // Consultado por PublicSiteController en / para decidir entre el
+        // landing genérico del SaaS y el sitio propio de la institución —
+        // false cuando el tenant vino del fallback local/de sesión (no del
+        // dominio real, ej. localhost/sge.test sin subdominio propio).
+        app()->instance('tenant.dominio_propio', $dominioPropio);
         View::share('currentTenant', $tenant);
         View::share('saActiveTenant', session('sa_tenant_id') ? $tenant : null);
         config([

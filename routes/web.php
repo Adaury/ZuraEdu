@@ -28,7 +28,7 @@ use App\Http\Controllers\PortalRepresentanteController;
 //  RUTAS PÚBLICAS
 // ══════════════════════════════════════════════════════════════════════════
 
-Route::get('/', fn () => view('landing'))->name('landing');
+Route::get('/', [\App\Http\Controllers\PublicSiteController::class, 'raiz'])->name('landing');
 
 // ── Health check — para balanceadores, uptime monitors y CI/CD ────────────
 Route::get('/health', function () {

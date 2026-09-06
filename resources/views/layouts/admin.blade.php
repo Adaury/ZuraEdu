@@ -3457,6 +3457,16 @@ if (auth()->check()) {
             </ul>
             @endif
 
+            {{-- ══ CENTRO DE ADMINISTRACIÓN (hub, roadmap: "tipo Moodle") ══ --}}
+            <div class="nav-section-title">Administración</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.centro-administracion') }}" class="{{ request()->routeIs('admin.centro-administracion') ? 'active' : '' }}">
+                        <i class="bi bi-grid-3x3-gap"></i>Centro de Administración
+                    </a>
+                </li>
+            </ul>
+
             {{-- ══ SOPORTE ══ --}}
             <div class="nav-section-title">Soporte</div>
             <ul class="list-unstyled mb-0">

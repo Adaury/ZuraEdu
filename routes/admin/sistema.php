@@ -20,6 +20,10 @@ Route::post('chat/send', [ChatController::class, 'send'])->name('chat.send')->mi
 // ── Búsqueda global ───────────────────────────────────────────────────────
 Route::get('search', [SearchController::class, 'search'])->name('search');
 
+// ── Centro de Administración (hub, roadmap: "tipo Moodle") ────────────────
+Route::get('configuracion', [\App\Http\Controllers\Admin\CentroAdministracionController::class, 'index'])
+    ->name('centro-administracion');
+
 // ── Centro de Ayuda ───────────────────────────────────────────────────────
 Route::get('ayuda', fn () => view('admin.ayuda.index'))->name('ayuda');
 Route::get('ayuda/roles', fn () => view('admin.ayuda.roles', [

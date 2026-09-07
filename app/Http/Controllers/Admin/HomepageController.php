@@ -80,6 +80,8 @@ class HomepageController extends Controller
             'system_name'          => 'nullable|string|max:200',
             'system_abbr'          => 'nullable|string|max:10',
             'system_sub'           => 'nullable|string|max:80',
+            'hp_ads_izquierda'     => 'nullable|string|max:5000',
+            'hp_ads_derecha'       => 'nullable|string|max:5000',
         ]);
 
         // Handle logo upload
@@ -122,6 +124,7 @@ class HomepageController extends Controller
             'hp_social_facebook', 'hp_social_instagram', 'hp_social_twitter',
             'hp_color_primario', 'hp_color_secundario',
             'nombre_institucion',
+            'hp_ads_izquierda', 'hp_ads_derecha',
         ];
 
         foreach ($keys as $key) {

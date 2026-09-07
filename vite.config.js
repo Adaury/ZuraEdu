@@ -13,6 +13,7 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/js/echo.js',
                 'resources/js/ejecutivo.jsx',
+                'resources/js/publicaciones-editor.js',
             ],
             refresh: true,
         }),

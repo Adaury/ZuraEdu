@@ -100,6 +100,13 @@ class PublicSiteController extends Controller
             'social_instagram' => ConfigInstitucional::get('hp_social_instagram', ''),
             'social_twitter'   => ConfigInstitucional::get('hp_social_twitter', ''),
 
+            // Código de anuncios de terceros (Google AdSense u otro) que el
+            // propio centro configura — se imprime tal cual, sin sanear (ver
+            // SanitizeInput::$allowedEmbedFields), es contenido de su propio
+            // tenant, no cruza a otros centros.
+            'ads_izquierda' => ConfigInstitucional::get('hp_ads_izquierda', ''),
+            'ads_derecha'   => ConfigInstitucional::get('hp_ads_derecha', ''),
+
             'color_primario'   => ConfigInstitucional::get('hp_color_primario', $tenant->color_primario ?? '#0d6efd'),
             'color_secundario' => ConfigInstitucional::get('hp_color_secundario', $tenant->color_secundario ?? '#6c757d'),
             'logo_url'         => $logoPath ? Storage::url($logoPath) : $tenant->logo_url,

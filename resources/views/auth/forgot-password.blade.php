@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Recuperar Contraseña — SGE</title>
-
-    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.min.css">
 
     @php
         $ls   = \App\Helpers\Setting::all();
@@ -15,7 +11,20 @@
         $lBg2 = $ls['login_color_bg2'] ?? '#1e3a8a';
         $lBg3 = $ls['login_color_bg3'] ?? '#1d4ed8';
         $lAcc = $ls['login_color_acc'] ?? '#10b981';
+
+        // Mismo fallback que auth.login: nombre/logo reales del centro en
+        // vez del genérico cuando Setting::system_name/system_logo no se
+        // llenaron aparte del Homepage.
+        $tenantAuth   = app()->bound('tenant') ? app('tenant') : null;
+        $nombreCentro = ($ls['system_name'] ?? null) ?: (\App\Models\ConfigInstitucional::get('nombre_institucion') ?: $tenantAuth?->nombre_institucion) ?: 'ZuraEdu';
+        $logoPathAuth = $ls['system_logo'] ?? \App\Models\ConfigInstitucional::get('hp_logo_path');
+        $logoCentroUrl = $logoPathAuth ? asset('storage/' . $logoPathAuth) : $tenantAuth?->logo_url;
     @endphp
+
+    <title>Recuperar Contraseña — {{ $nombreCentro }}</title>
+
+    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.min.css">
 
     <style>
         :root {
@@ -61,7 +70,9 @@
             display: inline-flex; align-items: center; justify-content: center;
             font-size: 28pt; font-weight: 700; color: #fff;
             box-shadow: 0 8px 24px rgba(16,185,129,.45);
+            overflow: hidden;
         }
+        .logo-badge img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
         .school-name { color: #fff; font-weight: 700; font-size: 1.4rem; line-height: 1.3; margin-top: 1.25rem; margin-bottom: .4rem; }
         .school-subtitle { color: #a8c0e8; font-size: .95rem; }
         .info-box {
@@ -156,10 +167,14 @@
         <div class="col-lg-6 panel-left">
             <div class="panel-left-content">
                 <div class="logo-badge" style="background:{{ $lAcc }};box-shadow:0 8px 24px {{ $lAcc }}70;">
-                    {{ strtoupper(substr($ls['system_abbr'] ?? 'SGE', 0, 4)) }}
+                    @if($logoCentroUrl)
+                        <img src="{{ $logoCentroUrl }}" alt="{{ $nombreCentro }}">
+                    @else
+                        {{ strtoupper(substr($ls['system_abbr'] ?? $nombreCentro, 0, 4)) }}
+                    @endif
                 </div>
                 <div>
-                    <p class="school-name">{!! nl2br(e($ls['login_titulo'] ?? ($ls['system_name'] ?? 'Sistema de Gestión Escolar'))) !!}</p>
+                    <p class="school-name">{!! nl2br(e($ls['login_titulo'] ?? $nombreCentro)) !!}</p>
                     <p class="school-subtitle mb-0">{{ $ls['login_subtitulo'] ?? 'Sistema de Gestión Escolar' }}</p>
                 </div>
                 <div class="info-box">
@@ -182,7 +197,7 @@
                     </div>
                 </div>
             </div>
-            <p class="panel-left-footer">&copy; {{ date('Y') }} {{ \App\Helpers\Setting::get('system_name', 'ZuraEdu') }} &middot; República Dominicana</p>
+            <p class="panel-left-footer">&copy; {{ date('Y') }} {{ $nombreCentro }} &middot; República Dominicana</p>
         </div>
 
         {{-- ── Panel derecho ── --}}

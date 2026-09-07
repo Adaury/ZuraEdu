@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Galería — {{ $nombre ?? env('APP_PRODUCT_NAME', config('app.name')) }}</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link href="/vendor/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet">
     <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -27,6 +28,8 @@
     .nav-logo-name { font-size: 1rem; font-weight: 900; color: var(--g900); }
     .nav-back { margin-left: auto; display: inline-flex; align-items: center; gap: .4rem; color: var(--g500); font-size: .84rem; font-weight: 600; text-decoration: none; padding: .4rem .9rem; border-radius: 8px; border: 1.5px solid var(--g200); transition: all .15s; }
     .nav-back:hover { border-color: var(--blue-l); color: var(--blue); background: #eff6ff; }
+    .nav-acceder { display: inline-flex; align-items: center; gap: .4rem; color: var(--g500); font-size: .84rem; font-weight: 600; text-decoration: none; }
+    .nav-acceder:hover { color: var(--blue); }
 
     /* ── HERO ── */
     .hero {
@@ -117,7 +120,7 @@
 {{-- NAV --}}
 <nav class="nav">
     <div class="nav-inner">
-        <a href="/" class="nav-logo">
+        <a href="{{ route('sitio.show') }}" class="nav-logo">
             @if(!empty($logoUrl))
                 <img src="{{ $logoUrl }}" alt="{{ $nombre }}" style="width:34px;height:34px;border-radius:9px;object-fit:contain;">
             @else
@@ -125,8 +128,11 @@
             @endif
             <span class="nav-logo-name">{{ $nombre ?? env('APP_PRODUCT_NAME', 'SGE') }}</span>
         </a>
-        <a href="/" class="nav-back">
+        <a href="{{ route('sitio.show') }}" class="nav-back">
             <i class="bi bi-arrow-left"></i>Volver al inicio
+        </a>
+        <a href="{{ route('login') }}" class="nav-acceder">
+            <i class="bi bi-box-arrow-in-right"></i>Acceder al panel
         </a>
     </div>
 </nav>
@@ -216,5 +222,8 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeLightbox({ target: document.getElementById('lb') });
 });
 </script>
+
+@include('partials.sitio_chat_widget', ['nombre' => $nombre ?? env('APP_PRODUCT_NAME', 'SGE')])
+
 </body>
 </html>

@@ -31,9 +31,14 @@ class FotoAlbum extends Model
 
     // ── Accessors ─────────────────────────────────────────────────────────
 
+    /**
+     * Ruta relativa (no absoluta): el sitio público se sirve por subdominio
+     * por tenant y Storage::url() fija el host de APP_URL, que no siempre
+     * coincide con el dominio real desde el que se accede a la imagen.
+     */
     public function getUrlAttribute(): string
     {
-        return Storage::disk('public')->url($this->ruta);
+        return '/storage/' . $this->ruta;
     }
 
     // ── Boot ──────────────────────────────────────────────────────────────

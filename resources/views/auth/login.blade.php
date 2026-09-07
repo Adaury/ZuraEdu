@@ -4,18 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Iniciar Sesión — {{ $ls['system_name'] ?? 'ZuraEdu' }}</title>
-
-    <!-- Google Fonts: Inter -->
-    
-    
-    
-
-    <!-- Bootstrap 5.3.2 CSS -->
-    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
-
-    <!-- Bootstrap Icons 1.11.3 -->
-    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.min.css">
 
     @php
         $ls   = \App\Helpers\Setting::all();
@@ -23,7 +11,28 @@
         $lBg2 = $ls['login_color_bg2'] ?? '#1e3a8a';
         $lBg3 = $ls['login_color_bg3'] ?? '#1d4ed8';
         $lAcc = $ls['login_color_acc'] ?? '#10b981';
+
+        // Setting (system_name/system_logo) es un campo aparte del Homepage
+        // que el admin rara vez llena — si no lo hizo, el login mostraba
+        // "ZuraEdu" genérico en vez del centro real. Mismo fallback que ya
+        // usa PublicSiteController para el sitio público. Este bloque se
+        // movió ANTES del <title> — antes vivía después y $ls nunca estaba
+        // definido a tiempo para el título (siempre caía al genérico).
+        $tenantLogin  = app()->bound('tenant') ? app('tenant') : null;
+        $nombreCentro = ($ls['system_name'] ?? null) ?: (\App\Models\ConfigInstitucional::get('nombre_institucion') ?: $tenantLogin?->nombre_institucion) ?: 'ZuraEdu';
+        $logoPathLogin = $ls['system_logo'] ?? \App\Models\ConfigInstitucional::get('hp_logo_path');
+        $logoCentroUrl = $logoPathLogin ? asset('storage/' . $logoPathLogin) : $tenantLogin?->logo_url;
     @endphp
+
+    <title>Iniciar Sesión — {{ $nombreCentro }}</title>
+
+    <!-- Google Fonts: Inter -->
+
+    <!-- Bootstrap 5.3.2 CSS -->
+    <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
+
+    <!-- Bootstrap Icons 1.11.3 -->
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.min.css">
     <style>
         :root {
             --primary: {{ $lBg2 }};
@@ -108,6 +117,13 @@
             letter-spacing: -1px;
             box-shadow: 0 8px 24px rgba(16, 185, 129, 0.45);
             flex-shrink: 0;
+            overflow: hidden;
+        }
+        .logo-badge img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #fff;
         }
 
         .school-name {
@@ -348,12 +364,16 @@
 
                 {{-- Logo badge --}}
                 <div class="logo-badge" style="background-color:{{ $lAcc }};box-shadow:0 8px 24px {{ $lAcc }}70;">
-                    {{ strtoupper(substr($ls['system_abbr'] ?? 'ZE', 0, 4)) }}
+                    @if($logoCentroUrl)
+                        <img src="{{ $logoCentroUrl }}" alt="{{ $nombreCentro }}">
+                    @else
+                        {{ strtoupper(substr($ls['system_abbr'] ?? $nombreCentro, 0, 4)) }}
+                    @endif
                 </div>
 
                 {{-- School identity --}}
                 <div>
-                    <p class="school-name">{!! nl2br(e($ls['login_titulo'] ?? ($ls['system_name'] ?? 'ZuraEdu'))) !!}</p>
+                    <p class="school-name">{!! nl2br(e($ls['login_titulo'] ?? $nombreCentro)) !!}</p>
                     <p class="school-subtitle mb-0">{{ $ls['login_subtitulo'] ?? 'Plataforma de Gestión Escolar' }}</p>
                 </div>
 
@@ -376,9 +396,9 @@
             </div>{{-- /.panel-left-content --}}
 
             <p class="panel-left-footer">
-                &copy; {{ date('Y') }} {{ $ls['system_abbr'] ?? 'ZuraEdu' }}
-                @if(!empty($ls['system_name']) && ($ls['system_abbr'] ?? '') !== ($ls['system_name'] ?? ''))
-                    &middot; {{ Illuminate\Support\Str::limit($ls['system_name'], 50) }}
+                &copy; {{ date('Y') }} {{ $ls['system_abbr'] ?? $nombreCentro }}
+                @if(!empty($ls['system_abbr']) && $ls['system_abbr'] !== $nombreCentro)
+                    &middot; {{ Illuminate\Support\Str::limit($nombreCentro, 50) }}
                 @endif
             </p>
         </div>{{-- /.panel-left --}}

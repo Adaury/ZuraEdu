@@ -131,6 +131,56 @@ class PublicSitioNoticiasTest extends TestCase
         $response->assertSee('Contenido completo aquí');
     }
 
+    public function test_el_contenido_con_formato_se_muestra_como_html_no_escapado(): void
+    {
+        $tenant = $this->crearTenant('Colegio Noticias Formato');
+        app()->instance('tenant', $tenant);
+        $publicacion = Publicacion::create([
+            'tipo' => 'noticia', 'titulo' => 'Con Formato', 'contenido' => '<p><b>Texto en negrita</b></p>',
+            'fecha' => now(), 'estado' => 'publicado', 'visible' => true,
+        ]);
+        app()->forgetInstance('tenant');
+
+        $response = $this->get($this->url($tenant, "/sitio/noticias/{$publicacion->id}"));
+
+        $response->assertOk();
+        $response->assertSee('<b>Texto en negrita</b>', false);
+    }
+
+    public function test_la_imagen_destacada_usa_la_alineacion_configurada(): void
+    {
+        $tenant = $this->crearTenant('Colegio Noticias Alineacion');
+        app()->instance('tenant', $tenant);
+        $publicacion = Publicacion::create([
+            'tipo' => 'noticia', 'titulo' => 'Con Imagen Alineada', 'contenido' => 'x',
+            'imagen_destacada' => 'publicaciones/foto.jpg', 'imagen_alineacion' => 'izquierda',
+            'fecha' => now(), 'estado' => 'publicado', 'visible' => true,
+        ]);
+        app()->forgetInstance('tenant');
+
+        $response = $this->get($this->url($tenant, "/sitio/noticias/{$publicacion->id}"));
+
+        $response->assertOk();
+        $response->assertSee('imagen-destacada align-izquierda', false);
+    }
+
+    public function test_la_tarjeta_de_la_portada_muestra_resumen_y_leer_mas(): void
+    {
+        $tenant = $this->crearTenant('Colegio Noticias Resumen');
+        app()->instance('tenant', $tenant);
+        Publicacion::create([
+            'tipo' => 'noticia', 'titulo' => 'Con Resumen', 'contenido' => 'Este es el contenido completo de la noticia.',
+            'fecha' => now(), 'estado' => 'publicado', 'visible' => true,
+        ]);
+        app()->forgetInstance('tenant');
+
+        $response = $this->get($this->url($tenant, '/sitio'));
+
+        $response->assertOk();
+        $response->assertSee('Este es el contenido completo de la noticia');
+        $response->assertSee('Leer más');
+    }
+
     public function test_el_detalle_de_una_publicacion_en_borrador_da_404(): void
     {
         $tenant = $this->crearTenant('Colegio Noticias Detalle Borrador');

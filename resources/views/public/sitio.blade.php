@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $config['nombre'] }}</title>
     <meta name="description" content="{{ $config['hero_subtitulo'] ?: $config['about_texto'] ?: $config['nombre'] }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link href="/vendor/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet">
     <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,6 +26,9 @@
     .navbar img { height: 36px; border-radius: 8px; }
     .navbar .brand-badge { width: 36px; height: 36px; border-radius: 8px; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: .9rem; }
     .navbar .brand-name { font-weight: 700; font-size: 1.05rem; }
+    .navbar .brand-link { display: flex; align-items: center; gap: .75rem; text-decoration: none; color: inherit; }
+    .navbar .acceder { margin-left: auto; font-size: .85rem; color: var(--g500); text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: .3rem; }
+    .navbar .acceder:hover { color: var(--primary); }
 
     .hero { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff; padding: 5rem 1.5rem; text-align: center; }
     .hero h1 { font-size: clamp(1.8rem, 4vw, 3rem); font-weight: 800; max-width: 46rem; margin: 0 auto 1rem; }
@@ -48,13 +52,17 @@
     .carrusel-dots button.activa { background: var(--primary); }
 
     .noticias-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
-    .noticia-card { border-radius: 14px; overflow: hidden; border: 1px solid var(--g200); text-decoration: none; color: inherit; display: flex; flex-direction: column; transition: box-shadow .15s; }
+    .noticia-card { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--g200); transition: box-shadow .15s; }
     .noticia-card:hover { box-shadow: 0 8px 24px rgba(15,23,42,.08); }
+    .noticia-card-stretched { position: absolute; inset: 0; z-index: 1; text-decoration: none; color: inherit; }
+    .noticia-editar { position: absolute; top: .6rem; right: .6rem; z-index: 2; width: 30px; height: 30px; border-radius: 50%; background: rgba(15,23,42,.65); color: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: .8rem; }
     .noticia-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
     .noticia-card .cuerpo { padding: 1.1rem; }
     .noticia-tipo { display: inline-block; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--primary); margin-bottom: .4rem; }
     .noticia-titulo { font-weight: 700; font-size: 1.02rem; margin-bottom: .3rem; }
     .noticia-fecha { font-size: .78rem; color: var(--g500); }
+    .noticia-resumen { font-size: .85rem; color: var(--g500); margin-top: .6rem; line-height: 1.5; }
+    .noticia-leermas { display: inline-block; font-size: .8rem; font-weight: 700; color: var(--primary); margin-top: .6rem; }
     .noticias-vertodas { display: block; text-align: center; margin-top: 2rem; }
 
     section { padding: 4rem 1.5rem; }
@@ -78,18 +86,36 @@
     footer { text-align: center; padding: 1.5rem; color: var(--g500); font-size: .8rem; }
 
     .empty-state { text-align: center; padding: 5rem 1.5rem; color: var(--g500); }
+
+    /* Espacios publicitarios (Google Ads u otro, configurados por el propio
+       centro) — solo en pantallas anchas, donde sobra espacio a los lados del
+       contenido centrado; en mobile no hay sitio y se ocultan. */
+    .ads-lateral { position: fixed; top: 6.5rem; width: 160px; z-index: 10; }
+    .ads-izquierda { left: 1rem; }
+    .ads-derecha { right: 1rem; }
+    @media (max-width: 1399px) { .ads-lateral { display: none; } }
     </style>
 </head>
 <body>
 
 <header class="navbar">
-    @if($config['logo_url'])
-        <img src="{{ $config['logo_url'] }}" alt="{{ $config['nombre'] }}">
-    @else
-        <div class="brand-badge">{{ strtoupper(substr($config['nombre'], 0, 2)) }}</div>
-    @endif
-    <span class="brand-name">{{ $config['nombre'] }}</span>
+    <a href="{{ route('sitio.show') }}" class="brand-link">
+        @if($config['logo_url'])
+            <img src="{{ $config['logo_url'] }}" alt="{{ $config['nombre'] }}">
+        @else
+            <div class="brand-badge">{{ strtoupper(substr($config['nombre'], 0, 2)) }}</div>
+        @endif
+        <span class="brand-name">{{ $config['nombre'] }}</span>
+    </a>
+    <a href="{{ route('login') }}" class="acceder"><i class="bi bi-box-arrow-in-right"></i>Acceder al panel</a>
 </header>
+
+@if($config['ads_izquierda'])
+    <aside class="ads-lateral ads-izquierda">{!! $config['ads_izquierda'] !!}</aside>
+@endif
+@if($config['ads_derecha'])
+    <aside class="ads-lateral ads-derecha">{!! $config['ads_derecha'] !!}</aside>
+@endif
 
 @php
     $mostrar = [
@@ -153,6 +179,8 @@
     auto();
 })();
 </script>
+
+@include('partials.sitio_chat_widget', ['nombre' => $config['nombre']])
 
 </body>
 </html>

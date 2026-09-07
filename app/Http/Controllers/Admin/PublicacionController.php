@@ -81,13 +81,16 @@ class PublicacionController extends Controller
     private function validar(Request $request): array
     {
         $data = $request->validate([
-            'tipo'             => 'required|in:' . implode(',', array_keys(Publicacion::TIPOS)),
-            'titulo'           => 'required|string|max:200',
-            'contenido'        => 'required|string',
-            'fecha'            => 'required|date',
-            'estado'           => 'required|in:borrador,publicado',
-            'imagen_destacada' => 'nullable|image|max:2048',
+            'tipo'              => 'required|in:' . implode(',', array_keys(Publicacion::TIPOS)),
+            'titulo'            => 'required|string|max:200',
+            'contenido'         => 'required|string',
+            'fecha'             => 'required|date',
+            'estado'            => 'required|in:borrador,publicado',
+            'imagen_destacada'  => 'nullable|image|max:2048',
+            'imagen_alineacion' => 'nullable|in:' . implode(',', Publicacion::ALINEACIONES),
         ]);
+
+        $data['imagen_alineacion'] = $data['imagen_alineacion'] ?? 'centro';
 
         // Checkbox desmarcado no se envía en el POST — igual que el bug ya
         // corregido en HomepageController, se guarda explícitamente en cada

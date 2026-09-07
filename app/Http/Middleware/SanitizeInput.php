@@ -27,6 +27,18 @@ class SanitizeInput
         'texto', 'motivo', 'criterio',
     ];
 
+    /**
+     * Campos de código de embebido de terceros (Google AdSense u otro) que el
+     * propio admin del tenant pega en su Homepage. No se pueden limpiar con
+     * stripDangerousTags() porque ese código DEPENDE de <script>, que ahí se
+     * elimina a propósito. Es una excepción consciente: el admin del centro
+     * controla su propio sitio público, igual que ya controla el resto de su
+     * Homepage — el riesgo se acepta explícitamente, no se sanea.
+     */
+    protected array $allowedEmbedFields = [
+        'hp_ads_izquierda', 'hp_ads_derecha',
+    ];
+
     public function handle(Request $request, Closure $next): Response
     {
         $input = $request->all();
@@ -41,7 +53,7 @@ class SanitizeInput
         foreach ($data as $key => $value) {
             $fullKey = $prefix ? "{$prefix}.{$key}" : (string) $key;
 
-            if (in_array($key, $this->skipFields)) {
+            if (in_array($key, $this->skipFields) || in_array($key, $this->allowedEmbedFields)) {
                 $clean[$key] = $value;
             } elseif (is_array($value)) {
                 $clean[$key] = $this->sanitize($value, $fullKey);

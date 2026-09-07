@@ -6,7 +6,6 @@ use App\Traits\BelongsToTenant;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 
 class Album extends Model
 {
@@ -41,16 +40,21 @@ class Album extends Model
 
     // ── Accessors ─────────────────────────────────────────────────────────
 
+    /**
+     * Ruta relativa (no absoluta): el sitio público se sirve por subdominio
+     * por tenant y Storage::url() fija el host de APP_URL, que no siempre
+     * coincide con el dominio real desde el que se accede a la imagen.
+     */
     public function getPortadaUrlAttribute(): string
     {
         if ($this->portada) {
-            return Storage::disk('public')->url($this->portada);
+            return '/storage/' . $this->portada;
         }
 
         // Usar la primera foto como portada si no hay portada asignada
         $primera = $this->fotos()->first();
         if ($primera) {
-            return Storage::disk('public')->url($primera->ruta);
+            return '/storage/' . $primera->ruta;
         }
 
         return '';

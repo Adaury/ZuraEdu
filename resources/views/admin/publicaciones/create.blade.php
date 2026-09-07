@@ -55,9 +55,9 @@
 
             <div class="mb-5">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1.5">Contenido <span class="text-red-500">*</span></label>
-                <textarea name="contenido" rows="6" required
-                          class="w-full border border-gray-300 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none @error('contenido') border-red-400 @enderror"
-                          placeholder="Contenido completo de la publicación…">{{ old('contenido', $publicacion->contenido ?? '') }}</textarea>
+                <div id="contenido-editor" class="bg-white dark:bg-gray-700 rounded-xl @error('contenido') ring-2 ring-red-400 @enderror"></div>
+                <textarea id="contenido-input" name="contenido" required
+                          class="hidden">{{ old('contenido', $publicacion->contenido ?? '') }}</textarea>
                 @error('contenido')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
             </div>
 
@@ -73,6 +73,18 @@
                 <input type="file" name="imagen_destacada" accept="image/*"
                        class="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 dark:file:bg-indigo-900/30 dark:file:text-indigo-300">
                 @error('imagen_destacada')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+
+                <div class="flex items-center gap-4 mt-3">
+                    @foreach(['izquierda' => 'Izquierda', 'centro' => 'Centro', 'derecha' => 'Derecha'] as $valor => $etiqueta)
+                    <label class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
+                        <input type="radio" name="imagen_alineacion" value="{{ $valor }}"
+                               @checked(old('imagen_alineacion', $publicacion->imagen_alineacion ?? 'centro') === $valor)
+                               class="text-indigo-600 focus:ring-indigo-500">
+                        {{ $etiqueta }}
+                    </label>
+                    @endforeach
+                </div>
+                @error('imagen_alineacion')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
             </div>
 
             <div class="grid grid-cols-2 gap-4 mb-6">
@@ -109,4 +121,8 @@
         </form>
     </div>
 </div>
+
+@push('scripts')
+    @vite('resources/js/publicaciones-editor.js')
+@endpush
 @endsection

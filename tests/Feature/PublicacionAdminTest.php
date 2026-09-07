@@ -64,6 +64,61 @@ class PublicacionAdminTest extends TestCase
         $this->assertSame($user->id, $publicacion->creado_por);
     }
 
+    public function test_imagen_alineacion_por_defecto_es_centro(): void
+    {
+        ['user' => $user] = $this->crearAdmin('Colegio Pub Alineacion Default');
+
+        $this->actingAs($user)->post(route('admin.publicaciones.store'), [
+            'tipo' => 'noticia', 'titulo' => 'X', 'contenido' => 'x',
+            'fecha' => now()->toDateString(), 'estado' => 'publicado',
+        ]);
+
+        $this->assertSame('centro', Publicacion::first()->imagen_alineacion);
+    }
+
+    public function test_imagen_alineacion_izquierda_o_derecha_se_guarda(): void
+    {
+        ['user' => $user] = $this->crearAdmin('Colegio Pub Alineacion Izq');
+
+        $this->actingAs($user)->post(route('admin.publicaciones.store'), [
+            'tipo' => 'noticia', 'titulo' => 'X', 'contenido' => 'x',
+            'fecha' => now()->toDateString(), 'estado' => 'publicado',
+            'imagen_alineacion' => 'izquierda',
+        ]);
+
+        $this->assertSame('izquierda', Publicacion::first()->imagen_alineacion);
+    }
+
+    public function test_imagen_alineacion_invalida_es_rechazada(): void
+    {
+        ['user' => $user] = $this->crearAdmin('Colegio Pub Alineacion Invalida');
+
+        $response = $this->actingAs($user)->post(route('admin.publicaciones.store'), [
+            'tipo' => 'noticia', 'titulo' => 'X', 'contenido' => 'x',
+            'fecha' => now()->toDateString(), 'estado' => 'publicado',
+            'imagen_alineacion' => 'arriba',
+        ]);
+
+        $response->assertSessionHasErrors('imagen_alineacion');
+        $this->assertSame(0, Publicacion::withoutTenant()->count());
+    }
+
+    public function test_el_resumen_recorta_el_contenido_sin_html(): void
+    {
+        ['user' => $user] = $this->crearAdmin('Colegio Pub Resumen');
+
+        $largo = str_repeat('Palabra ', 60);
+        $this->actingAs($user)->post(route('admin.publicaciones.store'), [
+            'tipo' => 'noticia', 'titulo' => 'X',
+            'contenido' => "<p><b>{$largo}</b></p>",
+            'fecha' => now()->toDateString(), 'estado' => 'publicado',
+        ]);
+
+        $resumen = Publicacion::first()->resumen;
+        $this->assertLessThanOrEqual(Publicacion::RESUMEN_LARGO + 3, strlen($resumen)); // +3 por el "..." de Str::limit
+        $this->assertStringNotContainsString('<', $resumen);
+    }
+
     public function test_desmarcar_visible_al_guardar_lo_deja_oculto(): void
     {
         ['user' => $user] = $this->crearAdmin('Colegio Pub Oculto');

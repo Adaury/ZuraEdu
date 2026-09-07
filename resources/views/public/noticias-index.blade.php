@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Noticias — {{ $nombre }}</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link href="/vendor/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet">
     <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -13,17 +14,24 @@
     .navbar img { height: 36px; border-radius: 8px; }
     .navbar .brand-badge { width: 36px; height: 36px; border-radius: 8px; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: .9rem; }
     .navbar .brand-name { font-weight: 700; font-size: 1.05rem; }
+    .navbar .brand-link { display: flex; align-items: center; gap: .75rem; text-decoration: none; color: inherit; }
     .navbar .volver { margin-left: auto; font-size: .85rem; color: var(--g500); text-decoration: none; font-weight: 600; }
+    .navbar .acceder { font-size: .85rem; color: var(--g500); text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: .3rem; }
+    .navbar .acceder:hover { color: var(--primary); }
     .wrap { max-width: 64rem; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
     h1 { font-size: 2rem; font-weight: 800; margin-bottom: 2rem; }
     .noticias-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
-    .noticia-card { border-radius: 14px; overflow: hidden; border: 1px solid var(--g200); text-decoration: none; color: inherit; display: flex; flex-direction: column; transition: box-shadow .15s; }
+    .noticia-card { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--g200); transition: box-shadow .15s; }
     .noticia-card:hover { box-shadow: 0 8px 24px rgba(15,23,42,.08); }
+    .noticia-card-stretched { position: absolute; inset: 0; z-index: 1; text-decoration: none; color: inherit; }
+    .noticia-editar { position: absolute; top: .6rem; right: .6rem; z-index: 2; width: 30px; height: 30px; border-radius: 50%; background: rgba(15,23,42,.65); color: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: .8rem; }
     .noticia-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
     .noticia-card .cuerpo { padding: 1.1rem; }
     .noticia-tipo { display: inline-block; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--primary); margin-bottom: .4rem; }
     .noticia-titulo { font-weight: 700; font-size: 1.02rem; margin-bottom: .3rem; }
     .noticia-fecha { font-size: .78rem; color: var(--g500); }
+    .noticia-resumen { font-size: .85rem; color: var(--g500); margin-top: .6rem; line-height: 1.5; }
+    .noticia-leermas { display: inline-block; font-size: .8rem; font-weight: 700; color: var(--primary); margin-top: .6rem; }
     .paginacion { margin-top: 2.5rem; }
     .paginacion nav { display: flex; justify-content: center; }
     .paginacion .pagination { display: flex; gap: .4rem; list-style: none; }
@@ -36,13 +44,16 @@
 <body>
 
 <header class="navbar">
-    @if($logoUrl)
-        <img src="{{ $logoUrl }}" alt="{{ $nombre }}">
-    @else
-        <div class="brand-badge">{{ strtoupper(substr($nombre, 0, 2)) }}</div>
-    @endif
-    <span class="brand-name">{{ $nombre }}</span>
+    <a href="{{ route('sitio.show') }}" class="brand-link">
+        @if($logoUrl)
+            <img src="{{ $logoUrl }}" alt="{{ $nombre }}">
+        @else
+            <div class="brand-badge">{{ strtoupper(substr($nombre, 0, 2)) }}</div>
+        @endif
+        <span class="brand-name">{{ $nombre }}</span>
+    </a>
     <a href="{{ route('sitio.show') }}" class="volver"><i class="bi bi-arrow-left me-1"></i>Volver al inicio</a>
+    <a href="{{ route('login') }}" class="acceder"><i class="bi bi-box-arrow-in-right"></i>Acceder al panel</a>
 </header>
 
 <div class="wrap">
@@ -56,7 +67,13 @@
     @else
         <div class="noticias-grid">
             @foreach($publicaciones as $noticia)
-            <a href="{{ route('sitio.noticias.show', $noticia) }}" class="noticia-card">
+            <div class="noticia-card">
+                <a href="{{ route('sitio.noticias.show', $noticia) }}" class="noticia-card-stretched" aria-label="{{ $noticia->titulo }}"></a>
+                @can('gestionar-configuracion')
+                    <a href="{{ route('admin.publicaciones.edit', $noticia) }}" class="noticia-editar" title="Editar esta publicación">
+                        <i class="bi bi-pencil-fill"></i>
+                    </a>
+                @endcan
                 @if($noticia->imagen_url)
                     <img src="{{ $noticia->imagen_url }}" alt="{{ $noticia->titulo }}" loading="lazy">
                 @endif
@@ -64,14 +81,18 @@
                     <span class="noticia-tipo">{{ $noticia->tipo_label }}</span>
                     <div class="noticia-titulo">{{ $noticia->titulo }}</div>
                     <div class="noticia-fecha">{{ $noticia->fecha->format('d/m/Y') }}</div>
+                    <p class="noticia-resumen">{{ $noticia->resumen }}</p>
+                    <span class="noticia-leermas">Leer más <i class="bi bi-arrow-right"></i></span>
                 </div>
-            </a>
+            </div>
             @endforeach
         </div>
 
         <div class="paginacion">{{ $publicaciones->links() }}</div>
     @endif
 </div>
+
+@include('partials.sitio_chat_widget', ['nombre' => $nombre])
 
 </body>
 </html>

@@ -181,6 +181,34 @@
                     </div>
                 </div>
 
+                {{-- Anuncios --}}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <span class="fw-semibold"><i class="bi bi-megaphone me-1"></i>Anuncios (Google Ads u otro)</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">
+                            Pega aquí el código que te da Google AdSense (u otra red publicitaria) para cada lado del sitio.
+                            Se muestra tal cual, sin modificarlo — <strong>ustedes son responsables del código que peguen aquí</strong>,
+                            solo se ve en pantallas anchas (no en celular) y solo si dejan algo escrito; si el campo queda vacío, no se muestra nada.
+                        </p>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small">Código para el lado izquierdo</label>
+                                <textarea name="hp_ads_izquierda" rows="4" class="form-control font-monospace" style="font-size:.8rem;"
+                                    placeholder="&lt;script&gt;...&lt;/script&gt;">{{ old('hp_ads_izquierda', $config['hp_ads_izquierda'] ?? '') }}</textarea>
+                                @error('hp_ads_izquierda')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">Código para el lado derecho</label>
+                                <textarea name="hp_ads_derecha" rows="4" class="form-control font-monospace" style="font-size:.8rem;"
+                                    placeholder="&lt;script&gt;...&lt;/script&gt;">{{ old('hp_ads_derecha', $config['hp_ads_derecha'] ?? '') }}</textarea>
+                                @error('hp_ads_derecha')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {{-- Contacto --}}
                 <div class="card shadow-sm mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">

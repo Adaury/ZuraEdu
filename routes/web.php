@@ -144,6 +144,7 @@ Route::get('/inscripcion/consulta',                 [\App\Http\Controllers\PreMa
 Route::get('/sitio', [\App\Http\Controllers\PublicSiteController::class, 'show'])->name('sitio.show');
 Route::get('/sitio/noticias', [\App\Http\Controllers\PublicSiteController::class, 'noticias'])->name('sitio.noticias');
 Route::get('/sitio/noticias/{publicacion}', [\App\Http\Controllers\PublicSiteController::class, 'noticiaShow'])->name('sitio.noticias.show');
+Route::post('/sitio/chat', [\App\Http\Controllers\PublicSiteChatController::class, 'chat'])->name('sitio.chat')->middleware('throttle:10,1');
 
 // ══════════════════════════════════════════════════════════════════════════
 //  PORTALES AUTENTICADOS (multi-rol)

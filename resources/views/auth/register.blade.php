@@ -1,5 +1,13 @@
 @php
     $ls = \App\Helpers\Setting::all();
+
+    // Mismo fallback que auth.login: Setting (system_name/system_logo) rara
+    // vez se llena aparte del Homepage — si no, se usa el nombre/logo reales
+    // del centro (ConfigInstitucional/tenant) en vez de un genérico "SGE".
+    $tenantRegistro = app()->bound('tenant') ? app('tenant') : null;
+    $nombreCentro   = ($ls['system_name'] ?? null) ?: (\App\Models\ConfigInstitucional::get('nombre_institucion') ?: $tenantRegistro?->nombre_institucion) ?: 'SGE';
+    $logoPathRegistro = $ls['system_logo'] ?? \App\Models\ConfigInstitucional::get('hp_logo_path');
+    $logoCentroUrl  = $logoPathRegistro ? asset('storage/' . $logoPathRegistro) : $tenantRegistro?->logo_url;
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -7,7 +15,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Solicitar Acceso — {{ $ls['system_abbr'] ?? $ls['system_name'] ?? 'SGE' }}</title>
+    <title>Solicitar Acceso — {{ $ls['system_abbr'] ?? $nombreCentro }}</title>
 
     <!-- Google Fonts: Inter -->
     
@@ -84,7 +92,9 @@
             letter-spacing: -1px;
             box-shadow: 0 8px 24px rgba(192,57,43,0.45);
             flex-shrink: 0;
+            overflow: hidden;
         }
+        .logo-badge img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
 
         .school-name {
             color: #ffffff;
@@ -412,10 +422,16 @@
         <div class="col-lg-5 panel-left">
             <div class="panel-left-content">
 
-                <div class="logo-badge">{{ strtoupper(substr($ls['system_abbr'] ?? $ls['system_name'] ?? 'SGE', 0, 4)) }}</div>
+                <div class="logo-badge">
+                    @if($logoCentroUrl)
+                        <img src="{{ $logoCentroUrl }}" alt="{{ $nombreCentro }}">
+                    @else
+                        {{ strtoupper(substr($ls['system_abbr'] ?? $nombreCentro, 0, 4)) }}
+                    @endif
+                </div>
 
                 <div>
-                    <p class="school-name">{!! nl2br(e($ls['login_titulo'] ?? $ls['system_name'] ?? 'Sistema de Gestión Escolar')) !!}</p>
+                    <p class="school-name">{!! nl2br(e($ls['login_titulo'] ?? $nombreCentro)) !!}</p>
                     <p class="school-subtitle mb-0">{{ $ls['login_subtitulo'] ?? $ls['system_sub'] ?? 'Sistema de Gestión Escolar' }}</p>
                 </div>
 
@@ -471,7 +487,7 @@
             @endif
 
             <p class="panel-left-footer">
-                &copy; {{ date('Y') }} {{ $ls['system_abbr'] ?? $ls['system_name'] ?? 'SGE' }}
+                &copy; {{ date('Y') }} {{ $ls['system_abbr'] ?? $nombreCentro }}
                 @if(!empty($ls['system_sub'])) &middot; {{ $ls['system_sub'] }} @endif
             </p>
         </div>{{-- /.panel-left --}}

@@ -12,6 +12,9 @@ class Album extends Model
 {
     use BelongsToTenant;
 
+    /** Mínimo de fotos para que un álbum pueda usarse como carrusel del sitio público. */
+    public const MIN_FOTOS_CARRUSEL = 5;
+
     protected $table = 'albumes';
 
     protected $fillable = [

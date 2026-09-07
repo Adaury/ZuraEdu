@@ -42,18 +42,41 @@ class PublicSitioCarruselTest extends TestCase
         return 'http://' . $tenant->dominio . '.zuraedu.test' . $path;
     }
 
+    private function crearFotos(Album $album, int $cantidad = 5): void
+    {
+        for ($i = 1; $i <= $cantidad; $i++) {
+            FotoAlbum::create(['album_id' => $album->id, 'ruta' => "galeria/{$album->id}/foto{$i}.jpg", 'orden' => $i]);
+        }
+    }
+
     public function test_el_album_marcado_como_carrusel_aparece_en_el_sitio(): void
     {
         $tenant = $this->crearTenant('Colegio Carrusel Uno');
         app()->instance('tenant', $tenant);
-        $album = Album::create(['titulo' => 'Carrusel Principal', 'activo' => true, 'mostrar_en_sitio' => true, 'orden' => 0]);
-        FotoAlbum::create(['album_id' => $album->id, 'ruta' => 'galeria/1/foto1.jpg', 'titulo' => 'Nuestra Fachada', 'orden' => 1]);
+        $album = Album::create(['titulo' => 'Carrusel Principal', 'descripcion' => 'Nuestra historia en imágenes.', 'activo' => true, 'mostrar_en_sitio' => true, 'orden' => 0]);
+        $this->crearFotos($album, 4);
+        FotoAlbum::create(['album_id' => $album->id, 'ruta' => 'galeria/1/foto5.jpg', 'titulo' => 'Nuestra Fachada', 'orden' => 5]);
         app()->forgetInstance('tenant');
 
         $response = $this->get($this->url($tenant, '/sitio'));
 
         $response->assertOk();
         $response->assertSee('Nuestra Fachada');
+        $response->assertSee('Nuestra historia en imágenes.');
+    }
+
+    public function test_un_album_con_menos_de_5_fotos_no_aparece_como_carrusel_aunque_este_marcado(): void
+    {
+        $tenant = $this->crearTenant('Colegio Carrusel Pocas Fotos');
+        app()->instance('tenant', $tenant);
+        $album = Album::create(['titulo' => 'Carrusel Incompleto', 'activo' => true, 'mostrar_en_sitio' => true, 'orden' => 0]);
+        FotoAlbum::create(['album_id' => $album->id, 'ruta' => 'galeria/1/foto1.jpg', 'titulo' => 'Foto Suelta', 'orden' => 1]);
+        app()->forgetInstance('tenant');
+
+        $response = $this->get($this->url($tenant, '/sitio'));
+
+        $response->assertOk();
+        $response->assertDontSee('Foto Suelta');
     }
 
     public function test_un_album_no_marcado_no_aparece_como_carrusel(): void
@@ -79,6 +102,7 @@ class PublicSitioCarruselTest extends TestCase
         app()->instance('tenant', $tenant);
         $albumA = Album::create(['titulo' => 'Álbum A', 'activo' => true, 'mostrar_en_sitio' => true, 'orden' => 0]);
         $albumB = Album::create(['titulo' => 'Álbum B', 'activo' => true, 'mostrar_en_sitio' => false, 'orden' => 1]);
+        $this->crearFotos($albumB, 5);
         app()->forgetInstance('tenant');
 
         $this->actingAs($user)->put(route('admin.galeria.update', $albumB), [
@@ -89,12 +113,32 @@ class PublicSitioCarruselTest extends TestCase
         $this->assertTrue($albumB->fresh()->mostrar_en_sitio);
     }
 
+    public function test_no_se_puede_marcar_como_carrusel_con_menos_de_5_fotos(): void
+    {
+        $tenant = $this->crearTenant('Colegio Carrusel Insuficiente');
+        $user = User::factory()->create(['activo' => true, 'tenant_id' => $tenant->id]);
+        $user->assignRole('Administrador');
+
+        app()->instance('tenant', $tenant);
+        $album = Album::create(['titulo' => 'Álbum Nuevo', 'activo' => true, 'mostrar_en_sitio' => false, 'orden' => 0]);
+        $this->crearFotos($album, 2);
+        app()->forgetInstance('tenant');
+
+        $response = $this->actingAs($user)->put(route('admin.galeria.update', $album), [
+            'titulo' => 'Álbum Nuevo', 'activo' => '1', 'mostrar_en_sitio' => '1',
+        ]);
+
+        $response->assertSessionHasErrors('mostrar_en_sitio');
+        $this->assertFalse($album->fresh()->mostrar_en_sitio);
+    }
+
     public function test_el_carrusel_de_un_tenant_no_afecta_a_otro(): void
     {
         $tenantA = $this->crearTenant('Colegio Carrusel A');
         app()->instance('tenant', $tenantA);
         $albumA = Album::create(['titulo' => 'Carrusel A', 'activo' => true, 'mostrar_en_sitio' => true, 'orden' => 0]);
-        FotoAlbum::create(['album_id' => $albumA->id, 'ruta' => 'galeria/1/a.jpg', 'titulo' => 'Foto Exclusiva A', 'orden' => 1]);
+        $this->crearFotos($albumA, 4);
+        FotoAlbum::create(['album_id' => $albumA->id, 'ruta' => 'galeria/1/a.jpg', 'titulo' => 'Foto Exclusiva A', 'orden' => 5]);
         app()->forgetInstance('tenant');
 
         $tenantB = $this->crearTenant('Colegio Carrusel B');

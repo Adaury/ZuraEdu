@@ -133,16 +133,28 @@
                 </div>
             </div>
 
-            {{-- Carrusel del sitio público --}}
-            <div class="mb-6">
-                <label class="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" name="mostrar_en_sitio" value="1"
-                           @checked(old('mostrar_en_sitio', $album->mostrar_en_sitio ?? false))
-                           class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                    <span class="text-sm text-gray-600 dark:text-gray-300">Usar como carrusel del sitio público</span>
-                </label>
-                <p class="text-xs text-gray-400 mt-1 ml-8">Solo un álbum puede ser el carrusel a la vez — marcar este desmarca cualquier otro.</p>
-            </div>
+            {{-- Carrusel del sitio público — solo al editar, ya con fotos --}}
+            @if(isset($album))
+                @php $totalFotos = $album->fotos()->count(); @endphp
+                <div class="mb-6">
+                    <label class="flex items-center gap-3 {{ $totalFotos >= \App\Models\Album::MIN_FOTOS_CARRUSEL ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed' }}">
+                        <input type="checkbox" name="mostrar_en_sitio" value="1"
+                               @checked(old('mostrar_en_sitio', $album->mostrar_en_sitio))
+                               @disabled($totalFotos < \App\Models\Album::MIN_FOTOS_CARRUSEL)
+                               class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <span class="text-sm text-gray-600 dark:text-gray-300">Usar como carrusel del sitio público</span>
+                    </label>
+                    @error('mostrar_en_sitio')
+                        <p class="text-xs text-red-500 mt-1 ml-8">{{ $message }}</p>
+                    @elseif($totalFotos < \App\Models\Album::MIN_FOTOS_CARRUSEL)
+                        <p class="text-xs text-amber-500 mt-1 ml-8">
+                            Necesitas al menos {{ \App\Models\Album::MIN_FOTOS_CARRUSEL }} fotos — este álbum tiene {{ $totalFotos }}.
+                        </p>
+                    @else
+                        <p class="text-xs text-gray-400 mt-1 ml-8">Solo un álbum puede ser el carrusel a la vez — marcar este desmarca cualquier otro.</p>
+                    @endif
+                </div>
+            @endif
 
             {{-- Botones --}}
             <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">

@@ -94,7 +94,7 @@
 @php
     $mostrar = [
         'hero'     => $config['hero_visible'],
-        'carrusel' => $config['carrusel_visible'] && $config['carrusel'] && $config['carrusel']->fotos->isNotEmpty(),
+        'carrusel' => $config['carrusel_visible'] && $config['carrusel'] && $config['carrusel']->fotos->count() >= \App\Models\Album::MIN_FOTOS_CARRUSEL,
         'about'    => $config['about_visible'] && ($config['about_titulo'] || $config['about_texto']),
         'stats'    => $config['stats_visible'] && $config['stats']->isNotEmpty(),
         'features' => $config['features_visible'] && $config['features_titulo'],

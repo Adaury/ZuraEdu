@@ -1,4 +1,10 @@
 <div class="carrusel">
+    @if($config['carrusel']->titulo || $config['carrusel']->descripcion)
+    <div class="carrusel-intro">
+        @if($config['carrusel']->titulo)<h2 class="section-title">{{ $config['carrusel']->titulo }}</h2>@endif
+        @if($config['carrusel']->descripcion)<p class="carrusel-historia">{{ $config['carrusel']->descripcion }}</p>@endif
+    </div>
+    @endif
     <div class="carrusel-track">
         @foreach($config['carrusel']->fotos as $i => $foto)
         <div class="carrusel-slide {{ $i === 0 ? 'activa' : '' }}">

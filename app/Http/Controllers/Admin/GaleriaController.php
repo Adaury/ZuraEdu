@@ -76,11 +76,10 @@ class GaleriaController extends Controller
         $data['activo'] = $request->boolean('activo', true);
         $data['orden']  = $data['orden'] ?? 0;
 
-        // Solo un álbum puede ser el carrusel del sitio público a la vez.
-        $data['mostrar_en_sitio'] = $request->boolean('mostrar_en_sitio');
-        if ($data['mostrar_en_sitio']) {
-            Album::where('mostrar_en_sitio', true)->update(['mostrar_en_sitio' => false]);
-        }
+        // Un álbum recién creado nunca tiene fotos todavía — no puede ser el
+        // carrusel del sitio (mínimo Album::MIN_FOTOS_CARRUSEL fotos). Se
+        // marca desde "Editar" una vez que ya tenga suficientes.
+        $data['mostrar_en_sitio'] = false;
 
         $album = Album::create($data);
 
@@ -126,9 +125,17 @@ class GaleriaController extends Controller
         $data['activo'] = $request->boolean('activo', true);
         $data['orden']  = $data['orden'] ?? 0;
 
-        // Solo un álbum puede ser el carrusel del sitio público a la vez.
+        // Solo un álbum puede ser el carrusel del sitio público a la vez, y
+        // solo si ya tiene fotos suficientes para que se vea como un carrusel
+        // real (con navegación), no una sola imagen estática.
         $data['mostrar_en_sitio'] = $request->boolean('mostrar_en_sitio');
         if ($data['mostrar_en_sitio']) {
+            $totalFotos = $galeria->fotos()->count();
+            if ($totalFotos < Album::MIN_FOTOS_CARRUSEL) {
+                return back()->withInput()->withErrors([
+                    'mostrar_en_sitio' => "Este álbum tiene {$totalFotos} foto(s) — necesita al menos " . Album::MIN_FOTOS_CARRUSEL . " para usarse como carrusel del sitio público.",
+                ]);
+            }
             Album::where('mostrar_en_sitio', true)->where('id', '!=', $galeria->id)->update(['mostrar_en_sitio' => false]);
         }
 

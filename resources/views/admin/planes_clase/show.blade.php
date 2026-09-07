@@ -80,6 +80,19 @@
                         <dt class="col-sm-3">Docente</dt>
                         <dd class="col-sm-9">{{ $plan->docente->nombre_completo }}</dd>
                         @endif
+                        @if($plan->planifUnidad)
+                        <dt class="col-sm-3">Unidad Vinculada</dt>
+                        <dd class="col-sm-9">Unidad {{ $plan->planifUnidad->numero }} — {{ $plan->planifUnidad->titulo }}</dd>
+                        @endif
+                        @if($plan->planificacion)
+                        <dt class="col-sm-3">RA Vinculado</dt>
+                        <dd class="col-sm-9">
+                            {{ $plan->planificacion->denominacion }}
+                            @if($plan->planificacion->mf_codigo || $plan->planificacion->uc_codigo)
+                                <span class="text-muted">({{ $plan->planificacion->mf_codigo }} {{ $plan->planificacion->uc_codigo }})</span>
+                            @endif
+                        </dd>
+                        @endif
                         @if($plan->creadoPor)
                         <dt class="col-sm-3">Creado por</dt>
                         <dd class="col-sm-9">{{ $plan->creadoPor->name }} — {{ $plan->created_at->format('d/m/Y H:i') }}</dd>

@@ -79,6 +79,30 @@
                         <input type="text" name="grado_seccion" class="form-control" maxlength="100"
                             value="{{ old('grado_seccion', $plan?->grado_seccion) }}">
                     </div>
+                    <div class="col-md-6" id="grupo_planif_unidad">
+                        <label class="form-label">Unidad de Planificación Anual <span class="text-muted small">(opcional)</span></label>
+                        <select name="planif_unidad_id" class="form-select">
+                            <option value="">-- Sin vincular --</option>
+                            @foreach($planifUnidades as $u)
+                                <option value="{{ $u->id }}" @selected(old('planif_unidad_id', $plan?->planif_unidad_id) == $u->id)>
+                                    Unidad {{ $u->numero }} — {{ $u->titulo }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">Vincula este plan con la unidad de la planificación anual que desarrolla.</div>
+                    </div>
+                    <div class="col-md-6" id="grupo_planificacion_tecnica">
+                        <label class="form-label">Planificación Técnica (RA/MF/UC) <span class="text-muted small">(opcional)</span></label>
+                        <select name="planificacion_id" class="form-select">
+                            <option value="">-- Sin vincular --</option>
+                            @foreach($planificacionesTecnicas as $p)
+                                <option value="{{ $p->id }}" @selected(old('planificacion_id', $plan?->planificacion_id) == $p->id)>
+                                    {{ $p->denominacion }} @if($p->mf_codigo || $p->uc_codigo) ({{ $p->mf_codigo }} {{ $p->uc_codigo }}) @endif
+                                </option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">Vincula este plan con el Resultado de Aprendizaje (RA) que desarrolla.</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -217,3 +241,22 @@
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    const areaSelect = document.querySelector('select[name="area"]');
+    const grupoUnidad = document.getElementById('grupo_planif_unidad');
+    const grupoTecnica = document.getElementById('grupo_planificacion_tecnica');
+
+    function toggleReferenciaCurricular() {
+        const esTecnica = areaSelect.value === 'tecnica';
+        grupoUnidad.classList.toggle('d-none', esTecnica);
+        grupoTecnica.classList.toggle('d-none', !esTecnica);
+    }
+
+    if (areaSelect) {
+        areaSelect.addEventListener('change', toggleReferenciaCurricular);
+        toggleReferenciaCurricular();
+    }
+})();
+</script>

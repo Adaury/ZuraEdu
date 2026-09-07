@@ -19,6 +19,7 @@ class PlanClase extends Model
     protected $fillable = [
         'asignacion_id', 'school_year_id', 'docente_id',
         'titulo', 'area', 'tipo_plan', 'semana',
+        'planif_unidad_id', 'planificacion_id',
         'fecha_inicio', 'fecha_fin', 'grado_seccion',
         'intencion_pedagogica', 'estrategias', 'observacion',
         'archivo_path', 'archivo_nombre', 'archivo_tipo',
@@ -66,6 +67,18 @@ class PlanClase extends Model
     public function creadoPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'creado_por');
+    }
+
+    /** Unidad de la planificación anual (académica) que este plan de clase desarrolla. */
+    public function planifUnidad(): BelongsTo
+    {
+        return $this->belongsTo(PlanifUnidad::class);
+    }
+
+    /** Planificación técnica (RA/MF/UC) que este plan de clase desarrolla. */
+    public function planificacion(): BelongsTo
+    {
+        return $this->belongsTo(Planificacion::class);
     }
 
     public function momentos(): HasMany

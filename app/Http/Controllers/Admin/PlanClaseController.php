@@ -7,6 +7,8 @@ use App\Models\Asignacion;
 use App\Models\Docente;
 use App\Models\PlanClase;
 use App\Models\PlanClaseMomento;
+use App\Models\Planificacion;
+use App\Models\PlanifUnidad;
 use App\Models\SchoolYear;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,7 +22,7 @@ class PlanClaseController extends Controller
         $schoolYear = SchoolYear::actual();
         $user       = Auth::user();
 
-        $query = PlanClase::with(['docente', 'asignacion.asignatura', 'asignacion.grupo'])
+        $query = PlanClase::with(['docente', 'asignacion.asignatura', 'asignacion.grupo.grado', 'asignacion.grupo.seccion'])
             ->where('school_year_id', $schoolYear?->id)
             ->latest();
 
@@ -54,8 +56,11 @@ class PlanClaseController extends Controller
             ->get();
 
         $estrategias = PlanClase::$estrategiasCatalogo;
+        [$planifUnidades, $planificacionesTecnicas] = $this->opcionesCurriculares($schoolYear, $user);
 
-        return view('admin.planes_clase.create', compact('schoolYear', 'asignaciones', 'estrategias'));
+        return view('admin.planes_clase.create', compact(
+            'schoolYear', 'asignaciones', 'estrategias', 'planifUnidades', 'planificacionesTecnicas'
+        ));
     }
 
     public function store(Request $request)
@@ -66,6 +71,8 @@ class PlanClaseController extends Controller
             'tipo_plan'         => 'required|in:diaria,semanal,quincenal,mensual',
             'fecha_inicio'      => 'nullable|date',
             'fecha_fin'         => 'nullable|date|after_or_equal:fecha_inicio',
+            'planif_unidad_id'  => 'nullable|integer',
+            'planificacion_id'  => 'nullable|integer',
             'archivo'           => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,jpg,jpeg,png|max:10240',
             'momentos'          => 'nullable|array',
         ]);
@@ -83,6 +90,8 @@ class PlanClaseController extends Controller
             $archivoPath   = $file->store('planes_clase', 'public');
         }
 
+        [$planifUnidadId, $planificacionId] = $this->resolverReferenciaCurricular($request);
+
         $plan = PlanClase::create([
             'asignacion_id'       => $request->asignacion_id ?: null,
             'school_year_id'      => $schoolYear->id,
@@ -91,6 +100,8 @@ class PlanClaseController extends Controller
             'area'                => $request->area,
             'tipo_plan'           => $request->tipo_plan,
             'semana'              => $request->semana,
+            'planif_unidad_id'    => $planifUnidadId,
+            'planificacion_id'    => $planificacionId,
             'fecha_inicio'        => $request->fecha_inicio,
             'fecha_fin'           => $request->fecha_fin,
             'grado_seccion'       => $request->grado_seccion,
@@ -113,24 +124,31 @@ class PlanClaseController extends Controller
 
     public function show(PlanClase $planesClase)
     {
-        $planesClase->load(['docente', 'asignacion.asignatura', 'asignacion.grupo', 'momentos', 'creadoPor']);
+        $planesClase->load([
+            'docente', 'asignacion.asignatura', 'asignacion.grupo.grado', 'asignacion.grupo.seccion',
+            'momentos', 'creadoPor', 'planifUnidad.planifAnual', 'planificacion',
+        ]);
         return view('admin.planes_clase.show', ['plan' => $planesClase]);
     }
 
     public function edit(PlanClase $planesClase)
     {
         $schoolYear   = SchoolYear::actual();
-        $asignaciones = Asignacion::with(['asignatura','grupo'])
+        $user         = Auth::user();
+        $asignaciones = Asignacion::with(['asignatura', 'grupo.grado', 'grupo.seccion'])
             ->where('school_year_id', $schoolYear?->id)
             ->where('activo', true)
             ->get();
         $estrategias  = PlanClase::$estrategiasCatalogo;
+        [$planifUnidades, $planificacionesTecnicas] = $this->opcionesCurriculares($schoolYear, $user);
         $planesClase->load('momentos');
         return view('admin.planes_clase.edit', [
-            'plan'        => $planesClase,
-            'asignaciones'=> $asignaciones,
-            'estrategias' => $estrategias,
-            'schoolYear'  => $schoolYear,
+            'plan'                  => $planesClase,
+            'asignaciones'          => $asignaciones,
+            'estrategias'           => $estrategias,
+            'schoolYear'            => $schoolYear,
+            'planifUnidades'        => $planifUnidades,
+            'planificacionesTecnicas'=> $planificacionesTecnicas,
         ]);
     }
 
@@ -142,6 +160,8 @@ class PlanClaseController extends Controller
             'tipo_plan'    => 'required|in:diaria,semanal,quincenal,mensual',
             'fecha_inicio' => 'nullable|date',
             'fecha_fin'    => 'nullable|date|after_or_equal:fecha_inicio',
+            'planif_unidad_id' => 'nullable|integer',
+            'planificacion_id' => 'nullable|integer',
             'archivo'      => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,jpg,jpeg,png|max:10240',
         ]);
 
@@ -163,12 +183,16 @@ class PlanClaseController extends Controller
             $archivoPath = $archivoNombre = $archivoTipo = null;
         }
 
+        [$planifUnidadId, $planificacionId] = $this->resolverReferenciaCurricular($request);
+
         $planesClase->update([
             'asignacion_id'        => $request->asignacion_id ?: null,
             'titulo'               => $request->titulo,
             'area'                 => $request->area,
             'tipo_plan'            => $request->tipo_plan,
             'semana'               => $request->semana,
+            'planif_unidad_id'     => $planifUnidadId,
+            'planificacion_id'     => $planificacionId,
             'fecha_inicio'         => $request->fecha_inicio,
             'fecha_fin'            => $request->fecha_fin,
             'grado_seccion'        => $request->grado_seccion,
@@ -308,6 +332,57 @@ class PlanClaseController extends Controller
     }
 
     // ── Private helpers ──────────────────────────────────────────────────
+
+    /**
+     * Opciones de la capa curricular para vincular el plan de clase:
+     * PlanifUnidad (académica) y Planificacion tipo RA (técnica), filtradas
+     * por año escolar y, si el usuario es docente, por sus propias asignaciones.
+     */
+    private function opcionesCurriculares(?SchoolYear $schoolYear, $user): array
+    {
+        $docenteId = $user->tieneRolDocente() ? ($user->docente?->id ?? 0) : null;
+
+        $planifUnidades = PlanifUnidad::with('planifAnual')
+            ->whereHas('planifAnual', function ($q) use ($schoolYear, $docenteId) {
+                $q->where('school_year_id', $schoolYear?->id);
+                if ($docenteId !== null) $q->where('docente_id', $docenteId);
+            })
+            ->orderBy('numero')
+            ->get();
+
+        $planificacionesTecnicas = Planificacion::where('school_year_id', $schoolYear?->id)
+            ->where('tipo', 'ra')
+            ->when($docenteId !== null, function ($q) use ($docenteId) {
+                $q->whereHas('asignacion', fn ($qq) => $qq->where('docente_id', $docenteId));
+            })
+            ->orderBy('denominacion')
+            ->get();
+
+        return [$planifUnidades, $planificacionesTecnicas];
+    }
+
+    /**
+     * Resuelve planif_unidad_id / planificacion_id contra la BD real (no el ID
+     * crudo del request) respetando el scope de tenant de cada modelo, y solo
+     * conserva la referencia que corresponde al área seleccionada.
+     */
+    private function resolverReferenciaCurricular(Request $request): array
+    {
+        $planifUnidadId = null;
+        $planificacionId = null;
+
+        if ($request->area === 'academica' && $request->filled('planif_unidad_id')) {
+            $planifUnidadId = PlanifUnidad::find($request->planif_unidad_id)?->id;
+        }
+
+        if ($request->area === 'tecnica' && $request->filled('planificacion_id')) {
+            $planificacionId = Planificacion::where('tipo', 'ra')
+                ->find($request->planificacion_id)?->id;
+        }
+
+        return [$planifUnidadId, $planificacionId];
+    }
+
     private function guardarMomentos(PlanClase $plan, array $momentos): void
     {
         $orden = 0;

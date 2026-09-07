@@ -45,6 +45,8 @@ class BackupSistema extends Command
             ]);
             $this->info("Backup de BD: {$bd['filename']} ({$this->formatBytes($bd['size'])})");
 
+            $this->subirYReportar($service, $bd['path'], $bd['filename']);
+
             $archivos = ['ok' => true, 'filename' => null, 'size' => null];
             $incluirArchivos = ! $this->option('sin-archivos') && config('backup.incluir_archivos', true);
 
@@ -62,6 +64,8 @@ class BackupSistema extends Command
                     'archivo' => $archivos['filename'], 'tamano_bytes' => $archivos['size'],
                 ]);
                 $this->info("Backup de archivos: {$archivos['filename']} ({$this->formatBytes($archivos['size'])})");
+
+                $this->subirYReportar($service, $archivos['path'], $archivos['filename']);
             }
 
             $etapa      = 'retencion';
@@ -134,6 +138,34 @@ class BackupSistema extends Command
     private function segundosEntre(\Illuminate\Support\Carbon $inicio, \Illuminate\Support\Carbon $fin): int
     {
         return max(0, $fin->getTimestamp() - $inicio->getTimestamp());
+    }
+
+    /**
+     * Sube el backup al disco remoto configurado (config('backup.disco')),
+     * si no es 'local'. Es una capa extra de durabilidad — una falla aquí
+     * se registra pero nunca hace fallar la corrida completa, porque el
+     * backup local ya se generó correctamente.
+     */
+    private function subirYReportar(BackupService $service, string $path, string $filename): void
+    {
+        // Sin disco remoto configurado no hay nada que hacer — se evita
+        // incluso llamar al servicio (no solo por eficiencia: así los tests
+        // que mockean BackupService sin disco remoto no necesitan conocer
+        // este paso interno).
+        if (config('backup.disco', 'local') === 'local') {
+            return;
+        }
+
+        $remoto = $service->subirDestinoRemoto($path, $filename);
+
+        if ($remoto['ok']) {
+            Log::channel('backup')->info('BACKUP REMOTE UPLOAD SUCCESS', ['archivo' => $filename, 'disco' => config('backup.disco')]);
+            $this->info("  -> subido a '" . config('backup.disco') . "'");
+            return;
+        }
+
+        Log::channel('backup')->error('BACKUP REMOTE UPLOAD FAILED', ['archivo' => $filename, 'error' => $remoto['error']]);
+        $this->warn("  -> {$remoto['error']}");
     }
 
     private function formatBytes(?int $bytes): string

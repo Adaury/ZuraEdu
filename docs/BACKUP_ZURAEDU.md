@@ -32,22 +32,30 @@ en git y no necesita backup aparte.
 accesible por URL pública. La descarga/eliminación manual desde el panel ya
 tenía protección contra path traversal (`BackupSecurityTest`), sin cambios.
 
-Si se necesita almacenamiento externo (recomendado para producción real,
-para no depender de un solo disco del mismo servidor): Laravel ya trae
-soporte S3 configurado en `config/filesystems.php` (`disks.s3`). Para
-activarlo, definir en el `.env` real del servidor (nunca en el repositorio):
+Además, cada backup local exitoso se sube como copia extra a un disco
+remoto si `BACKUP_DISCO` no es `local` (`BackupService::subirDestinoRemoto()`,
+usado tanto por el comando programado como por el botón manual del panel).
+El backup local siempre se genera primero — si la subida remota falla, se
+registra en el log `backup` y se avisa, pero **no** hace fallar la corrida:
+el respaldo local ya es válido por sí solo.
+
+Para activar el destino remoto (recomendado en producción real, para no
+depender de un solo disco del mismo servidor), definir en el `.env` real
+del servidor (nunca en el repositorio):
 
 ```
+BACKUP_DISCO=s3
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 AWS_DEFAULT_REGION=...
 AWS_BUCKET=...
 ```
 
-y copiar los archivos de `storage/app/backups/` a ese disco después de cada
-corrida (o cambiar `BACKUP_DISCO=s3`, lo cual requiere adaptar
-`BackupService` para escribir directo al disco S3 en vez de al filesystem
-local — **no implementado todavía**, fuera del alcance de esta tarea).
+El bucket S3 debe ser **privado** (nunca público) — contiene datos
+sensibles de todos los tenants. La retención (`BACKUP_RETENCION_DIAS`) solo
+borra archivos locales; para el bucket, configurar una regla de ciclo de
+vida (lifecycle rule) directamente en S3 con la misma cantidad de días —
+es el mecanismo estándar de AWS para esto, no algo que la app deba replicar.
 
 ## 3. Cuándo se ejecuta
 
@@ -179,7 +187,7 @@ muestra la fecha como "Último backup exitoso".
 | `BACKUP_HORA` | `02:30` | Hora diaria (UTC — ver sección 3) |
 | `BACKUP_RETENCION_DIAS` | `7` | Días que se conservan los backups |
 | `BACKUP_INCLUIR_ARCHIVOS` | `true` | Si también respalda `storage/app/public` |
-| `BACKUP_DISCO` | `local` | Reservado para uso futuro con disco externo |
+| `BACKUP_DISCO` | `local` | `local` = solo local; `s3` = además sube copia a S3 (ver sección 2) |
 
 ## Decisiones tomadas durante la auditoría previa a implementar
 

@@ -207,13 +207,39 @@ php artisan tinker
 * * * * * cd /ruta/al/proyecto && php artisan schedule:run >> /dev/null 2>&1
 ```
 
+Ver `app/Console/Kernel.php` para la lista completa y actualizada — la
+tabla de abajo es un resumen, puede quedar desactualizada si se agregan
+tareas nuevas al Kernel sin actualizar este documento.
+
 | Intervalo | Tarea |
 |---|---|
+| 02:00 UTC diario | `tenants:verificar-pagos` — suspende vencidos, reactiva pagados |
+| 02:30 UTC diario | `sge:backup` — backup de BD + archivos (ver `docs/BACKUP_ZURAEDU.md`) |
+| 05:30 diario | `alertas:ausencias` — ausencias repetidas |
 | 06:00 diario | `alertas:rendimiento` — notas < 60 → alerta |
+| 06:30 diario | `alertas:academicas` — baja académica y de asistencia |
 | 07:00 diario | `alertas:entrega-notas` — fechas de cierre próximas |
+| 07:30 diario | `alertas:cumpleanos` — cumpleaños de estudiantes |
+| 08:00 diario | `pagos:aviso-proximo --dias=3` |
+| Cada 5 min | `queue:work --stop-when-empty --tries=3` |
 | Cada 5 min | `horizon:snapshot` — métricas para gráficas |
-| Domingo 00:00 | `horizon:clear-metrics` / `queue:prune-failed` |
+| Cada hora | `demo:limpiar --force` — tenants demo temporales vencidos |
+| Lunes 08:00 | `pagos:recordatorio-vencidos` |
+| Viernes 09:00 | `sigerd:validar` |
 | Domingo 03:00 | `session:flush` |
+| Semanal | `queue:prune-failed --hours=168` |
+
+Las horas `dailyAt(...)` del Kernel se evalúan en `config('app.timezone')`
+(**UTC** en este proyecto), no en la hora local del servidor — convertir
+según corresponda al desplegar.
+
+**Windows (entorno actual, sin cron nativo)**: se creó una tarea de Windows
+Task Scheduler ("ZuraEdu Laravel Scheduler") que corre cada minuto
+`scripts/run-scheduler.bat`, el cual llama a `php artisan schedule:run` con
+el directorio de trabajo correcto — el equivalente exacto de la línea de
+cron de arriba. Consultar/recrear con `schtasks /Query /TN "ZuraEdu Laravel Scheduler"`.
+Al migrar a un servidor Linux real, reemplazar esto por el crontab estándar
+de arriba y eliminar la tarea de Windows.
 
 ---
 

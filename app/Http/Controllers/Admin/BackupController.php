@@ -60,7 +60,19 @@ class BackupController extends Controller
             'bd_tamano_bytes'   => $bd['size'],
         ]);
 
-        return back()->with('success', "Backup creado: {$bd['filename']} (" . $this->formatBytes($bd['size']) . ')');
+        // Misma capa de durabilidad extra que el comando programado — una
+        // falla al subir al disco remoto no invalida el backup local ya creado.
+        // Sin disco remoto configurado no se llama al servicio (ver
+        // BackupSistema::subirYReportar, mismo criterio en ambos lugares).
+        $mensaje = "Backup creado: {$bd['filename']} (" . $this->formatBytes($bd['size']) . ')';
+        if (config('backup.disco', 'local') !== 'local') {
+            $remoto = $service->subirDestinoRemoto($bd['path'], $bd['filename']);
+            if (! $remoto['ok']) {
+                $mensaje .= '. Aviso: ' . $remoto['error'];
+            }
+        }
+
+        return back()->with('success', $mensaje);
     }
 
     public function descargar(Request $request)

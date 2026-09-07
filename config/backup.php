@@ -25,6 +25,12 @@ return [
 
     'incluir_archivos' => env('BACKUP_INCLUIR_ARCHIVOS', true),
 
+    // Ruta al ejecutable de mysqldump. En Linux normalmente basta con
+    // "mysqldump" (está en el PATH tras instalar mysql-client); en Windows
+    // rara vez está en el PATH del sistema, así que se puede apuntar a la
+    // ruta completa del binario sin tocar el PATH global de la máquina.
+    'mysqldump_path' => env('MYSQLDUMP_PATH', 'mysqldump'),
+
     // Disco (config/filesystems.php) donde se guardan los .sql/.zip de backup.
     // Debe ser un disco PRIVADO (nunca 'public'): los backups contienen datos
     // sensibles de todos los tenants.

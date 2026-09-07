@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
 use ZipArchive;
 
 /**
@@ -39,7 +40,8 @@ class BackupService
         $path     = $this->directorioDestino() . DIRECTORY_SEPARATOR . $filename;
 
         $cmd = sprintf(
-            'mysqldump --host=%s --port=%s -u%s --single-transaction --routines --triggers %s',
+            '%s --host=%s --port=%s -u%s --single-transaction --routines --triggers %s',
+            escapeshellarg(config('backup.mysqldump_path', 'mysqldump')),
             escapeshellarg($host),
             escapeshellarg($port),
             escapeshellarg($user),
@@ -52,7 +54,12 @@ class BackupService
             2 => ['pipe', 'w'],
         ];
 
-        $env = array_merge($_ENV, ['MYSQL_PWD' => (string) $pass]);
+        // $_ENV puede estar vacío según variables_order de php.ini (pasa en
+        // este servidor: "GPCS", sin la "E") — sin las variables del sistema
+        // (SystemRoot, PATH, etc.) mysqldump falla en Windows al no poder
+        // inicializar Winsock. getenv() sin argumentos siempre trae el
+        // entorno real del proceso, sin depender de esa configuración.
+        $env = array_merge(getenv(), ['MYSQL_PWD' => (string) $pass]);
 
         $process = @proc_open($cmd, $descriptors, $pipes, null, $env);
 
@@ -129,6 +136,36 @@ class BackupService
         }
 
         return ['ok' => true, 'path' => $path, 'filename' => $filename, 'size' => filesize($path), 'error' => null];
+    }
+
+    /**
+     * Sube una copia del backup local a un disco remoto (típicamente 's3'),
+     * para no depender únicamente del mismo disco físico donde vive la app.
+     * El backup local YA se generó con éxito antes de llamar esto — una
+     * falla aquí es un problema de durabilidad extra, no del backup en sí,
+     * así que se reporta pero nunca hace fallar la corrida completa.
+     *
+     * @return array{ok: bool, error: ?string}
+     */
+    public function subirDestinoRemoto(string $path, string $filename): array
+    {
+        $disco = config('backup.disco', 'local');
+
+        if ($disco === 'local' || ! $disco) {
+            return ['ok' => true, 'error' => null];
+        }
+
+        try {
+            $subido = Storage::disk($disco)->putFileAs('backups', new \Illuminate\Http\File($path), $filename);
+
+            if ($subido === false) {
+                return ['ok' => false, 'error' => "No se pudo subir {$filename} al disco remoto '{$disco}'."];
+            }
+
+            return ['ok' => true, 'error' => null];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'error' => "Error subiendo {$filename} al disco remoto '{$disco}': " . $e->getMessage()];
+        }
     }
 
     /**

@@ -125,24 +125,55 @@ class GaleriaController extends Controller
         $data['activo'] = $request->boolean('activo', true);
         $data['orden']  = $data['orden'] ?? 0;
 
-        // Solo un álbum puede ser el carrusel del sitio público a la vez, y
-        // solo si ya tiene fotos suficientes para que se vea como un carrusel
-        // real (con navegación), no una sola imagen estática.
-        $data['mostrar_en_sitio'] = $request->boolean('mostrar_en_sitio');
-        if ($data['mostrar_en_sitio']) {
-            $totalFotos = $galeria->fotos()->count();
-            if ($totalFotos < Album::MIN_FOTOS_CARRUSEL) {
-                return back()->withInput()->withErrors([
-                    'mostrar_en_sitio' => "Este álbum tiene {$totalFotos} foto(s) — necesita al menos " . Album::MIN_FOTOS_CARRUSEL . " para usarse como carrusel del sitio público.",
-                ]);
-            }
-            Album::where('mostrar_en_sitio', true)->where('id', '!=', $galeria->id)->update(['mostrar_en_sitio' => false]);
+        $mostrarEnSitio = $request->boolean('mostrar_en_sitio');
+        $error = $this->validarMostrarEnSitio($galeria, $mostrarEnSitio);
+        if ($error) {
+            return back()->withInput()->withErrors(['mostrar_en_sitio' => $error]);
         }
+        $data['mostrar_en_sitio'] = $mostrarEnSitio;
 
         $galeria->update($data);
 
         return redirect()->route('admin.galeria.show', $galeria)
                          ->with('success', 'Álbum actualizado correctamente.');
+    }
+
+    // ── Marcar/desmarcar como carrusel del sitio (desde la pantalla de fotos) ─
+    public function toggleCarrusel(Request $request, Album $galeria)
+    {
+        $mostrarEnSitio = $request->boolean('mostrar_en_sitio');
+        $error = $this->validarMostrarEnSitio($galeria, $mostrarEnSitio);
+        if ($error) {
+            return back()->withErrors(['mostrar_en_sitio' => $error]);
+        }
+
+        $galeria->update(['mostrar_en_sitio' => $mostrarEnSitio]);
+
+        return back()->with('success', $mostrarEnSitio
+            ? 'Este álbum ahora es el carrusel del sitio público.'
+            : 'Este álbum ya no es el carrusel del sitio público.');
+    }
+
+    /**
+     * Solo un álbum puede ser el carrusel del sitio público a la vez, y solo
+     * si ya tiene fotos suficientes para que se vea como un carrusel real
+     * (con navegación), no una sola imagen estática. Devuelve el mensaje de
+     * error si no se puede marcar, o null si la operación es válida.
+     */
+    private function validarMostrarEnSitio(Album $galeria, bool $mostrarEnSitio): ?string
+    {
+        if (! $mostrarEnSitio) {
+            return null;
+        }
+
+        $totalFotos = $galeria->fotos()->count();
+        if ($totalFotos < Album::MIN_FOTOS_CARRUSEL) {
+            return "Este álbum tiene {$totalFotos} foto(s) — necesita al menos " . Album::MIN_FOTOS_CARRUSEL . " para usarse como carrusel del sitio público.";
+        }
+
+        Album::where('mostrar_en_sitio', true)->where('id', '!=', $galeria->id)->update(['mostrar_en_sitio' => false]);
+
+        return null;
     }
 
     // ── Destroy ───────────────────────────────────────────────────────────

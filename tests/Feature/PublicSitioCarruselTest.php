@@ -132,6 +132,64 @@ class PublicSitioCarruselTest extends TestCase
         $this->assertFalse($album->fresh()->mostrar_en_sitio);
     }
 
+    public function test_toggle_carrusel_marca_el_album_desde_la_pantalla_de_fotos(): void
+    {
+        $tenant = $this->crearTenant('Colegio Toggle Carrusel');
+        $user = User::factory()->create(['activo' => true, 'tenant_id' => $tenant->id]);
+        $user->assignRole('Administrador');
+
+        app()->instance('tenant', $tenant);
+        $album = Album::create(['titulo' => 'Álbum Fotos Listas', 'activo' => true, 'mostrar_en_sitio' => false, 'orden' => 0]);
+        $this->crearFotos($album, 5);
+        app()->forgetInstance('tenant');
+
+        $response = $this->actingAs($user)->patch(route('admin.galeria.toggleCarrusel', $album), [
+            'mostrar_en_sitio' => '1',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHasNoErrors();
+        $this->assertTrue($album->fresh()->mostrar_en_sitio);
+    }
+
+    public function test_toggle_carrusel_rechaza_con_menos_de_5_fotos(): void
+    {
+        $tenant = $this->crearTenant('Colegio Toggle Insuficiente');
+        $user = User::factory()->create(['activo' => true, 'tenant_id' => $tenant->id]);
+        $user->assignRole('Administrador');
+
+        app()->instance('tenant', $tenant);
+        $album = Album::create(['titulo' => 'Álbum Pocas Fotos', 'activo' => true, 'mostrar_en_sitio' => false, 'orden' => 0]);
+        $this->crearFotos($album, 3);
+        app()->forgetInstance('tenant');
+
+        $response = $this->actingAs($user)->patch(route('admin.galeria.toggleCarrusel', $album), [
+            'mostrar_en_sitio' => '1',
+        ]);
+
+        $response->assertSessionHasErrors('mostrar_en_sitio');
+        $this->assertFalse($album->fresh()->mostrar_en_sitio);
+    }
+
+    public function test_toggle_carrusel_puede_quitar_el_album_del_carrusel(): void
+    {
+        $tenant = $this->crearTenant('Colegio Toggle Quitar');
+        $user = User::factory()->create(['activo' => true, 'tenant_id' => $tenant->id]);
+        $user->assignRole('Administrador');
+
+        app()->instance('tenant', $tenant);
+        $album = Album::create(['titulo' => 'Álbum Marcado', 'activo' => true, 'mostrar_en_sitio' => true, 'orden' => 0]);
+        $this->crearFotos($album, 5);
+        app()->forgetInstance('tenant');
+
+        $response = $this->actingAs($user)->patch(route('admin.galeria.toggleCarrusel', $album), [
+            'mostrar_en_sitio' => '0',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertFalse($album->fresh()->mostrar_en_sitio);
+    }
+
     public function test_el_carrusel_de_un_tenant_no_afecta_a_otro(): void
     {
         $tenantA = $this->crearTenant('Colegio Carrusel A');

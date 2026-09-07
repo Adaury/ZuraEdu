@@ -58,6 +58,46 @@
     </div>
     @endif
 
+    {{-- Carrusel del sitio público — mismo control que en Editar álbum, pero
+         visible aquí también: es donde el admin realmente sube las fotos, y
+         antes no había ningún aviso de que faltaba este paso para que el
+         carrusel apareciera en /sitio. --}}
+    @php $totalFotos = $album->fotos->count(); @endphp
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 mb-8">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-3">
+                <i class="bi bi-easel2 text-indigo-500 text-xl"></i>
+                <div>
+                    <p class="text-sm font-bold text-gray-800 dark:text-white">Carrusel del sitio público</p>
+                    @if($album->mostrar_en_sitio)
+                        <p class="text-xs text-green-600 dark:text-green-400">Este es el álbum que se muestra como carrusel en /sitio.</p>
+                    @elseif($totalFotos < \App\Models\Album::MIN_FOTOS_CARRUSEL)
+                        <p class="text-xs text-amber-500">Necesitas al menos {{ \App\Models\Album::MIN_FOTOS_CARRUSEL }} fotos para poder usarlo como carrusel — tienes {{ $totalFotos }}.</p>
+                    @else
+                        <p class="text-xs text-gray-400 dark:text-gray-500">Este álbum no se muestra en el sitio público todavía.</p>
+                    @endif
+                </div>
+            </div>
+            <form action="{{ route('admin.galeria.toggleCarrusel', $album) }}" method="POST">
+                @csrf @method('PATCH')
+                <input type="hidden" name="mostrar_en_sitio" value="{{ $album->mostrar_en_sitio ? '0' : '1' }}">
+                <button type="submit"
+                        @disabled(! $album->mostrar_en_sitio && $totalFotos < \App\Models\Album::MIN_FOTOS_CARRUSEL)
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl transition border
+                               {{ $album->mostrar_en_sitio
+                                    ? 'text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border-gray-200 dark:border-gray-600'
+                                    : 'text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border-indigo-200 dark:border-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed' }}">
+                    @if($album->mostrar_en_sitio)
+                        <i class="bi bi-x-circle"></i>Quitar del sitio público
+                    @else
+                        <i class="bi bi-check-circle"></i>Usar como carrusel del sitio
+                    @endif
+                </button>
+            </form>
+        </div>
+        @error('mostrar_en_sitio')<p class="text-xs text-red-500 mt-3">{{ $message }}</p>@enderror
+    </div>
+
     {{-- Panel subir fotos --}}
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 mb-8"
          x-data="subirFotos()">

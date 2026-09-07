@@ -20,6 +20,7 @@ Route::prefix('galeria')->name('galeria.')->middleware('can:ver-servicios')->gro
     Route::get('/{galeria}',                                [GaleriaController::class, 'show'])->name('show');
     Route::get('/{galeria}/editar',                         [GaleriaController::class, 'edit'])->name('edit');
     Route::put('/{galeria}',                                [GaleriaController::class, 'update'])->name('update');
+    Route::patch('/{galeria}/carrusel',                     [GaleriaController::class, 'toggleCarrusel'])->name('toggleCarrusel');
     Route::delete('/{galeria}',                             [GaleriaController::class, 'destroy'])->name('destroy');
     Route::post('/{galeria}/fotos',                         [GaleriaController::class, 'subirFotos'])->name('fotos.subir');
     Route::delete('/{galeria}/fotos/{foto}',                [GaleriaController::class, 'eliminarFoto'])->name('fotos.eliminar');

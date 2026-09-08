@@ -90,7 +90,11 @@
     /* Espacios publicitarios (Google Ads u otro, configurados por el propio
        centro) — solo en pantallas anchas, donde sobra espacio a los lados del
        contenido centrado; en mobile no hay sitio y se ocultan. */
-    .ads-lateral { position: fixed; top: 6.5rem; width: 160px; z-index: 10; }
+    /* overflow:hidden + max-height es la única defensa real contra un admin
+       que pega en este campo un snippet completo de página (con su propio
+       <style> global sin scoping) en vez de solo su código de anuncio — sin
+       esto, ese contenido se desborda de los 160px y tapa el resto del sitio. */
+    .ads-lateral { position: fixed; top: 6.5rem; width: 160px; max-height: calc(100vh - 8rem); overflow: hidden; z-index: 10; }
     .ads-izquierda { left: 1rem; }
     .ads-derecha { right: 1rem; }
     @media (max-width: 1399px) { .ads-lateral { display: none; } }

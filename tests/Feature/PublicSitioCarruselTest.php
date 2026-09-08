@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Album;
 use App\Models\FotoAlbum;
+use App\Models\PaginaSeccion;
 use App\Models\Tenant;
 use App\Models\TenantFeature;
 use App\Models\User;
@@ -56,6 +57,9 @@ class PublicSitioCarruselTest extends TestCase
         $album = Album::create(['titulo' => 'Carrusel Principal', 'descripcion' => 'Nuestra historia en imágenes.', 'activo' => true, 'mostrar_en_sitio' => true, 'orden' => 0]);
         $this->crearFotos($album, 4);
         FotoAlbum::create(['album_id' => $album->id, 'ruta' => 'galeria/1/foto5.jpg', 'titulo' => 'Nuestra Fachada', 'orden' => 5]);
+        // El centro debe haber agregado el bloque "Carrusel" en el constructor
+        // visual (sin album_id explícito, cae al único álbum marcado en Galería).
+        PaginaSeccion::create(['tenant_id' => $tenant->id, 'tipo' => 'carrusel', 'orden' => 1, 'activo' => true, 'contenido' => []]);
         app()->forgetInstance('tenant');
 
         $response = $this->get($this->url($tenant, '/sitio'));

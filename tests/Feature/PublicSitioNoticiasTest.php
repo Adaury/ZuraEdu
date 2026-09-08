@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\PaginaSeccion;
 use App\Models\Publicacion;
 use App\Models\Tenant;
 use App\Models\TenantFeature;
@@ -34,6 +35,11 @@ class PublicSitioNoticiasTest extends TestCase
         return 'http://' . $tenant->dominio . '.zuraedu.test' . $path;
     }
 
+    private function crearBloqueNoticias(Tenant $tenant): void
+    {
+        PaginaSeccion::create(['tenant_id' => $tenant->id, 'tipo' => 'noticias', 'orden' => 1, 'activo' => true, 'contenido' => ['limite' => 6]]);
+    }
+
     public function test_una_publicacion_publicada_y_vigente_aparece_en_la_portada(): void
     {
         $tenant = $this->crearTenant('Colegio Noticias Uno');
@@ -42,6 +48,7 @@ class PublicSitioNoticiasTest extends TestCase
             'tipo' => 'noticia', 'titulo' => 'Inicio de Clases', 'contenido' => 'Contenido',
             'fecha' => now()->subDay(), 'estado' => 'publicado', 'visible' => true,
         ]);
+        $this->crearBloqueNoticias($tenant);
         app()->forgetInstance('tenant');
 
         $response = $this->get($this->url($tenant, '/sitio'));
@@ -172,6 +179,7 @@ class PublicSitioNoticiasTest extends TestCase
             'tipo' => 'noticia', 'titulo' => 'Con Resumen', 'contenido' => 'Este es el contenido completo de la noticia.',
             'fecha' => now(), 'estado' => 'publicado', 'visible' => true,
         ]);
+        $this->crearBloqueNoticias($tenant);
         app()->forgetInstance('tenant');
 
         $response = $this->get($this->url($tenant, '/sitio'));

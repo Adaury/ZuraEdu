@@ -1,15 +1,15 @@
 <section class="hero">
-    <h1>{{ $config['hero_titulo'] ?: $config['nombre'] }}</h1>
-    @if($config['hero_subtitulo'])
-        <p>{{ $config['hero_subtitulo'] }}</p>
+    <h1>{{ $seccion->dato('titulo') ?: $config['nombre'] }}</h1>
+    @if($seccion->dato('subtitulo'))
+        <p>{{ $seccion->dato('subtitulo') }}</p>
     @endif
-    @if($config['hero_btn_texto'] || $config['hero_btn2_texto'])
+    @if($seccion->dato('btn_texto') || $seccion->dato('btn2_texto'))
     <div class="actions">
-        @if($config['hero_btn_texto'])
-            <a href="{{ $config['hero_btn_url'] }}" class="btn btn-light">{{ $config['hero_btn_texto'] }}</a>
+        @if($seccion->dato('btn_texto'))
+            <a href="{{ $seccion->dato('btn_url') ?: route('login') }}" class="btn btn-light">{{ $seccion->dato('btn_texto') }}</a>
         @endif
-        @if($config['hero_btn2_texto'])
-            <a href="{{ $config['hero_btn2_url'] }}" class="btn btn-outline">{{ $config['hero_btn2_texto'] }}</a>
+        @if($seccion->dato('btn2_texto'))
+            <a href="{{ $seccion->dato('btn2_url') ?: route('inscripcion') }}" class="btn btn-outline">{{ $seccion->dato('btn2_texto') }}</a>
         @endif
     </div>
     @endif

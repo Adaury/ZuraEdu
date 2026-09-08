@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\PaginaSeccion;
 use App\Models\Publicacion;
 use App\Models\Tenant;
 use App\Models\TenantFeature;
@@ -80,6 +81,7 @@ class PublicSitioNavegacionTest extends TestCase
             'tipo' => 'noticia', 'titulo' => 'Editable', 'contenido' => 'x',
             'fecha' => now(), 'estado' => 'publicado', 'visible' => true,
         ]);
+        PaginaSeccion::create(['tenant_id' => $tenant->id, 'tipo' => 'noticias', 'orden' => 1, 'activo' => true, 'contenido' => ['limite' => 6]]);
         app()->forgetInstance('tenant');
 
         $response = $this->actingAs($user)->get($this->url($tenant, '/sitio'));

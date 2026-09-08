@@ -2,19 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Admin\HomepageController;
 use App\Models\Album;
 use App\Models\ConfigInstitucional;
+use App\Models\PaginaSeccion;
 use App\Models\Publicacion;
 use Illuminate\Support\Facades\Storage;
 
 /**
  * Sitio público institucional del tenant actual (roadmap de producto:
- * "portal público por centro"). Lee, de solo lectura, el contenido que
- * Admin\HomepageController ya permite configurar en ConfigInstitucional
- * (claves hp_*) — no crea ningún dato nuevo, solo lo renderiza fuera del
- * panel admin. Se sirve en /sitio, listado en las RUTAS_PUBLICAS de
- * ResolveTenant para que sea visible incluso si el tenant está suspendido.
+ * "portal público por centro"). Renderiza los bloques que el propio centro
+ * arma en el constructor visual (Admin\PaginaSeccionController, tabla
+ * pagina_secciones) — no crea ningún dato nuevo, solo lo lee. Se sirve en
+ * /sitio, listado en las RUTAS_PUBLICAS de ResolveTenant para que sea
+ * visible incluso si el tenant está suspendido.
  */
 class PublicSiteController extends Controller
 {
@@ -48,57 +48,49 @@ class PublicSiteController extends Controller
             return view('public.sitio-no-disponible', compact('tenant'));
         }
 
-        $orden = HomepageController::ordenActual();
+        $secciones = PaginaSeccion::tiposValidos()->activas()->ordenadas()->get();
 
-        $stats = collect(range(1, 4))
-            ->map(fn ($i) => [
-                'numero' => ConfigInstitucional::get("hp_stat{$i}_numero", ''),
-                'label'  => ConfigInstitucional::get("hp_stat{$i}_label", ''),
-            ])
-            ->filter(fn ($s) => filled($s['numero']) || filled($s['label']))
-            ->values();
+        // Hidratar los tipos "query-backed" -- el JSON solo guarda la
+        // referencia (album_id / limite), los datos reales siempre se leen
+        // por acá para que sus scopes (visibilidad/moderación) se respeten
+        // aunque el bloque exista.
+        $albumIds = $secciones->where('tipo', 'carrusel')
+            ->pluck('contenido.album_id')->filter()->unique();
+
+        $albumesPorId = $albumIds->isNotEmpty()
+            ? Album::with(['fotos' => fn ($q) => $q->orderBy('orden')])
+                ->carruselDelSitio()->whereIn('id', $albumIds)->get()->keyBy('id')
+            : collect();
+
+        $albumPorDefecto = null;
+
+        foreach ($secciones as $seccion) {
+            if ($seccion->tipo === 'carrusel') {
+                $albumId = $seccion->dato('album_id');
+                $seccion->datos = $albumId ? $albumesPorId->get($albumId) : null;
+
+                if (! $seccion->datos) {
+                    // Compatibilidad con el comportamiento previo al backfill:
+                    // sin álbum explícito, cae al único álbum marcado para el sitio.
+                    $albumPorDefecto ??= Album::with(['fotos' => fn ($q) => $q->orderBy('orden')])
+                        ->carruselDelSitio()->first();
+                    $seccion->datos = $albumPorDefecto;
+                }
+            } elseif ($seccion->tipo === 'noticias') {
+                $seccion->datos = Publicacion::visiblesPublico()->recientes()
+                    ->limit($seccion->dato('limite', 6))->get();
+            }
+        }
+
+        $secciones = $secciones->filter(fn ($s) => $s->tieneContenido())->values();
 
         $logoPath = ConfigInstitucional::get('hp_logo_path');
 
-        $carrusel = Album::with(['fotos' => fn ($q) => $q->orderBy('orden')])
-            ->carruselDelSitio()
-            ->first();
-
-        $noticias = Publicacion::visiblesPublico()->recientes()->limit(6)->get();
-
         $config = [
-            'hero_visible'    => ConfigInstitucional::get('hp_hero_visible', '1') == '1',
-            'hero_titulo'     => ConfigInstitucional::get('hp_hero_titulo', ''),
-            'hero_subtitulo'  => ConfigInstitucional::get('hp_hero_subtitulo', ''),
-            'hero_btn_texto'  => ConfigInstitucional::get('hp_hero_btn_texto', ''),
-            'hero_btn_url'    => ConfigInstitucional::get('hp_hero_btn_url', '') ?: route('login'),
-            'hero_btn2_texto' => ConfigInstitucional::get('hp_hero_btn2_texto', ''),
-            'hero_btn2_url'   => ConfigInstitucional::get('hp_hero_btn2_url', '') ?: route('inscripcion'),
-
-            'about_visible'   => ConfigInstitucional::get('hp_about_visible', '1') == '1',
-            'about_titulo'    => ConfigInstitucional::get('hp_about_titulo', ''),
-            'about_texto'     => ConfigInstitucional::get('hp_about_texto', ''),
-
-            'stats_visible'   => ConfigInstitucional::get('hp_stats_visible', '1') == '1',
-            'stats'           => $stats,
-
-            'features_visible' => ConfigInstitucional::get('hp_features_visible', '1') == '1',
-            'features_titulo'  => ConfigInstitucional::get('hp_features_titulo', ''),
-
-            'carrusel_visible' => ConfigInstitucional::get('hp_carrusel_visible', '1') == '1',
-            'carrusel'         => $carrusel,
-
-            'noticias_visible' => ConfigInstitucional::get('hp_noticias_visible', '1') == '1',
-            'noticias'         => $noticias,
-
-            'contacto_visible'   => ConfigInstitucional::get('hp_contacto_visible', '1') == '1',
-            'contacto_direccion' => ConfigInstitucional::get('hp_contacto_direccion', ''),
-            'contacto_telefono'  => ConfigInstitucional::get('hp_contacto_telefono', ''),
-            'contacto_email'     => ConfigInstitucional::get('hp_contacto_email', ''),
-
-            'social_facebook'  => ConfigInstitucional::get('hp_social_facebook', ''),
-            'social_instagram' => ConfigInstitucional::get('hp_social_instagram', ''),
-            'social_twitter'   => ConfigInstitucional::get('hp_social_twitter', ''),
+            'nombre'           => ConfigInstitucional::get('nombre_institucion', '') ?: $tenant->nombre_institucion,
+            'logo_url'         => $logoPath ? Storage::url($logoPath) : $tenant->logo_url,
+            'color_primario'   => ConfigInstitucional::get('hp_color_primario', $tenant->color_primario ?? '#0d6efd'),
+            'color_secundario' => ConfigInstitucional::get('hp_color_secundario', $tenant->color_secundario ?? '#6c757d'),
 
             // Código de anuncios de terceros (Google AdSense u otro) que el
             // propio centro configura — se imprime tal cual, sin sanear (ver
@@ -106,14 +98,9 @@ class PublicSiteController extends Controller
             // tenant, no cruza a otros centros.
             'ads_izquierda' => ConfigInstitucional::get('hp_ads_izquierda', ''),
             'ads_derecha'   => ConfigInstitucional::get('hp_ads_derecha', ''),
-
-            'color_primario'   => ConfigInstitucional::get('hp_color_primario', $tenant->color_primario ?? '#0d6efd'),
-            'color_secundario' => ConfigInstitucional::get('hp_color_secundario', $tenant->color_secundario ?? '#6c757d'),
-            'logo_url'         => $logoPath ? Storage::url($logoPath) : $tenant->logo_url,
-            'nombre'           => ConfigInstitucional::get('nombre_institucion', '') ?: $tenant->nombre_institucion,
         ];
 
-        return view('public.sitio', compact('tenant', 'config', 'orden'));
+        return view('public.sitio', compact('tenant', 'config', 'secciones'));
     }
 
     /** Listado completo, paginado, de publicaciones ("Ver todas las noticias"). */

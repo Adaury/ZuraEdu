@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\ConfigInstitucional;
+use App\Models\PaginaSeccion;
 use App\Models\Tenant;
 use App\Models\TenantFeature;
 use App\Models\User;
@@ -39,6 +39,16 @@ class RaizTenantHomepageTest extends TestCase
         return 'http://' . $tenant->dominio . '.zuraedu.test/';
     }
 
+    private function crearHero(Tenant $tenant, string $titulo): void
+    {
+        app()->instance('tenant', $tenant);
+        PaginaSeccion::create([
+            'tenant_id' => $tenant->id, 'tipo' => 'hero', 'orden' => 1,
+            'activo' => true, 'contenido' => ['titulo' => $titulo],
+        ]);
+        app()->forgetInstance('tenant');
+    }
+
     public function test_un_host_generico_no_reconocido_muestra_el_landing_de_marketing(): void
     {
         $response = $this->get('/');
@@ -50,9 +60,7 @@ class RaizTenantHomepageTest extends TestCase
     public function test_el_subdominio_de_una_institucion_muestra_su_propio_sitio_en_la_raiz(): void
     {
         $tenant = $this->crearTenant('Colegio Raiz Uno');
-        app()->instance('tenant', $tenant);
-        ConfigInstitucional::set('hp_hero_titulo', 'Bienvenidos a Colegio Raiz Uno');
-        app()->forgetInstance('tenant');
+        $this->crearHero($tenant, 'Bienvenidos a Colegio Raiz Uno');
 
         $response = $this->get($this->urlRaiz($tenant));
 
@@ -74,14 +82,10 @@ class RaizTenantHomepageTest extends TestCase
     public function test_dos_instituciones_ven_contenido_distinto_en_su_propia_raiz(): void
     {
         $tenantA = $this->crearTenant('Colegio Raiz A');
-        app()->instance('tenant', $tenantA);
-        ConfigInstitucional::set('hp_hero_titulo', 'Exclusivo Raiz A');
-        app()->forgetInstance('tenant');
+        $this->crearHero($tenantA, 'Exclusivo Raiz A');
 
         $tenantB = $this->crearTenant('Colegio Raiz B');
-        app()->instance('tenant', $tenantB);
-        ConfigInstitucional::set('hp_hero_titulo', 'Exclusivo Raiz B');
-        app()->forgetInstance('tenant');
+        $this->crearHero($tenantB, 'Exclusivo Raiz B');
 
         $responseA = $this->get($this->urlRaiz($tenantA));
         $responseB = $this->get($this->urlRaiz($tenantB));
@@ -105,9 +109,7 @@ class RaizTenantHomepageTest extends TestCase
         $superAdmin->assignRole('super_admin');
 
         $tenant = $this->crearTenant('Colegio Impersonado');
-        app()->instance('tenant', $tenant);
-        ConfigInstitucional::set('hp_hero_titulo', 'Vista Impersonada');
-        app()->forgetInstance('tenant');
+        $this->crearHero($tenant, 'Vista Impersonada');
 
         $response = $this->actingAs($superAdmin)
             ->withSession(['sa_tenant_id' => $tenant->id])

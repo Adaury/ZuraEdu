@@ -4,7 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $config['nombre'] }}</title>
-    <meta name="description" content="{{ $config['hero_subtitulo'] ?: $config['about_texto'] ?: $config['nombre'] }}">
+    @php
+        $seccionDescripcion = $secciones->firstWhere('tipo', 'hero') ?? $secciones->firstWhere('tipo', 'about');
+        $metaDescripcion = $seccionDescripcion
+            ? (\Illuminate\Support\Str::limit(strip_tags($seccionDescripcion->dato('subtitulo') ?: $seccionDescripcion->dato('texto') ?: ''), 160) ?: $config['nombre'])
+            : $config['nombre'];
+    @endphp
+    <meta name="description" content="{{ $metaDescripcion }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link href="/vendor/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet">
     <style>
@@ -39,6 +45,8 @@
     .btn-outline { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.7); }
 
     .carrusel { position: relative; max-width: 72rem; margin: 0 auto; padding: 2.5rem 1.5rem; }
+    .carrusel-intro { text-align: center; margin-bottom: 1.5rem; }
+    .carrusel-historia { color: var(--g500); max-width: 42rem; margin: 0 auto; }
     .carrusel-track { position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 16/7; background: var(--g100); }
     .carrusel-slide { position: absolute; inset: 0; opacity: 0; transition: opacity .6s ease; }
     .carrusel-slide.activa { opacity: 1; }
@@ -69,6 +77,12 @@
     .section-inner { max-width: 64rem; margin: 0 auto; }
     .section-title { font-size: 1.8rem; font-weight: 800; margin-bottom: 1rem; text-align: center; }
     .about-text { font-size: 1.05rem; color: var(--g700); max-width: 42rem; margin: 0 auto; text-align: center; }
+
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 2rem; }
+    .feature-card { text-align: center; }
+    .feature-card i { font-size: 2rem; color: var(--primary); margin-bottom: .75rem; display: block; }
+    .feature-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: .4rem; }
+    .feature-card p { color: var(--g500); font-size: .9rem; }
 
     .stats { background: var(--g50); }
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1.5rem; text-align: center; }
@@ -121,25 +135,11 @@
     <aside class="ads-lateral ads-derecha">{!! $config['ads_derecha'] !!}</aside>
 @endif
 
-@php
-    $mostrar = [
-        'hero'     => $config['hero_visible'],
-        'carrusel' => $config['carrusel_visible'] && $config['carrusel'] && $config['carrusel']->fotos->count() >= \App\Models\Album::MIN_FOTOS_CARRUSEL,
-        'about'    => $config['about_visible'] && ($config['about_titulo'] || $config['about_texto']),
-        'stats'    => $config['stats_visible'] && $config['stats']->isNotEmpty(),
-        'features' => $config['features_visible'] && $config['features_titulo'],
-        'noticias' => $config['noticias_visible'] && $config['noticias']->isNotEmpty(),
-        'contacto' => $config['contacto_visible'] && ($config['contacto_direccion'] || $config['contacto_telefono'] || $config['contacto_email']),
-    ];
-@endphp
-
-@foreach($orden as $seccion)
-    @if($mostrar[$seccion] ?? false)
-        @include("public.sitio-secciones.{$seccion}")
-    @endif
+@foreach($secciones as $seccion)
+    @include("public.sitio-secciones.{$seccion->tipo}", ['seccion' => $seccion])
 @endforeach
 
-@if(!in_array(true, $mostrar, true))
+@if($secciones->isEmpty())
 <div class="empty-state">
     <i class="bi bi-building" style="font-size:2.5rem;"></i>
     <p class="mt-3">Esta institución aún no ha publicado contenido en su sitio público.</p>
@@ -150,37 +150,44 @@
 
 <script>
 (function () {
-    var track = document.querySelector('.carrusel-track');
-    if (!track) return;
+    // Cada bloque .carrusel es una instancia independiente -- puede haber
+    // varios en la misma página, cada uno con sus propios slides/dots/nav,
+    // así que todo el querySelector queda escopeado a "root" (antes se
+    // buscaba en document entero, y un segundo carrusel no tenía JS propio
+    // y sus dots controlaban al primero).
+    document.querySelectorAll('.carrusel').forEach(function (root) {
+        var track = root.querySelector('.carrusel-track');
+        if (!track) return;
 
-    var slides = Array.prototype.slice.call(track.querySelectorAll('.carrusel-slide'));
-    var dots   = Array.prototype.slice.call(document.querySelectorAll('.carrusel-dots button'));
-    if (slides.length < 2) return;
+        var slides = Array.prototype.slice.call(track.querySelectorAll('.carrusel-slide'));
+        var dots   = Array.prototype.slice.call(root.querySelectorAll('.carrusel-dots button'));
+        if (slides.length < 2) return;
 
-    var actual = 0, timer;
+        var actual = 0, timer;
 
-    function mostrar(i) {
-        slides[actual].classList.remove('activa');
-        if (dots[actual]) dots[actual].classList.remove('activa');
-        actual = (i + slides.length) % slides.length;
-        slides[actual].classList.add('activa');
-        if (dots[actual]) dots[actual].classList.add('activa');
-    }
+        function mostrar(i) {
+            slides[actual].classList.remove('activa');
+            if (dots[actual]) dots[actual].classList.remove('activa');
+            actual = (i + slides.length) % slides.length;
+            slides[actual].classList.add('activa');
+            if (dots[actual]) dots[actual].classList.add('activa');
+        }
 
-    function auto() {
-        clearInterval(timer);
-        timer = setInterval(function () { mostrar(actual + 1); }, 5000);
-    }
+        function auto() {
+            clearInterval(timer);
+            timer = setInterval(function () { mostrar(actual + 1); }, 5000);
+        }
 
-    var prev = document.querySelector('.carrusel-nav.prev');
-    var next = document.querySelector('.carrusel-nav.next');
-    if (prev) prev.addEventListener('click', function () { mostrar(actual - 1); auto(); });
-    if (next) next.addEventListener('click', function () { mostrar(actual + 1); auto(); });
-    dots.forEach(function (dot, i) {
-        dot.addEventListener('click', function () { mostrar(i); auto(); });
+        var prev = root.querySelector('.carrusel-nav.prev');
+        var next = root.querySelector('.carrusel-nav.next');
+        if (prev) prev.addEventListener('click', function () { mostrar(actual - 1); auto(); });
+        if (next) next.addEventListener('click', function () { mostrar(actual + 1); auto(); });
+        dots.forEach(function (dot, i) {
+            dot.addEventListener('click', function () { mostrar(i); auto(); });
+        });
+
+        auto();
     });
-
-    auto();
 })();
 </script>
 

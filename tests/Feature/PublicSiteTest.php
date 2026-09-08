@@ -2,18 +2,16 @@
 
 namespace Tests\Feature;
 
-use App\Models\ConfigInstitucional;
+use App\Models\PaginaSeccion;
 use App\Models\Tenant;
 use App\Models\TenantFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Roadmap de producto: "portal público por centro" — Fase 1. Reutiliza el
- * contenido que Admin\HomepageController ya permite configurar en
- * ConfigInstitucional (claves hp_*); PublicSiteController::show() solo lo
- * renderiza en /sitio, sin autenticación, sin migración nueva y sin tocar
- * el editor existente.
+ * Roadmap de producto: "portal público por centro". PublicSiteController::show()
+ * renderiza en /sitio los bloques que el propio centro arma en el constructor
+ * visual (tabla pagina_secciones), sin autenticación.
  *
  * La ruta es pública (sin login), así que ResolveTenant no puede resolver
  * el tenant vía auth()->id() como en el resto de la suite — hay que
@@ -46,13 +44,23 @@ class PublicSiteTest extends TestCase
         return 'http://' . $tenant->dominio . '.zuraedu.test/sitio';
     }
 
+    private function crearSeccion(Tenant $tenant, string $tipo, array $contenido, bool $activo = true): void
+    {
+        app()->instance('tenant', $tenant);
+        PaginaSeccion::create([
+            'tenant_id' => $tenant->id, 'tipo' => $tipo, 'orden' => 1,
+            'activo' => $activo, 'contenido' => $contenido,
+        ]);
+        app()->forgetInstance('tenant');
+    }
+
     public function test_muestra_el_bloque_hero_cuando_esta_visible_y_configurado(): void
     {
         $tenant = $this->crearTenant('Colegio Sitio Uno');
-        app()->instance('tenant', $tenant);
-        ConfigInstitucional::set('hp_hero_titulo', 'Bienvenidos a Colegio Sitio Uno');
-        ConfigInstitucional::set('hp_hero_subtitulo', 'Formando líderes del mañana');
-        app()->forgetInstance('tenant');
+        $this->crearSeccion($tenant, 'hero', [
+            'titulo' => 'Bienvenidos a Colegio Sitio Uno',
+            'subtitulo' => 'Formando líderes del mañana',
+        ]);
 
         $response = $this->get($this->urlSitio($tenant));
 
@@ -64,10 +72,7 @@ class PublicSiteTest extends TestCase
     public function test_oculta_el_bloque_hero_cuando_no_esta_visible(): void
     {
         $tenant = $this->crearTenant('Colegio Sitio Dos');
-        app()->instance('tenant', $tenant);
-        ConfigInstitucional::set('hp_hero_titulo', 'Título Oculto XYZ');
-        ConfigInstitucional::set('hp_hero_visible', '0');
-        app()->forgetInstance('tenant');
+        $this->crearSeccion($tenant, 'hero', ['titulo' => 'Título Oculto XYZ'], activo: false);
 
         $response = $this->get($this->urlSitio($tenant));
 
@@ -78,10 +83,9 @@ class PublicSiteTest extends TestCase
     public function test_muestra_estadisticas_configuradas(): void
     {
         $tenant = $this->crearTenant('Colegio Sitio Tres');
-        app()->instance('tenant', $tenant);
-        ConfigInstitucional::set('hp_stat1_numero', '500+');
-        ConfigInstitucional::set('hp_stat1_label', 'Estudiantes');
-        app()->forgetInstance('tenant');
+        $this->crearSeccion($tenant, 'stats', [
+            'items' => [['numero' => '500+', 'label' => 'Estudiantes']],
+        ]);
 
         $response = $this->get($this->urlSitio($tenant));
 
@@ -93,10 +97,10 @@ class PublicSiteTest extends TestCase
     public function test_muestra_datos_de_contacto_configurados(): void
     {
         $tenant = $this->crearTenant('Colegio Sitio Cuatro');
-        app()->instance('tenant', $tenant);
-        ConfigInstitucional::set('hp_contacto_direccion', 'Av. Siempre Viva 123');
-        ConfigInstitucional::set('hp_contacto_telefono', '809-000-0000');
-        app()->forgetInstance('tenant');
+        $this->crearSeccion($tenant, 'contacto', [
+            'direccion' => 'Av. Siempre Viva 123',
+            'telefono' => '809-000-0000',
+        ]);
 
         $response = $this->get($this->urlSitio($tenant));
 
@@ -107,13 +111,9 @@ class PublicSiteTest extends TestCase
 
     public function test_tenant_sin_configuracion_muestra_estado_vacio_sin_error(): void
     {
+        // Sin ningún bloque en pagina_secciones (tenant recién creado, nunca
+        // pasó por el constructor visual) debe caer directo al empty-state.
         $tenant = $this->crearTenant('Colegio Sitio Vacio');
-        app()->instance('tenant', $tenant);
-        // Todos los bloques con visible=1 por defecto no muestran nada si no
-        // tienen contenido (about/features/contacto), salvo Hero — lo apagamos
-        // explícitamente para forzar el estado "sin nada que mostrar".
-        ConfigInstitucional::set('hp_hero_visible', '0');
-        app()->forgetInstance('tenant');
 
         $response = $this->get($this->urlSitio($tenant));
 
@@ -124,14 +124,10 @@ class PublicSiteTest extends TestCase
     public function test_un_tenant_no_ve_el_contenido_configurado_por_otro_tenant(): void
     {
         $tenantA = $this->crearTenant('Colegio Sitio A');
-        app()->instance('tenant', $tenantA);
-        ConfigInstitucional::set('hp_hero_titulo', 'Exclusivo de A');
-        app()->forgetInstance('tenant');
+        $this->crearSeccion($tenantA, 'hero', ['titulo' => 'Exclusivo de A']);
 
         $tenantB = $this->crearTenant('Colegio Sitio B');
-        app()->instance('tenant', $tenantB);
-        ConfigInstitucional::set('hp_hero_titulo', 'Exclusivo de B');
-        app()->forgetInstance('tenant');
+        $this->crearSeccion($tenantB, 'hero', ['titulo' => 'Exclusivo de B']);
 
         $response = $this->get($this->urlSitio($tenantB));
 

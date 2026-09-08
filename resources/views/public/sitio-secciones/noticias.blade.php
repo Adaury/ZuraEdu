@@ -1,8 +1,8 @@
 <section class="noticias">
     <div class="section-inner">
-        <h2 class="section-title">Noticias y Publicaciones</h2>
+        <h2 class="section-title">{{ $seccion->dato('titulo') ?: 'Noticias y Publicaciones' }}</h2>
         <div class="noticias-grid">
-            @foreach($config['noticias'] as $noticia)
+            @foreach($seccion->datos as $noticia)
             <div class="noticia-card">
                 <a href="{{ route('sitio.noticias.show', $noticia) }}" class="noticia-card-stretched" aria-label="{{ $noticia->titulo }}"></a>
                 @can('gestionar-configuracion')

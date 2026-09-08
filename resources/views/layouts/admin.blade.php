@@ -3351,6 +3351,11 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('admin.secciones.index') }}" class="{{ request()->routeIs('admin.secciones*') ? 'active' : '' }}">
+                        <i class="bi bi-grid-1x2"></i>Secciones del Sitio
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.homepage.edit') }}" class="{{ request()->routeIs('admin.homepage*') ? 'active' : '' }}">
                         <i class="bi bi-layout-text-window-reverse"></i>Branding / Institución
                     </a>

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\ConfigInstitucional;
+use App\Models\PaginaSeccion;
 use App\Models\Tenant;
 use App\Models\TenantFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -33,6 +33,16 @@ class PortalPublicoModoPublicoTest extends TestCase
         return 'http://' . $tenant->dominio . '.zuraedu.test/sitio';
     }
 
+    private function crearHero(Tenant $tenant, string $titulo): void
+    {
+        app()->instance('tenant', $tenant);
+        PaginaSeccion::create([
+            'tenant_id' => $tenant->id, 'tipo' => 'hero', 'orden' => 1,
+            'activo' => true, 'contenido' => ['titulo' => $titulo],
+        ]);
+        app()->forgetInstance('tenant');
+    }
+
     public function test_sin_fila_de_modo_publico_muestra_portal_no_disponible(): void
     {
         $tenant = $this->crearTenant('Colegio Sin Flag');
@@ -48,10 +58,7 @@ class PortalPublicoModoPublicoTest extends TestCase
     {
         $tenant = $this->crearTenant('Colegio Apagado');
         TenantFeature::create(['tenant_id' => $tenant->id, 'feature' => 'modo_publico', 'activo' => false]);
-
-        app()->instance('tenant', $tenant);
-        ConfigInstitucional::set('hp_hero_titulo', 'No Debe Verse');
-        app()->forgetInstance('tenant');
+        $this->crearHero($tenant, 'No Debe Verse');
 
         $response = $this->get($this->urlSitio($tenant));
 
@@ -64,10 +71,7 @@ class PortalPublicoModoPublicoTest extends TestCase
     {
         $tenant = $this->crearTenant('Colegio Encendido');
         TenantFeature::create(['tenant_id' => $tenant->id, 'feature' => 'modo_publico', 'activo' => true]);
-
-        app()->instance('tenant', $tenant);
-        ConfigInstitucional::set('hp_hero_titulo', 'Sí Debe Verse');
-        app()->forgetInstance('tenant');
+        $this->crearHero($tenant, 'Sí Debe Verse');
 
         $response = $this->get($this->urlSitio($tenant));
 

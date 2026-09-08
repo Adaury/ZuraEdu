@@ -15,7 +15,6 @@ use App\Http\Controllers\Admin\FamiliaProfesionalController;
 use App\Http\Controllers\Admin\PlanificacionController;
 use App\Http\Controllers\Admin\PlanClaseController;
 use App\Http\Controllers\Admin\InstrumentoController;
-use App\Http\Controllers\Admin\HomepageController;
 use App\Http\Controllers\Admin\ObservacionController;
 use App\Http\Controllers\Admin\BachilleratoTecnicoController;
 
@@ -242,13 +241,6 @@ Route::middleware('can:ingresar-calificaciones')->group(function () {
     Route::get('observaciones/excel',                 [ObservacionController::class, 'excel'])->name('observaciones.excel');
     Route::delete('observaciones/{observacion}',      [ObservacionController::class, 'destroy'])->name('observaciones.destroy');
     Route::patch('observaciones/{observacion}/privada',[ObservacionController::class, 'togglePrivada'])->name('observaciones.toggle-privada');
-});
-
-// ── Homepage Editor ───────────────────────────────────────────────────────
-Route::middleware('can:gestionar-configuracion')->group(function () {
-    Route::get('homepage',  [HomepageController::class, 'edit'])->name('homepage.edit');
-    Route::post('homepage', [HomepageController::class, 'update'])->name('homepage.update');
-    Route::post('homepage/orden/{seccion}/{direccion}', [HomepageController::class, 'moverOrden'])->name('homepage.orden');
 });
 
 // ── Planificaciones Área Técnica ──────────────────────────────────────────

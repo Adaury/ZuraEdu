@@ -646,6 +646,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.acc
     require __DIR__ . '/admin/pre_matriculas.php';
     require __DIR__ . '/admin/galeria.php';
     require __DIR__ . '/admin/publicaciones.php';
+    require __DIR__ . '/admin/sitio.php';
     require __DIR__ . '/admin/eventos.php';
     require __DIR__ . '/admin/encuestas.php';
     require __DIR__ . '/admin/avisos_emergencia.php';

@@ -1,15 +1,20 @@
-﻿@extends('layouts.admin')
+@extends('layouts.admin')
 
-@section('page-title', 'Editor de Página Principal')
+@section('page-title', 'Branding e Identidad del Sitio')
 
 @section('content')
 <div class="container-fluid px-4">
-    <div class="mb-4">
-        <h1 class="h3 mb-0">Editor de Página Principal</h1>
-        <nav aria-label="breadcrumb"><ol class="breadcrumb mb-0 small">
-            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Inicio</a></li>
-            <li class="breadcrumb-item active">Homepage</li>
-        </ol></nav>
+    <div class="mb-4 d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+            <h1 class="h3 mb-0">Branding e Identidad del Sitio</h1>
+            <nav aria-label="breadcrumb"><ol class="breadcrumb mb-0 small">
+                <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Inicio</a></li>
+                <li class="breadcrumb-item active">Branding</li>
+            </ol></nav>
+        </div>
+        <a href="{{ route('admin.secciones.index') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-grid-1x2 me-1"></i>Ir al constructor de Secciones del Sitio
+        </a>
     </div>
 
     @if(session('success'))
@@ -23,164 +28,6 @@
             {{-- Left Column --}}
             <div class="col-lg-8">
 
-                {{-- Hero --}}
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="fw-semibold"><i class="bi bi-display me-1"></i>Sección Hero (Portada)</span>
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" name="hp_hero_visible" id="hero_vis" value="1"
-                                @checked(($config['hp_hero_visible'] ?? '1') == '1')>
-                            <label class="form-check-label small" for="hero_vis">Visible</label>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label small">Título Principal</label>
-                            <input type="text" name="hp_hero_titulo" class="form-control"
-                                value="{{ old('hp_hero_titulo', $config['hp_hero_titulo'] ?? '') }}" maxlength="200">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small">Subtítulo / Descripción</label>
-                            <textarea name="hp_hero_subtitulo" class="form-control" rows="3" maxlength="500">{{ old('hp_hero_subtitulo', $config['hp_hero_subtitulo'] ?? '') }}</textarea>
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label small">Texto Botón 1</label>
-                                <input type="text" name="hp_hero_btn_texto" class="form-control mb-2"
-                                    value="{{ old('hp_hero_btn_texto', $config['hp_hero_btn_texto'] ?? '') }}" maxlength="80">
-                                <label class="form-label small text-muted">Destino del Botón 1</label>
-                                <input type="text" name="hp_hero_btn_url" class="form-control form-control-sm"
-                                    value="{{ old('hp_hero_btn_url', $config['hp_hero_btn_url'] ?? '') }}" maxlength="255"
-                                    placeholder="Ej: /login o https://...">
-                                <div class="form-text">Vacío = Iniciar Sesión por defecto.</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small">Texto Botón 2</label>
-                                <input type="text" name="hp_hero_btn2_texto" class="form-control mb-2"
-                                    value="{{ old('hp_hero_btn2_texto', $config['hp_hero_btn2_texto'] ?? '') }}" maxlength="80">
-                                <label class="form-label small text-muted">Destino del Botón 2</label>
-                                <input type="text" name="hp_hero_btn2_url" class="form-control form-control-sm"
-                                    value="{{ old('hp_hero_btn2_url', $config['hp_hero_btn2_url'] ?? '') }}" maxlength="255"
-                                    placeholder="Ej: /inscripcion o https://...">
-                                <div class="form-text">Vacío = Pre-matrícula por defecto.</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Carrusel --}}
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="fw-semibold"><i class="bi bi-images me-1"></i>Carrusel de Fotos</span>
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" name="hp_carrusel_visible" id="carrusel_vis" value="1"
-                                @checked(($config['hp_carrusel_visible'] ?? '1') == '1')>
-                            <label class="form-check-label small" for="carrusel_vis">Visible</label>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted small mb-2">Las fotos del carrusel se administran desde Galería — marca un álbum como "carrusel del sitio" ahí.</p>
-                        <a href="{{ route('admin.galeria.index') }}" class="btn btn-sm btn-outline-secondary">
-                            <i class="bi bi-images me-1"></i>Ir a Galería
-                        </a>
-                    </div>
-                </div>
-
-                {{-- Sobre la Institución --}}
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="fw-semibold"><i class="bi bi-building me-1"></i>Sobre la Institución</span>
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" name="hp_about_visible" id="about_vis" value="1"
-                                @checked(($config['hp_about_visible'] ?? '1') == '1')>
-                            <label class="form-check-label small" for="about_vis">Visible</label>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label small">Título</label>
-                            <input type="text" name="hp_about_titulo" class="form-control"
-                                value="{{ old('hp_about_titulo', $config['hp_about_titulo'] ?? '') }}" maxlength="200">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small">Texto / Descripción</label>
-                            <textarea name="hp_about_texto" class="form-control" rows="5" maxlength="1000">{{ old('hp_about_texto', $config['hp_about_texto'] ?? '') }}</textarea>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Estadísticas --}}
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="fw-semibold"><i class="bi bi-bar-chart me-1"></i>Estadísticas</span>
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" name="hp_stats_visible" id="stats_vis" value="1"
-                                @checked(($config['hp_stats_visible'] ?? '1') == '1')>
-                            <label class="form-check-label small" for="stats_vis">Visible</label>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            @for($s = 1; $s <= 4; $s++)
-                            <div class="col-md-6">
-                                <div class="border rounded p-2">
-                                    <label class="form-label small fw-semibold">Estadística #{{ $s }}</label>
-                                    <div class="row g-2">
-                                        <div class="col-5">
-                                            <input type="text" name="hp_stat{{ $s }}_numero" class="form-control form-control-sm"
-                                                placeholder="Número (ej: 500+)"
-                                                value="{{ old("hp_stat{$s}_numero", $config["hp_stat{$s}_numero"] ?? '') }}">
-                                        </div>
-                                        <div class="col-7">
-                                            <input type="text" name="hp_stat{{ $s }}_label" class="form-control form-control-sm"
-                                                placeholder="Etiqueta (ej: Estudiantes)"
-                                                value="{{ old("hp_stat{$s}_label", $config["hp_stat{$s}_label"] ?? '') }}">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            @endfor
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Características --}}
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="fw-semibold"><i class="bi bi-stars me-1"></i>Características</span>
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" name="hp_features_visible" id="feat_vis" value="1"
-                                @checked(($config['hp_features_visible'] ?? '1') == '1')>
-                            <label class="form-check-label small" for="feat_vis">Visible</label>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-0">
-                            <label class="form-label small">Título de la Sección</label>
-                            <input type="text" name="hp_features_titulo" class="form-control"
-                                value="{{ old('hp_features_titulo', $config['hp_features_titulo'] ?? '') }}" maxlength="200">
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Noticias y Publicaciones --}}
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="fw-semibold"><i class="bi bi-newspaper me-1"></i>Noticias y Publicaciones</span>
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" name="hp_noticias_visible" id="noticias_vis" value="1"
-                                @checked(($config['hp_noticias_visible'] ?? '1') == '1')>
-                            <label class="form-check-label small" for="noticias_vis">Visible</label>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted small mb-2">Las noticias, avisos, actividades y demás publicaciones se administran aparte.</p>
-                        <a href="{{ route('admin.publicaciones.index') }}" class="btn btn-sm btn-outline-secondary">
-                            <i class="bi bi-newspaper me-1"></i>Ir a Publicaciones
-                        </a>
-                    </div>
-                </div>
-
                 {{-- Anuncios --}}
                 <div class="card shadow-sm mb-4">
                     <div class="card-header">
@@ -188,7 +35,8 @@
                     </div>
                     <div class="card-body">
                         <p class="text-muted small mb-3">
-                            Pega aquí el código que te da Google AdSense (u otra red publicitaria) para cada lado del sitio.
+                            Pega aquí <strong>solo</strong> el código que te da Google AdSense (u otra red publicitaria) para cada lado del sitio —
+                            no pegues plantillas de página completas ni bloques de estilo (<code>&lt;style&gt;</code>), pueden romper visualmente el resto del sitio.
                             Se muestra tal cual, sin modificarlo — <strong>ustedes son responsables del código que peguen aquí</strong>,
                             solo se ve en pantallas anchas (no en celular) y solo si dejan algo escrito; si el campo queda vacío, no se muestra nada.
                         </p>
@@ -209,112 +57,10 @@
                     </div>
                 </div>
 
-                {{-- Contacto --}}
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="fw-semibold"><i class="bi bi-geo-alt me-1"></i>Contacto</span>
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" name="hp_contacto_visible" id="cont_vis" value="1"
-                                @checked(($config['hp_contacto_visible'] ?? '1') == '1')>
-                            <label class="form-check-label small" for="cont_vis">Visible</label>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-12">
-                                <label class="form-label small">Dirección</label>
-                                <input type="text" name="hp_contacto_direccion" class="form-control"
-                                    value="{{ old('hp_contacto_direccion', $config['hp_contacto_direccion'] ?? '') }}" maxlength="200">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small">Teléfono</label>
-                                <input type="text" name="hp_contacto_telefono" class="form-control"
-                                    value="{{ old('hp_contacto_telefono', $config['hp_contacto_telefono'] ?? '') }}" maxlength="50">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small">Correo Electrónico</label>
-                                <input type="email" name="hp_contacto_email" class="form-control"
-                                    value="{{ old('hp_contacto_email', $config['hp_contacto_email'] ?? '') }}" maxlength="100">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Redes Sociales --}}
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header fw-semibold"><i class="bi bi-share me-1"></i>Redes Sociales</div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label class="form-label small"><i class="bi bi-facebook me-1 text-primary"></i>Facebook</label>
-                                <input type="url" name="hp_social_facebook" class="form-control"
-                                    placeholder="https://facebook.com/..."
-                                    value="{{ old('hp_social_facebook', $config['hp_social_facebook'] ?? '') }}">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small"><i class="bi bi-instagram me-1 text-danger"></i>Instagram</label>
-                                <input type="url" name="hp_social_instagram" class="form-control"
-                                    placeholder="https://instagram.com/..."
-                                    value="{{ old('hp_social_instagram', $config['hp_social_instagram'] ?? '') }}">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small"><i class="bi bi-twitter-x me-1"></i>Twitter / X</label>
-                                <input type="url" name="hp_social_twitter" class="form-control"
-                                    placeholder="https://twitter.com/..."
-                                    value="{{ old('hp_social_twitter', $config['hp_social_twitter'] ?? '') }}">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
 
             {{-- Right Column --}}
             <div class="col-lg-4">
-
-                {{-- Orden de secciones en el sitio público --}}
-                @php
-                    $etiquetasOrden = [
-                        'hero'     => ['Hero (Portada)', 'bi-display'],
-                        'carrusel' => ['Carrusel de Fotos', 'bi-images'],
-                        'about'    => ['Sobre la Institución', 'bi-building'],
-                        'stats'    => ['Estadísticas', 'bi-bar-chart'],
-                        'features' => ['Características', 'bi-stars'],
-                        'noticias' => ['Noticias y Publicaciones', 'bi-newspaper'],
-                        'contacto' => ['Contacto y Redes', 'bi-geo-alt'],
-                    ];
-                @endphp
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header fw-semibold"><i class="bi bi-list-ol me-1"></i>Orden en el Sitio Público</div>
-                    <div class="card-body p-2">
-                        <div class="list-group list-group-flush">
-                            @foreach($orden as $i => $clave)
-                            <div class="list-group-item d-flex align-items-center justify-content-between px-2 py-2">
-                                <span class="small">
-                                    <span class="text-muted me-1">{{ $i + 1 }}.</span>
-                                    <i class="bi {{ $etiquetasOrden[$clave][1] ?? 'bi-square' }} me-1"></i>
-                                    {{ $etiquetasOrden[$clave][0] ?? $clave }}
-                                </span>
-                                <div class="d-flex gap-1">
-                                    <form method="POST" action="{{ route('admin.homepage.orden', [$clave, 'arriba']) }}">
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary py-0 px-2" {{ $i === 0 ? 'disabled' : '' }} title="Subir">
-                                            <i class="bi bi-arrow-up"></i>
-                                        </button>
-                                    </form>
-                                    <form method="POST" action="{{ route('admin.homepage.orden', [$clave, 'abajo']) }}">
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary py-0 px-2" {{ $i === count($orden) - 1 ? 'disabled' : '' }} title="Bajar">
-                                            <i class="bi bi-arrow-down"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                            @endforeach
-                        </div>
-                        <div class="form-text px-2 pt-2">Define en qué orden aparecen las secciones en el sitio público.</div>
-                    </div>
-                </div>
 
                 {{-- Institución --}}
                 <div class="card shadow-sm mb-4">

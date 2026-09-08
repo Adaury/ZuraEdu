@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\ConfigInstitucional;
+use App\Models\PaginaSeccion;
 use App\Models\Tenant;
 use App\Models\TenantFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,13 +38,23 @@ class PublicSiteHeroBotonesTest extends TestCase
         return 'http://' . $tenant->dominio . '.zuraedu.test/sitio';
     }
 
+    private function crearHero(Tenant $tenant, array $contenido): void
+    {
+        app()->instance('tenant', $tenant);
+        PaginaSeccion::create([
+            'tenant_id' => $tenant->id, 'tipo' => 'hero', 'orden' => 1,
+            'activo' => true, 'contenido' => $contenido,
+        ]);
+        app()->forgetInstance('tenant');
+    }
+
     public function test_el_boton_1_usa_la_url_configurada_por_el_admin(): void
     {
         $tenant = $this->crearTenant('Colegio Boton Uno');
-        app()->instance('tenant', $tenant);
-        ConfigInstitucional::set('hp_hero_btn_texto', 'Portal de Padres');
-        ConfigInstitucional::set('hp_hero_btn_url', 'https://portal.externo.test/padres');
-        app()->forgetInstance('tenant');
+        $this->crearHero($tenant, [
+            'btn_texto' => 'Portal de Padres',
+            'btn_url' => 'https://portal.externo.test/padres',
+        ]);
 
         $response = $this->get($this->urlSitio($tenant));
 
@@ -56,9 +66,7 @@ class PublicSiteHeroBotonesTest extends TestCase
     public function test_el_boton_1_usa_login_por_defecto_si_no_hay_url_configurada(): void
     {
         $tenant = $this->crearTenant('Colegio Boton Defecto');
-        app()->instance('tenant', $tenant);
-        ConfigInstitucional::set('hp_hero_btn_texto', 'Iniciar Sesión');
-        app()->forgetInstance('tenant');
+        $this->crearHero($tenant, ['btn_texto' => 'Iniciar Sesión']);
 
         $response = $this->get($this->urlSitio($tenant));
 
@@ -69,9 +77,7 @@ class PublicSiteHeroBotonesTest extends TestCase
     public function test_el_boton_2_usa_inscripcion_por_defecto_si_no_hay_url_configurada(): void
     {
         $tenant = $this->crearTenant('Colegio Boton Dos Defecto');
-        app()->instance('tenant', $tenant);
-        ConfigInstitucional::set('hp_hero_btn2_texto', 'Solicitar Admisión');
-        app()->forgetInstance('tenant');
+        $this->crearHero($tenant, ['btn2_texto' => 'Solicitar Admisión']);
 
         $response = $this->get($this->urlSitio($tenant));
 
@@ -82,10 +88,10 @@ class PublicSiteHeroBotonesTest extends TestCase
     public function test_el_boton_2_usa_la_url_configurada_por_el_admin(): void
     {
         $tenant = $this->crearTenant('Colegio Boton Dos');
-        app()->instance('tenant', $tenant);
-        ConfigInstitucional::set('hp_hero_btn2_texto', 'Ver Redes');
-        ConfigInstitucional::set('hp_hero_btn2_url', '#contacto');
-        app()->forgetInstance('tenant');
+        $this->crearHero($tenant, [
+            'btn2_texto' => 'Ver Redes',
+            'btn2_url' => '#contacto',
+        ]);
 
         $response = $this->get($this->urlSitio($tenant));
 
@@ -96,15 +102,10 @@ class PublicSiteHeroBotonesTest extends TestCase
     public function test_la_url_configurada_de_un_tenant_no_afecta_a_otro(): void
     {
         $tenantA = $this->crearTenant('Colegio Boton A');
-        app()->instance('tenant', $tenantA);
-        ConfigInstitucional::set('hp_hero_btn_texto', 'Entrar');
-        ConfigInstitucional::set('hp_hero_btn_url', 'https://a.test/entrar');
-        app()->forgetInstance('tenant');
+        $this->crearHero($tenantA, ['btn_texto' => 'Entrar', 'btn_url' => 'https://a.test/entrar']);
 
         $tenantB = $this->crearTenant('Colegio Boton B');
-        app()->instance('tenant', $tenantB);
-        ConfigInstitucional::set('hp_hero_btn_texto', 'Entrar');
-        app()->forgetInstance('tenant');
+        $this->crearHero($tenantB, ['btn_texto' => 'Entrar']);
 
         $responseB = $this->get($this->urlSitio($tenantB));
 

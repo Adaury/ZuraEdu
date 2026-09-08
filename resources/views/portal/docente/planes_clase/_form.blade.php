@@ -48,6 +48,33 @@
                         <input type="date" name="fecha_fin" class="form-control"
                             value="{{ old('fecha_fin', $planData?->fecha_fin?->format('Y-m-d')) }}">
                     </div>
+                    @if(($asignacion->area ?? 'academica') === 'academica')
+                    <div class="col-12">
+                        <label class="form-label">Unidad de Planificación Anual <span class="text-muted small">(opcional)</span></label>
+                        <select name="planif_unidad_id" class="form-select">
+                            <option value="">-- Sin vincular --</option>
+                            @foreach($planifUnidades as $u)
+                                <option value="{{ $u->id }}" @selected(old('planif_unidad_id', $planData?->planif_unidad_id) == $u->id)>
+                                    Unidad {{ $u->numero }} — {{ $u->titulo }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">Vincula este plan con la unidad de tu planificación anual que desarrolla.</div>
+                    </div>
+                    @else
+                    <div class="col-12">
+                        <label class="form-label">Planificación Técnica (RA/MF/UC) <span class="text-muted small">(opcional)</span></label>
+                        <select name="planificacion_id" class="form-select">
+                            <option value="">-- Sin vincular --</option>
+                            @foreach($planificacionesTecnicas as $p)
+                                <option value="{{ $p->id }}" @selected(old('planificacion_id', $planData?->planificacion_id) == $p->id)>
+                                    {{ $p->denominacion }} @if($p->mf_codigo || $p->uc_codigo) ({{ $p->mf_codigo }} {{ $p->uc_codigo }}) @endif
+                                </option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">Vincula este plan con el Resultado de Aprendizaje (RA) que desarrolla.</div>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>

@@ -85,6 +85,19 @@
                         <dd class="col-sm-8">{{ $planClase->fecha_inicio->format('d/m/Y') }}
                             @if($planClase->fecha_fin) – {{ $planClase->fecha_fin->format('d/m/Y') }} @endif</dd>
                         @endif
+                        @if($planClase->planifUnidad)
+                        <dt class="col-sm-4">Unidad Vinculada</dt>
+                        <dd class="col-sm-8">Unidad {{ $planClase->planifUnidad->numero }} — {{ $planClase->planifUnidad->titulo }}</dd>
+                        @endif
+                        @if($planClase->planificacion)
+                        <dt class="col-sm-4">RA Vinculado</dt>
+                        <dd class="col-sm-8">
+                            {{ $planClase->planificacion->denominacion }}
+                            @if($planClase->planificacion->mf_codigo || $planClase->planificacion->uc_codigo)
+                                <span class="text-muted">({{ $planClase->planificacion->mf_codigo }} {{ $planClase->planificacion->uc_codigo }})</span>
+                            @endif
+                        </dd>
+                        @endif
                     </dl>
                 </div>
             </div>

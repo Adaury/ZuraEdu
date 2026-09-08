@@ -48,8 +48,7 @@ class TenantController extends Controller
 
     public function index(Request $request)
     {
-        $tenants = Tenant::withTrashed()
-            ->withCount('features')
+        $tenants = Tenant::withCount('features')
             ->when($request->search, fn($q) =>
                 $q->where('nombre_institucion', 'LIKE', "%{$request->search}%")
                   ->orWhere('dominio', 'LIKE', "%{$request->search}%")

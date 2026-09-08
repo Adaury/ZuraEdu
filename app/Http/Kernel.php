@@ -36,9 +36,14 @@ class Kernel extends HttpKernel
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\PreventRequestForgery::class,
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\SanitizeInput::class,
             \App\Http\Middleware\ResolveTenant::class,
+            // SubstituteBindings debe ir DESPUÉS de ResolveTenant: el binding implícito de
+            // modelos de ruta (p.ej. {asignacion}, {planesClase}, {tenant}) consulta la BD
+            // ya con el scope BelongsToTenant activo. Si corriera antes, esa consulta se
+            // ejecutaría sin ningún tenant vinculado al contenedor — el scope no filtraría
+            // nada — y podría inyectar en el controlador un registro de OTRO tenant.
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\DemoMode::class,
         ],
 

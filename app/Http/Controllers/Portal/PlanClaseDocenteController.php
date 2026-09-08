@@ -12,6 +12,8 @@ use App\Models\InstrumentoEvaluacion;
 use App\Models\InstrumentoEvaluacionEstudiante;
 use App\Models\PlanClase;
 use App\Models\PlanClaseMomento;
+use App\Models\Planificacion;
+use App\Models\PlanifUnidad;
 use App\Models\BoletinConfig;
 use App\Models\Periodo;
 use App\Models\PlanEvaluacionPeriodo;
@@ -56,7 +58,10 @@ class PlanClaseDocenteController extends Controller
         if ($asignacion->docente_id !== $docente->id) abort(403);
 
         $estrategias = PlanClase::$estrategiasCatalogo;
-        return view('portal.docente.planes_clase.create', compact('docente', 'asignacion', 'estrategias'));
+        [$planifUnidades, $planificacionesTecnicas] = $this->opcionesCurriculares($asignacion);
+        return view('portal.docente.planes_clase.create', compact(
+            'docente', 'asignacion', 'estrategias', 'planifUnidades', 'planificacionesTecnicas'
+        ));
     }
 
     public function planesStore(Request $request, Asignacion $asignacion)
@@ -69,6 +74,8 @@ class PlanClaseDocenteController extends Controller
             'tipo_plan'    => 'required|in:diaria,semanal,quincenal,mensual',
             'fecha_inicio' => 'nullable|date',
             'fecha_fin'    => 'nullable|date',
+            'planif_unidad_id' => 'nullable|integer',
+            'planificacion_id' => 'nullable|integer',
             'archivo'      => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,jpg,jpeg,png|max:10240',
         ]);
 
@@ -82,6 +89,8 @@ class PlanClaseDocenteController extends Controller
             $archivoPath   = $file->store('planes_clase', 'public');
         }
 
+        [$planifUnidadId, $planificacionId] = $this->resolverReferenciaCurricular($request, $asignacion);
+
         $plan = PlanClase::create([
             'asignacion_id'        => $asignacion->id,
             'school_year_id'       => $schoolYear->id,
@@ -90,6 +99,8 @@ class PlanClaseDocenteController extends Controller
             'area'                 => $asignacion->area,
             'tipo_plan'            => $request->tipo_plan,
             'semana'               => $request->semana,
+            'planif_unidad_id'     => $planifUnidadId,
+            'planificacion_id'     => $planificacionId,
             'fecha_inicio'         => $request->fecha_inicio,
             'fecha_fin'            => $request->fecha_fin,
             'grado_seccion'        => $asignacion->grupo->nombre_completo ?? null,
@@ -113,7 +124,7 @@ class PlanClaseDocenteController extends Controller
     {
         $docente = $this->getDocente();
         if ($asignacion->docente_id !== $docente->id) abort(403);
-        $planClase->load('momentos');
+        $planClase->load(['momentos', 'planifUnidad.planifAnual', 'planificacion']);
         return view('portal.docente.planes_clase.show', compact('docente', 'asignacion', 'planClase'));
     }
 
@@ -532,6 +543,51 @@ class PlanClaseDocenteController extends Controller
     }
 
     // â”€â”€ Private helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    /**
+     * Opciones de la capa curricular para vincular el plan de clase, acotadas
+     * a esta asignación: PlanifUnidad si es académica, Planificacion tipo RA
+     * si es técnica (el área ya viene fija desde la propia asignación).
+     */
+    private function opcionesCurriculares(Asignacion $asignacion): array
+    {
+        $planifUnidades = $asignacion->area === 'academica'
+            ? PlanifUnidad::whereHas('planifAnual', fn ($q) => $q->where('asignacion_id', $asignacion->id))
+                ->orderBy('numero')->get()
+            : collect();
+
+        $planificacionesTecnicas = $asignacion->area === 'tecnica'
+            ? Planificacion::where('asignacion_id', $asignacion->id)->where('tipo', 'ra')
+                ->orderBy('denominacion')->get()
+            : collect();
+
+        return [$planifUnidades, $planificacionesTecnicas];
+    }
+
+    /**
+     * Resuelve planif_unidad_id / planificacion_id contra la BD real (no el ID
+     * crudo del request) respetando el scope de tenant, y exige que la unidad/RA
+     * pertenezca exactamente a ESTA asignación (no solo al mismo tenant/docente) —
+     * mismo criterio que ya aplica opcionesCurriculares() al listar las opciones.
+     */
+    private function resolverReferenciaCurricular(Request $request, Asignacion $asignacion): array
+    {
+        $planifUnidadId = null;
+        $planificacionId = null;
+
+        if ($asignacion->area === 'academica' && $request->filled('planif_unidad_id')) {
+            $planifUnidadId = PlanifUnidad::whereHas('planifAnual', fn ($q) => $q->where('asignacion_id', $asignacion->id))
+                ->find($request->planif_unidad_id)?->id;
+        }
+
+        if ($asignacion->area === 'tecnica' && $request->filled('planificacion_id')) {
+            $planificacionId = Planificacion::where('tipo', 'ra')
+                ->where('asignacion_id', $asignacion->id)
+                ->find($request->planificacion_id)?->id;
+        }
+
+        return [$planifUnidadId, $planificacionId];
+    }
+
     private function guardarMomentos(PlanClase $plan, array $momentos): void
     {
         $orden = 0;

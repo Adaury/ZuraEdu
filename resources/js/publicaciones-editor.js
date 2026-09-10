@@ -30,4 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const sync = () => { hidden.value = quill.root.innerHTML; };
     quill.on('text-change', sync);
     hidden.closest('form')?.addEventListener('submit', sync);
+
+    // Expuesto para páginas que necesitan interactuar con el editor desde
+    // fuera de este módulo (ej. insertar una variable {{x}} en el cursor,
+    // ver admin/plantillas/edit.blade.php) -- name-agnostic, un único editor por página.
+    window.quillEditor = quill;
 });

@@ -91,29 +91,38 @@ class RecordatorioPagosVencidos extends Command
                 ]);
             }
 
+            $variablesPlantilla = [
+                'centro' => $si, 'estudiante' => $estudiante?->nombre_completo ?? '',
+                'monto_total' => 'RD$ ' . number_format($totalDeuda, 2), 'url_portal' => config('app.url'),
+            ];
+
             // WhatsApp al representante
             if ($rep->telefono) {
-                WhatsAppService::send(
-                    $rep->telefono,
-                    "⚠️ *{$si}*\n\nEstimado representante, tiene *RD$ " . number_format($totalDeuda, 2) . "* en pagos escolares vencidos" .
+                $msgWhatsApp = \App\Services\PlantillaComunicacionService::render('pago_vencido_recordatorio', 'whatsapp', $variablesPlantilla)
+                    ?? "⚠️ *{$si}*\n\nEstimado representante, tiene *RD$ " . number_format($totalDeuda, 2) . "* en pagos escolares vencidos" .
                     ($estudiante ? " de *{$estudiante->nombre_completo}*" : '') .
-                    ".\n\nPor favor regularice su situación ingresando al portal: " . config('app.url')
-                );
+                    ".\n\nPor favor regularice su situación ingresando al portal: " . config('app.url');
+
+                WhatsAppService::send($rep->telefono, $msgWhatsApp);
             }
 
             // Email si el representante tiene correo
             if ($rep->email) {
                 try {
-                    Mail::send([], [], function ($message) use ($rep, $pagosGrupo, $totalDeuda, $estudiante, $si) {
+                    $tplEmail = \App\Services\PlantillaComunicacionService::renderEmail('pago_vencido_recordatorio', $variablesPlantilla);
+
+                    Mail::send([], [], function ($message) use ($rep, $pagosGrupo, $totalDeuda, $estudiante, $si, $tplEmail) {
                         $message->to($rep->email)
-                            ->subject("⚠️ {$si} — Recordatorio de pagos vencidos")
-                            ->html(view('emails.recordatorio-pagos', [
-                                'rep'         => $rep,
-                                'estudiante'  => $estudiante,
-                                'pagos'       => $pagosGrupo,
-                                'totalDeuda'  => $totalDeuda,
-                                'si'          => $si,
-                            ])->render());
+                            ->subject($tplEmail['asunto'] ?? "⚠️ {$si} — Recordatorio de pagos vencidos")
+                            ->html(filled($tplEmail['cuerpo'] ?? null)
+                                ? view('emails.plantilla', ['cuerpo' => $tplEmail['cuerpo'], 'centro' => $si])->render()
+                                : view('emails.recordatorio-pagos', [
+                                    'rep'         => $rep,
+                                    'estudiante'  => $estudiante,
+                                    'pagos'       => $pagosGrupo,
+                                    'totalDeuda'  => $totalDeuda,
+                                    'si'          => $si,
+                                ])->render());
                     });
                     $enviados++;
                 } catch (\Throwable $e) {

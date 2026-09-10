@@ -87,10 +87,11 @@ class AlertasCumpleanos extends Command
                 $cacheKeyRep = "cumple_rep_{$est->id}_{$today}";
                 if ($this->option('force') || ! cache()->has($cacheKeyRep)) {
                     $edadStr = $edad ? " ({$edad} año" . ($edad === 1 ? '' : 's') . ")" : '';
-                    WhatsAppService::send(
-                        $rep->telefono,
-                        "🎂 *{$inst}*\n\nEstimado representante, hoy {$nombre}{$edadStr} celebra su cumpleaños.\n\n¡Felicitaciones de parte de todo el equipo educativo! 🎉"
-                    );
+                    $msgWhatsApp = \App\Services\PlantillaComunicacionService::render('cumpleanos_estudiante', 'whatsapp', [
+                        'centro' => $inst, 'estudiante' => $nombre, 'edad' => $edadStr,
+                    ]) ?? "🎂 *{$inst}*\n\nEstimado representante, hoy {$nombre}{$edadStr} celebra su cumpleaños.\n\n¡Felicitaciones de parte de todo el equipo educativo! 🎉";
+
+                    WhatsAppService::send($rep->telefono, $msgWhatsApp);
                     cache()->put($cacheKeyRep, true, now()->endOfDay());
                 }
             }

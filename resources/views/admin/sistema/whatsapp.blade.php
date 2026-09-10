@@ -29,6 +29,9 @@
         <h1><i class="bi bi-whatsapp me-2" style="color:#25d366;"></i>WhatsApp & Notificaciones</h1>
         <p class="text-muted small mb-0">Configura el envío de notificaciones automáticas a los representantes</p>
     </div>
+    <a href="{{ route('admin.plantillas.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-chat-square-text me-1"></i>¿Quieres cambiar el texto de estos mensajes? Plantillas de Mensajes
+    </a>
 </div>
 
 @if(session('success'))

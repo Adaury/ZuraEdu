@@ -184,4 +184,13 @@ Route::middleware('can:solo-administrador')->group(function () {
     Route::post('sistema/whatsapp',       [SistemaController::class, 'whatsappUpdate'])->name('sistema.whatsapp.update');
     Route::get('sistema/email-notif',     [SistemaController::class, 'emailNotifIndex'])->name('sistema.email-notif');
     Route::post('sistema/email-notif',    [SistemaController::class, 'emailNotifUpdate'])->name('sistema.email-notif.update');
+
+    // Plantillas de Comunicación (WhatsApp/email editables por tenant)
+    Route::prefix('plantillas')->name('plantillas.')->group(function () {
+        Route::get('/',                          [\App\Http\Controllers\Admin\PlantillaComunicacionController::class, 'index'])->name('index');
+        Route::get('/{evento}/{canal}/editar',   [\App\Http\Controllers\Admin\PlantillaComunicacionController::class, 'edit'])->name('edit');
+        Route::put('/{evento}/{canal}',          [\App\Http\Controllers\Admin\PlantillaComunicacionController::class, 'update'])->name('update');
+        Route::patch('/{evento}/{canal}/activa', [\App\Http\Controllers\Admin\PlantillaComunicacionController::class, 'toggle'])->name('toggle');
+        Route::delete('/{evento}/{canal}',       [\App\Http\Controllers\Admin\PlantillaComunicacionController::class, 'destroy'])->name('destroy');
+    });
 });

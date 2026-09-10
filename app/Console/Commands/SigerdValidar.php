@@ -97,17 +97,22 @@ class SigerdValidar extends Command
         $school  = \App\Helpers\Setting::get('system_name', 'El centro educativo');
         $estado  = $totalErrores === 0 ? '✅ LISTO' : "⚠️ {$totalErrores} ERROR(ES)";
 
-        $msg = "📋 *{$school}* — Validación SIGERD\n\n"
+        $msgHardcode = "📋 *{$school}* — Validación SIGERD\n\n"
              . "Año escolar: *{$syNombre}*\n"
              . "Estado: *{$estado}*\n"
              . "Estudiantes: {$totalEst}\n";
 
         if ($totalErrores > 0) {
-            $msg .= "\nCorrecciones necesarias antes de exportar al portal SIGERD/MINERD.\n";
-            $msg .= "Ir a: Integraciones → SIGERD";
+            $msgHardcode .= "\nCorrecciones necesarias antes de exportar al portal SIGERD/MINERD.\n";
+            $msgHardcode .= "Ir a: Integraciones → SIGERD";
         } else {
-            $msg .= "\nDatos listos. Puedes exportar desde Integraciones → SIGERD.";
+            $msgHardcode .= "\nDatos listos. Puedes exportar desde Integraciones → SIGERD.";
         }
+
+        $msg = \App\Services\PlantillaComunicacionService::render('sigerd_validacion', 'whatsapp', [
+            'centro' => $school, 'ano_escolar' => $syNombre, 'estado' => $estado,
+            'total_estudiantes' => (string) $totalEst, 'total_errores' => (string) $totalErrores,
+        ]) ?? $msgHardcode;
 
         foreach ($registradores as $reg) {
             WhatsAppService::send($reg->telefono, $msg);

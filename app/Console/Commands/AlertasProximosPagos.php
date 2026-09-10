@@ -103,14 +103,17 @@ class AlertasProximosPagos extends Command
                 }
 
                 if ($rep->telefono) {
-                    WhatsAppService::send(
-                        $rep->telefono,
-                        "⏰ *{$inst}*\n\nEstimado representante, el pago de *{$est->nombre_completo}*:\n\n" .
+                    $msgWhatsApp = \App\Services\PlantillaComunicacionService::render('pago_proximo_vencer', 'whatsapp', [
+                        'centro' => $inst, 'estudiante' => $est->nombre_completo, 'concepto' => $pago->concepto,
+                        'monto' => $monto, 'fecha_vencimiento' => $pago->fecha_vencimiento->format('d/m/Y'),
+                        'cuando' => $cuando, 'url_portal' => config('app.url'),
+                    ]) ?? "⏰ *{$inst}*\n\nEstimado representante, el pago de *{$est->nombre_completo}*:\n\n" .
                         "📋 *{$pago->concepto}*\n" .
                         "💰 Monto: *{$monto}*\n" .
                         "📅 Vence: *{$pago->fecha_vencimiento->format('d/m/Y')}* ({$cuando})\n\n" .
-                        "Puede pagar desde el portal: " . config('app.url')
-                    );
+                        "Puede pagar desde el portal: " . config('app.url');
+
+                    WhatsAppService::send($rep->telefono, $msgWhatsApp);
                 }
             }
         }

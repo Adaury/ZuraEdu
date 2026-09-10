@@ -228,7 +228,10 @@ class AvisoEmergenciaController extends Controller
     {
         $school  = \App\Helpers\Setting::get('system_name', 'El centro educativo');
         $emoji   = $aviso->tipo === 'emergencia' ? '🚨' : '📢';
-        $mensaje = "{$emoji} *{$school}* — *{$aviso->titulo}*\n\n{$aviso->mensaje}";
+        $mensaje = \App\Services\PlantillaComunicacionService::render('aviso_emergencia', 'whatsapp', [
+            'centro' => $school, 'emoji' => $emoji, 'titulo' => $aviso->titulo,
+            'mensaje' => $aviso->mensaje, 'tipo' => $aviso->tipo,
+        ]) ?? "{$emoji} *{$school}* — *{$aviso->titulo}*\n\n{$aviso->mensaje}";
 
         $representantes = $this->representantesParaWhatsApp($tipo, $grupoId);
 

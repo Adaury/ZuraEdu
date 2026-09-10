@@ -781,6 +781,13 @@ class PagoController extends Controller
 
             $nombreEst = $matricula->estudiante->nombre_completo ?? $matricula->estudiante->nombres ?? '';
             $msg       = "Recordatorio: {$nombreEst} tiene {$cuotas} cuota(s) vencida(s) por {$mon} " . number_format($total, 2) . ". Por favor regularice su situación.";
+            // $msgWhatsApp separada de $msg a propósito: $msg alimenta la
+            // notificación in-app más abajo, que no debe personalizarse por
+            // esta plantilla (solo el canal WhatsApp la usa).
+            $msgWhatsApp = \App\Services\PlantillaComunicacionService::render('pago_recordatorio_manual', 'whatsapp', [
+                'estudiante' => $nombreEst, 'cuotas' => (string) $cuotas,
+                'monto' => $mon . ' ' . number_format($total, 2),
+            ]) ?? $msg;
 
             // Notificación portal a representantes
             foreach ($matricula->estudiante->representantes as $rep) {
@@ -799,7 +806,7 @@ class PagoController extends Controller
             // WhatsApp (async via cola whatsapp)
             foreach ($matricula->estudiante->representantes as $rep) {
                 if (! empty($rep->telefono)) {
-                    \App\Services\WhatsAppService::send($rep->telefono, $msg);
+                    \App\Services\WhatsAppService::send($rep->telefono, $msgWhatsApp);
                 }
             }
         }

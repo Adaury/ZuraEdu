@@ -145,10 +145,12 @@ class SigerdController extends Controller
             $school = \App\Helpers\Setting::get('system_name', 'El centro educativo');
             $label  = $labels[$tipo] ?? $tipo;
 
-            \App\Services\WhatsAppService::send(
-                $user->telefono,
-                "✅ *{$school}* — SIGERD\n\n*{$label}* exportado correctamente.\n📊 {$total} registros en formato " . strtoupper($formato) . ".\n\nEl archivo está listo para cargar en el portal SIGERD/MINERD."
-            );
+            $msgWhatsApp = \App\Services\PlantillaComunicacionService::render('sigerd_exportacion', 'whatsapp', [
+                'centro' => $school, 'tipo_export' => $label, 'total_registros' => (string) $total,
+                'formato' => strtoupper($formato),
+            ]) ?? "✅ *{$school}* — SIGERD\n\n*{$label}* exportado correctamente.\n📊 {$total} registros en formato " . strtoupper($formato) . ".\n\nEl archivo está listo para cargar en el portal SIGERD/MINERD.";
+
+            \App\Services\WhatsAppService::send($user->telefono, $msgWhatsApp);
         } catch (\Throwable) {}
     }
 

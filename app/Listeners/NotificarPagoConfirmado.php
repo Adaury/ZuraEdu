@@ -63,7 +63,10 @@ class NotificarPagoConfirmado implements ShouldQueue
 
         $tituloNotif  = '✅ Pago confirmado';
         $cuerpoNotif  = "Tu pago de *{$pago->concepto}* por {$monto} fue procesado exitosamente el {$fecha}.";
-        $msgWhatsApp  = "✅ *{$school}*\n\nEstimado representante, el pago de *{$pago->concepto}* por *{$monto}* ha sido confirmado.\n📅 Fecha: {$fecha}\n💳 Método: {$metodo}\n\nDescargue su recibo desde el portal.";
+        $msgWhatsApp  = \App\Services\PlantillaComunicacionService::render('pago_confirmado', 'whatsapp', [
+            'centro' => $school, 'estudiante' => $estudiante->nombre_completo, 'concepto' => $pago->concepto,
+            'monto' => $monto, 'fecha' => $fecha, 'metodo' => $metodo, 'url_portal' => config('app.url'),
+        ]) ?? "✅ *{$school}*\n\nEstimado representante, el pago de *{$pago->concepto}* por *{$monto}* ha sido confirmado.\n📅 Fecha: {$fecha}\n💳 Método: {$metodo}\n\nDescargue su recibo desde el portal.";
 
         // 1. Notificación in-app al estudiante
         if ($estudiante->user_id) {

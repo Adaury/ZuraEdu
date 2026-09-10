@@ -36,7 +36,12 @@ class NotificarPadreAccesoJob extends TenantJob
         $tipo   = $this->tipoEvento === 'entrada' ? 'ingresó' : 'salió';
 
         $titulo  = "Carnet+ — {$tipo} a las {$this->hora}";
+        // $mensaje alimenta la notificación in-app más abajo, que no debe
+        // personalizarse por esta plantilla -- solo el canal WhatsApp la usa.
         $mensaje = "{$nombre} {$tipo} del centro a las {$this->hora}.";
+        $msgWhatsApp = \App\Services\PlantillaComunicacionService::render('carnet_acceso', 'whatsapp', [
+            'estudiante' => $nombre, 'accion' => $tipo, 'hora' => $this->hora,
+        ]) ?? $mensaje;
 
         // Notificar al representante/padre via el sistema de notificaciones existente
         if ($carnet->matricula_id) {
@@ -69,7 +74,7 @@ class NotificarPadreAccesoJob extends TenantJob
                     }
 
                     if (! empty($rep->telefono)) {
-                        WhatsAppService::send($rep->telefono, $mensaje);
+                        WhatsAppService::send($rep->telefono, $msgWhatsApp);
                     }
                 }
             }

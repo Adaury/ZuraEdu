@@ -3422,6 +3422,11 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('admin.sistema.notificaciones') }}" class="{{ request()->routeIs('admin.sistema.notificaciones') ? 'active' : '' }}">
+                        <i class="bi bi-bell-fill"></i>Notificaciones In-app
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.plantillas.index') }}" class="{{ request()->routeIs('admin.plantillas*') ? 'active' : '' }}">
                         <i class="bi bi-chat-square-text"></i>Plantillas de Mensajes
                     </a>

@@ -185,6 +185,10 @@ Route::middleware('can:solo-administrador')->group(function () {
     Route::get('sistema/email-notif',     [SistemaController::class, 'emailNotifIndex'])->name('sistema.email-notif');
     Route::post('sistema/email-notif',    [SistemaController::class, 'emailNotifUpdate'])->name('sistema.email-notif.update');
 
+    // Notificaciones in-app/push (matriz de categorías por institución)
+    Route::get('sistema/notificaciones',  [SistemaController::class, 'notifMatrizIndex'])->name('sistema.notificaciones');
+    Route::post('sistema/notificaciones', [SistemaController::class, 'notifMatrizUpdate'])->name('sistema.notificaciones.update');
+
     // Plantillas de Comunicación (WhatsApp/email editables por tenant)
     Route::prefix('plantillas')->name('plantillas.')->group(function () {
         Route::get('/',                          [\App\Http\Controllers\Admin\PlantillaComunicacionController::class, 'index'])->name('index');

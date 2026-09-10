@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Events\NotificationCreated;
 use App\Models\Notificacion;
+use App\Services\NotificacionPreferenciaService;
 use App\Services\PushNotificationService;
 use Illuminate\Support\Facades\Cache;
 
@@ -30,6 +31,16 @@ class EnviarNotificacionJob extends TenantJob
 
     public function handle(): void
     {
+        // Gate 1 replicado (ver Notificacion::enviar()) -- NO es redundante:
+        // NotificarPadreAccesoJob y EnviarMensajeCircularJob despachan este
+        // job directo, sin pasar por Notificacion::enviar(); para ellos
+        // este es el ÚNICO gate. El tenant ya está bindeado aquí por
+        // ResolveTenantForJob (middleware de TenantJob), así que
+        // Setting::get() dentro del servicio lee el tenant correcto.
+        if (! NotificacionPreferenciaService::inAppActivo($this->tipo)) {
+            return;
+        }
+
         $notif = Notificacion::withoutTenant()->create([
             'tenant_id' => $this->tenantId,
             'user_id'   => $this->userId,
@@ -42,15 +53,17 @@ class EnviarNotificacionJob extends TenantJob
 
         Cache::forget("user_{$this->userId}_notif_unread");
 
-        // Push notification al dispositivo móvil
-        try {
-            PushNotificationService::sendToUser(
-                $this->userId,
-                $this->titulo,
-                $this->mensaje,
-                array_merge($this->datos, ['tipo' => $this->tipo]),
-            );
-        } catch (\Throwable) {}
+        // Gate 2 replicado.
+        if (NotificacionPreferenciaService::pushActivo($this->userId, $this->tipo)) {
+            try {
+                PushNotificationService::sendToUser(
+                    $this->userId,
+                    $this->titulo,
+                    $this->mensaje,
+                    array_merge($this->datos, ['tipo' => $this->tipo]),
+                );
+            } catch (\Throwable) {}
+        }
 
         try {
             NotificationCreated::dispatch(

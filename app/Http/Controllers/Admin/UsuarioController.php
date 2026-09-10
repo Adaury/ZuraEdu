@@ -256,14 +256,22 @@ class UsuarioController extends Controller
             );
         } catch (\Throwable) {}
 
-        // Notificar al usuario por email
-        try {
-            Mail::to($usuario->email)->queue(new UsuarioAprobado($usuario));
-        } catch (\Exception $e) {
-            // No interrumpir el flujo si el email falla
+        // Notificar al usuario por email (respeta el toggle del centro,
+        // hoy se guardaba en email_notif.blade.php pero nunca se leía).
+        $emailEnviado = false;
+        if (\App\Helpers\Setting::get('email_notif_aprobacion', '1') === '1') {
+            try {
+                Mail::to($usuario->email)->queue(new UsuarioAprobado($usuario));
+                $emailEnviado = true;
+            } catch (\Exception $e) {
+                // No interrumpir el flujo si el email falla
+            }
         }
 
-        return back()->with('success', "Usuario {$usuario->name} aprobado correctamente. Se envió notificación por correo.");
+        $mensaje = "Usuario {$usuario->name} aprobado correctamente."
+            . ($emailEnviado ? ' Se envió notificación por correo.' : '');
+
+        return back()->with('success', $mensaje);
     }
 
     public function rechazar(Request $request, User $usuario)

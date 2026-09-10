@@ -35,6 +35,9 @@
             Configura los emails automáticos, umbrales de alerta y ejecución manual.
         </p>
     </div>
+    <a href="{{ route('admin.sistema.notificaciones') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-bell-fill me-1"></i>Notificaciones In-app y Push
+    </a>
 </div>
 
 @if(session('success'))

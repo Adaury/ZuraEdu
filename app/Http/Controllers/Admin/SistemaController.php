@@ -926,4 +926,30 @@ class SistemaController extends Controller
         ]);
         return back()->with('success', 'Configuración de notificaciones guardada.');
     }
+
+    // ── Matriz de notificaciones in-app/push por categoría ─────────────────
+    public function notifMatrizIndex()
+    {
+        return view('admin.sistema.notificaciones', [
+            'settings'   => \App\Helpers\Setting::all(),
+            'categorias' => \App\Models\Notificacion::CATEGORIAS,
+        ]);
+    }
+
+    public function notifMatrizUpdate(\Illuminate\Http\Request $request)
+    {
+        $data = [];
+
+        foreach (\App\Models\Notificacion::CATEGORIAS as $clave => $meta) {
+            // 'sistema' tiene el in-app bloqueado: su clave nunca se escribe.
+            if (empty($meta['inapp_bloqueado'])) {
+                $data["notif_inapp_{$clave}"] = $request->boolean("inapp_{$clave}") ? '1' : '0';
+            }
+            $data["notif_push_{$clave}"] = $request->boolean("push_{$clave}") ? '1' : '0';
+        }
+
+        \App\Helpers\Setting::setMany($data);
+
+        return back()->with('success', 'Preferencias de notificaciones guardadas correctamente.');
+    }
 }

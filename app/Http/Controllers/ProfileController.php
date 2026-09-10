@@ -11,7 +11,10 @@ class ProfileController extends Controller
 {
     public function show()
     {
-        return view('perfil.show', ['user' => auth()->user()]);
+        return view('perfil.show', [
+            'user'       => auth()->user(),
+            'categorias' => \App\Models\Notificacion::CATEGORIAS,
+        ]);
     }
 
     public function update(Request $request)
@@ -59,6 +62,33 @@ class ProfileController extends Controller
         }
 
         return redirect()->back()->with('success', 'Foto eliminada.');
+    }
+
+    public function notificacionesUpdate(Request $request)
+    {
+        $user  = auth()->user();
+        $prefs = $user->notif_push_prefs ?? [];
+
+        foreach (\App\Models\Notificacion::CATEGORIAS as $clave => $meta) {
+            // Las categorías que la institución apagó se renderizan como
+            // checkbox deshabilitado -- el navegador NO envía inputs
+            // disabled. Si se escribieran igual, un guardado pondría en
+            // false una preferencia que el usuario tenía en true, y que
+            // volvería a aplicarse el día que el centro reactive la
+            // categoría sin que el usuario lo haya pedido de nuevo.
+            if (! \App\Services\NotificacionPreferenciaService::pushInstitucionActivoCategoria($clave)) {
+                continue;
+            }
+
+            $prefs[$clave] = $request->boolean("push_{$clave}");
+        }
+
+        $user->notif_push_prefs = $prefs; // no está en $fillable: asignación directa
+        $user->save();
+
+        return redirect()->route('perfil.show')
+            ->withFragment('notificaciones')
+            ->with('success', 'Preferencias de notificaciones actualizadas.');
     }
 
     public function changePassword(Request $request)

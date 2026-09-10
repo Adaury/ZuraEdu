@@ -116,6 +116,7 @@ Route::middleware(['auth', 'activo'])->group(function () {
     Route::post('/perfil/foto',        [\App\Http\Controllers\ProfileController::class, 'uploadPhoto'])->name('perfil.foto');
     Route::delete('/perfil/foto',      [\App\Http\Controllers\ProfileController::class, 'deletePhoto'])->name('perfil.foto.delete');
     Route::post('/perfil/password',    [\App\Http\Controllers\ProfileController::class, 'changePassword'])->name('perfil.password');
+    Route::post('/perfil/notificaciones', [\App\Http\Controllers\ProfileController::class, 'notificacionesUpdate'])->name('perfil.notificaciones');
 });
 
 Route::get('/change-password',  [AuthController::class, 'showChangePassword'])->name('password.change')->middleware('auth');

@@ -30,7 +30,22 @@ class User extends Authenticatable
         'activo'                 => 'boolean',
         'pendiente_aprobacion'   => 'boolean',
         'must_change_password'   => 'boolean',
+        'notif_push_prefs'       => 'array',
     ];
+
+    /**
+     * Preferencia de push por categoría (Notificacion::CATEGORIAS). Ausente
+     * = activo (default-on) -- un usuario que nunca abrió "Mis
+     * Notificaciones" sigue recibiendo todo, igual que antes de este
+     * feature. NO se agrega 'notif_push_prefs' a $fillable a propósito: la
+     * escritura debe ser siempre explícita (ver
+     * ProfileController::notificacionesUpdate()), nunca vía un
+     * update($request->all()) que pise el mapa completo por accidente.
+     */
+    public function pushActivo(string $categoria): bool
+    {
+        return ($this->notif_push_prefs[$categoria] ?? true) !== false;
+    }
 
     public function scopePendientes($q)
     {

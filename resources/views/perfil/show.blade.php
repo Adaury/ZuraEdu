@@ -12,6 +12,7 @@
     <div class="prt-sidebar-section">Perfil</div>
     <a href="#info" class="prt-sidebar-link"><i class="bi bi-person"></i>Información</a>
     <a href="#seguridad" class="prt-sidebar-link"><i class="bi bi-shield-lock"></i>Seguridad</a>
+    <a href="#notificaciones" class="prt-sidebar-link"><i class="bi bi-bell"></i>Notificaciones</a>
     <div class="prt-sidebar-section mt-3">Cuenta</div>
     <form method="POST" action="{{ route('logout') }}" style="margin:0;">
         @csrf
@@ -69,6 +70,19 @@
     padding: .3rem .75rem; font-size: .8rem; font-weight: 700;
     margin-bottom: 1rem;
 }
+
+.pf-notif-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; padding: .7rem 0; border-bottom: 1px solid var(--prt-border, #f3f4f6);
+}
+.pf-notif-row:last-child { border-bottom: none; }
+.pf-notif-icono {
+    width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; color: #fff; font-size: .9rem;
+}
+.pf-notif-label { font-size: .87rem; font-weight: 600; }
+.pf-notif-desc { font-size: .76rem; color: #6b7280; }
+.pf-notif-bloqueado { font-size: .72rem; color: #9ca3af; margin-top: .1rem; }
 </style>
 @endpush
 
@@ -195,6 +209,48 @@
             <div class="mt-3">
                 <button type="submit" class="btn btn-sm px-4" style="background:#0f766e;color:#fff;border:none;">
                     <i class="bi bi-lock me-1"></i>Actualizar contraseña
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- ── Notificaciones ────────────────────────────────────────────── --}}
+<div class="pf-card" id="notificaciones">
+    <div class="pf-card-header" style="background:linear-gradient(135deg,#b45309,#f59e0b);">
+        <i class="bi bi-bell"></i>
+        <h2>Mis Notificaciones</h2>
+    </div>
+    <div class="pf-card-body">
+        <p class="small text-muted mb-3">
+            Elige por qué temas quieres que te suene el celular. Todas las notificaciones seguirán apareciendo en la campanita del sistema — esto solo controla las alertas push de la app móvil.
+        </p>
+        <form method="POST" action="{{ route('perfil.notificaciones') }}">
+            @csrf
+            @foreach($categorias as $clave => $meta)
+                @php($institucionActiva = \App\Services\NotificacionPreferenciaService::pushInstitucionActivoCategoria($clave))
+                <div class="pf-notif-row">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="pf-notif-icono" style="background:{{ $meta['color'] }};">
+                            <i class="bi {{ $meta['icono'] }}"></i>
+                        </div>
+                        <div>
+                            <div class="pf-notif-label">{{ $meta['label'] }}</div>
+                            <div class="pf-notif-desc">{{ $meta['desc'] }}</div>
+                            @unless($institucionActiva)
+                                <div class="pf-notif-bloqueado"><i class="bi bi-lock-fill"></i> Desactivado por el centro educativo</div>
+                            @endunless
+                        </div>
+                    </div>
+                    <input type="checkbox" class="form-check-input" name="push_{{ $clave }}" value="1"
+                           {{ $user->pushActivo($clave) ? 'checked' : '' }}
+                           {{ $institucionActiva ? '' : 'disabled' }}
+                           style="width:2.5rem;height:1.4rem;flex-shrink:0;">
+                </div>
+            @endforeach
+            <div class="mt-3">
+                <button type="submit" class="btn btn-sm px-4" style="background:#b45309;color:#fff;border:none;">
+                    <i class="bi bi-check-lg me-1"></i>Guardar preferencias
                 </button>
             </div>
         </form>

@@ -55,8 +55,17 @@ class ConfigInstitucional extends Model
         return static::get('tipo_institucion') === 'publico';
     }
 
+    /**
+     * Modelo "opt-out": un módulo se considera activo hasta que el propio
+     * centro lo apague explícitamente en /admin/sistema (tab Módulos). El
+     * default es true (no false) porque ningún tenant se provisiona con
+     * estas filas precargadas -- CheckTenantFeature ahora exige este check
+     * ADEMÁS de TenantFeature, y si el default fuera false bloquearía de
+     * golpe cualquier módulo que un tenant real ya usa (TenantFeature
+     * activo) pero cuyo Administrador nunca visitó esta pestaña.
+     */
     public static function moduloActivo(string $modulo): bool
     {
-        return (bool) static::get("modulo_{$modulo}_activo", false);
+        return (bool) static::get("modulo_{$modulo}_activo", true);
     }
 }

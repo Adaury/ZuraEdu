@@ -2,15 +2,46 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ConfigInstitucional;
 use Closure;
 use Illuminate\Http\Request;
 
 /**
  * Bloquea el acceso a una ruta si el tenant no tiene activa la feature requerida.
  * Uso: Route::middleware('tenant.feature:horarios')
+ *
+ * Fase 0 del roadmap (docs/ZURAEDU_PRODUCT_GAPS.md): existían dos sistemas
+ * paralelos de "módulo activo" sin sincronizar -- TenantFeature (plan del
+ * tenant, solo lo toca SuperAdmin) y ConfigInstitucional::moduloActivo()
+ * (autoservicio del propio centro en /admin/sistema, que hasta ahora era
+ * puramente cosmético y no bloqueaba ninguna ruta). Ahora exige AMBOS: el
+ * plan tiene que incluir el módulo Y el centro tiene que tenerlo encendido.
  */
 class CheckTenantFeature
 {
+    /**
+     * Mapa feature (TenantFeature) → módulo (ConfigInstitucional). Solo los
+     * slugs con equivalente real de autoservicio en SistemaController::
+     * updateModulos(). Dos alias verificados donde el nombre no coincide
+     * (classroom↔zuraclass, seguimiento_social↔seguimiento); el resto de
+     * LABELS (asistencia, boletines, portal_padre, whatsapp, etc.) no tiene
+     * toggle de autoservicio y sigue dependiendo solo de TenantFeature.
+     */
+    private const MODULO_CONFIG = [
+        'pagos'              => 'pagos',
+        'biblioteca'         => 'biblioteca',
+        'cafeteria'          => 'cafeteria',
+        'transporte'         => 'transporte',
+        'salud'              => 'salud',
+        'gamificacion'       => 'gamificacion',
+        'inventario'         => 'inventario',
+        'disciplina'         => 'disciplina',
+        'reuniones'          => 'reuniones',
+        'proyectos'          => 'proyectos',
+        'seguimiento_social' => 'seguimiento',
+        'classroom'          => 'zuraclass',
+    ];
+
     private const LABELS = [
         'asistencia'            => 'Control de Asistencia',
         'calificaciones'        => 'Calificaciones',
@@ -52,21 +83,34 @@ class CheckTenantFeature
             return $next($request);
         }
 
-        if ($tenant->can($feature)) {
-            return $next($request);
+        if (! $tenant->can($feature)) {
+            return $this->bloquear($request, $feature, autoservicio: false);
         }
 
+        $modulo = self::MODULO_CONFIG[$feature] ?? null;
+        if ($modulo !== null && ! ConfigInstitucional::moduloActivo($modulo)) {
+            return $this->bloquear($request, $feature, autoservicio: true);
+        }
+
+        return $next($request);
+    }
+
+    private function bloquear(Request $request, string $feature, bool $autoservicio)
+    {
         $label = self::LABELS[$feature] ?? $feature;
+
+        $mensaje = $autoservicio
+            ? "El módulo «{$label}» está desactivado en la configuración de tu institución. Actívalo en Configuración del Sistema → Módulos."
+            : "El módulo «{$label}» no está disponible en tu plan actual. Contacta a soporte para actualizar.";
 
         if ($request->expectsJson()) {
             return response()->json([
-                'error'   => "El módulo «{$label}» no está disponible en tu plan.",
+                'error'   => $autoservicio ? "El módulo «{$label}» está desactivado en la configuración de tu institución." : "El módulo «{$label}» no está disponible en tu plan.",
                 'feature' => $feature,
             ], 403);
         }
 
-        return redirect()->route($this->dashboardRuta($request))
-            ->with('warning', "El módulo «{$label}» no está disponible en tu plan actual. Contacta a soporte para actualizar.");
+        return redirect()->route($this->dashboardRuta($request))->with('warning', $mensaje);
     }
 
     private function dashboardRuta(Request $request): string

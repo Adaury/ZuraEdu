@@ -109,10 +109,32 @@ export default function PadreDashboard() {
                   </Text>
                 </View>
 
-                {/* Nombre y grupo */}
+                {/* Nombre, grupo y Hoy */}
                 <View style={{ flex: 1 }}>
                   <Text style={styles.hijoNombre}>{h.nombre}</Text>
                   <Text style={styles.hijoGrupo}>{h.grupo ?? 'Sin grupo asignado'}</Text>
+                  {!!h.hoy && (
+                    <View style={styles.hoyChips}>
+                      {h.hoy.carnet_hoy && (
+                        <View style={[styles.hoyChip, { backgroundColor: Colors.green + '18' }]}>
+                          <Ionicons name="id-card" size={11} color={Colors.green} />
+                          <Text style={[styles.hoyChipTxt, { color: Colors.green }]}>{h.hoy.carnet_hoy.hora}</Text>
+                        </View>
+                      )}
+                      {h.hoy.tareas_pendientes > 0 && (
+                        <View style={[styles.hoyChip, { backgroundColor: Colors.amber + '18' }]}>
+                          <Ionicons name="checkbox" size={11} color={Colors.amber} />
+                          <Text style={[styles.hoyChipTxt, { color: Colors.amber }]}>{h.hoy.tareas_pendientes} tarea(s)</Text>
+                        </View>
+                      )}
+                      {h.hoy.proximo_pago && (
+                        <View style={[styles.hoyChip, { backgroundColor: Colors.red + '18' }]}>
+                          <Ionicons name="card" size={11} color={Colors.red} />
+                          <Text style={[styles.hoyChipTxt, { color: Colors.red }]}>Pago pendiente</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
                 </View>
 
                 {/* Acciones rápidas del hijo */}
@@ -191,6 +213,9 @@ const styles = StyleSheet.create({
   avatarTxt:      { fontSize: 18, fontWeight: '900', color: ACCENT },
   hijoNombre:     { fontSize: 14, fontWeight: '800', color: Colors.text },
   hijoGrupo:      { fontSize: 12, color: Colors.muted, marginTop: 2 },
+  hoyChips:       { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  hoyChip:        { flexDirection: 'row', alignItems: 'center', gap: 3, paddingVertical: 3, paddingHorizontal: 7, borderRadius: 8 },
+  hoyChipTxt:     { fontSize: 10, fontWeight: '700' },
   hijoActions:    { flexDirection: 'row', alignItems: 'center', gap: 6 },
   hijoActionBtn:  { width: 30, height: 30, borderRadius: 9, backgroundColor: Colors.bg,
                     alignItems: 'center', justifyContent: 'center' },

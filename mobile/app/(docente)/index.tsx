@@ -96,6 +96,64 @@ export default function DocenteDashboard() {
           </View>
         </View>
 
+        {/* ─── Hoy ─── */}
+        {!dashLoading && data?.hoy && (
+          <View style={styles.hoySection}>
+            <Text style={styles.sectionTitle}>Hoy</Text>
+
+            {data.hoy.proxima_clase ? (
+              <View style={styles.hoyRow}>
+                <View style={[styles.hoyIcon, { backgroundColor: Colors.indigo + '18' }]}>
+                  <Ionicons name="time" size={16} color={Colors.indigo} />
+                </View>
+                <Text style={styles.hoyTxt}>
+                  Próxima clase: <Text style={styles.hoyBold}>{data.hoy.proxima_clase.asignatura}</Text> a las {data.hoy.proxima_clase.hora_inicio}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.hoyRow}>
+                <View style={[styles.hoyIcon, { backgroundColor: Colors.muted + '18' }]}>
+                  <Ionicons name="checkmark-done" size={16} color={Colors.muted} />
+                </View>
+                <Text style={styles.hoyTxt}>No tienes más clases programadas hoy.</Text>
+              </View>
+            )}
+
+            {data.hoy.asistencia_pendiente_hoy > 0 && (
+              <TouchableOpacity style={styles.hoyRow} onPress={() => router.push('/(docente)/asistencia')}>
+                <View style={[styles.hoyIcon, { backgroundColor: Colors.amber + '18' }]}>
+                  <Ionicons name="alert-circle" size={16} color={Colors.amber} />
+                </View>
+                <Text style={styles.hoyTxt}>
+                  <Text style={styles.hoyBold}>{data.hoy.asistencia_pendiente_hoy}</Text> grupo(s) sin asistencia hoy
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={Colors.border} />
+              </TouchableOpacity>
+            )}
+
+            {data.hoy.entregas_pendientes > 0 && (
+              <TouchableOpacity style={styles.hoyRow} onPress={() => router.push('/(docente)/tareas')}>
+                <View style={[styles.hoyIcon, { backgroundColor: Colors.green + '18' }]}>
+                  <Ionicons name="document-text" size={16} color={Colors.green} />
+                </View>
+                <Text style={styles.hoyTxt}>
+                  <Text style={styles.hoyBold}>{data.hoy.entregas_pendientes}</Text> entrega(s) sin revisar en ZuraClass
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={Colors.border} />
+              </TouchableOpacity>
+            )}
+
+            {data.hoy.al_dia && (
+              <View style={styles.hoyRow}>
+                <View style={[styles.hoyIcon, { backgroundColor: Colors.green + '18' }]}>
+                  <Ionicons name="checkmark-circle" size={16} color={Colors.green} />
+                </View>
+                <Text style={styles.hoyTxt}>Estás al día — sin pendientes por ahora.</Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* ─── KPIs ─── */}
         {isLoading ? (
           <View style={styles.skeletonRow}>
@@ -212,6 +270,14 @@ const styles = StyleSheet.create({
   schoolYear:      { fontSize: 12, color: Colors.muted, marginTop: 2 },
   headerActions:   { flexDirection: 'row', alignItems: 'center', gap: 4 },
   qrBtn:           { backgroundColor: ACCENT, borderRadius: 12, padding: 10, marginRight: 4 },
+
+  // Hoy
+  hoySection:      { backgroundColor: '#fff', borderRadius: 16, padding: 14, gap: 10,
+                     shadowColor: '#000', shadowOpacity: .05, shadowRadius: 8, elevation: 2 },
+  hoyRow:          { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  hoyIcon:         { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  hoyTxt:          { flex: 1, fontSize: 13, color: Colors.text },
+  hoyBold:         { fontWeight: '800' },
 
   // KPIs
   skeletonRow:     { flexDirection: 'row', gap: 10 },

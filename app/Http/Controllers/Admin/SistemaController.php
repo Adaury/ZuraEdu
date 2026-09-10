@@ -82,7 +82,9 @@ class SistemaController extends Controller
             'zuraclass'     => ['label' => 'ZuraClass (Aula Virtual)','icon' => 'bi-mortarboard-fill',   'color' => '#7c3aed'],
         ];
 
-        return view('admin.sistema.index', compact('settings', 'inst', 'modulos'));
+        $tenant = tenant();
+
+        return view('admin.sistema.index', compact('settings', 'inst', 'modulos', 'tenant'));
     }
 
     public function update(Request $request)
@@ -186,7 +188,7 @@ class SistemaController extends Controller
         // independientes sin relación entre sí.
         \App\Models\ConfigInstitucional::set('hp_logo_path', $path);
 
-        return back()->with('success', 'Logotipo actualizado correctamente.');
+        return back()->with('success', 'Logotipo actualizado correctamente.')->with('tab', 'apariencia');
     }
 
     public function deleteLogo()
@@ -201,7 +203,7 @@ class SistemaController extends Controller
         if (\App\Models\ConfigInstitucional::get('hp_logo_path') === $logo) {
             \App\Models\ConfigInstitucional::set('hp_logo_path', null);
         }
-        return back()->with('success', 'Logotipo eliminado.');
+        return back()->with('success', 'Logotipo eliminado.')->with('tab', 'apariencia');
     }
 
     public function uploadFavicon(Request $request)
@@ -231,7 +233,7 @@ class SistemaController extends Controller
         $this->setSetting('system_favicon', $path);
         Cache::forget('system_favicon');
 
-        return back()->with('success', 'Favicon actualizado correctamente.');
+        return back()->with('success', 'Favicon actualizado correctamente.')->with('tab', 'apariencia');
     }
 
     // ── Limpiar Datos ───────────────────────────────────────────────────────
@@ -860,7 +862,35 @@ class SistemaController extends Controller
         }
         $this->setSetting('system_favicon', null);
         Cache::forget('system_favicon');
-        return back()->with('success', 'Favicon eliminado.');
+        return back()->with('success', 'Favicon eliminado.')->with('tab', 'apariencia');
+    }
+
+    /**
+     * Colores de marca del tenant (Tenant.color_primario/color_secundario):
+     * hasta ahora solo se fijaban en el onboarding o desde SuperAdmin. Se
+     * usan en el ícono/theme-color del PWA, la página de sitio suspendido y
+     * el badge del sitio público sin sede — por eso hay que invalidar la
+     * caché diaria de íconos PWA (PwaController::icon, 86400s por
+     * tenant+tamaño+variante) al guardar, si no el ícono viejo sigue
+     * sirviéndose hasta un día después del cambio.
+     */
+    public function updateColores(Request $request)
+    {
+        $data = $request->validate([
+            'color_primario'   => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'color_secundario' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+        ]);
+
+        tenant()->update($data);
+
+        $tenantId = tenant_id();
+        foreach ([96, 192, 512] as $size) {
+            foreach (['a', 'm'] as $variante) {
+                Cache::forget("pwa_icon_{$tenantId}_{$size}_{$variante}");
+            }
+        }
+
+        return back()->with('success', 'Colores de marca actualizados correctamente.')->with('tab', 'apariencia');
     }
 
     // ── WhatsApp / Notificaciones ──────────────────────────────────────────

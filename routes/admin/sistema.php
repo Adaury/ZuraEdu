@@ -164,6 +164,7 @@ Route::middleware('can:solo-administrador')->group(function () {
     Route::post('sistema/logo/delete',     [SistemaController::class, 'deleteLogo'])->name('sistema.logo.delete');
     Route::post('sistema/favicon',         [SistemaController::class, 'uploadFavicon'])->name('sistema.favicon');
     Route::post('sistema/favicon/delete',  [SistemaController::class, 'deleteFavicon'])->name('sistema.favicon.delete');
+    Route::post('sistema/colores',         [SistemaController::class, 'updateColores'])->name('sistema.colores');
     Route::post('sistema/limpiar-datos',      [SistemaController::class, 'limpiarDatos'])->name('sistema.limpiar-datos');
     Route::post('sistema/institucional',      [SistemaController::class, 'updateInstitucional'])->name('sistema.institucional.update');
     Route::post('sistema/modulos',            [SistemaController::class, 'updateModulos'])->name('sistema.modulos.update');

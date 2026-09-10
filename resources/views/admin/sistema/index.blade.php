@@ -478,6 +478,45 @@
             </form>
         </div>
     </div>
+
+    <div class="col-md-12">
+        <div class="card-panel">
+            <div class="section-title"><i class="bi bi-palette-fill me-1"></i>Colores de Marca</div>
+            <p style="font-size:.8rem;color:#6b7280;margin-bottom:.85rem;">
+                Se usan en el ícono de la app (PWA), la página de la institución cuando
+                el sitio público no está disponible y como acento cuando aún no hay
+                logotipo cargado. No cambian los colores del panel administrativo.
+            </p>
+            <form action="{{ route('admin.sistema.colores') }}" method="POST">
+                @csrf
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <label class="form-label-custom">Color primario</label>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="color" name="color_primario" id="colorPrimarioPick"
+                                   class="form-control form-control-color @error('color_primario') is-invalid @enderror"
+                                   value="{{ old('color_primario', $tenant->color_primario ?? '#1d4ed8') }}"
+                                   oninput="document.getElementById('colorPrimarioHex').textContent = this.value">
+                            <span id="colorPrimarioHex" style="font-size:.82rem;color:#374151;">{{ $tenant->color_primario ?? '#1d4ed8' }}</span>
+                        </div>
+                        @error('color_primario')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label-custom">Color secundario</label>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="color" name="color_secundario" id="colorSecundarioPick"
+                                   class="form-control form-control-color @error('color_secundario') is-invalid @enderror"
+                                   value="{{ old('color_secundario', $tenant->color_secundario ?? '#10b981') }}"
+                                   oninput="document.getElementById('colorSecundarioHex').textContent = this.value">
+                            <span id="colorSecundarioHex" style="font-size:.82rem;color:#374151;">{{ $tenant->color_secundario ?? '#10b981' }}</span>
+                        </div>
+                        @error('color_secundario')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+                <button type="submit" class="btn-upload mt-3"><i class="bi bi-cloud-upload"></i> Guardar Colores</button>
+            </form>
+        </div>
+    </div>
 </div>
 </div>
 

@@ -73,30 +73,43 @@ anteriores.
 
 ## TOP 10 CAMBIOS
 
-1. Unificar `TenantFeature` y `ConfigInstitucional::moduloActivo()` en una sola fuente de verdad de módulos activos por tenant.
-2. Vista "Hoy" consolidada para Docente (horario + asistencia pendiente + entregas por calificar, ya calculados hoy en distintos lugares).
-3. Fusionar `KpiController` dentro del dashboard principal de Director/Administrador (los datos de "Hoy" ya existen, están en la página equivocada).
-4. Decidir el futuro de las 3 líneas de planificación (`PlanifAnual`, `PlanClase`, `Planificacion`) — unificar o solo conectar.
-5. Conectar cualquiera de las líneas de planificación con ZuraClass (columna nullable, sin migración de datos).
-6. Vista "Hoy" para Padre (ya identificado en auditoría previa, dato disperso en 8+ endpoints).
-7. Diseñar y construir el portal público por centro (`pagina_secciones`, reutilizando `Tenant.dominio`).
-8. Evaluar el constructor visual de bloques como capa sobre el portal público (bloques predefinidos configurables, no un builder libre).
-9. Centro de administración unificado (hub de navegación tipo Moodle) sobre el CRUD ya existente.
-10. Extender `ZuraPlanificacionAI` a las líneas de planificación no técnicas, una vez resuelto el punto 4.
+**Actualización 2026-09-11**: al retomar este roadmap para empezar por el
+punto 2 se descubrió que 9 de los 10 ítems ya se habían implementado entre
+el 2026-09-06 y el 2026-09-10 (antes de esta sesión), sin que este
+documento se actualizara. Verificado contra `git log` y el código real,
+no solo contra los mensajes de commit.
+
+1. ~~Unificar `TenantFeature` y `ConfigInstitucional::moduloActivo()`.~~ **HECHO** — commit `41c2213` (Fase 0): `CheckTenantFeature::handle()` exige ambos ahora.
+2. ~~Vista "Hoy" consolidada para Docente.~~ **HECHO** — commit `94de8bd` (web) + `9e01165` (mobile). Verificado en `PortalDocenteController::dashboard()` líneas 121-169 y `dashboard.blade.php`.
+3. ~~Fusionar `KpiController` dentro del dashboard principal.~~ **HECHO** — commit `040ed6d`.
+4. ~~Decidir el futuro de las 3 líneas de planificación.~~ **HECHO** — decisión aprobada 2026-09-07 (PlanClase↔PlanifUnidad/Planificacion, referencia opcional) + commit `23452fa`.
+5. ~~Conectar planificación con ZuraClass.~~ **HECHO** — commit `452cd45` ("conexión de solo lectura Planificación → ZuraClass").
+6. ~~Vista "Hoy" para Padre.~~ **HECHO** — commit `e000eb3` (web, Carnet+/tareas/próximo pago) + `9e01165` (mobile).
+7. ~~Portal público por centro.~~ **HECHO** — commits `6f0e9bb`, `f3caf92`, `a9a1cf0` y varios fixes posteriores (carrusel, homepage por dominio, etc.).
+8. ~~Constructor visual de bloques del portal público.~~ **HECHO** — commit `d5d350e` (Fase 2).
+9. ~~Centro de administración unificado tipo Moodle.~~ **HECHO** — commit `101fa63` + `b4c17e3` (completar cobertura/módulos/dark mode/buscador).
+10. **PENDIENTE (único ítem real que queda)**: extender `ZuraPlanificacionAI` a las líneas de planificación no técnicas. Verificado en código: `PlanificacionAIController::generarRA()`/`generarActividad()` siguen usando vocabulario exclusivamente técnico (`familia_profesional`, `ra_codigo`, `modulo`) — no hay equivalente para `PlanifAnual`/`PlanifUnidad` (académica).
 
 ## PRIMER DESARROLLO RECOMENDADO
 
-**Vista "Hoy" para el rol Docente** — primero en orden global de ejecución.
+**CERRADO/OBSOLETO (2026-09-11)**: la vista "Hoy" para Docente (punto 2)
+ya estaba implementada antes de esta sesión, en web y mobile. No requirió
+ningún desarrollo nuevo.
+
+Con 9 de los 10 puntos de este roadmap ya cerrados, el único desarrollo
+real pendiente de esta lista es el **punto 10: extender
+`ZuraPlanificacionAI` a las líneas de planificación no técnicas**
+(`PlanifAnual`/`PlanifUnidad`, área académica) — hoy el servicio de IA
+(`generarRA`, `generarActividad`, `mejorarTexto`) solo sirve al área
+técnico-vocacional.
 
 ### Reconciliación con el otro roadmap (docs/ROADMAP_PRODUCTO_ZURAEDU_2026_2027.md)
 El roadmap de auditoría de gaps (misma sesión) había identificado como
 ítem de mayor riesgo los tests del algoritmo MINERD de promoción
 (`RegistroAcademicoService::calcularPromocion`). Al retomarlo (2026-09-11)
 se descubrió que ya existían (`tests/Feature/RegistroAcademicoServicePromocionTest.php`,
-commit `af24ee1`) y pasan 12/12 contra el código actual — ese ítem quedó
-cerrado sin trabajo adicional. Con eso resuelto, esta vista "Hoy" pasa a
-ser el próximo desarrollo recomendado en orden global, no solo dentro de
-este roadmap.
+commit `af24ee1`) y pasan 12/12 contra el código actual — ese ítem también
+quedó cerrado sin trabajo adicional.
 
 ### Por qué
 Es el cambio de menor riesgo y mayor impacto diario de los 10: no requiere

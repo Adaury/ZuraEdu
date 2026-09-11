@@ -199,9 +199,13 @@ avisará si algo rompe la regla de promoción real.
 Existía un segundo roadmap de producto de la misma sesión que recomendaba
 como primer desarrollo la vista "Hoy" para Docente. Se había decidido que
 este ítem (tests de promoción) iba primero por ser corrección/cumplimiento
-sobre un resultado irreversible para un estudiante real. Al resultar que
-ya estaba cerrado, la vista "Hoy" para Docente pasa a ser el próximo
-desarrollo recomendado en orden global.
+sobre un resultado irreversible para un estudiante real. Al retomar la
+vista "Hoy" para Docente (2026-09-11) se descubrió que **9 de los 10
+ítems de ese roadmap ya estaban implementados** (commits del 2026-09-06 al
+2026-09-10, antes de esta sesión) — ver el detalle en
+`ZURAEDU_IMPLEMENTATION_ROADMAP.md`. El único ítem real que queda de
+ambos roadmaps combinados es extender `ZuraPlanificacionAI` a las líneas
+de planificación académicas (punto 10 de ese documento).
 
 ---
 

@@ -88,7 +88,9 @@ no solo contra los mensajes de commit.
 7. ~~Portal público por centro.~~ **HECHO** — commits `6f0e9bb`, `f3caf92`, `a9a1cf0` y varios fixes posteriores (carrusel, homepage por dominio, etc.).
 8. ~~Constructor visual de bloques del portal público.~~ **HECHO** — commit `d5d350e` (Fase 2).
 9. ~~Centro de administración unificado tipo Moodle.~~ **HECHO** — commit `101fa63` + `b4c17e3` (completar cobertura/módulos/dark mode/buscador).
-10. **PENDIENTE (único ítem real que queda)**: extender `ZuraPlanificacionAI` a las líneas de planificación no técnicas. Verificado en código: `PlanificacionAIController::generarRA()`/`generarActividad()` siguen usando vocabulario exclusivamente técnico (`familia_profesional`, `ra_codigo`, `modulo`) — no hay equivalente para `PlanifAnual`/`PlanifUnidad` (académica).
+10. ~~Extender `ZuraPlanificacionAI` a las líneas de planificación no técnicas.~~ **HECHO (2026-09-11)** — commit `b46cebe`: `generarUnidad()` nuevo para `PlanifUnidad` académica, con validación de competencias contra `PlanifUnidad::COMPETENCIAS`. De paso se corrigió que los 3 métodos técnicos existentes no verificaban propiedad del docente sobre la asignación, y un bug de `TypeError` en el constructor cuando `GEMINI_API_KEY` no está configurada. Verificado con 5 tests y con la API real de Gemini en sesión de docente autenticada.
+
+**Con esto, los 10 ítems de este roadmap y los de `ROADMAP_PRODUCTO_ZURAEDU_2026_2027.md` (tests de promoción) quedan cerrados.**
 
 ## PRIMER DESARROLLO RECOMENDADO
 

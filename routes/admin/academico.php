@@ -61,17 +61,25 @@ Route::middleware('can:ver-calificaciones')->group(function () {
     Route::get('calificaciones/import/{importacion}',     [CalificacionController::class,         'importEstado'])->name('calificaciones.import.estado');
     Route::get('calificaciones/plantilla/descargar',      [CalificacionController::class,         'downloadTemplate'])->name('calificaciones.plantilla.descargar');
     Route::get('calificaciones/grilla',                   [CalificacionController::class,         'grilla'])->name('calificaciones.grilla');
+    Route::get('calificaciones/resumen',                  [CalificacionController::class,         'resumen'])->name('calificaciones.resumen');
+    Route::get('calificaciones/ranking',                  [CalificacionController::class,         'ranking'])->name('calificaciones.ranking');
+    Route::get('calificaciones/planilla-academica',       [CalificacionAcademicaController::class,'planillaAcademica'])->name('calificaciones.planilla-academica');
+});
+
+// Auditoría Don Bosco (Sección 4): "ver" y "exportar" estaban empaquetados
+// en ver-calificaciones -- solo boletines tenía el permiso de exportación
+// separado. exportar-calificaciones se asignó (RolesSeeder) exactamente a
+// los mismos roles que ya tenían ver-calificaciones, así que este cambio
+// no le quita acceso a nadie hoy -- solo lo vuelve revocable por separado.
+Route::middleware('can:exportar-calificaciones')->group(function () {
     Route::get('calificaciones/resumen/excel',             [CalificacionController::class,         'resumenExcel'])->name('calificaciones.resumen.excel');
     Route::get('calificaciones/resumen/pdf',               [CalificacionController::class,         'resumenPdf'])->name('calificaciones.resumen.pdf');
     Route::get('calificaciones/progreso/pdf',             [CalificacionController::class,         'progresoPdf'])->name('calificaciones.progreso.pdf');
     Route::get('calificaciones/progreso/excel',           [CalificacionController::class,         'progresoExcel'])->name('calificaciones.progreso.excel');
-    Route::get('calificaciones/resumen',                  [CalificacionController::class,         'resumen'])->name('calificaciones.resumen');
-    Route::get('calificaciones/ranking',                  [CalificacionController::class,         'ranking'])->name('calificaciones.ranking');
     Route::get('calificaciones/ranking/pdf',              [CalificacionController::class,         'rankingPdf'])->name('calificaciones.ranking.pdf');
     Route::get('calificaciones/ranking/excel',            [CalificacionController::class,         'rankingExcel'])->name('calificaciones.ranking.excel');
     Route::get('calificaciones/acta/{asignacion}',        [CalificacionController::class,         'actaPdf'])->name('calificaciones.acta-pdf');
     Route::get('calificaciones/acta/{asignacion}/excel',  [CalificacionController::class,         'actaExcel'])->name('calificaciones.acta-excel');
-    Route::get('calificaciones/planilla-academica',       [CalificacionAcademicaController::class,'planillaAcademica'])->name('calificaciones.planilla-academica');
     Route::get('calificaciones/planilla/pdf',             [CalificacionAcademicaController::class,'exportarPlanillaPdf'])->name('calificaciones.planilla.pdf');
     Route::get('calificaciones/planilla/excel',           [CalificacionAcademicaController::class,'exportarPlanillaExcel'])->name('calificaciones.planilla.excel');
 });

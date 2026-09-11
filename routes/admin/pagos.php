@@ -9,16 +9,26 @@ Route::prefix('pagos')->name('pagos.')->middleware('can:ver-pagos')->group(funct
     Route::get('/dashboard',             [PagoController::class, 'dashboard'])->name('dashboard');
     Route::get('/',                      [PagoController::class, 'index'])->name('index');
     Route::get('/matricula/{matricula}', [PagoController::class, 'porEstudiante'])->name('por-estudiante');
-    Route::get('/matricula/{matricula}/pdf', [PagoController::class, 'estadoCuentaPdf'])->name('estado-cuenta-pdf');
     Route::get('/{pago}/recibo',         [PagoController::class, 'reciboPdf'])->name('recibo');
+    Route::get('/deudores',              [PagoController::class, 'deudores'])->name('deudores');
+    Route::get('/conceptos',             [PagoController::class, 'conceptos'])->name('conceptos');
+});
+
+// Auditoría Don Bosco (Sección 4): "ver" y "exportar" estaban empaquetados
+// en ver-pagos -- solo boletines tenía el permiso de exportación separado.
+// exportar-pagos se asignó (RolesSeeder) exactamente a los mismos roles
+// que ya tenían ver-pagos, así que este cambio no le quita acceso a nadie
+// hoy -- solo lo vuelve revocable por separado. El recibo individual
+// (recibo) queda fuera -- es un documento operativo rutinario (Caja lo
+// imprime justo después de cobrar), no un "reporte oficial" masivo.
+Route::prefix('pagos')->name('pagos.')->middleware('can:exportar-pagos')->group(function () {
+    Route::get('/matricula/{matricula}/pdf', [PagoController::class, 'estadoCuentaPdf'])->name('estado-cuenta-pdf');
     Route::get('/resumen-mensual/pdf',   [PagoController::class, 'resumenMensualPdf'])->name('resumen-mensual-pdf');
     Route::get('/resumen-mensual/excel', [PagoController::class, 'resumenMensualExcel'])->name('resumen-mensual-excel');
     Route::get('/lista/pdf',             [PagoController::class, 'listaPdf'])->name('lista-pdf');
     Route::get('/lista/excel',           [PagoController::class, 'listaExcel'])->name('lista-excel');
-    Route::get('/deudores',              [PagoController::class, 'deudores'])->name('deudores');
     Route::get('/deudores/pdf',          [PagoController::class, 'deudoresPdf'])->name('deudores.pdf');
     Route::get('/deudores/excel',        [PagoController::class, 'deudoresExcel'])->name('deudores.excel');
-    Route::get('/conceptos',             [PagoController::class, 'conceptos'])->name('conceptos');
 });
 
 // Gestión — solo usuarios con permiso gestionar-pagos

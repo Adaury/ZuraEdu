@@ -34,6 +34,7 @@ class RolesSeeder extends Seeder
             // Calificaciones y asistencia
             'ingresar-calificaciones',
             'ver-calificaciones',
+            'exportar-calificaciones',
             'ingresar-asistencia',
             'ver-asistencia',
             // Boletines
@@ -45,6 +46,7 @@ class RolesSeeder extends Seeder
             'supervisar-registros',
             // Pagos y finanzas
             'ver-pagos',
+            'exportar-pagos',
             'gestionar-pagos',
             // Biblioteca
             'gestionar-biblioteca',
@@ -83,6 +85,7 @@ class RolesSeeder extends Seeder
             'gestionar-periodos',
             'ingresar-calificaciones',
             'ver-calificaciones',
+            'exportar-calificaciones',
             'ingresar-asistencia',
             'ver-asistencia',
             'gestionar-indicadores',
@@ -99,6 +102,7 @@ class RolesSeeder extends Seeder
             'ver-dashboard',
             'ingresar-calificaciones',
             'ver-calificaciones',
+            'exportar-calificaciones',
             'ingresar-asistencia',
             'ver-asistencia',
             'ver-boletines',
@@ -112,6 +116,7 @@ class RolesSeeder extends Seeder
             'ver-estudiantes',
             'gestionar-matriculas',
             'ver-calificaciones',
+            'exportar-calificaciones',
             'ver-asistencia',
             'ver-boletines',
             'imprimir-boletines',
@@ -122,6 +127,7 @@ class RolesSeeder extends Seeder
         $personalAdm->syncPermissions([
             'ver-dashboard',
             'ver-calificaciones',
+            'exportar-calificaciones',
             'ver-asistencia',
             'ver-boletines',
             'imprimir-boletines',
@@ -135,6 +141,7 @@ class RolesSeeder extends Seeder
         $estudiante->syncPermissions([
             'ver-dashboard',
             'ver-calificaciones',
+            'exportar-calificaciones',
             'ver-asistencia',
             'ver-boletines',
         ]);
@@ -143,6 +150,7 @@ class RolesSeeder extends Seeder
         $representante = Role::firstOrCreate(['name' => 'Representante', 'guard_name' => 'web']);
         $representante->syncPermissions([
             'ver-calificaciones',
+            'exportar-calificaciones',
             'ver-asistencia',
             'ver-boletines',
         ]);
@@ -155,6 +163,7 @@ class RolesSeeder extends Seeder
             'gestionar-grupos',
             'gestionar-asignaturas',
             'ver-calificaciones',
+            'exportar-calificaciones',
             'ver-asistencia',
             'ver-boletines',
             'ver-estadisticas',
@@ -175,6 +184,7 @@ class RolesSeeder extends Seeder
             'gestionar-periodos',
             'ingresar-calificaciones',
             'ver-calificaciones',
+            'exportar-calificaciones',
             'ingresar-asistencia',
             'ver-asistencia',
             'gestionar-indicadores',
@@ -199,6 +209,7 @@ class RolesSeeder extends Seeder
             'gestionar-periodos',
             'ingresar-calificaciones',
             'ver-calificaciones',
+            'exportar-calificaciones',
             'ingresar-asistencia',
             'ver-asistencia',
             'gestionar-indicadores',
@@ -217,6 +228,7 @@ class RolesSeeder extends Seeder
             'ver-estudiantes',
             'gestionar-matriculas',
             'ver-calificaciones',
+            'exportar-calificaciones',
             'ver-asistencia',
             'ver-boletines',
             'imprimir-boletines',
@@ -229,6 +241,7 @@ class RolesSeeder extends Seeder
             'ver-estudiantes',
             'gestionar-matriculas',
             'ver-calificaciones',
+            'exportar-calificaciones',
             'ver-asistencia',
             'ver-boletines',
             'imprimir-boletines',
@@ -247,6 +260,7 @@ class RolesSeeder extends Seeder
         $caja->syncPermissions([
             'ver-dashboard',
             'ver-pagos',
+            'exportar-pagos',
             'gestionar-pagos',
             'ver-reportes-institucionales',
             'ver-estudiantes', // ver quién debe — ya no puede crear/editar/eliminar estudiantes
@@ -276,6 +290,7 @@ class RolesSeeder extends Seeder
             'ver-dashboard',
             'ingresar-calificaciones',
             'ver-calificaciones',
+            'exportar-calificaciones',
             'ingresar-asistencia',
             'ver-asistencia',
             'ver-boletines',
@@ -287,6 +302,7 @@ class RolesSeeder extends Seeder
             'ver-dashboard',
             'ingresar-calificaciones',
             'ver-calificaciones',
+            'exportar-calificaciones',
             'ingresar-asistencia',
             'ver-asistencia',
             'ver-boletines',
@@ -298,6 +314,7 @@ class RolesSeeder extends Seeder
             'ver-dashboard',
             'ingresar-calificaciones',
             'ver-calificaciones',
+            'exportar-calificaciones',
             'ingresar-asistencia',
             'ver-asistencia',
             'ver-boletines',

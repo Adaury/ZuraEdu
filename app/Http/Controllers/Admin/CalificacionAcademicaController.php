@@ -106,7 +106,38 @@ class CalificacionAcademicaController extends Controller
 
         $saved = 0;
 
+        // Auditoría Don Bosco (Sección 4): cerrar un período era solo una
+        // etiqueta visual -- ninguna ruta de guardado de notas comprobaba
+        // `periodos.cerrado`. Esta planilla guarda el año completo en una
+        // sola fila (columnas comp{c}_p1..p4 por competencia), así que un
+        // período cerrado no puede bloquear el guardado entero (bloquearía
+        // también los períodos abiertos) -- en su lugar, las columnas del
+        // período cerrado se restauran a su valor ya guardado antes de
+        // calcular nada, para que un período cerrado quede efectivamente
+        // congelado sin impedir editar los períodos que sí siguen abiertos.
+        $periodosCerrados = Periodo::where('school_year_id', $request->school_year_id)
+            ->where('cerrado', true)
+            ->pluck('numero')->all();
+
         foreach ($request->notas as $matriculaId => $datos) {
+            // Se captura antes de calcular nada -- sirve tanto para congelar
+            // las columnas de un período cerrado como para la auditoría de
+            // cambios de más abajo (antes se consultaba dos veces).
+            $anterior = CalificacionAcademica::where([
+                'matricula_id'   => $matriculaId,
+                'asignacion_id'  => $request->asignacion_id,
+                'school_year_id' => $request->school_year_id,
+            ])->first();
+
+            foreach ($periodosCerrados as $p) {
+                foreach ([1, 2, 3, 4] as $c) {
+                    $datos["comp{$c}_p{$p}"] = $anterior?->{"comp{$c}_p{$p}"};
+                    $datos["comp{$c}_r{$p}"] = $anterior?->{"comp{$c}_r{$p}"};
+                }
+                $datos["asist_p{$p}"]  = $anterior?->{"asist_p{$p}"};
+                $datos["clases_p{$p}"] = $anterior?->{"clases_p{$p}"};
+            }
+
             $rec = [];
 
             // ── Competencias, RP y promedios ─────────────────────────────
@@ -188,13 +219,6 @@ class CalificacionAcademicaController extends Controller
             $gradeFinal = $rec['nota_extraordinaria'] ?? $rec['nota_completiva'] ?? $notaFinal;
             $rec['situacion'] = $gradeFinal !== null ? ($gradeFinal >= 70 ? 'A' : 'R') : null;
             $rec['modificado_por'] = auth()->id();
-
-            // Auditoría: capturar registro anterior antes de guardar
-            $anterior = CalificacionAcademica::where([
-                'matricula_id'   => $matriculaId,
-                'asignacion_id'  => $request->asignacion_id,
-                'school_year_id' => $request->school_year_id,
-            ])->first();
 
             $camposAudit = [];
             foreach ([1,2,3,4] as $c) {

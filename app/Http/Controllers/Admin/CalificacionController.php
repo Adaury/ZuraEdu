@@ -216,6 +216,13 @@ class CalificacionController extends Controller
         $asignacion = Asignacion::findOrFail($request->asignacion_id);
         $this->authorize('ingresarCalificaciones', $asignacion);
 
+        // Auditoría Don Bosco (Sección 4): cerrar un período era solo una
+        // etiqueta visual, ninguna ruta de guardado lo comprobaba. Reabrir
+        // el período (ya requiere el permiso gestionar-periodos) sigue
+        // siendo el único camino para volver a editar.
+        $periodo = Periodo::findOrFail($request->periodo_id);
+        abort_if($periodo->cerrado, 403, "El período «{$periodo->nombre}» está cerrado. Reábrelo primero para poder editar sus calificaciones.");
+
         $pesos      = ConfigCalificacion::getPesos($asignacion->school_year_id);
 
         if ($pesos->isEmpty()) {

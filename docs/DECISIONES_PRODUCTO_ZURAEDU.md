@@ -21,12 +21,23 @@ recomendación de "no hacerlo nunca" — es "no hacerlo ahora, y por qué".
 
 ## Decisiones de negocio pendientes (bloquean trabajo técnico en su área)
 
-### 1. Reingreso como flujo distinto de matrícula nueva
-- **Qué falta decidir**: si un estudiante que se fue y regresa necesita un
-  flujo diferenciado (bandera, historial de motivo de salida, prellenado
-  del expediente anterior) o si la matrícula genérica actual basta.
-  **REQUIERE VALIDACIÓN** con Secretaría/Registro sobre cómo lo manejan
-  hoy en la práctica (seguramente ya ocurre, sin sistema).
+### 1. Reingreso como flujo distinto de matrícula nueva — **CERRADA (2026-09-11)**
+- **Decisión**: la matrícula genérica actual basta. No se construye ningún
+  flujo de "Reingreso" diferenciado.
+- **Validación con el usuario**: confirmado que hoy Secretaría/Registro no
+  lleva ningún control especial — matriculan al estudiante que regresa
+  como lo harían con cualquiera.
+- **Verificación técnica de que el flujo actual ya soporta esto bien** (sin
+  cambios de código): al retirar una matrícula
+  (`MatriculaController.php:355`) solo cambia `Matricula.estado`, el
+  registro `Estudiante` no se toca y sigue `activo`.
+  `MatriculaController::create()` arma la lista de estudiantes a
+  matricular con `Estudiante::activos()->whereNotIn('id', $enrolledIds)`
+  filtrado por año escolar — un estudiante retirado en un año anterior
+  aparece normalmente para matricularlo de nuevo, sobre el mismo registro
+  (su historial de calificaciones/asistencia/boletines queda intacto, no
+  se duplica). Si alguien intentara crearlo como estudiante nuevo por
+  error, `cedula` tiene `unique:estudiantes,cedula` y lo bloquea.
 
 ### 2. Alcance real de NCF/e-CF
 - **Qué falta decidir**: ¿el MVP de "solo registrar y mostrar" (ya

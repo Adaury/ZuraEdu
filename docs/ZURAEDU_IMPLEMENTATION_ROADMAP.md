@@ -86,17 +86,17 @@ anteriores.
 
 ## PRIMER DESARROLLO RECOMENDADO
 
-**Vista "Hoy" para el rol Docente** — segundo en orden global de ejecución.
+**Vista "Hoy" para el rol Docente** — primero en orden global de ejecución.
 
 ### Reconciliación con el otro roadmap (docs/ROADMAP_PRODUCTO_ZURAEDU_2026_2027.md)
-El roadmap de auditoría de gaps (misma sesión) identificó un ítem de mayor
-riesgo: los tests del algoritmo MINERD de promoción
-(`RegistroAcademicoService::calcularPromocion`), que hoy no tiene ninguna
-red de seguridad y decide un resultado irreversible para un estudiante
-real. Ese ítem va primero por ser corrección/cumplimiento sobre datos en
-producción; esta vista "Hoy" es una mejora de UX sin ese riesgo, así que
-queda como el desarrollo inmediatamente siguiente, no el primero en
-sentido absoluto.
+El roadmap de auditoría de gaps (misma sesión) había identificado como
+ítem de mayor riesgo los tests del algoritmo MINERD de promoción
+(`RegistroAcademicoService::calcularPromocion`). Al retomarlo (2026-09-11)
+se descubrió que ya existían (`tests/Feature/RegistroAcademicoServicePromocionTest.php`,
+commit `af24ee1`) y pasan 12/12 contra el código actual — ese ítem quedó
+cerrado sin trabajo adicional. Con eso resuelto, esta vista "Hoy" pasa a
+ser el próximo desarrollo recomendado en orden global, no solo dentro de
+este roadmap.
 
 ### Por qué
 Es el cambio de menor riesgo y mayor impacto diario de los 10: no requiere

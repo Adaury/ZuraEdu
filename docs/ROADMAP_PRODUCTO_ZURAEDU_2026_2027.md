@@ -150,7 +150,7 @@ seguridad a instituciones grandes o exigir un salto a "líder".
 
 ## TOP 5 prioridades
 
-1. Tests del algoritmo MINERD de promoción.
+1. ~~Tests del algoritmo MINERD de promoción.~~ **CERRADO 2026-09-11** — ya existían (commit `af24ee1`, verificado 12/12 pasando), ver nota abajo.
 2. Carnet+: agregar WhatsApp + corregir paridad admin/API.
 3. Conectar la justificación de ausencia con el registro real de asistencia.
 4. Decidir Reingreso y el alcance real de NCF/e-CF (dos decisiones de
@@ -159,7 +159,16 @@ seguridad a instituciones grandes o exigir un salto a "líder".
 
 ## PRÓXIMO DESARROLLO RECOMENDADO
 
-**Tests del algoritmo MINERD de promoción (`RegistroAcademicoService::calcularPromocion`).**
+**CERRADO (2026-09-11)**: al retomar este ítem se descubrió que
+`tests/Feature/RegistroAcademicoServicePromocionTest.php` ya existía
+(commit `af24ee1`, 2026-09-04) y cubre los 11 casos propuestos abajo casi
+punto por punto. Se corrió la suite completa y pasan los 12 tests (16
+aserciones) contra el código actual del método. No se modificó el
+algoritmo ni el test. Con este ítem cerrado, el siguiente desarrollo
+recomendado pasa a ser la vista "Hoy" para Docente
+(`docs/ZURAEDU_IMPLEMENTATION_ROADMAP.md`).
+
+**Tests del algoritmo MINERD de promoción (`RegistroAcademicoService::calcularPromocion`).** *(sección original, dejada como referencia del análisis de riesgo)*
 
 ### RAZÓN
 Es la única lógica de negocio de alto impacto en todo el sistema (de las
@@ -187,14 +196,12 @@ núcleo académico — y el equipo puede tocar código relacionado
 avisará si algo rompe la regla de promoción real.
 
 ### RECONCILIACIÓN CON EL OTRO ROADMAP (docs/ZURAEDU_IMPLEMENTATION_ROADMAP.md)
-Existe un segundo roadmap de producto de la misma sesión que recomienda
-como primer desarrollo la vista "Hoy" para Docente. Ambas iniciativas son
-válidas e independientes entre sí, pero no equivalentes en riesgo: este
-ítem (tests de promoción) es corrección/cumplimiento sobre un resultado
-irreversible para un estudiante real, mientras que la vista "Hoy" es una
-mejora de UX sin riesgo de datos. Por eso este ítem va primero; la vista
-"Hoy" para Docente queda como siguiente paso recomendado inmediatamente
-después.
+Existía un segundo roadmap de producto de la misma sesión que recomendaba
+como primer desarrollo la vista "Hoy" para Docente. Se había decidido que
+este ítem (tests de promoción) iba primero por ser corrección/cumplimiento
+sobre un resultado irreversible para un estudiante real. Al resultar que
+ya estaba cerrado, la vista "Hoy" para Docente pasa a ser el próximo
+desarrollo recomendado en orden global.
 
 ---
 

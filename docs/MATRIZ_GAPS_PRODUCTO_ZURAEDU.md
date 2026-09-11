@@ -99,11 +99,17 @@ por defecto**. Esto es una decisión de diseño existente, no un bug — pero
 es exactamente el tipo de caso límite que un test debe fijar explícitamente
 para que no cambie sin querer en un refactor futuro.
 
-**Tests existentes: 0** (confirmado). El algoritmo simple no-oficial
-(`CierreAnoController::ejecutar`) sí tiene 9 tests, pero es un algoritmo
-distinto que no aplica la regla MINERD real.
+**Tests existentes: 12** (`tests/Feature/RegistroAcademicoServicePromocionTest.php`,
+commit `af24ee1`, verificados el 2026-09-11 -- pasan 12/12). Este hallazgo
+de "0 tests" quedó desactualizado: el archivo ya cubre los 11 casos del
+plan de pruebas de abajo casi punto por punto, usando el parámetro
+`$registroPrecargado` para aislar la lógica de decisión sin reconstruir
+el pipeline de evaluación. El algoritmo simple no-oficial
+(`CierreAnoController::ejecutar`) tiene además sus propios 9 tests
+separados, pero es un algoritmo distinto que no aplica la regla MINERD
+real.
 
-**Plan de pruebas propuesto** (sin tocar el algoritmo):
+**Plan de pruebas propuesto** (sin tocar el algoritmo) -- ya implementado, se deja como referencia de lo cubierto:
 
 1. Primer ciclo — promedio exactamente 2.5 → promovido (límite inclusive).
 2. Primer ciclo — promedio 2.49 → no_promovido.
@@ -125,8 +131,9 @@ distinto que no aplica la regla MINERD real.
     asignatura cuando hay 0, 1 y 3+ reprobadas.
 
 **Riesgo si no se cierra**: decide si un estudiante real repite el año.
-Es la única lógica de negocio de alto impacto en todo el sistema (según
-esta auditoría completa) sin ninguna red de seguridad.
+Era la única lógica de negocio de alto impacto en todo el sistema (según
+esta auditoría completa) sin ninguna red de seguridad -- **ya cerrado**,
+ver tests existentes arriba.
 
 ---
 

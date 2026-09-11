@@ -11,11 +11,14 @@ use App\Models\Inscripcion;
 use App\Models\Matricula;
 use App\Models\Notificacion;
 use App\Models\SchoolYear;
+use App\Traits\VerificaCupoGrupo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class InscripcionController extends Controller
 {
+    use VerificaCupoGrupo;
+
     public function index(Request $request)
     {
         $schoolYear = SchoolYear::actual();
@@ -170,7 +173,9 @@ class InscripcionController extends Controller
         }
 
         DB::transaction(function () use ($data, $inscripcion, $schoolYear) {
-            Grupo::where('id', $data['grupo_id'])->lockForUpdate()->firstOrFail();
+            $grupo = Grupo::where('id', $data['grupo_id'])->lockForUpdate()->firstOrFail();
+
+            $this->verificarCupoDisponible($grupo);
 
             $numeroOrden = Matricula::where('grupo_id', $data['grupo_id'])->count() + 1;
 
@@ -230,9 +235,11 @@ class InscripcionController extends Controller
         $grupoId    = $data['grupo_id'];
         $creados    = 0;
         $errores    = 0;
+        $sinCupo    = 0;
 
-        DB::transaction(function () use ($data, $schoolYear, $grupoId, &$creados, &$errores) {
-            Grupo::where('id', $grupoId)->lockForUpdate()->firstOrFail();
+        DB::transaction(function () use ($data, $schoolYear, $grupoId, &$creados, &$errores, &$sinCupo) {
+            $grupo = Grupo::where('id', $grupoId)->lockForUpdate()->firstOrFail();
+            $ocupados = Matricula::where('grupo_id', $grupoId)->where('estado', 'activa')->count();
 
             $inscripciones = Inscripcion::whereIn('id', $data['ids'])->get()->keyBy('id');
 
@@ -249,6 +256,8 @@ class InscripcionController extends Controller
                 if (! $inscripcion || $inscripcion->estado !== 'pendiente') continue;
 
                 if ($yaMatriculados->has($inscripcion->estudiante_id)) { $errores++; continue; }
+
+                if ($ocupados + $creados >= $grupo->capacidad) { $sinCupo++; continue; }
 
                 $matricula = Matricula::create([
                     'school_year_id'  => $schoolYear->id,
@@ -271,8 +280,9 @@ class InscripcionController extends Controller
 
         $msg = "{$creados} estudiante(s) asignado(s) correctamente.";
         if ($errores > 0) $msg .= " {$errores} omitido(s) por ya estar matriculado(s).";
+        if ($sinCupo > 0) $msg .= " {$sinCupo} no se pudo(eron) asignar por falta de cupo en el grupo.";
 
-        return back()->with('success', $msg);
+        return back()->with($sinCupo ? 'warning' : 'success', $msg);
     }
 
     public function destroy(Inscripcion $inscripcion)

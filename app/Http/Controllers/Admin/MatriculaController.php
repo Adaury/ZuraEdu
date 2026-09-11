@@ -11,6 +11,7 @@ use App\Models\Matricula;
 use App\Models\Notificacion;
 use App\Models\SchoolYear;
 use App\Traits\SincronizaEstadoEstudiante;
+use App\Traits\VerificaCupoGrupo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -18,6 +19,7 @@ use Illuminate\Validation\ValidationException;
 class MatriculaController extends Controller
 {
     use SincronizaEstadoEstudiante;
+    use VerificaCupoGrupo;
 
     public function index(Request $request)
     {
@@ -134,9 +136,12 @@ class MatriculaController extends Controller
         }
 
         // Bloquea el grupo para serializar el cálculo de numero_orden entre
-        // matrículas concurrentes al mismo grupo (evita duplicados bajo carga).
+        // matrículas concurrentes al mismo grupo (evita duplicados bajo carga)
+        // y para que el chequeo de cupo sea confiable bajo concurrencia real.
         $matricula = DB::transaction(function () use ($data) {
-            Grupo::where('id', $data['grupo_id'])->lockForUpdate()->firstOrFail();
+            $grupo = Grupo::where('id', $data['grupo_id'])->lockForUpdate()->firstOrFail();
+
+            $this->verificarCupoDisponible($grupo);
 
             $data['numero_orden'] = Matricula::where('grupo_id', $data['grupo_id'])->count() + 1;
             $data['estado']       = 'activa';
@@ -255,11 +260,13 @@ class MatriculaController extends Controller
 
         $creados = 0;
         $omitidos = 0;
+        $sinCupo = 0;
 
-        DB::transaction(function () use ($data, $schoolYear, &$creados, &$omitidos) {
+        DB::transaction(function () use ($data, $schoolYear, &$creados, &$omitidos, &$sinCupo) {
             // Bloquea el grupo para serializar frente a otras matrículas (individuales
             // o masivas) concurrentes al mismo grupo mientras dura este lote.
-            Grupo::where('id', $data['grupo_id'])->lockForUpdate()->firstOrFail();
+            $grupo = Grupo::where('id', $data['grupo_id'])->lockForUpdate()->firstOrFail();
+            $ocupados = Matricula::where('grupo_id', $data['grupo_id'])->where('estado', 'activa')->count();
 
             foreach ($data['estudiante_ids'] as $estId) {
                 $yaExiste = Matricula::where('school_year_id', $schoolYear->id)
@@ -267,6 +274,8 @@ class MatriculaController extends Controller
                     ->exists();
 
                 if ($yaExiste) { $omitidos++; continue; }
+
+                if ($ocupados + $creados >= $grupo->capacidad) { $sinCupo++; continue; }
 
                 $numeroOrden = Matricula::where('grupo_id', $data['grupo_id'])->count() + $creados + 1;
 
@@ -297,8 +306,9 @@ class MatriculaController extends Controller
 
         $msg = "{$creados} matrícula(s) registrada(s) exitosamente.";
         if ($omitidos) $msg .= " {$omitidos} omitida(s) por ya estar matriculadas.";
+        if ($sinCupo)  $msg .= " {$sinCupo} no se pudo(eron) matricular por falta de cupo en el grupo.";
 
-        return back()->with('success', $msg);
+        return back()->with($sinCupo ? 'warning' : 'success', $msg);
     }
 
     public function resumen()

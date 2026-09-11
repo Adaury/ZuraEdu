@@ -66,7 +66,12 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
 </div>
 
 @if($pago->numero_comprobante_fiscal)
-<div class="ncf-box">NCF/e-CF: {{ $pago->numero_comprobante_fiscal }}</div>
+<div class="ncf-box">
+    NCF/e-CF: {{ $pago->numero_comprobante_fiscal }}
+    @if($rncInstitucion = \App\Models\ConfigInstitucional::get('rnc', ''))
+        &nbsp;·&nbsp; RNC: {{ $rncInstitucion }}
+    @endif
+</div>
 @endif
 
 <div class="section">
@@ -121,7 +126,10 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
     <strong style="font-size:9pt;">{{ $inst }}</strong><br>
     <span style="font-size:7.5pt;color:#6b7280;">RECIBO No. {{ str_pad($pago->id,6,'0',STR_PAD_LEFT) }}</span>
     @if($pago->numero_comprobante_fiscal)
-        <br><span style="font-size:7.5pt;color:#1e3a6e;font-weight:700;">NCF/e-CF: {{ $pago->numero_comprobante_fiscal }}</span>
+        <br><span style="font-size:7.5pt;color:#1e3a6e;font-weight:700;">
+            NCF/e-CF: {{ $pago->numero_comprobante_fiscal }}
+            @if($rncInstitucion) &nbsp;·&nbsp; RNC: {{ $rncInstitucion }} @endif
+        </span>
     @endif
 </div>
 <div style="display:flex;justify-content:space-between;font-size:8pt;padding:0 .5rem;">

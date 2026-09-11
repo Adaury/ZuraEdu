@@ -237,6 +237,13 @@
                            placeholder="Ej. 15-001-0001">
                 </div>
                 <div class="col-sm-6">
+                    <label class="form-label-custom">RNC de la Institución</label>
+                    <input type="text" name="rnc" class="form-control form-control-custom"
+                           value="{{ old('rnc', $inst['rnc'] ?? '') }}"
+                           placeholder="Ej. 1-01-00000-0">
+                    <div class="info-note"><i class="bi bi-info-circle"></i>Se imprime junto al NCF/e-CF en el recibo de pago — sin esto, el comprobante no sirve para que el padre/empresa lo deduzca como gasto.</div>
+                </div>
+                <div class="col-sm-6">
                     <label class="form-label-custom">Tipo de Institución</label>
                     <select name="tipo_institucion" class="form-select form-control-custom">
                         <option value="">— Seleccione —</option>

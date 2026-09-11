@@ -117,6 +117,7 @@ class SistemaController extends Controller
             'nombre_director'       => 'nullable|string|max:150',
             'cargo_director'        => 'nullable|string|max:100',
             'codigo_centro'         => 'nullable|string|max:30',
+            'rnc'                   => 'nullable|string|max:20',
             'nivel_educativo'       => 'nullable|string|max:100',
             'telefono'              => 'nullable|string|max:30',
             'email_institucional'   => 'nullable|email|max:150',

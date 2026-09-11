@@ -39,19 +39,30 @@ recomendación de "no hacerlo nunca" — es "no hacerlo ahora, y por qué".
   se duplica). Si alguien intentara crearlo como estudiante nuevo por
   error, `cedula` tiene `unique:estudiantes,cedula` y lo bloquea.
 
-### 2. Alcance real de NCF/e-CF
-- **Qué falta decidir**: ¿el MVP de "solo registrar y mostrar" (ya
-  implementado) es suficiente para el negocio, o hace falta invertir en
-  una integración real con un proveedor certificado por la DGII?
-- **REQUIERE VALIDACIÓN**: (a) qué categoría de contribuyente (pequeño/
-  mediano/grande) aplica a cada centro tenant real — cambia la urgencia
-  del plazo del 15/11/2026; (b) si hay presupuesto/apetito para contratar
-  un proveedor e-CF certificado.
+### 2. Alcance real de NCF/e-CF — **CERRADA (2026-09-11)**
+- **Decisión**: el MVP actual ("solo registrar y mostrar") se mantiene tal
+  cual. No se invierte en una integración real con un proveedor
+  certificado por la DGII por ahora.
+- **Validación con el usuario**: confirmó que los centros clientes reales
+  (ej. Don Bosco) son pequeños/micro contribuyentes — el plazo del
+  15/11/2026 les aplica directamente y con urgencia real (quedaban ~2
+  meses al momento de esta decisión) — pero no hay presupuesto/interés de
+  negocio en contratar un proveedor e-CF certificado ahora. El centro
+  resuelve su propio comprobante por fuera de ZuraEdu (Facturador Gratuito
+  de la DGII u otro medio) y solo lo anota en el sistema.
 
-### 3. Categoría de contribuyente por tenant (afecta la decisión #2)
-- No hay ningún campo en el sistema que registre esto hoy — ni siquiera
-  el RNC del centro está almacenado. Antes de decidir la estrategia fiscal
-  hace falta este dato básico por cada institución real.
+### 3. Campo de RNC por institución — **CERRADA e IMPLEMENTADA (2026-09-11)**
+- **Hallazgo real detectado al cerrar la #2**: el recibo de pago mostraba
+  el NCF/e-CF pero nunca el RNC de la institución emisora — sin el RNC del
+  centro, el comprobante no sirve del todo para que el padre/empresa lo
+  deduzca como gasto (la DGII requiere el RNC del emisor junto al NCF).
+- **Implementado**: campo `rnc` en `ConfigInstitucional` (mismo patrón que
+  `nombre_institucion`), configurable en `/admin/sistema` → Identificación
+  del Centro, e impreso junto al NCF/e-CF en ambas copias del recibo
+  (`resources/views/admin/pagos/recibo_pdf.blade.php`). No se agregó
+  "categoría de contribuyente" como campo separado — ese dato solo
+  importaba para decidir si construir la integración real (#2), y esa
+  decisión ya se tomó (no, por ahora).
 
 ## Nota sobre "REQUIERE VALIDACIÓN"
 

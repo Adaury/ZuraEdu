@@ -104,4 +104,44 @@ class PagoNumeroComprobanteFiscalTest extends TestCase
             ->get(route('admin.pagos.recibo', $pago))
             ->assertOk();
     }
+
+    // ── RNC de la institución (decisión de negocio 2026-09-11, ver
+    // docs/DECISIONES_PRODUCTO_ZURAEDU.md #2): el recibo mostraba el NCF
+    // pero nunca el RNC del centro emisor -- sin eso el comprobante no
+    // sirve para que el padre/empresa lo deduzca como gasto ante la DGII.
+
+    public function test_administrador_puede_guardar_el_rnc_de_la_institucion(): void
+    {
+        $this->actingAs($this->admin())
+            ->post(route('admin.sistema.institucional.update'), ['rnc' => '1-01-00000-0'])
+            ->assertRedirect();
+
+        $this->assertSame('1-01-00000-0', \App\Models\ConfigInstitucional::get('rnc'));
+    }
+
+    public function test_el_recibo_pdf_no_falla_cuando_hay_rnc_y_comprobante_fiscal(): void
+    {
+        \App\Models\ConfigInstitucional::set('rnc', '1-01-00000-0');
+        $pago = $this->crearPago([
+            'estado' => 'pagado', 'fecha_pago' => '2026-01-15', 'metodo_pago' => 'efectivo',
+            'numero_comprobante_fiscal' => 'E310000045678',
+        ]);
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.pagos.recibo', $pago))
+            ->assertOk();
+    }
+
+    public function test_el_recibo_pdf_no_falla_cuando_hay_comprobante_fiscal_pero_no_rnc(): void
+    {
+        $this->assertNull(\App\Models\ConfigInstitucional::get('rnc'));
+        $pago = $this->crearPago([
+            'estado' => 'pagado', 'fecha_pago' => '2026-01-15', 'metodo_pago' => 'efectivo',
+            'numero_comprobante_fiscal' => 'E310000045678',
+        ]);
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.pagos.recibo', $pago))
+            ->assertOk();
+    }
 }

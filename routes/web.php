@@ -582,6 +582,9 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::delete('/{plan}/unidades/{unidad}',         [\App\Http\Controllers\Portal\PlanifAnualController::class, 'destroyUnidad'])->name('unidades.destroy');
         Route::patch('/{plan}/unidades/{unidad}/mover',    [\App\Http\Controllers\Portal\PlanifAnualController::class, 'moverUnidad'])->name('unidades.mover');
         Route::get('/{plan}/pdf',                          [\App\Http\Controllers\Portal\PlanifAnualController::class, 'pdf'])->name('pdf');
+        // IA endpoints (línea académica)
+        Route::post('/{plan}/unidades/{unidad}/ia', [PlanificacionAIController::class, 'generarUnidad'])->name('unidades.ia')->middleware('throttle:30,1');
+        Route::post('/ia/mejorar',                  [PlanificacionAIController::class, 'mejorarTexto'])->name('ia.mejorar')->middleware('throttle:30,1');
     });
 
     // Banco de Preguntas

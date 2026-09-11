@@ -12,7 +12,11 @@ class ZuraPlanificacionAI
 
     public function __construct()
     {
-        $this->apiKey = config('services.gemini.key', env('GEMINI_API_KEY', ''));
+        // config('services.gemini.key') existe siempre en el array de config (config/services.php
+        // la define sin default), así que si GEMINI_API_KEY no está en .env, config() devuelve null
+        // -- no el fallback -- y asignarlo directo revienta con TypeError (propiedad tipada string)
+        // antes de llegar al chequeo empty($this->apiKey) de llamarGemini(). Se normaliza a ''.
+        $this->apiKey = config('services.gemini.key', env('GEMINI_API_KEY', '')) ?? '';
     }
 
     // ── Generar contenido para un RA ────────────────────────────────────────
@@ -103,6 +107,54 @@ Requisitos:
 - Las actividades deben seguir la estructura didáctica inicio-desarrollo-cierre
 - Usa lenguaje pedagógico formal dominicano
 - Adapta el contenido al área técnica de {$asignatura}
+EOT;
+
+        return $this->llamarGemini($prompt);
+    }
+
+    // ── Generar contenido para una Unidad de planificación académica ────────
+    public function generarUnidad(array $params): array
+    {
+        $asignatura  = $params['asignatura'] ?? '';
+        $grado       = $params['grado'] ?? '';
+        $ciclo       = $params['ciclo'] ?? 'segundo_ciclo';
+        $numero      = $params['numero'] ?? 1;
+        $periodo     = $params['periodo'] ?? '';
+        $tituloHint  = $params['titulo_hint'] ?? '';
+        $contexto    = $params['contexto'] ?? '';
+        $competencias= implode(', ', $params['competencias_disponibles'] ?? []);
+
+        $prompt = <<<EOT
+Eres un experto en diseño curricular dominicano (MINERD), nivel académico
+(NO técnico-profesional). Genera el contenido para una Unidad de una
+planificación anual, en formato JSON.
+
+CONTEXTO:
+- Asignatura: {$asignatura}
+- Grado: {$grado}
+- Ciclo: {$ciclo}
+- Unidad número: {$numero}
+- Período: {$periodo}
+- Título/tema de la unidad (hint del docente): "{$tituloHint}"
+- Contexto adicional: "{$contexto}"
+- Competencias fundamentales disponibles (elige entre 2 y 4 relevantes,
+  usa EXACTAMENTE estos textos, sin inventar otros): {$competencias}
+
+RESPONDE SOLO con JSON sin markdown, con esta estructura exacta:
+{
+  "objetivos": "Objetivo general de la unidad (2-3 oraciones, verbo en infinitivo)",
+  "competencias": ["Competencia elegida 1", "Competencia elegida 2"],
+  "indicadores": "- Indicador de logro 1\n- Indicador de logro 2\n- Indicador de logro 3",
+  "contenidos": "- Tema 1\n- Tema 2\n- Tema 3\n- Tema 4",
+  "estrategias": "- Estrategia/actividad 1\n- Estrategia/actividad 2\n- Estrategia/actividad 3",
+  "recursos": "- Recurso 1\n- Recurso 2\n- Recurso 3",
+  "evaluacion": "- Instrumento de evaluación 1\n- Instrumento de evaluación 2"
+}
+
+Requisitos:
+- El array "competencias" debe contener ÚNICAMENTE textos de la lista dada arriba.
+- Los indicadores deben ser observables y medibles.
+- Usa lenguaje formal educativo dominicano, apropiado al ciclo y grado indicados.
 EOT;
 
         return $this->llamarGemini($prompt);

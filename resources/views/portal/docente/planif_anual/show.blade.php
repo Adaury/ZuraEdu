@@ -68,6 +68,7 @@
     transition:.12s;user-select:none;
 }
 .comp-chip.sel { background:#0ea5e9;color:#fff;border-color:#0ea5e9; }
+@keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
 </style>
 @endpush
 
@@ -266,6 +267,74 @@ function toggleComp(el, id) {
     autoGuardarUnidad(id);
 }
 
+// ── ZuraIA: generar contenido de la unidad ─────────────────────────────────
+function toggleIaPanel(id) {
+    const panel = document.getElementById(`ia-panel-${id}`);
+    if (!panel) return;
+    const visible = panel.style.display !== 'none';
+    panel.style.display = visible ? 'none' : 'block';
+    if (!visible) {
+        const hintEl = document.getElementById(`ia-hint-${id}`);
+        const tituloEl = document.getElementById(`u-titulo-${id}`);
+        if (hintEl && !hintEl.value && tituloEl) hintEl.value = tituloEl.value;
+    }
+}
+
+async function ejecutarIaUnidad(id) {
+    const url     = URL_USTORE.replace('/unidades', `/unidades/${id}/ia`);
+    const btn     = document.querySelector(`#ia-panel-${id} button`);
+    const spinner = document.querySelector(`.ia-spinner-${id}`);
+    const btnTxt  = document.querySelector(`.ia-btn-txt-${id}`);
+    const errEl   = document.querySelector(`.ia-error-${id}`);
+
+    btn.disabled = true;
+    spinner.style.display = 'inline-block';
+    btnTxt.textContent = 'Generando…';
+    errEl.style.display = 'none';
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_PL, 'Accept': 'application/json' },
+            body: JSON.stringify({
+                titulo_hint: document.getElementById(`ia-hint-${id}`)?.value ?? '',
+                contexto:    document.getElementById(`ia-ctx-${id}`)?.value ?? '',
+            }),
+        });
+        const json = await res.json();
+
+        if (!res.ok || json.error) {
+            errEl.textContent = json.error ?? 'Error al generar. Intente de nuevo.';
+            errEl.style.display = 'inline';
+            return;
+        }
+
+        if (json.objetivos)  document.getElementById(`u-objetivos-${id}`).value  = json.objetivos;
+        if (json.indicadores) document.getElementById(`u-indicadores-${id}`).value = json.indicadores;
+        if (json.contenidos)  document.getElementById(`u-contenidos-${id}`).value  = json.contenidos;
+        if (json.estrategias) document.getElementById(`u-estrategias-${id}`).value = json.estrategias;
+        if (json.recursos)    document.getElementById(`u-recursos-${id}`).value    = json.recursos;
+        if (json.evaluacion)  document.getElementById(`u-evaluacion-${id}`).value  = json.evaluacion;
+
+        if (Array.isArray(json.competencias)) {
+            document.querySelectorAll(`#body-${id} .comp-chip`).forEach(chip => {
+                chip.classList.toggle('sel', json.competencias.includes(chip.dataset.comp));
+            });
+        }
+
+        toggleIaPanel(id);
+        autoGuardarUnidad(id);
+
+    } catch (e) {
+        errEl.textContent = 'Error de conexión. Verifique su red.';
+        errEl.style.display = 'inline';
+    } finally {
+        btn.disabled = false;
+        spinner.style.display = 'none';
+        btnTxt.textContent = 'Generar contenido';
+    }
+}
+
 // ── Renumerar números en DOM ───────────────────────────────────────────────
 function renumerarDOM() {
     document.querySelectorAll('.unidad-num').forEach((el, i) => { el.textContent = i + 1; });
@@ -289,6 +358,8 @@ function buildUnidadHTML(u) {
     <span class="per-badge" id="hper-${u.id}" style="${u.periodo ? '' : 'display:none;'}">${u.periodo ?? ''}</span>
     <div style="display:flex;gap:.3rem;align-items:center;margin-left:auto;">
         <span class="save-dot" id="dot-${u.id}"></span>
+        <button onclick="event.stopPropagation();toggleIaPanel(${u.id})" title="Generar con ZuraIA"
+            style="background:#f5f3ff;border:1px solid #c4b5fd;border-radius:6px;color:#7c3aed;padding:.2rem .45rem;font-size:.72rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.25rem;"><i class="bi bi-stars"></i>IA</button>
         <button onclick="event.stopPropagation();moverUnidad(${u.id},'up')" title="Subir"
             style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:.2rem .3rem;font-size:.85rem;"><i class="bi bi-chevron-up"></i></button>
         <button onclick="event.stopPropagation();moverUnidad(${u.id},'down')" title="Bajar"
@@ -299,6 +370,21 @@ function buildUnidadHTML(u) {
     </div>
   </div>
   <div class="unidad-body" id="body-${u.id}">
+    <div class="ia-panel" id="ia-panel-${u.id}" style="display:none;background:linear-gradient(135deg,#f5f3ff,#eff6ff);border:1.5px solid #c4b5fd;border-radius:10px;padding:.7rem .85rem;margin-bottom:.85rem;">
+        <div style="font-size:.74rem;font-weight:800;color:#5b21b6;margin-bottom:.4rem;"><i class="bi bi-stars"></i> Generar con ZuraIA</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem;">
+            <input type="text" id="ia-hint-${u.id}" class="field-inp" style="width:100%;" placeholder="Tema de la unidad (opcional)">
+            <input type="text" id="ia-ctx-${u.id}" class="field-inp" style="width:100%;" placeholder="Contexto adicional (opcional)">
+        </div>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+            <button type="button" onclick="ejecutarIaUnidad(${u.id})"
+                style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:.35rem .8rem;font-size:.75rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;">
+                <span class="ia-spinner-${u.id}" style="display:none;width:11px;height:11px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite;"></span>
+                <span class="ia-btn-txt-${u.id}">Generar contenido</span>
+            </button>
+            <span class="ia-error-${u.id}" style="display:none;color:#dc2626;font-size:.72rem;"></span>
+        </div>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.65rem;margin-bottom:.85rem;">
         <div>
             <label class="field-label">Período</label>

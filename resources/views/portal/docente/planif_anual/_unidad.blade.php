@@ -17,6 +17,8 @@
         @endif
         <div style="display:flex;gap:.3rem;align-items:center;margin-left:auto;">
             <span class="save-dot" id="dot-{{ $uid }}"></span>
+            <button onclick="event.stopPropagation();toggleIaPanel({{ $uid }})" title="Generar con ZuraIA"
+                style="background:#f5f3ff;border:1px solid #c4b5fd;border-radius:6px;color:#7c3aed;padding:.2rem .45rem;font-size:.72rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.25rem;"><i class="bi bi-stars"></i>IA</button>
             <button onclick="event.stopPropagation();moverUnidad({{ $uid }},'up')" title="Subir"
                 style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:.2rem .3rem;font-size:.85rem;"><i class="bi bi-chevron-up"></i></button>
             <button onclick="event.stopPropagation();moverUnidad({{ $uid }},'down')" title="Bajar"
@@ -27,6 +29,21 @@
         </div>
     </div>
     <div class="unidad-body {{ $open ? 'open' : '' }}" id="body-{{ $uid }}">
+        <div class="ia-panel" id="ia-panel-{{ $uid }}" style="display:none;background:linear-gradient(135deg,#f5f3ff,#eff6ff);border:1.5px solid #c4b5fd;border-radius:10px;padding:.7rem .85rem;margin-bottom:.85rem;">
+            <div style="font-size:.74rem;font-weight:800;color:#5b21b6;margin-bottom:.4rem;"><i class="bi bi-stars"></i> Generar con ZuraIA</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem;">
+                <input type="text" id="ia-hint-{{ $uid }}" class="field-inp" style="width:100%;" placeholder="Tema de la unidad (opcional)">
+                <input type="text" id="ia-ctx-{{ $uid }}" class="field-inp" style="width:100%;" placeholder="Contexto adicional (opcional)">
+            </div>
+            <div style="display:flex;align-items:center;gap:.5rem;">
+                <button type="button" onclick="ejecutarIaUnidad({{ $uid }})"
+                    style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:.35rem .8rem;font-size:.75rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;">
+                    <span class="ia-spinner-{{ $uid }}" style="display:none;width:11px;height:11px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite;"></span>
+                    <span class="ia-btn-txt-{{ $uid }}">Generar contenido</span>
+                </button>
+                <span class="ia-error-{{ $uid }}" style="display:none;color:#dc2626;font-size:.72rem;"></span>
+            </div>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.65rem;margin-bottom:.85rem;">
             <div>
                 <label class="field-label">Período</label>

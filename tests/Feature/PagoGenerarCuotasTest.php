@@ -217,4 +217,44 @@ class PagoGenerarCuotasTest extends TestCase
         $this->assertEquals(1, Pago::where('matricula_id', $e1['matricula']->id)->count());
         $this->assertEquals(0, Pago::where('matricula_id', $e2['matricula']->id)->count());
     }
+
+    // ── Auditoría Don Bosco (Sección 6): fecha_vencimiento fuera del año escolar ──
+
+    public function test_rechaza_fecha_vencimiento_anterior_al_inicio_del_anio_escolar(): void
+    {
+        $e = $this->crearMatricula(); // fecha_inicio=2025-08-01, fecha_fin=2026-06-30
+
+        $response = $this->actingAs($this->admin())->post(route('admin.pagos.generar-cuotas'), [
+            'concepto' => 'Mensualidad Julio', 'monto' => 5000, 'fecha_vencimiento' => '2025-07-15',
+        ]);
+
+        $response->assertSessionHasErrors('fecha_vencimiento');
+        $this->assertEquals(0, Pago::where('matricula_id', $e['matricula']->id)->count());
+    }
+
+    public function test_rechaza_fecha_vencimiento_posterior_al_fin_del_anio_escolar(): void
+    {
+        $e = $this->crearMatricula();
+
+        // Este es exactamente el escenario real encontrado en la auditoría:
+        // un año escolar terminado hace tiempo generando pagos muy fuera de rango.
+        $response = $this->actingAs($this->admin())->post(route('admin.pagos.generar-cuotas'), [
+            'concepto' => 'Mensualidad Diciembre', 'monto' => 5000, 'fecha_vencimiento' => '2026-12-05',
+        ]);
+
+        $response->assertSessionHasErrors('fecha_vencimiento');
+        $this->assertEquals(0, Pago::where('matricula_id', $e['matricula']->id)->count());
+    }
+
+    public function test_acepta_fecha_vencimiento_justo_en_el_limite_del_anio_escolar(): void
+    {
+        $e = $this->crearMatricula();
+
+        $response = $this->actingAs($this->admin())->post(route('admin.pagos.generar-cuotas'), [
+            'concepto' => 'Mensualidad Junio', 'monto' => 5000, 'fecha_vencimiento' => '2026-06-30',
+        ]);
+
+        $response->assertSessionDoesntHaveErrors();
+        $this->assertEquals(1, Pago::where('matricula_id', $e['matricula']->id)->count());
+    }
 }

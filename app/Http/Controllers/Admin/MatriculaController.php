@@ -10,12 +10,15 @@ use App\Models\Inscripcion;
 use App\Models\Matricula;
 use App\Models\Notificacion;
 use App\Models\SchoolYear;
+use App\Traits\SincronizaEstadoEstudiante;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class MatriculaController extends Controller
 {
+    use SincronizaEstadoEstudiante;
+
     public function index(Request $request)
     {
         $schoolYear = SchoolYear::actual();
@@ -218,12 +221,20 @@ class MatriculaController extends Controller
             'motivo' => 'nullable|string|max:500',
         ]);
 
+        // 'motivo' es nullable -- si el request no envía la clave en absoluto
+        // (no solo vacía), $data no la incluye y $data['motivo'] revienta con
+        // "Undefined array key" (bug real encontrado al probar este endpoint
+        // por primera vez, ver auditoría Don Bosco).
+        $motivo = $data['motivo'] ?? null;
+
         $matricula->update([
             'estado'       => $data['estado'],
-            'observaciones'=> $data['motivo']
-                ? ($matricula->observaciones ? $matricula->observaciones . ' | ' : '') . $data['motivo']
+            'observaciones'=> $motivo
+                ? ($matricula->observaciones ? $matricula->observaciones . ' | ' : '') . $motivo
                 : $matricula->observaciones,
         ]);
+
+        $this->sincronizarEstadoEstudiante($matricula);
 
         $labels = ['activa' => 'reactivada', 'retirada' => 'marcada como retirada', 'transferida' => 'marcada como transferida'];
 
@@ -332,6 +343,7 @@ class MatriculaController extends Controller
         }
 
         $matricula->update(['estado' => 'retirada']);
+        $this->sincronizarEstadoEstudiante($matricula);
 
         return redirect()->route('admin.matriculas.index')
             ->with('success', 'Matrícula marcada como retirada.');

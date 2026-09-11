@@ -344,14 +344,28 @@ class PagoController extends Controller
     // ── Generación masiva de cuotas ───────────────────────────────────────
     public function generarCuotas(Request $request)
     {
+        $syActual = SchoolYear::actual();
+
+        // Sin esta validación, una cuota podía quedar con fecha_vencimiento
+        // fuera del año escolar activo (hallazgo de auditoría: "periodos
+        // lectivos inconsistentes") -- ej. un año escolar que ya venció
+        // pero sigue marcado activo=1 seguía generando pagos con vencimiento
+        // meses/años después de su fecha_fin real.
+        $reglasFecha = ['required', 'date'];
+        if ($syActual) {
+            $reglasFecha[] = 'after_or_equal:' . $syActual->fecha_inicio->toDateString();
+            $reglasFecha[] = 'before_or_equal:' . $syActual->fecha_fin->toDateString();
+        }
+
         $data = $request->validate([
             'concepto'          => 'required|string|max:255',
             'monto'             => 'required|numeric|min:0.01',
-            'fecha_vencimiento' => 'required|date',
+            'fecha_vencimiento' => $reglasFecha,
             'grupo_id'          => 'nullable|exists:grupos,id',
+        ], [
+            'fecha_vencimiento.after_or_equal'  => 'La fecha de vencimiento no puede ser anterior al inicio del año escolar activo.',
+            'fecha_vencimiento.before_or_equal' => 'La fecha de vencimiento no puede ser posterior al fin del año escolar activo (' . ($syActual?->fecha_fin->format('d/m/Y')) . '). Verifica que el año escolar activo sea el correcto.',
         ]);
-
-        $syActual = SchoolYear::actual();
 
         $q = Matricula::where('school_year_id', $syActual?->id)
                       ->where('estado', 'activa');

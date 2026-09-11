@@ -2,10 +2,12 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Estudiante;
 use App\Models\Grupo;
 use App\Models\Matricula;
 use App\Models\Pago;
 use App\Models\Periodo;
+use App\Models\SchoolYear;
 use App\Models\Tenant;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +51,9 @@ class SaneamientoDatos extends Command
             $this->revisarMatriculasHuerfanas($tenant->id);
             $this->revisarPagosFantasma($tenant->id, $fix);
             $this->revisarGruposInflados($tenant->id);
+            $this->revisarEstudiantesActivosSinMatriculaActiva($tenant->id);
+            $this->revisarAnioEscolarVencidoActivo($tenant->id);
+            $this->revisarPagosFueraDeRangoEscolar($tenant->id);
         }
 
         $this->line('');
@@ -145,5 +150,85 @@ class SaneamientoDatos extends Command
             $nombre = trim(($g->grado?->nombre ?? '?') . ' ' . ($g->seccion?->nombre ?? '?'));
             $this->line("    [{$g->id}] {$nombre}: {$g->matriculas_count} total vs {$g->matriculas_activas_count} activas");
         }
+    }
+
+    /**
+     * Auditoría Don Bosco, Sección 6: "estudiantes retirados que continúan
+     * activos". Un estudiante con estado='activo' pero cuyas matrículas
+     * están TODAS retiradas/transferidas (y tiene al menos una matrícula,
+     * para no marcar como inconsistente a un estudiante nuevo que aún no
+     * se ha matriculado) quedó desincronizado -- el fix de código evita
+     * casos nuevos, esto detecta arrastre histórico.
+     */
+    private function revisarEstudiantesActivosSinMatriculaActiva(int $tenantId): void
+    {
+        $conMatricula       = Matricula::where('tenant_id', $tenantId)->pluck('estudiante_id')->unique();
+        $conMatriculaActiva = Matricula::where('tenant_id', $tenantId)->where('estado', 'activa')->pluck('estudiante_id')->unique();
+
+        $inconsistentes = Estudiante::where('tenant_id', $tenantId)
+            ->where('estado', 'activo')
+            ->whereIn('id', $conMatricula)
+            ->whereNotIn('id', $conMatriculaActiva)
+            ->get();
+
+        if ($inconsistentes->isEmpty()) return;
+
+        $this->warn("  Estudiantes 'activo' sin ninguna matrícula activa (todas retiradas/transferidas): " . $inconsistentes->count());
+        foreach ($inconsistentes->take(10) as $e) {
+            $this->line("    estudiante_id={$e->id} — revisar si su estado debería ser 'inactivo'.");
+        }
+        if ($inconsistentes->count() > 10) $this->line('    ...');
+    }
+
+    /**
+     * Auditoría Don Bosco, Sección 6: "periodos lectivos inconsistentes".
+     * Un año escolar sigue marcado activo=1 mucho después de su fecha_fin
+     * porque nada dispara automáticamente su desactivación -- solo ocurre
+     * al activar manualmente el año siguiente (SchoolYearController::store/
+     * update). Sin esto, el tenant sigue generando pagos/reportes contra un
+     * año que ya terminó.
+     */
+    private function revisarAnioEscolarVencidoActivo(int $tenantId): void
+    {
+        $vencidos = SchoolYear::where('tenant_id', $tenantId)
+            ->where('activo', true)
+            ->whereDate('fecha_fin', '<', today())
+            ->get();
+
+        if ($vencidos->isEmpty()) return;
+
+        foreach ($vencidos as $sy) {
+            $dias = (int) $sy->fecha_fin->diffInDays(today());
+            $this->warn("  Año escolar '{$sy->nombre}' sigue activo pero terminó hace {$dias} día(s) ({$sy->fecha_fin->format('d/m/Y')}) — revisar si debe desactivarse y crear/activar el año siguiente.");
+        }
+    }
+
+    /**
+     * Auditoría Don Bosco, Sección 6: consecuencia directa del hallazgo
+     * anterior -- pagos generados con fecha_vencimiento fuera del rango del
+     * año escolar de su propia matrícula (el fix de código en
+     * PagoController::generarCuotas() evita casos nuevos, esto detecta
+     * arrastre histórico).
+     */
+    private function revisarPagosFueraDeRangoEscolar(int $tenantId): void
+    {
+        $fueraDeRango = Pago::where('tenant_id', $tenantId)
+            ->whereNotNull('matricula_id')
+            ->whereNotNull('fecha_vencimiento')
+            ->with('matricula.schoolYear')
+            ->get()
+            ->filter(function ($pago) {
+                $sy = $pago->matricula?->schoolYear;
+                return $sy && ($pago->fecha_vencimiento->lt($sy->fecha_inicio) || $pago->fecha_vencimiento->gt($sy->fecha_fin));
+            });
+
+        if ($fueraDeRango->isEmpty()) return;
+
+        $this->warn("  Pagos con fecha_vencimiento fuera del año escolar de su matrícula: " . $fueraDeRango->count());
+        foreach ($fueraDeRango->take(10) as $p) {
+            $sy = $p->matricula->schoolYear;
+            $this->line("    pago_id={$p->id} vencimiento={$p->fecha_vencimiento->toDateString()} fuera de [{$sy->fecha_inicio->toDateString()}, {$sy->fecha_fin->toDateString()}] (año escolar '{$sy->nombre}')");
+        }
+        if ($fueraDeRango->count() > 10) $this->line('    ...');
     }
 }

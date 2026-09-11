@@ -11,11 +11,14 @@ use App\Models\PreMatricula;
 use App\Models\SchoolYear;
 use App\Models\ConfigInstitucional;
 use App\Models\BoletinConfig;
+use App\Traits\SincronizaEstadoEstudiante;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class RegistroAcademicoController extends Controller
 {
+    use SincronizaEstadoEstudiante;
+
     public function dashboard()
     {
         $schoolYear = SchoolYear::activo()->first();
@@ -150,7 +153,7 @@ class RegistroAcademicoController extends Controller
             'institucion_traslado' => $data['institucion_traslado'] ?? null,
         ]);
 
-        $matricula->estudiante->update(['estado' => 'inactivo']);
+        $this->sincronizarEstadoEstudiante($matricula);
 
         return redirect()->route('admin.registro-academico.bajas')
             ->with('success', "Baja registrada para {$matricula->estudiante->nombre_completo}.");
@@ -165,7 +168,7 @@ class RegistroAcademicoController extends Controller
             'institucion_traslado' => null,
         ]);
 
-        $matricula->estudiante->update(['estado' => 'activo']);
+        $this->sincronizarEstadoEstudiante($matricula);
 
         return back()->with('success', "Matrícula de {$matricula->estudiante->nombre_completo} reactivada.");
     }
@@ -237,7 +240,7 @@ class RegistroAcademicoController extends Controller
             'institucion_traslado' => $data['institucion_traslado'],
         ]);
 
-        $estudiante->update(['estado' => 'inactivo']);
+        $this->sincronizarEstadoEstudiante($matricula);
 
         return redirect()->route('admin.registro-academico.traslados')
             ->with('success', "Traslado registrado para {$estudiante->nombre_completo}.");

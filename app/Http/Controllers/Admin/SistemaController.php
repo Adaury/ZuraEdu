@@ -118,6 +118,7 @@ class SistemaController extends Controller
             'cargo_director'        => 'nullable|string|max:100',
             'codigo_centro'         => 'nullable|string|max:30',
             'rnc'                   => 'nullable|string|max:20',
+            'categoria_contribuyente' => 'nullable|in:micro,pequeno,mediano,grande',
             'nivel_educativo'       => 'nullable|string|max:100',
             'telefono'              => 'nullable|string|max:30',
             'email_institucional'   => 'nullable|email|max:150',
@@ -127,6 +128,13 @@ class SistemaController extends Controller
             'regional'              => 'nullable|string|max:100',
             'distrito'              => 'nullable|string|max:100',
             'tipo_institucion'      => 'nullable|in:publico,privado,semi-privado',
+            // Datos para el Acta Final de Calificaciones oficial (MINERD)
+            'tanda'                 => 'nullable|in:jee,matutina,vespertina,nocturna',
+            'sector'                => 'nullable|in:publico,privado,semioficial',
+            'zona'                  => 'nullable|in:rural,urbana,otra',
+            'director_distrito'      => 'nullable|string|max:150',
+            'secretario_docente'     => 'nullable|string|max:150',
+            'coordinador_pedagogico' => 'nullable|string|max:150',
         ]);
 
         foreach ($data as $clave => $valor) {
@@ -142,6 +150,44 @@ class SistemaController extends Controller
         }
 
         return back()->with('success', 'Datos institucionales actualizados correctamente.')->with('tab', 'institucional');
+    }
+
+    /**
+     * Guardado AJAX de UN campo institucional a la vez, usado desde la vista
+     * web del Acta Final (encabezado editable inline) -- mismo patrón que
+     * CalificacionAcademicaController::guardarCelda: whitelist explícita de
+     * campo + validación por campo, sin exponer un endpoint genérico que
+     * pudiera escribir cualquier clave.
+     */
+    public function guardarCampoInstitucional(Request $request)
+    {
+        $reglasPorCampo = [
+            'nombre_institucion' => 'nullable|string|max:200',
+            'codigo_centro'      => 'nullable|string|max:30',
+            'regional'           => 'nullable|string|max:100',
+            'distrito'           => 'nullable|string|max:100',
+            'tanda'              => 'nullable|in:jee,matutina,vespertina,nocturna',
+            'sector'             => 'nullable|in:publico,privado,semioficial',
+            'zona'               => 'nullable|in:rural,urbana,otra',
+            'director_distrito'      => 'nullable|string|max:150',
+            'nombre_director'        => 'nullable|string|max:150',
+            'secretario_docente'     => 'nullable|string|max:150',
+            'coordinador_pedagogico' => 'nullable|string|max:150',
+        ];
+
+        $request->validate([
+            'campo' => ['required', 'string', 'in:' . implode(',', array_keys($reglasPorCampo))],
+        ]);
+
+        $campo = $request->string('campo')->toString();
+
+        $request->validate([
+            'valor' => $reglasPorCampo[$campo],
+        ]);
+
+        \App\Models\ConfigInstitucional::set($campo, $request->input('valor') ?? '');
+
+        return response()->json(['ok' => true]);
     }
 
     // ── Módulos Activos ─────────────────────────────────────────────────────

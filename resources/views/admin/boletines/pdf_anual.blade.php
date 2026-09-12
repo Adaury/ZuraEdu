@@ -98,6 +98,7 @@ $est          = $matricula->estudiante;
 $rankP = $rankingGrupo['puesto'] ?? null;
 $rankT = $rankingGrupo['total'] ?? null;
 $gc = fn($n) => $n===null?'g-na':($n>=90?'g-ex':($n>=75?'g-bu':($n>=60?'g-pr':'g-in')));
+$decAnual = ($matricula->grupo?->grado?->esPrimerCiclo()) ? 0 : 1;
 $ic = fn($i) => match($i){'Excelente'=>'ind-e','Bueno'=>'ind-b','En proceso'=>'ind-p','Insuficiente'=>'ind-i',default=>'ind-v'};
 $verifyCode = strtoupper(substr(md5($matricula->id . ($periodos->last()?->id ?? 0) . $schoolYear?->id), 0, 10));
 @endphp
@@ -186,9 +187,9 @@ $verifyCode = strtoupper(substr(md5($matricula->id . ($periodos->last()?->id ?? 
             <td class="td-mat">{{ $row['asignatura'] }}</td>
             @foreach($periodos as $p)
             @php $nota = $row['periodos'][$p->id] ?? null; @endphp
-            <td class="{{ $gc($nota) }}">{{ $nota !== null ? number_format($nota,1) : '—' }}</td>
+            <td class="{{ $gc($nota) }}">{{ $nota !== null ? number_format($nota,$decAnual) : '—' }}</td>
             @endforeach
-            <td class="{{ $pCls }}" style="font-weight:800;">{{ $row['final'] !== null ? number_format($row['final'],1) : '—' }}</td>
+            <td class="{{ $pCls }}" style="font-weight:800;">{{ $row['final'] !== null ? number_format($row['final'],$decAnual) : '—' }}</td>
             <td><span class="ind {{ $iCls }}">{{ $row['indicador'] ?? '—' }}</span></td>
         </tr>
         @endforeach
@@ -202,7 +203,7 @@ $verifyCode = strtoupper(substr(md5($matricula->id . ($periodos->last()?->id ?? 
                 PROMEDIO GENERAL ANUAL
             </td>
             <td style="text-align:center;">
-                <span class="prom-box">{{ $promedioAnual !== null ? number_format($promedioAnual,1) : '—' }}</span>
+                <span class="prom-box">{{ $promedioAnual !== null ? number_format($promedioAnual,$decAnual) : '—' }}</span>
             </td>
             <td style="text-align:center;">
                 @if($promedioAnual !== null)
@@ -212,6 +213,69 @@ $verifyCode = strtoupper(substr(md5($matricula->id . ($periodos->last()?->id ?? 
         </tr>
     </tbody>
 </table>
+
+{{-- ══ COMPETENCIAS FUNDAMENTALES (Boletín de Nota MINERD, Primer Ciclo) ══ --}}
+@if(!empty($competenciasFundamentales) && $competenciasFundamentales->isNotEmpty())
+@php
+    $cfComps = \App\Models\CalificacionAcademica::COMPETENCIAS;
+@endphp
+<div style="font-size:7pt;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:{{ $colorPrimario }};margin:6px 0 3px;">
+    Calificación de Rendimiento Estudiantil — Competencias Fundamentales
+</div>
+<table style="width:100%;border-collapse:collapse;font-size:6pt;margin-bottom:6px;">
+    <thead>
+        <tr>
+            <th rowspan="2" style="border:1px solid #111;background:#1e3a6e;color:#fff;padding:2px;">Asignatura</th>
+            @foreach($cfComps as $comp)
+            <th colspan="5" style="border:1px solid #111;background:#1e3a6e;color:#fff;padding:2px;">{{ $comp['nombre'] }}</th>
+            @endforeach
+            <th rowspan="2" style="border:1px solid #111;background:#1e3a6e;color:#fff;padding:2px;">C.F.</th>
+            <th rowspan="2" style="border:1px solid #111;background:#1e3a6e;color:#fff;padding:2px;">%<br>Asist.</th>
+            <th rowspan="2" style="border:1px solid #111;background:#1e3a6e;color:#fff;padding:2px;">Compl.</th>
+            <th rowspan="2" style="border:1px solid #111;background:#1e3a6e;color:#fff;padding:2px;">Extraord.</th>
+            <th colspan="2" style="border:1px solid #111;background:#1e3a6e;color:#fff;padding:2px;">Prueba Especial</th>
+            <th rowspan="2" style="border:1px solid #111;background:#1e3a6e;color:#fff;padding:2px;">Sit.</th>
+        </tr>
+        <tr>
+            @foreach($cfComps as $comp)
+                <th style="border:1px solid #111;background:#eef3fb;padding:1px;">P1</th>
+                <th style="border:1px solid #111;background:#eef3fb;padding:1px;">P2</th>
+                <th style="border:1px solid #111;background:#eef3fb;padding:1px;">P3</th>
+                <th style="border:1px solid #111;background:#eef3fb;padding:1px;">P4</th>
+                <th style="border:1px solid #111;background:#dbeafe;padding:1px;font-weight:800;">CFC</th>
+            @endforeach
+            <th style="border:1px solid #111;background:#eef3fb;padding:1px;">C.F.</th>
+            <th style="border:1px solid #111;background:#eef3fb;padding:1px;">C.E.</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach($competenciasFundamentales as $cal)
+        <tr>
+            <td style="border:1px solid #111;padding:2px 3px;text-align:left;font-weight:600;">
+                {{ $cal->asignacion?->asignatura?->nombre ?? '—' }}
+            </td>
+            @foreach($cfComps as $c => $comp)
+                @for($p = 1; $p <= 4; $p++)
+                    <td style="border:1px solid #111;padding:1px;text-align:center;">
+                        {{ $cal->{"avg_comp{$c}_p{$p}"} !== null ? number_format($cal->{"avg_comp{$c}_p{$p}"}, 0) : '—' }}
+                    </td>
+                @endfor
+                <td style="border:1px solid #111;padding:1px;text-align:center;font-weight:800;background:#f0f4ff;">
+                    {{ $cal->{"prom_comp{$c}"} !== null ? number_format($cal->{"prom_comp{$c}"}, 0) : '—' }}
+                </td>
+            @endforeach
+            <td style="border:1px solid #111;padding:1px;text-align:center;font-weight:800;">{{ $cal->nota_final !== null ? number_format($cal->nota_final, 0) : '—' }}</td>
+            <td style="border:1px solid #111;padding:1px;text-align:center;">{{ $cal->pct_asistencia !== null ? number_format($cal->pct_asistencia, 0) : '—' }}</td>
+            <td style="border:1px solid #111;padding:1px;text-align:center;">{{ $cal->nota_completiva !== null ? number_format($cal->nota_completiva, 0) : '' }}</td>
+            <td style="border:1px solid #111;padding:1px;text-align:center;">{{ $cal->nota_extraordinaria !== null ? number_format($cal->nota_extraordinaria, 0) : '' }}</td>
+            <td style="border:1px solid #111;padding:1px;text-align:center;">{{ $cal->eval_cf !== null ? number_format($cal->eval_cf, 0) : '' }}</td>
+            <td style="border:1px solid #111;padding:1px;text-align:center;">{{ $cal->eval_ce !== null ? number_format($cal->eval_ce, 0) : '' }}</td>
+            <td style="border:1px solid #111;padding:1px;text-align:center;font-weight:800;">{{ $cal->situacion ?? '—' }}</td>
+        </tr>
+        @endforeach
+    </tbody>
+</table>
+@endif
 
 {{-- ══ ASISTENCIA RESUMEN ══ --}}
 @if(($asistenciaTotales['total'] ?? 0) > 0)

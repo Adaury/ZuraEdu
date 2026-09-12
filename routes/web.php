@@ -390,6 +390,8 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::get('/asignacion/{asignacion}/boletines/zip',          [PortalDocenteController::class, 'boletinesZip'])->name('boletines.zip');
     Route::get('/asignacion/{asignacion}/acta-pdf',               [PortalDocenteController::class, 'actaPdf'])->name('acta.pdf');
     Route::get('/asignacion/{asignacion}/acta-calificaciones',    [PortalDocenteController::class, 'actaCalificaciones'])->name('acta-calificaciones');
+    Route::get('/grupo/{grupo}/acta-final',                       [PortalDocenteController::class, 'actaFinalGrupoVer'])->name('grupo.acta-final');
+    Route::get('/grupo/{grupo}/acta-final/pdf',                   [PortalDocenteController::class, 'actaFinalGrupo'])->name('grupo.acta-final.pdf');
     Route::get('/asignacion/{asignacion}/consolidado-periodo',    [PortalDocenteController::class, 'consolidadoPeriodo'])->name('consolidado-periodo');
     Route::get('/asignacion/{asignacion}/consolidado-periodo/pdf',[PortalDocenteController::class, 'consolidadoPeriodoPdf'])->name('consolidado-periodo.pdf');
     // Conducta

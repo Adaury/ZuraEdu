@@ -89,6 +89,7 @@ Route::middleware('can:ingresar-calificaciones')->group(function () {
     Route::post('calificaciones/guardar',                 [CalificacionController::class,         'guardar'])->name('calificaciones.guardar');
     Route::post('calificaciones/publicar',                [CalificacionController::class,         'publicar'])->name('calificaciones.publicar');
     Route::post('calificaciones/guardar-academica',       [CalificacionAcademicaController::class,'guardarAcademica'])->name('calificaciones.guardar-academica');
+    Route::post('calificaciones/guardar-celda-academica',  [CalificacionAcademicaController::class,'guardarCelda'])->name('calificaciones.guardar-celda-academica');
     Route::post('calificaciones/publicar-academica',      [CalificacionAcademicaController::class,'publicarAcademica'])->name('calificaciones.publicar-academica');
     Route::post('calificaciones/guardar-ra-pesos',        [CalificacionController::class,         'guardarRaPesos'])->name('calificaciones.guardar-ra-pesos');
 });
@@ -134,6 +135,7 @@ Route::middleware('can:ver-boletines')->group(function () {
     Route::get('boletines',                                  [BoletinController::class, 'index'])->name('boletines.index');
     Route::get('boletines/grupo',                            [BoletinController::class, 'grupo'])->name('boletines.grupo');
     Route::get('boletines/{matricula}/{periodo}/ver',        [BoletinController::class, 'verEstudiante'])->name('boletines.ver');
+    Route::get('boletines/{matricula}/ver-anual',             [BoletinController::class, 'anualVer'])->name('boletines.ver-anual');
     Route::post('boletines/{matricula}/{periodo}/observacion',[BoletinController::class, 'guardarObservacion'])->name('boletines.obs.guardar');
     Route::delete('boletines/observacion/{observacion}',     [BoletinController::class, 'eliminarObservacion'])->name('boletines.obs.eliminar');
 
@@ -144,6 +146,9 @@ Route::middleware('can:ver-boletines')->group(function () {
         Route::get('boletines/zip',                       [BoletinController::class, 'zipGrupo'])->name('boletines.zip');
         Route::get('boletines/{matricula}/{periodo}/pdf', [BoletinController::class, 'pdf'])->name('boletines.pdf');
         Route::get('boletines/{matricula}/pdf-anual',     [BoletinController::class, 'pdfAnual'])->name('boletines.pdf-anual');
+        // Acta Final de Calificaciones (formato oficial MINERD) — solo Primer Ciclo por ahora
+        Route::get('grupos/{grupo}/acta-final',     [\App\Http\Controllers\Admin\ActaFinalController::class, 'ver'])->name('acta-final.ver');
+        Route::get('grupos/{grupo}/acta-final/pdf', [\App\Http\Controllers\Admin\ActaFinalController::class, 'pdf'])->name('acta-final.pdf');
     });
 });
 

@@ -632,6 +632,8 @@ class BoletinController extends Controller
                 'notas'             => $notas,
                 'promedioGeneral'   => $notasFinales->count() > 0 ? round($notasFinales->avg(), 2) : null,
                 'bloqueadoPorDeuda' => $bloqueadoPorDeuda,
+                'situacionAnual'    => $calAcRows->isNotEmpty() && $calAcRows->contains(fn ($c) => $c->situacion === 'R') ? 'R'
+                    : ($calAcRows->isNotEmpty() && $calAcRows->every(fn ($c) => $c->situacion === 'A') ? 'A' : null),
                 'asistencia'      => [
                     'presente'    => $asistencias->where('estado', 'presente')->count(),
                     'ausente'     => $asistencias->where('estado', 'ausente')->count(),
@@ -642,8 +644,13 @@ class BoletinController extends Controller
             ];
         }
 
+        // Primer Ciclo (1ro-3ro): el "boletín" es el consolidado anual con
+        // Competencias Fundamentales (pdfAnual), no un desglose por período.
+        // Ver docs/DECISIONES... / pedido del usuario 2026-09-12.
+        $esPrimerCiclo = $grupo->grado?->esPrimerCiclo() ?? false;
+
         return view('admin.boletines.grupo', compact(
-            'grupo', 'periodo', 'schoolYear', 'boletinConfig', 'matriculas', 'boletines'
+            'grupo', 'periodo', 'schoolYear', 'boletinConfig', 'matriculas', 'boletines', 'esPrimerCiclo'
         ));
     }
 
@@ -693,18 +700,36 @@ class BoletinController extends Controller
         $forzado  = $this->puedeForzarBloqueoDeuda() && $request->boolean('forzar');
         $omitidos = 0;
 
+        // Primer Ciclo (1ro-3ro): el "boletín" es el consolidado anual con
+        // Competencias Fundamentales, no el desglose por período.
+        $esPrimerCiclo = $grupo->grado?->esPrimerCiclo() ?? false;
+        $boletinConfigZip = $esPrimerCiclo && $grupo->schoolYear
+            ? BoletinConfig::getOrCreate($grupo->schoolYear->id) : null;
+
         foreach ($matriculas as $matricula) {
             try {
-                $data = $this->buildBoletinData($matricula, $periodo);
+                if ($esPrimerCiclo) {
+                    $deudaVencida = $this->calcularDeudaVencida($matricula);
+                    if ($boletinConfigZip?->bloquear_por_deuda && $deudaVencida && ! $forzado) {
+                        $omitidos++;
+                        continue;
+                    }
+                    $data = $this->buildBoletinAnualData($matricula, $grupo->schoolYear, $boletinConfigZip);
+                    $pdfContent = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.boletines.pdf_anual', $data)
+                        ->setPaper('letter', 'landscape')
+                        ->output();
+                } else {
+                    $data = $this->buildBoletinData($matricula, $periodo);
 
-                if ($data['boletinConfig']?->bloquear_por_deuda && $data['deudaVencida'] && ! $forzado) {
-                    $omitidos++;
-                    continue;
+                    if ($data['boletinConfig']?->bloquear_por_deuda && $data['deudaVencida'] && ! $forzado) {
+                        $omitidos++;
+                        continue;
+                    }
+
+                    $pdfContent = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.boletines.pdf', $data)
+                        ->setPaper('letter', 'portrait')
+                        ->output();
                 }
-
-                $pdfContent = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.boletines.pdf', $data)
-                    ->setPaper('letter', 'portrait')
-                    ->output();
                 $nombre = Str::slug($matricula->estudiante->apellidos . ' ' . $matricula->estudiante->nombres);
                 $zip->addFromString("boletin_{$nombre}.pdf", $pdfContent);
             } catch (\Exception $e) {
@@ -729,6 +754,55 @@ class BoletinController extends Controller
         ])->deleteFileAfterSend(true);
     }
 
+    /**
+     * Vista web del Boletín Anual (Primer Ciclo) -- misma data que pdfAnual()
+     * pero como página HTML, con Completivo/Extraordinario editables inline
+     * en la tabla de Competencias Fundamentales (mismo patrón y mismo
+     * endpoint que el Acta Final -- guardar-celda-academica). Nunca se
+     * bloquea por deuda: es solo consulta en pantalla, igual que verEstudiante().
+     */
+    public function anualVer(Matricula $matricula)
+    {
+        $this->authorize('ver', $matricula);
+
+        $matricula->load(['estudiante', 'grupo.grado', 'grupo.seccion', 'grupo.schoolYear', 'grupo.tutor']);
+        $schoolYear    = $matricula->grupo->schoolYear ?? SchoolYear::actual();
+        $boletinConfig = $schoolYear ? BoletinConfig::getOrCreate($schoolYear->id) : null;
+
+        $data = $this->buildBoletinAnualData($matricula, $schoolYear, $boletinConfig);
+
+        // Esta pantalla solo la alcanza quien pasó EnsureAdminAccess (Admin/
+        // Coordinación/Secretaría, etc.) -- un docente nunca llega aquí
+        // (redirigido a su portal antes de este controlador), así que todas
+        // las asignaciones del boletín son editables para quien la ve.
+        $asignacionesEditables = ($data['competenciasFundamentales'] ?? collect())
+            ->pluck('asignacion_id')->all();
+
+        $urlUnica = route('admin.calificaciones.guardar-celda-academica');
+        $guardarUrlPorAsignacion = collect($asignacionesEditables)->mapWithKeys(fn ($id) => [$id => $urlUnica])->all();
+
+        $inst = [
+            'nombre_institucion'     => \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name')),
+            'nombre_director'        => \App\Models\ConfigInstitucional::get('nombre_director', ''),
+            'coordinador_pedagogico' => \App\Models\ConfigInstitucional::get('coordinador_pedagogico', ''),
+            'logo'                   => \App\Models\ConfigInstitucional::get('logo', ''),
+        ];
+
+        return view('admin.boletines.ver_anual', $data + [
+            'asignacionesEditables'    => $asignacionesEditables,
+            'guardarUrlPorAsignacion'  => $guardarUrlPorAsignacion,
+            'metodoGuardado'           => 'POST',
+            'pdfUrl'                   => route('admin.boletines.pdf-anual', $matricula->id),
+            'inst'                     => $inst,
+            // Prueba Especial (eval_cf/eval_ce) y los datos institucionales de
+            // esta pantalla (Directora/Coordinadora) solo los edita quien tiene
+            // el Gate solo-administrador -- Coordinación ve el resto de la
+            // pantalla igual, pero estos campos quedan de solo lectura para ella.
+            'puedeEditarInstitucional' => auth()->user()->can('solo-administrador'),
+            'guardarInstitucionalUrl'  => route('admin.sistema.institucional.guardar-campo'),
+        ]);
+    }
+
     // ── PDF Anual (todos los períodos en un solo documento) ───────────────
     public function pdfAnual(Request $request, Matricula $matricula)
     {
@@ -743,6 +817,22 @@ class BoletinController extends Controller
             return $bloqueo;
         }
 
+        $data = $this->buildBoletinAnualData($matricula, $schoolYear, $boletinConfig);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.boletines.pdf_anual', $data)
+            ->setPaper('letter', 'landscape');
+
+        $apellidos = Str::slug($matricula->estudiante->apellidos ?? 'estudiante');
+        return $pdf->download("boletin_anual_{$apellidos}.pdf");
+    }
+
+    /**
+     * Arma los datos del Boletín Anual (usado por pdfAnual() y, para Primer
+     * Ciclo, por zipGrupo() -- es el "boletín" único de 1ro-3ro, ver
+     * decisión del usuario 2026-09-12).
+     */
+    private function buildBoletinAnualData(Matricula $matricula, ?SchoolYear $schoolYear, ?BoletinConfig $boletinConfig): array
+    {
         $periodos = $this->getPeriodos($schoolYear);
 
         // Construir tabla anual con todas las notas de todos los períodos
@@ -808,7 +898,8 @@ class BoletinController extends Controller
 
         $rankingGrupo  = $this->calcularRanking($matricula, $periodos->last() ?? new Periodo());
 
-        $asistenciaTotales = $this->calcularAsistenciaTotales($matricula, $periodos);
+        $asistenciaTotales    = $this->calcularAsistenciaTotales($matricula, $periodos);
+        $asistenciaPorPeriodo = $this->calcularAsistenciaPorPeriodo($matricula, $periodos);
 
         $boletinObservaciones = BoletinObservacion::with('docente')
             ->where('matricula_id', $matricula->id)
@@ -817,14 +908,17 @@ class BoletinController extends Controller
             ->orderByRaw("FIELD(tipo,'academica','conducta','sugerencia','general')")
             ->get()->groupBy('tipo');
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.boletines.pdf_anual', compact(
+        // Bloque de Competencias Fundamentales (formato Boletín de Nota MINERD)
+        // -- solo Primer Ciclo por ahora, ver ActaFinalService.
+        $competenciasFundamentales = $matricula->grupo->grado?->esPrimerCiclo()
+            ? app(\App\Services\ActaFinalService::class)->construirBoletinCompetencias($matricula, $schoolYear)
+            : null;
+
+        return compact(
             'matricula', 'periodos', 'schoolYear', 'boletinConfig',
             'tablaAnual', 'promedioAnual', 'promocion', 'rankingGrupo',
-            'asistenciaTotales', 'boletinObservaciones'
-        ))->setPaper('letter', 'landscape');
-
-        $apellidos = Str::slug($matricula->estudiante->apellidos ?? 'estudiante');
-        return $pdf->download("boletin_anual_{$apellidos}.pdf");
+            'asistenciaTotales', 'asistenciaPorPeriodo', 'boletinObservaciones', 'competenciasFundamentales'
+        );
     }
 
     // ── Helper: totales asistencia para todos los períodos ─────────────────
@@ -844,6 +938,38 @@ class BoletinController extends Controller
             'tardanza' => $tardanza, 'justificado' => $excusa,
             'pct' => $total > 0 ? round((($presente + $tardanza + $excusa) / $total) * 100, 1) : null,
         ];
+    }
+
+    /**
+     * Desglose de asistencia POR período (para el "Resumen de Asistencia
+     * del/la Estudiante" del Boletín de Nota, formato Boletin de Nota.PNG) --
+     * Asistencia no tiene periodo_id, así que se recorta por el rango de
+     * fechas de cada Periodo, igual que calcularAsistenciaTotales() hace
+     * con el rango completo.
+     */
+    private function calcularAsistenciaPorPeriodo(Matricula $matricula, $periodos): array
+    {
+        $porPeriodo = [];
+        foreach ($periodos as $p) {
+            if (! $p->fecha_inicio || ! $p->fecha_fin) {
+                $porPeriodo[$p->id] = ['pct_asistencia' => null, 'pct_ausencia' => null];
+                continue;
+            }
+            $asist = Asistencia::where('matricula_id', $matricula->id)
+                ->whereBetween('fecha', [$p->fecha_inicio, $p->fecha_fin])->get();
+            $total = $asist->count();
+            if ($total === 0) {
+                $porPeriodo[$p->id] = ['pct_asistencia' => null, 'pct_ausencia' => null];
+                continue;
+            }
+            $presente = $asist->whereIn('estado', ['presente', 'tardanza', 'tarde', 'justificado', 'excusa'])->count();
+            $ausente  = $asist->where('estado', 'ausente')->count();
+            $porPeriodo[$p->id] = [
+                'pct_asistencia' => round(($presente / $total) * 100, 0),
+                'pct_ausencia'   => round(($ausente / $total) * 100, 0),
+            ];
+        }
+        return $porPeriodo;
     }
 
     // ── Guardar observación desde la vista del boletín ────────────────────

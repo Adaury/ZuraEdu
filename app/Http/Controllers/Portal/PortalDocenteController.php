@@ -16,6 +16,7 @@ use App\Models\Calificacion;
 use App\Models\Comunicado;
 use App\Models\ComunicadoLectura;
 use App\Models\Docente;
+use App\Models\Grupo;
 use App\Models\Matricula;
 use App\Models\Notificacion;
 use App\Models\Observacion;
@@ -26,6 +27,7 @@ use App\Models\InsigniaEstudiante;
 use App\Models\PuntoEstudiante;
 use App\Models\Suplencia;
 use App\Models\Tarea;
+use App\Services\ActaFinalService;
 use App\Services\PromedioEstudianteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -886,6 +888,84 @@ class PortalDocenteController extends Controller
             ($asignacion->grupo?->nombre_corto ?? 'grupo')
         );
         return $pdf->download("acta_{$slug}.pdf");
+    }
+
+    // ── Acta Final de Calificaciones (formato oficial MINERD) ─────────────
+    private function cargarActaFinal(Grupo $grupo, Docente $docente): array
+    {
+        $grupo->load(['grado', 'seccion', 'schoolYear', 'tutor']);
+
+        // Solo Primer Ciclo por ahora -- Segundo Ciclo queda para una fase posterior.
+        if (! $grupo->grado || ! $grupo->grado->esPrimerCiclo()) {
+            abort(404, 'El Acta Final oficial solo está disponible para grupos de Primer Ciclo por ahora.');
+        }
+
+        $tieneAsignacion = Asignacion::where('grupo_id', $grupo->id)
+            ->where('docente_id', $docente->id)
+            ->where('activo', true)
+            ->exists();
+        if (! $tieneAsignacion) abort(403);
+
+        $schoolYear = $grupo->schoolYear ?? SchoolYear::find($grupo->school_year_id) ?? SchoolYear::actual();
+        abort_if(! $schoolYear, 404, 'No hay año escolar asociado a este grupo.');
+
+        $acta = app(ActaFinalService::class);
+        ['asignaciones' => $asignaciones, 'filas' => $filas] = $acta->construirActaGrupo($grupo, $schoolYear);
+
+        $inst = [
+            'nombre_institucion' => \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name')),
+            'codigo_centro'      => \App\Models\ConfigInstitucional::get('codigo_centro', ''),
+            'regional'           => \App\Models\ConfigInstitucional::get('regional', ''),
+            'distrito'           => \App\Models\ConfigInstitucional::get('distrito', ''),
+            'tanda'              => \App\Models\ConfigInstitucional::get('tanda', ''),
+            'sector'             => \App\Models\ConfigInstitucional::get('sector', ''),
+            'zona'               => \App\Models\ConfigInstitucional::get('zona', ''),
+            'director_distrito'  => \App\Models\ConfigInstitucional::get('director_distrito', ''),
+            'nombre_director'    => \App\Models\ConfigInstitucional::get('nombre_director', ''),
+            'secretario_docente' => \App\Models\ConfigInstitucional::get('secretario_docente', ''),
+        ];
+
+        return compact('grupo', 'schoolYear', 'asignaciones', 'filas', 'inst');
+    }
+
+    /** Vista web interactiva -- Completivo/Extraordinario editables solo en
+     *  la(s) asignatura(s) propia(s) del docente dentro de este grupo. */
+    public function actaFinalGrupoVer(Grupo $grupo)
+    {
+        $docente = $this->getDocente();
+        $data = $this->cargarActaFinal($grupo, $docente);
+
+        $asignacionesEditables = $data['asignaciones']->where('docente_id', $docente->id)->pluck('id')->all();
+
+        // Cada asignación tiene su propia URL (PATCH, ligada por ruta) -- es
+        // el mismo endpoint que ya usa la Planilla Académica del docente,
+        // no uno nuevo.
+        $guardarUrlPorAsignacion = $data['asignaciones']->mapWithKeys(
+            fn ($a) => [$a->id => route('portal.docente.calificaciones.acad.celda', $a->id)]
+        )->all();
+
+        return view('admin.acta_final.ver', $data + [
+            'asignacionesEditables'     => $asignacionesEditables,
+            'guardarUrlPorAsignacion'   => $guardarUrlPorAsignacion,
+            'metodoGuardado'            => 'PATCH',
+            'pdfUrl'                    => route('portal.docente.grupo.acta-final.pdf', $grupo->id),
+            // Los datos institucionales del centro (nombre, tanda, sector,
+            // director, etc.) solo se editan desde /admin/sistema -- un
+            // docente nunca ve esos campos como editables aquí.
+            'puedeEditarInstitucional' => false,
+            'guardarInstitucionalUrl'  => null,
+        ]);
+    }
+
+    public function actaFinalGrupo(Grupo $grupo)
+    {
+        $docente = $this->getDocente();
+        $data = $this->cargarActaFinal($grupo, $docente);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.acta_final.pdf', $data)
+            ->setPaper('letter', 'landscape');
+
+        return $pdf->download('acta_final_' . Str::slug($grupo->nombre_completo ?? $grupo->id) . '.pdf');
     }
 
     // ── Acta de Calificaciones — página índice ────────────────────────────

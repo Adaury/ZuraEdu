@@ -133,13 +133,23 @@
 @section('content')
 
 {{-- Breadcrumb --}}
-<nav aria-label="breadcrumb" class="mb-3">
+<nav aria-label="breadcrumb" class="mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
     <ol class="breadcrumb mb-0" style="font-size:.82rem;">
         <li class="breadcrumb-item">
             <a href="{{ route('admin.calificaciones.index') }}" class="text-decoration-none">Calificaciones</a>
         </li>
         <li class="breadcrumb-item active">Planilla Académica</li>
     </ol>
+    @if($asignacion->grupo->grado?->esPrimerCiclo())
+    {{-- Esta planilla es SOLO esta materia -- el Acta Final consolida TODAS
+         las materias del grupo. Se enlaza acá porque los usuarios llegan a
+         esta pantalla buscando "las notas" y no encuentran el Acta Final
+         (vive bajo el menú Boletines, no Calificaciones). --}}
+    <a href="{{ route('admin.acta-final.ver', $asignacion->grupo_id) }}" target="_blank"
+       class="btn btn-sm btn-primary">
+        <i class="bi bi-bank2 me-1"></i>Ver Acta Final del Grupo (todas las materias)
+    </a>
+    @endif
 </nav>
 
 {{-- Header card --}}

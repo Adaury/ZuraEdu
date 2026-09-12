@@ -150,6 +150,12 @@ try {
    class="prt-sidebar-link {{ $ak === 'acta-calificaciones' ? 'active' : '' }}">
     <i class="bi bi-file-earmark-spreadsheet-fill"></i>Acta de Calificaciones
 </a>
+@if(($asignacion->grupo?->grado?->esPrimerCiclo() ?? false))
+<a href="{{ route('portal.docente.grupo.acta-final', $asignacion->grupo_id) }}" target="_blank"
+   class="prt-sidebar-link {{ $ak === 'acta-final' ? 'active' : '' }}">
+    <i class="bi bi-bank2"></i>Acta Final (Oficial)
+</a>
+@endif
 <a href="{{ route('portal.docente.consolidado-periodo', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'consolidado-periodo' ? 'active' : '' }}">
     <i class="bi bi-clipboard-data-fill"></i>Consolidado del Período

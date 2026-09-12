@@ -200,7 +200,7 @@
             </span>
         </h5>
         <div class="text-muted" style="font-size:.78rem;">
-            {{ optional($periodo)->nombre }} · {{ optional($schoolYear)->nombre }}
+            {{ $esPrimerCiclo ? 'Boletín Anual' : optional($periodo)->nombre }} · {{ optional($schoolYear)->nombre }}
         </div>
     </div>
     <div class="d-flex gap-2 flex-wrap">
@@ -208,6 +208,11 @@
             <i class="bi bi-printer me-1"></i>Imprimir Todo
         </button>
         @php $totalBloqueados = collect($boletines)->where('bloqueadoPorDeuda', true)->count(); @endphp
+        @if($esPrimerCiclo)
+        <a href="{{ route('admin.acta-final.ver', $grupo->id) }}" target="_blank" class="btn btn-primary btn-sm">
+            <i class="bi bi-bank2 me-1"></i>Acta Final (Oficial)
+        </a>
+        @endif
         <a href="{{ route('admin.boletines.zip', ['grupo_id'=>$grupo->id,'periodo_id'=>$periodo->id]) }}"
            class="btn btn-danger btn-sm" @if($totalBloqueados) title="{{ $totalBloqueados }} estudiante(s) con pagos vencidos se omitirán del ZIP" @endif>
             <i class="bi bi-file-earmark-zip me-1"></i>Descargar ZIP PDF
@@ -247,7 +252,9 @@
     $bloqueadoPorDeuda = $bd['bloqueadoPorDeuda'] ?? false;
     $notas     = $bd ? $bd['notas'] : [];
     $promGen   = $bd ? $bd['promedioGeneral'] : null;
+    $situAnual = $bd['situacionAnual'] ?? null;
     $asist     = $bd ? $bd['asistencia'] : [];
+    $decP      = $esPrimerCiclo ? 0 : 1;
     $pgInd     = null; $pgCls = 'ind-v';
     if ($promGen !== null) {
         $pgInd = $promGen >= 90 ? 'Excelente' : ($promGen >= 75 ? 'Bueno' : ($promGen >= 60 ? 'En proceso' : 'Insuficiente'));
@@ -284,7 +291,7 @@
                 <div class="bc-student-sub">
                     Matr. #{{ optional($matricula->estudiante)->numero_matricula ?? $matricula->id }}
                     @if($promGen !== null)
-                        · Prom: <strong>{{ number_format($promGen, 1) }}</strong>
+                        · Prom: <strong>{{ number_format($promGen, $decP) }}</strong>
                     @endif
                 </div>
             </div>
@@ -292,12 +299,27 @@
 
         {{-- Barra período --}}
         <div class="bc-periodo-bar">
-            {{ optional($grupo)->nombre_completo }} &nbsp;·&nbsp; {{ optional($periodo)->nombre }}
+            {{ optional($grupo)->nombre_completo }} &nbsp;·&nbsp; {{ $esPrimerCiclo ? 'Boletín Anual' : optional($periodo)->nombre }}
             @if($pgInd) &nbsp;·&nbsp; <span class="ind {{ $pgCls }}" style="font-size:.6rem;">{{ $pgInd }}</span> @endif
         </div>
 
-        {{-- Tabla de notas --}}
-        @if(count($notas) > 0)
+        @if($esPrimerCiclo)
+        {{-- Primer Ciclo: el boletín es el consolidado anual con Competencias
+             Fundamentales (PDF Anual) -- no un desglose simple por materia. --}}
+        <div style="padding:1rem 1.25rem;text-align:center;">
+            <div style="font-size:2.1rem;font-weight:900;color:#1e3a6e;line-height:1;">
+                {{ $promGen !== null ? number_format($promGen, 0) : '—' }}
+            </div>
+            <div style="font-size:.72rem;color:#6b7280;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:.2rem;">
+                Promedio General Anual
+            </div>
+            @if($situAnual)
+            <span class="ind {{ $situAnual === 'A' ? 'ind-e' : 'ind-i' }}" style="margin-top:.5rem;display:inline-block;">
+                {{ $situAnual === 'A' ? 'Promovido' : 'Reprobado' }}
+            </span>
+            @endif
+        </div>
+        @elseif(count($notas) > 0)
         <table class="notas-mini">
             <thead>
                 <tr>
@@ -369,10 +391,13 @@
                         class="btn btn-sm btn-outline-secondary" title="Imprimir">
                     <i class="bi bi-printer"></i>
                 </button>
+                @if(! $esPrimerCiclo)
                 <a href="{{ route('admin.boletines.ver', [$matricula->id, $periodo->id]) }}"
                    class="btn btn-sm btn-outline-primary" title="Ver boletín completo">
                     <i class="bi bi-eye"></i>
                 </a>
+                @endif
+                @if(! $esPrimerCiclo)
                 @if($bloqueadoPorDeuda && ! $puedeForzarDeuda)
                     <button class="btn btn-sm btn-danger" title="Bloqueado por pagos vencidos" disabled>
                         <i class="bi bi-lock-fill"></i>
@@ -382,6 +407,13 @@
                        class="btn btn-sm btn-danger" title="{{ $bloqueadoPorDeuda ? 'Forzar PDF Período pese a pagos vencidos' : 'PDF Período' }}" target="_blank">
                         <i class="bi {{ $bloqueadoPorDeuda ? 'bi-unlock-fill' : 'bi-file-pdf' }}"></i>
                     </a>
+                @endif
+                @endif
+                @if($esPrimerCiclo)
+                <a href="{{ route('admin.boletines.ver-anual', $matricula->id) }}"
+                   class="btn btn-sm btn-outline-primary" title="Ver Boletín de Nota (editable)" target="_blank">
+                    <i class="bi bi-eye"></i>
+                </a>
                 @endif
                 @if($bloqueadoPorDeuda && ! $puedeForzarDeuda)
                     <button class="btn btn-sm btn-outline-info" title="Bloqueado por pagos vencidos" disabled>
@@ -397,7 +429,7 @@
                     $telRep = $matricula->estudiante?->representantes->first()?->telefono
                         ?? $matricula->estudiante?->tutor_telefono ?? null;
                     if ($telRep) {
-                        $msgWA2 = urlencode("📋 *Boletín de Calificaciones*\n\nEstudiante: " . ($matricula->estudiante?->nombres . ' ' . $matricula->estudiante?->apellidos) . "\nPeríodo: {$periodo->nombre}\nPromedio: " . ($promGen ? number_format($promGen,1) : '—') . "\n\n_" . ($boletinConfig?->nombre_institucion ?? 'Centro Educativo') . "_");
+                        $msgWA2 = urlencode("📋 *Boletín de Calificaciones*\n\nEstudiante: " . ($matricula->estudiante?->nombres . ' ' . $matricula->estudiante?->apellidos) . "\n" . ($esPrimerCiclo ? 'Boletín Anual' : "Período: {$periodo->nombre}") . "\nPromedio: " . ($promGen ? number_format($promGen,$decP) : '—') . "\n\n_" . ($boletinConfig?->nombre_institucion ?? 'Centro Educativo') . "_");
                         $waLink = 'https://wa.me/' . preg_replace('/\D+/', '', $telRep) . '?text=' . $msgWA2;
                     }
                 @endphp

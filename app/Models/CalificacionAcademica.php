@@ -140,6 +140,18 @@ class CalificacionAcademica extends Model
         return $q->where('publicado', true);
     }
 
+    /**
+     * Todas las calificaciones académicas de un grupo (todas las asignaciones
+     * activas de ese grupo) para un año escolar dado. Encapsula el join vía
+     * asignacion.grupo_id que hoy se repite a mano en varios controladores
+     * (ej. CierreAnoController::actaPdf, BoletinController).
+     */
+    public function scopeDelGrupoEnAno($q, int $grupoId, int $schoolYearId)
+    {
+        return $q->where('school_year_id', $schoolYearId)
+            ->whereHas('asignacion', fn($a) => $a->where('grupo_id', $grupoId)->where('activo', true));
+    }
+
     // ── Helpers de cálculo ────────────────────────────────────────────────
 
     /**

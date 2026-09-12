@@ -167,6 +167,7 @@ Route::middleware('can:solo-administrador')->group(function () {
     Route::post('sistema/colores',         [SistemaController::class, 'updateColores'])->name('sistema.colores');
     Route::post('sistema/limpiar-datos',      [SistemaController::class, 'limpiarDatos'])->name('sistema.limpiar-datos');
     Route::post('sistema/institucional',      [SistemaController::class, 'updateInstitucional'])->name('sistema.institucional.update');
+    Route::post('sistema/institucional/guardar-campo', [SistemaController::class, 'guardarCampoInstitucional'])->name('sistema.institucional.guardar-campo');
     Route::post('sistema/modulos',            [SistemaController::class, 'updateModulos'])->name('sistema.modulos.update');
 
     // Demo & Trial

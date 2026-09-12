@@ -49,6 +49,7 @@ class CalificacionAcademicaController extends Controller
 
         $asignacion = Asignacion::with([
             'grupo.matriculas.estudiante',
+            'grupo.grado',
             'asignatura',
             'docente',
         ])->findOrFail($request->asignacion_id);
@@ -252,6 +253,70 @@ class CalificacionAcademicaController extends Controller
             'success' => true,
             'message' => "Guardadas {$saved} calificaciones.",
             'saved'   => $saved,
+        ]);
+    }
+
+    /**
+     * Guardado de UNA sola celda (usado por el Acta Final web -- Completivo/
+     * Extraordinario editables inline). Deliberadamente restringido a
+     * nota_cc/nota_ce/eval_cf/eval_ce -- nunca toca comp1-4 (eso sigue
+     * siendo exclusivo de la Planilla Académica) para no arriesgar borrar
+     * el detalle de períodos con un guardado parcial, como sí haría
+     * guardarAcademica() si se le mandara un payload incompleto.
+     * Mismo patrón que PortalDocenteController::guardarCeldaAcad(), pero
+     * disponible también para Administrador/Coordinación (docenteActual()
+     * es null para ellos, igual que en planillaAcademica()/guardarAcademica()).
+     */
+    public function guardarCelda(Request $request)
+    {
+        $request->validate([
+            'matricula_id'  => 'required|integer|exists:matriculas,id',
+            'asignacion_id' => 'required|integer|exists:asignaciones,id',
+            // eval_cf/eval_ce (Prueba Especial) solo se guardan aquí -- este
+            // endpoint vive bajo /admin y un docente nunca lo alcanza
+            // (EnsureAdminAccess lo redirige a su portal antes), así que
+            // ampliarlo no le da a un docente edición de Prueba Especial.
+            // El endpoint del docente (guardarCeldaAcad) sigue sin estos 2 campos.
+            'campo'         => ['required', 'string', 'regex:/^(nota_cc|nota_ce|eval_cf|eval_ce)$/'],
+            'valor'         => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        $asignacion = Asignacion::findOrFail($request->asignacion_id);
+
+        $docente = $this->docenteActual();
+        if ($docente && $asignacion->docente_id !== $docente->id) {
+            abort(403);
+        }
+
+        $schoolYear = SchoolYear::actual();
+
+        $cal = CalificacionAcademica::firstOrNew([
+            'matricula_id'   => $request->matricula_id,
+            'asignacion_id'  => $asignacion->id,
+            'school_year_id' => $schoolYear?->id,
+        ]);
+
+        $campo = $request->campo;
+        $valor = $request->valor !== null && $request->valor !== ''
+            ? round((float) $request->valor, 2)
+            : null;
+
+        $cal->{$campo}       = $valor;
+        $cal->modificado_por = auth()->id();
+        $cal->save();
+
+        $cal->recalcularPromedios();
+        $cal->refresh();
+
+        return response()->json([
+            'ok'   => true,
+            'data' => [
+                'nota_cc'             => $cal->nota_cc,
+                'nota_ce'             => $cal->nota_ce,
+                'nota_completiva'     => $cal->nota_completiva,
+                'nota_extraordinaria' => $cal->nota_extraordinaria,
+                'situacion'           => $cal->situacion,
+            ],
         ]);
     }
 

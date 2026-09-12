@@ -244,6 +244,17 @@
                     <div class="info-note"><i class="bi bi-info-circle"></i>Se imprime junto al NCF/e-CF en el recibo de pago — sin esto, el comprobante no sirve para que el padre/empresa lo deduzca como gasto.</div>
                 </div>
                 <div class="col-sm-6">
+                    <label class="form-label-custom">Categoría de Contribuyente (DGII)</label>
+                    <select name="categoria_contribuyente" class="form-select form-control-custom">
+                        <option value="">— Sin clasificar —</option>
+                        <option value="micro"    {{ ($inst['categoria_contribuyente'] ?? '') === 'micro'    ? 'selected' : '' }}>Micro</option>
+                        <option value="pequeno"  {{ ($inst['categoria_contribuyente'] ?? '') === 'pequeno'  ? 'selected' : '' }}>Pequeño</option>
+                        <option value="mediano"  {{ ($inst['categoria_contribuyente'] ?? '') === 'mediano'  ? 'selected' : '' }}>Mediano</option>
+                        <option value="grande"   {{ ($inst['categoria_contribuyente'] ?? '') === 'grande'   ? 'selected' : '' }}>Grande</option>
+                    </select>
+                    <div class="info-note"><i class="bi bi-info-circle"></i>Determina el plazo de e-CF (Ley 32-23) que le aplica a este centro ante la DGII — solo registro, ZuraEdu no lo valida ni lo reporta.</div>
+                </div>
+                <div class="col-sm-6">
                     <label class="form-label-custom">Tipo de Institución</label>
                     <select name="tipo_institucion" class="form-select form-control-custom">
                         <option value="">— Seleccione —</option>
@@ -287,6 +298,61 @@
                     <input type="text" name="cargo_director" class="form-control form-control-custom"
                            value="{{ old('cargo_director', $inst['cargo_director'] ?? 'Director/a') }}"
                            placeholder="Director/a">
+                </div>
+            </div>
+        </div>
+
+        <div class="card-panel">
+            <div class="section-title"><i class="bi bi-file-earmark-text-fill me-1"></i>Datos para el Acta Final (MINERD)</div>
+            <div class="row g-3">
+                <div class="col-sm-4">
+                    <label class="form-label-custom">Tanda</label>
+                    <select name="tanda" class="form-select form-control-custom">
+                        <option value="">— Seleccione —</option>
+                        <option value="jee"        {{ ($inst['tanda'] ?? '') === 'jee'        ? 'selected' : '' }}>JEE</option>
+                        <option value="matutina"   {{ ($inst['tanda'] ?? '') === 'matutina'   ? 'selected' : '' }}>Matutina</option>
+                        <option value="vespertina" {{ ($inst['tanda'] ?? '') === 'vespertina' ? 'selected' : '' }}>Vespertina</option>
+                        <option value="nocturna"   {{ ($inst['tanda'] ?? '') === 'nocturna'   ? 'selected' : '' }}>Nocturna</option>
+                    </select>
+                </div>
+                <div class="col-sm-4">
+                    <label class="form-label-custom">Sector</label>
+                    <select name="sector" class="form-select form-control-custom">
+                        <option value="">— Seleccione —</option>
+                        <option value="publico"     {{ ($inst['sector'] ?? '') === 'publico'     ? 'selected' : '' }}>Público</option>
+                        <option value="privado"     {{ ($inst['sector'] ?? '') === 'privado'     ? 'selected' : '' }}>Privado</option>
+                        <option value="semioficial" {{ ($inst['sector'] ?? '') === 'semioficial' ? 'selected' : '' }}>Semioficial</option>
+                    </select>
+                </div>
+                <div class="col-sm-4">
+                    <label class="form-label-custom">Zona</label>
+                    <select name="zona" class="form-select form-control-custom">
+                        <option value="">— Seleccione —</option>
+                        <option value="rural"  {{ ($inst['zona'] ?? '') === 'rural'  ? 'selected' : '' }}>Rural</option>
+                        <option value="urbana" {{ ($inst['zona'] ?? '') === 'urbana' ? 'selected' : '' }}>Urbana</option>
+                        <option value="otra"   {{ ($inst['zona'] ?? '') === 'otra'   ? 'selected' : '' }}>Otra</option>
+                    </select>
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label-custom">Director/a de Distrito</label>
+                    <input type="text" name="director_distrito" class="form-control form-control-custom"
+                           value="{{ old('director_distrito', $inst['director_distrito'] ?? '') }}"
+                           placeholder="Nombre completo">
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label-custom">Secretario/a Docente del Centro</label>
+                    <input type="text" name="secretario_docente" class="form-control form-control-custom"
+                           value="{{ old('secretario_docente', $inst['secretario_docente'] ?? '') }}"
+                           placeholder="Nombre completo">
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label-custom">Coordinador/a Pedagógico/a</label>
+                    <input type="text" name="coordinador_pedagogico" class="form-control form-control-custom"
+                           value="{{ old('coordinador_pedagogico', $inst['coordinador_pedagogico'] ?? '') }}"
+                           placeholder="Nombre completo">
+                </div>
+                <div class="col-12">
+                    <div class="info-note"><i class="bi bi-info-circle"></i>Estos datos se imprimen en el encabezado del Acta Final y del Boletín de Nota (Primer Ciclo de Secundaria).</div>
                 </div>
             </div>
         </div>

@@ -51,7 +51,7 @@ recomendación de "no hacerlo nunca" — es "no hacerlo ahora, y por qué".
   resuelve su propio comprobante por fuera de ZuraEdu (Facturador Gratuito
   de la DGII u otro medio) y solo lo anota en el sistema.
 
-### 3. Campo de RNC por institución — **CERRADA e IMPLEMENTADA (2026-09-11)**
+### 3. Campo de RNC y categoría de contribuyente por institución — **CERRADA e IMPLEMENTADA (2026-09-11)**
 - **Hallazgo real detectado al cerrar la #2**: el recibo de pago mostraba
   el NCF/e-CF pero nunca el RNC de la institución emisora — sin el RNC del
   centro, el comprobante no sirve del todo para que el padre/empresa lo
@@ -59,10 +59,14 @@ recomendación de "no hacerlo nunca" — es "no hacerlo ahora, y por qué".
 - **Implementado**: campo `rnc` en `ConfigInstitucional` (mismo patrón que
   `nombre_institucion`), configurable en `/admin/sistema` → Identificación
   del Centro, e impreso junto al NCF/e-CF en ambas copias del recibo
-  (`resources/views/admin/pagos/recibo_pdf.blade.php`). No se agregó
-  "categoría de contribuyente" como campo separado — ese dato solo
-  importaba para decidir si construir la integración real (#2), y esa
-  decisión ya se tomó (no, por ahora).
+  (`resources/views/admin/pagos/recibo_pdf.blade.php`).
+- **Seguimiento del usuario (mismo día)**: aunque no cambia la decisión
+  #2, pidió guardar igual la categoría de contribuyente por tenant para
+  tenerla a mano (recordatorios de plazo, futuros clientes con otra
+  categoría). Agregado `categoria_contribuyente` (select: micro/pequeño/
+  mediano/grande) al mismo formulario — solo registro, sin validación ni
+  reporte a la DGII, sin efecto en la decisión de no construir la
+  integración e-CF real.
 
 ## Nota sobre "REQUIERE VALIDACIÓN"
 

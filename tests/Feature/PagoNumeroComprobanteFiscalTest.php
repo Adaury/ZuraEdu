@@ -119,6 +119,28 @@ class PagoNumeroComprobanteFiscalTest extends TestCase
         $this->assertSame('1-01-00000-0', \App\Models\ConfigInstitucional::get('rnc'));
     }
 
+    // ── Categoría de contribuyente (seguimiento del usuario a la decisión
+    // #3, 2026-09-11): no afecta si ZuraEdu construye la integración e-CF
+    // real (ya decidido que no) -- se guarda solo como dato de referencia
+    // por tenant (recordatorios de plazo, futuros clientes con otra
+    // categoría), sin validación ni reporte a la DGII.
+
+    public function test_administrador_puede_guardar_la_categoria_de_contribuyente(): void
+    {
+        $this->actingAs($this->admin())
+            ->post(route('admin.sistema.institucional.update'), ['categoria_contribuyente' => 'pequeno'])
+            ->assertRedirect();
+
+        $this->assertSame('pequeno', \App\Models\ConfigInstitucional::get('categoria_contribuyente'));
+    }
+
+    public function test_categoria_de_contribuyente_invalida_es_rechazada(): void
+    {
+        $this->actingAs($this->admin())
+            ->post(route('admin.sistema.institucional.update'), ['categoria_contribuyente' => 'no-existe'])
+            ->assertSessionHasErrors('categoria_contribuyente');
+    }
+
     public function test_el_recibo_pdf_no_falla_cuando_hay_rnc_y_comprobante_fiscal(): void
     {
         \App\Models\ConfigInstitucional::set('rnc', '1-01-00000-0');

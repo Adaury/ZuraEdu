@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use App\Traits\HasDocenteContext;
+use App\Models\ActivityLog;
 use App\Models\Asignacion;
 use App\Models\Calificacion;
 use App\Models\CalificacionAcademica;
+use App\Models\CalificacionAudit;
 use App\Models\Docente;
 use App\Models\EntregaTarea;
 use App\Models\Estudiante;
@@ -451,9 +453,19 @@ class AgendaDocenteController extends Controller
             $nota = max(0, min(100, round($entrega->calificacion / $puntos * 100, 2)));
 
             if ($esTecnica) {
+                $campoTecnica = $data['campo'];
+                $anteriorTec  = Calificacion::where([
+                    'matricula_id' => $m->id, 'asignacion_id' => $asignacion->id, 'periodo_id' => $data['periodo_id'],
+                ])->first();
+
                 Calificacion::updateOrCreate(
                     ['matricula_id' => $m->id, 'asignacion_id' => $asignacion->id, 'periodo_id' => $data['periodo_id']],
-                    [$data['campo'] => $nota]
+                    [$campoTecnica => $nota]
+                );
+
+                CalificacionAudit::registrarCambios(
+                    'Calificacion', $anteriorTec, [$campoTecnica => $nota],
+                    (int) $m->id, (int) $asignacion->id, [$campoTecnica]
                 );
             } else {
                 $campo = "comp{$data['componente']}_p{$data['periodo_num']}";
@@ -462,10 +474,26 @@ class AgendaDocenteController extends Controller
                     'asignacion_id'  => $asignacion->id,
                     'school_year_id' => $schoolYear?->id,
                 ]);
+                $anterior          = $row->exists ? (clone $row) : null;
+                $situacionAnterior = $row->situacion;
+
                 $row->$campo = $nota;
                 $row->save();
                 if (method_exists($row, 'recalcularPromedios')) {
                     $row->recalcularPromedios();
+                    $row->refresh();
+                }
+
+                CalificacionAudit::registrarCambios(
+                    'CalificacionAcademica', $anterior, [$campo => $row->$campo],
+                    (int) $m->id, (int) $asignacion->id, [$campo]
+                );
+                if ($situacionAnterior !== $row->situacion) {
+                    ActivityLog::registrar(
+                        'boletin.situacion_cambiada', CalificacionAcademica::class, $row->id,
+                        "Matrícula #{$m->id} | Asignación: {$asignacion->asignatura->nombre} | Situación: "
+                            . ($situacionAnterior ?? '—') . ' → ' . ($row->situacion ?? '—')
+                    );
                 }
             }
             $actualizados++;

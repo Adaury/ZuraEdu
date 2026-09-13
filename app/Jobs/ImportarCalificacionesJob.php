@@ -2,9 +2,11 @@
 
 namespace App\Jobs;
 
+use App\Models\ActivityLog;
 use App\Models\Asignacion;
 use App\Models\Calificacion;
 use App\Models\CalificacionAcademica;
+use App\Models\CalificacionAudit;
 use App\Models\ImportacionCalificacion;
 use App\Models\Notificacion;
 use App\Models\Periodo;
@@ -90,7 +92,7 @@ class ImportarCalificacionesJob extends TenantJob
                 if ($esAcademica) {
                     [$ok, $err] = $this->procesarFilaAcademica($row, $matricula, $asignacion, $schoolYear, $nombre, $importacion->user_id);
                 } else {
-                    [$ok, $err] = $this->procesarFilaTecnicaSimple($row, $matricula, $asignacion, $periodosIndexed, $periodoFijo, $nombre);
+                    [$ok, $err] = $this->procesarFilaTecnicaSimple($row, $matricula, $asignacion, $periodosIndexed, $periodoFijo, $nombre, $importacion->user_id);
                 }
 
                 if ($err) $errores[] = "Fila {$linea}: {$err}";
@@ -154,17 +156,65 @@ class ImportarCalificacionesJob extends TenantJob
             return [false, $msg];
         }
 
+        $anterior = CalificacionAcademica::where(
+            ['matricula_id' => $matricula->id, 'asignacion_id' => $asignacion->id, 'school_year_id' => $schoolYear?->id]
+        )->first();
+        $situacionAnterior = $anterior?->situacion;
+
         $calAcad = CalificacionAcademica::updateOrCreate(
             ['matricula_id' => $matricula->id, 'asignacion_id' => $asignacion->id, 'school_year_id' => $schoolYear?->id],
             array_merge($data, ['modificado_por' => $modificadoPor])
         );
         $calAcad->recalcularPromedios();
+        $calAcad->refresh();
+
+        // Auditoría: este Job procesa la importación masiva de Admin/Coordinación
+        // (ver [[project_auditoria_boletin_completiva_gap_2026_09_13]]). No hay
+        // auth()/request() en un worker de cola, así que se audita con el
+        // usuario explícito ($modificadoPor) en vez de CalificacionAudit::
+        // registrarCambios()/ActivityLog::registrar() (que asumen auth()->id()).
+        $this->auditarCambios('CalificacionAcademica', $anterior, $data, $matricula->id, $asignacion->id, array_keys($data), $modificadoPor);
+        if ($situacionAnterior !== $calAcad->situacion) {
+            ActivityLog::create([
+                'user_id'     => $modificadoPor,
+                'accion'      => 'boletin.situacion_cambiada',
+                'modelo'      => CalificacionAcademica::class,
+                'modelo_id'   => $calAcad->id,
+                'descripcion' => "Matrícula #{$matricula->id} | Asignación: {$asignacion->asignatura->nombre} | Situación: "
+                    . ($situacionAnterior ?? '—') . ' → ' . ($calAcad->situacion ?? '—') . ' (importación masiva)',
+            ]);
+        }
 
         return $invalidos ? [true, "{$nombre}: importado con advertencias (" . implode('; ', $invalidos) . ').'] : [true, null];
     }
 
+    /**
+     * Igual que CalificacionAudit::registrarCambios(), pero con user_id
+     * explícito -- en un worker de cola no hay auth()->id() ni request()->ip().
+     */
+    private function auditarCambios(string $modelo, $anterior, array $nuevosDatos, int $matriculaId, int $asignacionId, array $camposVigilar, ?int $userId): void
+    {
+        foreach ($camposVigilar as $campo) {
+            $valNuevo    = isset($nuevosDatos[$campo]) && $nuevosDatos[$campo] !== '' ? (float) $nuevosDatos[$campo] : null;
+            $valAnterior = $anterior ? ($anterior->$campo !== null ? (float) $anterior->$campo : null) : null;
+            if ($valAnterior === $valNuevo) continue;
+
+            CalificacionAudit::create([
+                'modelo'         => $modelo,
+                'registro_id'    => $anterior?->id ?? 0,
+                'matricula_id'   => $matriculaId,
+                'asignacion_id'  => $asignacionId,
+                'campo'          => $campo,
+                'valor_anterior' => $valAnterior,
+                'valor_nuevo'    => $valNuevo,
+                'user_id'        => $userId,
+                'ip'             => null,
+            ]);
+        }
+    }
+
     /** @return array{0: bool, 1: ?string} [importado_ok, mensaje_error] */
-    private function procesarFilaTecnicaSimple(array $row, $matricula, Asignacion $asignacion, $periodosIndexed, ?Periodo $periodoFijo, string $nombre): array
+    private function procesarFilaTecnicaSimple(array $row, $matricula, Asignacion $asignacion, $periodosIndexed, ?Periodo $periodoFijo, string $nombre, ?int $modificadoPor): array
     {
         $periodoNum = (int) trim($row['periodo'] ?? '') ?: 1;
         $periodo    = $periodoFijo ?? $periodosIndexed->get($periodoNum);
@@ -178,9 +228,18 @@ class ImportarCalificacionesJob extends TenantJob
             return [false, "{$nombre}: nota_final '{$notaFinal}' no es válida."];
         }
 
+        $anterior = Calificacion::where(
+            ['matricula_id' => $matricula->id, 'asignacion_id' => $asignacion->id, 'periodo_id' => $periodo->id]
+        )->first();
+
         Calificacion::updateOrCreate(
             ['matricula_id' => $matricula->id, 'asignacion_id' => $asignacion->id, 'periodo_id' => $periodo->id],
             ['nota_final' => min(100, max(0, (float) $notaFinal))]
+        );
+
+        $this->auditarCambios(
+            'Calificacion', $anterior, ['nota_final' => min(100, max(0, (float) $notaFinal))],
+            $matricula->id, $asignacion->id, ['nota_final'], $modificadoPor
         );
 
         return [true, null];

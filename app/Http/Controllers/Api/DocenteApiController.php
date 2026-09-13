@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Asignacion;
 use App\Models\Asistencia;
 use App\Models\Calificacion;
+use App\Models\CalificacionAudit;
 use App\Models\ClaseVirtual;
 use App\Models\Docente;
 use App\Models\EntregaTarea;
@@ -352,9 +353,31 @@ class DocenteApiController extends Controller
             'periodo_id'    => $data['periodo_id'],
         ]);
 
+        $notaAnterior = $cal->nota_final !== null ? (float) $cal->nota_final : null;
+        $registroId   = $cal->id;
+
         $cal->nota_final     = round($data['nota_final'], 2);
         $cal->modificado_por = $request->user()->id;
         $cal->save();
+
+        // Auditoría del guardado desde la app móvil (ver
+        // [[project_auditoria_boletin_completiva_gap_2026_09_13]]). No se usa
+        // CalificacionAudit::registrarCambios() porque asume auth()->id()
+        // (guard por defecto), y aquí la request se autentica por Sanctum --
+        // se usa $request->user()->id explícitamente, igual que arriba.
+        if ($notaAnterior !== $cal->nota_final) {
+            CalificacionAudit::create([
+                'modelo'         => 'Calificacion',
+                'registro_id'    => $registroId ?? $cal->id,
+                'matricula_id'   => $data['matricula_id'],
+                'asignacion_id'  => $asignacionId,
+                'campo'          => 'nota_final',
+                'valor_anterior' => $notaAnterior,
+                'valor_nuevo'    => $cal->nota_final,
+                'user_id'        => $request->user()->id,
+                'ip'             => $request->ip(),
+            ]);
+        }
 
         return response()->json([
             'ok'         => true,

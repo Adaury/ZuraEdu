@@ -4024,28 +4024,60 @@ class PortalDocenteController extends Controller
                 $dbData['nota_final'] = $hayNota ? round($suma, 2) : null;
                 $dbData['publicado']  = true;
 
+                $anteriorTec = Calificacion::where(
+                    ['matricula_id' => $fila['matId'], 'asignacion_id' => $asignacion->id, 'periodo_id' => $pId]
+                )->first();
+
                 Calificacion::updateOrCreate(
                     ['matricula_id' => $fila['matId'], 'asignacion_id' => $asignacion->id, 'periodo_id' => $pId],
                     $dbData
+                );
+
+                CalificacionAudit::registrarCambios(
+                    'Calificacion', $anteriorTec, $dbData,
+                    (int) $fila['matId'], (int) $asignacion->id,
+                    array_diff(array_keys($dbData), ['modificado_por', 'publicado'])
                 );
             } else {
                 ['p1' => $p1, 'p2' => $p2, 'p3' => $p3, 'p4' => $p4] = $notas + ['p1'=>null,'p2'=>null,'p3'=>null,'p4'=>null];
                 $filled = array_filter([$p1, $p2, $p3, $p4], fn($v) => $v !== null);
                 if (empty($filled)) { $omitidos++; continue; }
                 $nf = round(array_sum($filled) / count($filled), 2);
+                $situacionNueva = $nf >= 70 ? 'A' : 'R';
 
-                CalificacionAcademica::updateOrCreate(
+                $anterior = CalificacionAcademica::where(
+                    ['matricula_id' => $fila['matId'], 'asignacion_id' => $asignacion->id, 'school_year_id' => $schoolYear?->id]
+                )->first();
+
+                $rec = [
+                    'comp1_p1' => $p1, 'comp2_p1' => $p1, 'comp3_p1' => $p1, 'comp4_p1' => $p1,
+                    'comp1_p2' => $p2, 'comp2_p2' => $p2, 'comp3_p2' => $p2, 'comp4_p2' => $p2,
+                    'comp1_p3' => $p3, 'comp2_p3' => $p3, 'comp3_p3' => $p3, 'comp4_p3' => $p3,
+                    'comp1_p4' => $p4, 'comp2_p4' => $p4, 'comp3_p4' => $p4, 'comp4_p4' => $p4,
+                    'nota_final' => $nf, 'situacion' => $situacionNueva,
+                    'publicado'  => true,
+                    'modificado_por' => auth()->id(),
+                ];
+
+                $calNueva = CalificacionAcademica::updateOrCreate(
                     ['matricula_id' => $fila['matId'], 'asignacion_id' => $asignacion->id, 'school_year_id' => $schoolYear?->id],
-                    [
-                        'comp1_p1' => $p1, 'comp2_p1' => $p1, 'comp3_p1' => $p1, 'comp4_p1' => $p1,
-                        'comp1_p2' => $p2, 'comp2_p2' => $p2, 'comp3_p2' => $p2, 'comp4_p2' => $p2,
-                        'comp1_p3' => $p3, 'comp2_p3' => $p3, 'comp3_p3' => $p3, 'comp4_p3' => $p3,
-                        'comp1_p4' => $p4, 'comp2_p4' => $p4, 'comp3_p4' => $p4, 'comp4_p4' => $p4,
-                        'nota_final' => $nf, 'situacion' => $nf >= 70 ? 'A' : 'R',
-                        'publicado'  => true,
-                        'modificado_por' => auth()->id(),
-                    ]
+                    $rec
                 );
+
+                CalificacionAudit::registrarCambios(
+                    'CalificacionAcademica', $anterior, $rec,
+                    (int) $fila['matId'], (int) $asignacion->id,
+                    ['comp1_p1', 'comp2_p1', 'comp3_p1', 'comp4_p1', 'comp1_p2', 'comp2_p2', 'comp3_p2', 'comp4_p2',
+                     'comp1_p3', 'comp2_p3', 'comp3_p3', 'comp4_p3', 'comp1_p4', 'comp2_p4', 'comp3_p4', 'comp4_p4',
+                     'nota_final']
+                );
+                if (($anterior?->situacion) !== $situacionNueva) {
+                    ActivityLog::registrar(
+                        'boletin.situacion_cambiada', CalificacionAcademica::class, $calNueva->id,
+                        "Matrícula #{$fila['matId']} | Asignación: {$asignacion->asignatura->nombre} | Situación: "
+                            . ($anterior?->situacion ?? '—') . ' → ' . $situacionNueva
+                    );
+                }
             }
             $importados++;
         }
@@ -4121,9 +4153,19 @@ class PortalDocenteController extends Controller
                 }
                 $data['nota_final'] = $hayNota ? round($suma, 2) : null;
 
+                $anteriorTec = Calificacion::where(
+                    ['matricula_id' => $mat->id, 'asignacion_id' => $asignacion->id, 'periodo_id' => $pId]
+                )->first();
+
                 Calificacion::updateOrCreate(
                     ['matricula_id' => $mat->id, 'asignacion_id' => $asignacion->id, 'periodo_id' => $pId],
                     $data
+                );
+
+                CalificacionAudit::registrarCambios(
+                    'Calificacion', $anteriorTec, $data,
+                    (int) $mat->id, (int) $asignacion->id,
+                    array_diff(array_keys($data), ['modificado_por'])
                 );
             } else {
                 $p1 = $this->parseNota($row['p1'] ?? ''); $p2 = $this->parseNota($row['p2'] ?? '');
@@ -4131,20 +4173,42 @@ class PortalDocenteController extends Controller
                 $filled = array_filter([$p1, $p2, $p3, $p4], fn($v) => $v !== null);
                 if (empty($filled)) { $errores[] = "Fila {$linea}: sin notas válidas."; $omitidos++; continue; }
                 $nf = round(array_sum($filled) / count($filled), 2);
+                $situacionNueva = $nf >= 70 ? 'A' : 'R';
 
-                CalificacionAcademica::updateOrCreate(
+                $anterior = CalificacionAcademica::where(
+                    ['matricula_id' => $mat->id, 'asignacion_id' => $asignacion->id, 'school_year_id' => $schoolYear?->id]
+                )->first();
+
+                $rec = [
+                    'comp1_p1' => $p1, 'comp2_p1' => $p1, 'comp3_p1' => $p1, 'comp4_p1' => $p1,
+                    'comp1_p2' => $p2, 'comp2_p2' => $p2, 'comp3_p2' => $p2, 'comp4_p2' => $p2,
+                    'comp1_p3' => $p3, 'comp2_p3' => $p3, 'comp3_p3' => $p3, 'comp4_p3' => $p3,
+                    'comp1_p4' => $p4, 'comp2_p4' => $p4, 'comp3_p4' => $p4, 'comp4_p4' => $p4,
+                    'prom_comp1' => $p1, 'prom_comp2' => $p2, 'prom_comp3' => $p3, 'prom_comp4' => $p4,
+                    'nota_final' => $nf, 'situacion' => $situacionNueva,
+                    'publicado'  => true,
+                    'modificado_por' => auth()->id(),
+                ];
+
+                $calNueva = CalificacionAcademica::updateOrCreate(
                     ['matricula_id' => $mat->id, 'asignacion_id' => $asignacion->id, 'school_year_id' => $schoolYear?->id],
-                    [
-                        'comp1_p1' => $p1, 'comp2_p1' => $p1, 'comp3_p1' => $p1, 'comp4_p1' => $p1,
-                        'comp1_p2' => $p2, 'comp2_p2' => $p2, 'comp3_p2' => $p2, 'comp4_p2' => $p2,
-                        'comp1_p3' => $p3, 'comp2_p3' => $p3, 'comp3_p3' => $p3, 'comp4_p3' => $p3,
-                        'comp1_p4' => $p4, 'comp2_p4' => $p4, 'comp3_p4' => $p4, 'comp4_p4' => $p4,
-                        'prom_comp1' => $p1, 'prom_comp2' => $p2, 'prom_comp3' => $p3, 'prom_comp4' => $p4,
-                        'nota_final' => $nf, 'situacion' => $nf >= 70 ? 'A' : 'R',
-                        'publicado'  => true,
-                        'modificado_por' => auth()->id(),
-                    ]
+                    $rec
                 );
+
+                CalificacionAudit::registrarCambios(
+                    'CalificacionAcademica', $anterior, $rec,
+                    (int) $mat->id, (int) $asignacion->id,
+                    ['comp1_p1', 'comp2_p1', 'comp3_p1', 'comp4_p1', 'comp1_p2', 'comp2_p2', 'comp3_p2', 'comp4_p2',
+                     'comp1_p3', 'comp2_p3', 'comp3_p3', 'comp4_p3', 'comp1_p4', 'comp2_p4', 'comp3_p4', 'comp4_p4',
+                     'nota_final']
+                );
+                if (($anterior?->situacion) !== $situacionNueva) {
+                    ActivityLog::registrar(
+                        'boletin.situacion_cambiada', CalificacionAcademica::class, $calNueva->id,
+                        "Matrícula #{$mat->id} | Asignación: {$asignacion->asignatura->nombre} | Situación: "
+                            . ($anterior?->situacion ?? '—') . ' → ' . $situacionNueva
+                    );
+                }
             }
             $importados++;
         }

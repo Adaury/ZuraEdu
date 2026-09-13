@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Traits\HasDocenteContext;
 use App\Models\Asignacion;
 use App\Models\CalificacionAcademica;
+use App\Models\CalificacionAudit;
 use App\Models\Matricula;
 use App\Models\InstrumentoCriterio;
 use App\Models\InstrumentoEvaluacion;
@@ -754,6 +755,12 @@ class PlanClaseDocenteController extends Controller
                     $update["comp{$c}_p{$n}"] = $nota;
                 }
 
+                $anterior = CalificacionAcademica::where([
+                    'matricula_id'   => $matId,
+                    'asignacion_id'  => $asignacion->id,
+                    'school_year_id' => $schoolYear?->id,
+                ])->first();
+
                 CalificacionAcademica::updateOrCreate(
                     [
                         'matricula_id'   => $matId,
@@ -764,6 +771,11 @@ class PlanClaseDocenteController extends Controller
                         'tenant_id'      => tenant_id(),
                         'modificado_por' => auth()->id(),
                     ])
+                );
+
+                CalificacionAudit::registrarCambios(
+                    'CalificacionAcademica', $anterior, $update,
+                    (int) $matId, (int) $asignacion->id, array_keys($update)
                 );
             }
         });

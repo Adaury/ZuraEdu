@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Events\GradePublished;
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Asignacion;
 use App\Models\CalificacionAcademica;
 use App\Models\CalificacionAudit;
@@ -281,7 +282,7 @@ class CalificacionAcademicaController extends Controller
             'valor'         => 'nullable|numeric|min:0|max:100',
         ]);
 
-        $asignacion = Asignacion::findOrFail($request->asignacion_id);
+        $asignacion = Asignacion::with('asignatura')->findOrFail($request->asignacion_id);
 
         $docente = $this->docenteActual();
         if ($docente && $asignacion->docente_id !== $docente->id) {
@@ -296,6 +297,11 @@ class CalificacionAcademicaController extends Controller
             'school_year_id' => $schoolYear?->id,
         ]);
 
+        // Copia del estado antes de mutar $cal, para la auditoría (quién,
+        // cuándo, campo, valor anterior/nuevo) -- ver CalificacionAudit.
+        $anterior          = $cal->exists ? (clone $cal) : null;
+        $situacionAnterior = $cal->situacion;
+
         $campo = $request->campo;
         $valor = $request->valor !== null && $request->valor !== ''
             ? round((float) $request->valor, 2)
@@ -307,6 +313,34 @@ class CalificacionAcademicaController extends Controller
 
         $cal->recalcularPromedios();
         $cal->refresh();
+
+        // Auditoría: Completiva/Extraordinaria/Prueba Especial se editan desde
+        // el Boletín de Nota (ver_anual) y el Acta Final -- antes solo
+        // guardarAcademica() (Planilla Académica) dejaba rastro en
+        // calificacion_audits. Mismo patrón: registra solo lo que cambió,
+        // con usuario e IP (ver admin.calificaciones.auditoria).
+        CalificacionAudit::registrarCambios(
+            'CalificacionAcademica',
+            $anterior,
+            ['nota_cc' => $cal->nota_cc, 'nota_ce' => $cal->nota_ce, 'eval_cf' => $cal->eval_cf, 'eval_ce' => $cal->eval_ce],
+            (int) $request->matricula_id,
+            (int) $asignacion->id,
+            ['nota_cc', 'nota_ce', 'eval_cf', 'eval_ce']
+        );
+
+        // La situación (A/R) no es numérica -- no encaja en calificacion_audits
+        // (valor_anterior/valor_nuevo son float), así que su antes/después
+        // queda en activity_logs (admin.sistema.activity-log), legible por
+        // estudiante y materia.
+        if ($situacionAnterior !== $cal->situacion) {
+            ActivityLog::registrar(
+                'boletin.situacion_cambiada',
+                CalificacionAcademica::class,
+                $cal->id,
+                "Matrícula #{$cal->matricula_id} | Asignación: {$asignacion->asignatura->nombre} | Situación: "
+                    . ($situacionAnterior ?? '—') . ' → ' . ($cal->situacion ?? '—')
+            );
+        }
 
         return response()->json([
             'ok'   => true,

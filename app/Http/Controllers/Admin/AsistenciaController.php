@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Asignacion;
 use App\Models\Asistencia;
 use App\Models\Docente;
@@ -356,6 +357,16 @@ class AsistenciaController extends Controller
         $asignacion = Asignacion::findOrFail($request->asignacion_id);
         $this->authorize('ingresarAsistencia', $asignacion);
 
+        // Estado anterior antes de sobreescribir -- toggleEstado() se usa
+        // tanto para marcar por primera vez como para corregir lo que ya
+        // había, y updateOrCreate() no dejaba rastro del valor previo ni de
+        // quién lo había puesto.
+        $anterior = Asistencia::where([
+            'asignacion_id' => $request->asignacion_id,
+            'matricula_id'  => $request->matricula_id,
+            'fecha'         => $request->fecha,
+        ])->first();
+
         $record = Asistencia::updateOrCreate(
             [
                 'asignacion_id' => $request->asignacion_id,
@@ -367,6 +378,17 @@ class AsistenciaController extends Controller
                 'registrado_por' => auth()->id(),
             ]
         );
+
+        // Solo registrar cuando es una corrección real (ya existía con otro
+        // estado) -- el primer marcado del día no es una "corrección".
+        if ($anterior && $anterior->estado !== $record->estado) {
+            ActivityLog::registrar(
+                'asistencia.estado_cambiado',
+                Asistencia::class,
+                $record->id,
+                "Matrícula #{$request->matricula_id} | Asignación #{$request->asignacion_id} | Fecha: {$request->fecha} | Estado: {$anterior->estado} → {$record->estado}"
+            );
+        }
 
         return response()->json(['success' => true, 'estado' => $record->estado]);
     }
@@ -384,6 +406,14 @@ class AsistenciaController extends Controller
         $this->authorize('ingresarAsistencia', $asignacion);
         $matriculas = $asignacion->grupo->matriculas()->activas()->pluck('id');
 
+        // Estados previos de todo el grupo en una sola consulta, para poder
+        // detectar correcciones reales sin hacer N consultas dentro del loop.
+        $anteriores = Asistencia::where('asignacion_id', $request->asignacion_id)
+            ->where('fecha', $request->fecha)
+            ->whereIn('matricula_id', $matriculas)
+            ->get()->keyBy('matricula_id');
+
+        $corregidos = 0;
         foreach ($matriculas as $mid) {
             Asistencia::updateOrCreate(
                 [
@@ -395,6 +425,23 @@ class AsistenciaController extends Controller
                     'estado'         => $request->estado,
                     'registrado_por' => auth()->id(),
                 ]
+            );
+
+            $anterior = $anteriores->get($mid);
+            if ($anterior && $anterior->estado !== $request->estado) {
+                $corregidos++;
+            }
+        }
+
+        // Un solo registro para todo el grupo (no uno por estudiante) --
+        // "marcar todos" es una acción masiva deliberada, no N correcciones
+        // individuales; lo relevante es que alguien reescribió el día completo.
+        if ($corregidos > 0) {
+            ActivityLog::registrar(
+                'asistencia.estado_cambiado',
+                Asistencia::class,
+                null,
+                "Asignación #{$request->asignacion_id} | Fecha: {$request->fecha} | 'Marcar todos' → {$request->estado} | {$corregidos} registro(s) existente(s) sobrescrito(s) de {$matriculas->count()}"
             );
         }
 

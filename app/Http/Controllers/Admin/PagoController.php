@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Helpers\Setting;
+use App\Models\ActivityLog;
 use App\Models\ConfigInstitucional;
 use App\Models\ConceptoPago;
 use App\Models\Estudiante;
@@ -244,9 +245,38 @@ class PagoController extends Controller
             'notas'             => 'nullable|string|max:500',
         ]);
 
+        // Snapshot antes de mutar, para la auditoría -- editar un pago (monto,
+        // estado, fechas) es dato financiero sensible y no dejaba ningún
+        // rastro de quién lo cambió ni qué tenía antes.
+        $anterior = $pago->only(array_keys($data));
+
         $pago->update($data);
 
+        $cambios = $this->describirCambiosPago($anterior, $data);
+        if ($cambios) {
+            ActivityLog::registrar(
+                'pago.editado',
+                Pago::class,
+                $pago->id,
+                "Pago #{$pago->id} (Matrícula #{$pago->matricula_id}): {$cambios}"
+            );
+        }
+
         return redirect()->back()->with('success', 'Pago actualizado.');
+    }
+
+    /** Compara campos de un pago antes/después y arma un texto legible solo con lo que cambió. */
+    private function describirCambiosPago(array $anterior, array $nuevos): string
+    {
+        $partes = [];
+        foreach ($nuevos as $campo => $valorNuevo) {
+            $valorAnterior = $anterior[$campo] ?? null;
+            // Comparar como string porque fecha_vencimiento/fecha_pago llegan
+            // como Carbon en $anterior (cast del modelo) y como string en $nuevos.
+            if ((string) $valorAnterior === (string) $valorNuevo) continue;
+            $partes[] = "{$campo}: " . ($valorAnterior ?? '—') . ' → ' . ($valorNuevo ?? '—');
+        }
+        return implode(' | ', $partes);
     }
 
     // ── Marcar como pagado (quick action) ─────────────────────────────────
@@ -305,6 +335,22 @@ class PagoController extends Controller
     // ── Eliminar ──────────────────────────────────────────────────────────
     public function destroy(Pago $pago)
     {
+        // El modelo Pago no usa SoftDeletes -- este delete() es físico e
+        // irreversible. Sin este log, no quedaría ningún rastro de quién
+        // borró el registro ni de qué contenía (monto, estudiante, estado).
+        $pago->loadMissing('matricula.estudiante');
+        $estudiante = trim(($pago->matricula?->estudiante?->nombres ?? '') . ' ' . ($pago->matricula?->estudiante?->apellidos ?? ''));
+
+        ActivityLog::registrar(
+            'pago.eliminado',
+            Pago::class,
+            $pago->id,
+            "Pago #{$pago->id} eliminado | Matrícula #{$pago->matricula_id}"
+                . ($estudiante !== '' ? " ({$estudiante})" : '')
+                . " | Concepto: {$pago->concepto} | Monto: {$pago->monto} | Estado: {$pago->estado}"
+                . " | Vencimiento: {$pago->fecha_vencimiento} | Fecha pago: " . ($pago->fecha_pago ?? '—')
+        );
+
         $pago->delete();
         return redirect()->back()->with('success', 'Registro eliminado.');
     }

@@ -276,11 +276,30 @@ class PortalDocenteController extends Controller
             'justificacion_tipo' => 'nullable|string|max:40',
         ]);
 
+        $estadoAnterior = $asistencia->estado;
+
+        // Bug preexistente encontrado al verificar este fix: la columna
+        // `estado` es ENUM('presente','ausente','tarde','excusa','retiro') --
+        // 'justificado' no es un valor válido y provocaba un 500 (MySQL
+        // "Data truncated for column 'estado'"), así que este botón nunca
+        // había funcionado. El resto del sistema ya trata 'excusa' como
+        // sinónimo de "justificado" (ver cálculos de asistencia en
+        // BoletinController), así que se usa ese valor real del enum.
         $asistencia->update([
-            'estado'             => 'justificado',
+            'estado'             => 'excusa',
             'justificacion'      => $data['justificacion'],
             'justificacion_tipo' => $data['justificacion_tipo'] ?? null,
+            'registrado_por'     => auth()->id(),
         ]);
+
+        // Sin esto no quedaba rastro de quién justificó la ausencia (solo
+        // cuándo, por updated_at) ni de cuál era el estado antes.
+        ActivityLog::registrar(
+            'asistencia.estado_cambiado',
+            \App\Models\Asistencia::class,
+            $asistencia->id,
+            "Matrícula #{$asistencia->matricula_id} | Asignación #{$asignacion->id} | Fecha: {$asistencia->fecha} | Estado: {$estadoAnterior} → excusa/justificado ({$data['justificacion']})"
+        );
 
         if ($request->expectsJson()) {
             return response()->json(['ok' => true]);

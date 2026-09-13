@@ -9,9 +9,11 @@ use App\Traits\HasDocenteHoy;
 use App\Traits\NormalizesFileEncoding;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use App\Models\ActivityLog;
 use App\Models\Asignacion;
 use App\Models\Asistencia;
 use App\Models\CalificacionAcademica;
+use App\Models\CalificacionAudit;
 use App\Models\Calificacion;
 use App\Models\Comunicado;
 use App\Models\ComunicadoLectura;
@@ -1097,6 +1099,12 @@ class PortalDocenteController extends Controller
             'school_year_id' => $schoolYear?->id,
         ]);
 
+        // Copia del estado antes de mutar $cal, para la auditoría -- mismo
+        // patrón que CalificacionAcademicaController::guardarCelda() (ver
+        // [[project_auditoria_boletin_completiva_gap_2026_09_13]]).
+        $anterior          = $cal->exists ? (clone $cal) : null;
+        $situacionAnterior = $cal->situacion;
+
         $campo = $request->campo;
         $valor = $request->valor !== null && $request->valor !== ''
             ? round((float) $request->valor, 2)
@@ -1109,6 +1117,36 @@ class PortalDocenteController extends Controller
 
         $cal->recalcularPromedios();
         $cal->refresh();
+
+        $camposAudit = [];
+        for ($c = 1; $c <= 4; $c++) {
+            for ($p = 1; $p <= 4; $p++) {
+                $camposAudit[] = "comp{$c}_p{$p}";
+            }
+        }
+        $camposAudit[] = 'nota_cc';
+        $camposAudit[] = 'nota_ce';
+
+        $nuevosDatos = collect($camposAudit)->mapWithKeys(fn ($c) => [$c => $cal->{$c}])->all();
+
+        CalificacionAudit::registrarCambios(
+            'CalificacionAcademica',
+            $anterior,
+            $nuevosDatos,
+            (int) $request->matricula_id,
+            (int) $asignacion->id,
+            $camposAudit
+        );
+
+        if ($situacionAnterior !== $cal->situacion) {
+            ActivityLog::registrar(
+                'boletin.situacion_cambiada',
+                CalificacionAcademica::class,
+                $cal->id,
+                "Matrícula #{$cal->matricula_id} | Asignación: {$asignacion->asignatura->nombre} | Situación: "
+                    . ($situacionAnterior ?? '—') . ' → ' . ($cal->situacion ?? '—')
+            );
+        }
 
         return response()->json([
             'ok'   => true,
@@ -1319,27 +1357,60 @@ class PortalDocenteController extends Controller
             $fp3 = $finales['p3'] ?? null;
             $fp4 = $finales['p4'] ?? null;
 
-            CalificacionAcademica::updateOrCreate(
+            // Snapshot antes de mutar, para la auditoría -- este es el guardado
+            // masivo por período donde el docente decide A/R; antes no dejaba
+            // rastro (ver [[project_auditoria_boletin_completiva_gap_2026_09_13]]).
+            $anterior = CalificacionAcademica::where([
+                'matricula_id'   => $matriculaId,
+                'asignacion_id'  => $asignacion->id,
+                'school_year_id' => $schoolYear?->id,
+            ])->first();
+            $situacionAnterior = $anterior?->situacion;
+
+            $rec = [
+                // comp_X_pN = nota final del período N (post-recuperación)
+                'comp1_p1' => $fp1, 'comp2_p1' => $fp1, 'comp3_p1' => $fp1, 'comp4_p1' => $fp1,
+                'comp1_p2' => $fp2, 'comp2_p2' => $fp2, 'comp3_p2' => $fp2, 'comp4_p2' => $fp2,
+                'comp1_p3' => $fp3, 'comp2_p3' => $fp3, 'comp3_p3' => $fp3, 'comp4_p3' => $fp3,
+                'comp1_p4' => $fp4, 'comp2_p4' => $fp4, 'comp3_p4' => $fp4, 'comp4_p4' => $fp4,
+                'prom_comp1' => $fp1, 'prom_comp2' => $fp2,
+                'prom_comp3' => $fp3, 'prom_comp4' => $fp4,
+                'recuperaciones_acad' => array_filter($recAcad) ?: null,
+                'nota_final'          => $notaFinal,
+                'situacion'           => $situacion,
+                'publicado'           => true,
+                'modificado_por'      => auth()->id(),
+            ];
+
+            $calNueva = CalificacionAcademica::updateOrCreate(
                 [
                     'matricula_id'   => $matriculaId,
                     'asignacion_id'  => $asignacion->id,
                     'school_year_id' => $schoolYear?->id,
                 ],
-                [
-                    // comp_X_pN = nota final del período N (post-recuperación)
-                    'comp1_p1' => $fp1, 'comp2_p1' => $fp1, 'comp3_p1' => $fp1, 'comp4_p1' => $fp1,
-                    'comp1_p2' => $fp2, 'comp2_p2' => $fp2, 'comp3_p2' => $fp2, 'comp4_p2' => $fp2,
-                    'comp1_p3' => $fp3, 'comp2_p3' => $fp3, 'comp3_p3' => $fp3, 'comp4_p3' => $fp3,
-                    'comp1_p4' => $fp4, 'comp2_p4' => $fp4, 'comp3_p4' => $fp4, 'comp4_p4' => $fp4,
-                    'prom_comp1' => $fp1, 'prom_comp2' => $fp2,
-                    'prom_comp3' => $fp3, 'prom_comp4' => $fp4,
-                    'recuperaciones_acad' => array_filter($recAcad) ?: null,
-                    'nota_final'          => $notaFinal,
-                    'situacion'           => $situacion,
-                    'publicado'           => true,
-                    'modificado_por'      => auth()->id(),
-                ]
+                $rec
             );
+
+            CalificacionAudit::registrarCambios(
+                'CalificacionAcademica',
+                $anterior,
+                $rec,
+                (int) $matriculaId,
+                (int) $asignacion->id,
+                ['comp1_p1', 'comp2_p1', 'comp3_p1', 'comp4_p1', 'comp1_p2', 'comp2_p2', 'comp3_p2', 'comp4_p2',
+                 'comp1_p3', 'comp2_p3', 'comp3_p3', 'comp4_p3', 'comp1_p4', 'comp2_p4', 'comp3_p4', 'comp4_p4',
+                 'nota_final']
+            );
+
+            if ($situacionAnterior !== $situacion) {
+                ActivityLog::registrar(
+                    'boletin.situacion_cambiada',
+                    CalificacionAcademica::class,
+                    $calNueva->id,
+                    "Matrícula #{$matriculaId} | Asignación: {$asignacion->asignatura->nombre} | Situación: "
+                        . ($situacionAnterior ?? '—') . ' → ' . ($situacion ?? '—')
+                );
+            }
         }
 
         Cache::forget('t' . (tenant_id() ?? 0) . "_portal_docente_{$docente->id}_asignaciones_{$schoolYear?->id}");

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Events\DashboardActualizado;
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Estudiante;
 use App\Models\Grupo;
 use App\Models\Inscripcion;
@@ -232,6 +233,8 @@ class MatriculaController extends Controller
         // por primera vez, ver auditoría Don Bosco).
         $motivo = $data['motivo'] ?? null;
 
+        $estadoAnterior = $matricula->estado;
+
         $matricula->update([
             'estado'       => $data['estado'],
             'observaciones'=> $motivo
@@ -240,6 +243,20 @@ class MatriculaController extends Controller
         ]);
 
         $this->sincronizarEstadoEstudiante($matricula);
+
+        // Retirar/reactivar/transferir a un estudiante es una decisión
+        // administrativa significativa (el modelo Matricula no tiene
+        // registrado_por/modificado_por) -- sin esto no quedaba ningún
+        // rastro de quién la tomó ni cuál era el estado anterior.
+        if ($estadoAnterior !== $data['estado']) {
+            ActivityLog::registrar(
+                'matricula.estado_cambiado',
+                Matricula::class,
+                $matricula->id,
+                "Matrícula #{$matricula->id} (Estudiante #{$matricula->estudiante_id}): {$estadoAnterior} → {$data['estado']}"
+                    . ($motivo ? " | Motivo: {$motivo}" : '')
+            );
+        }
 
         $labels = ['activa' => 'reactivada', 'retirada' => 'marcada como retirada', 'transferida' => 'marcada como transferida'];
 
@@ -352,8 +369,19 @@ class MatriculaController extends Controller
             return back()->with('error', 'No se puede eliminar la matrícula porque tiene calificaciones o asistencias registradas. Puede cambiarla a estado "retirada" en su lugar.');
         }
 
+        $estadoAnterior = $matricula->estado;
+
         $matricula->update(['estado' => 'retirada']);
         $this->sincronizarEstadoEstudiante($matricula);
+
+        if ($estadoAnterior !== 'retirada') {
+            ActivityLog::registrar(
+                'matricula.estado_cambiado',
+                Matricula::class,
+                $matricula->id,
+                "Matrícula #{$matricula->id} (Estudiante #{$matricula->estudiante_id}): {$estadoAnterior} → retirada (eliminación solicitada, sin calificaciones ni asistencias registradas)"
+            );
+        }
 
         return redirect()->route('admin.matriculas.index')
             ->with('success', 'Matrícula marcada como retirada.');
@@ -366,10 +394,24 @@ class MatriculaController extends Controller
             'observaciones' => 'nullable|string',
         ]);
 
+        $grupoAnterior = $matricula->grupo_id;
+
         $matricula->update([
             'grupo_id'      => $data['grupo_id'],
             'observaciones' => $data['observaciones'] ?? $matricula->observaciones,
         ]);
+
+        // Cambiar de grupo afecta materias, docentes y horario del estudiante
+        // -- sin esto no quedaba rastro de cuál era el grupo anterior ni de
+        // quién hizo el traslado.
+        if ($grupoAnterior !== $data['grupo_id']) {
+            ActivityLog::registrar(
+                'matricula.grupo_cambiado',
+                Matricula::class,
+                $matricula->id,
+                "Matrícula #{$matricula->id} (Estudiante #{$matricula->estudiante_id}): Grupo #{$grupoAnterior} → #{$data['grupo_id']}"
+            );
+        }
 
         return back()->with('success', 'Grupo de la matrícula actualizado correctamente.');
     }

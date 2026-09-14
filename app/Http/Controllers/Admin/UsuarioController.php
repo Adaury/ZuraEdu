@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUsuarioRequest;
 use App\Http\Requests\Admin\UpdateUsuarioRequest;
 use App\Mail\UsuarioAprobado;
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -79,6 +80,13 @@ class UsuarioController extends Controller
     {
         $data = $request->validated();
 
+        // Snapshot antes de mutar -- cambiar el rol o desactivar una cuenta
+        // son de las acciones más sensibles del sistema y no dejaban ningún
+        // rastro de quién lo hizo ni cuál era el estado anterior.
+        $emailAnterior  = $usuario->email;
+        $activoAnterior = $usuario->activo;
+        $rolesAnteriores = $usuario->getRoleNames()->implode(', ');
+
         $update = [
             'name'      => $data['name'],
             'apellidos' => $data['apellidos'] ?? null,
@@ -94,6 +102,29 @@ class UsuarioController extends Controller
         $usuario->update($update);
         $usuario->syncRoles([$data['role']]);
 
+        $cambios = [];
+        if ($emailAnterior !== $usuario->email) {
+            $cambios[] = "email: {$emailAnterior} → {$usuario->email}";
+        }
+        if ($activoAnterior !== $usuario->activo) {
+            $cambios[] = 'estado: ' . ($activoAnterior ? 'activo' : 'inactivo') . ' → ' . ($usuario->activo ? 'activo' : 'inactivo');
+        }
+        if ($rolesAnteriores !== $data['role']) {
+            $cambios[] = "rol: {$rolesAnteriores} → {$data['role']}";
+        }
+        if (! empty($data['password'])) {
+            $cambios[] = 'contraseña restablecida';
+        }
+
+        if ($cambios) {
+            ActivityLog::registrar(
+                'usuario.editado',
+                User::class,
+                $usuario->id,
+                "Usuario #{$usuario->id} ({$usuario->name} {$usuario->apellidos}): " . implode(' | ', $cambios)
+            );
+        }
+
         return redirect()->route('admin.usuarios.index')
             ->with('success', 'Usuario actualizado correctamente.');
     }
@@ -103,6 +134,18 @@ class UsuarioController extends Controller
         if ($usuario->id === auth()->id()) {
             return back()->with('error', 'No puedes eliminar tu propio usuario.');
         }
+
+        // User no usa SoftDeletes -- este delete() es físico e irreversible.
+        // Sin este log no quedaría ningún rastro de quién existió esta
+        // cuenta ni de quién la eliminó.
+        $roles = $usuario->getRoleNames()->implode(', ');
+        ActivityLog::registrar(
+            'usuario.eliminado',
+            User::class,
+            $usuario->id,
+            "Usuario #{$usuario->id} eliminado: {$usuario->name} {$usuario->apellidos} ({$usuario->email}) | Rol(es): {$roles}"
+        );
+
         $usuario->delete();
         return back()->with('success', 'Usuario eliminado.');
     }
@@ -209,7 +252,18 @@ class UsuarioController extends Controller
         if ($usuario->id === auth()->id()) {
             return response()->json(['error' => 'No puedes desactivar tu propio usuario.'], 422);
         }
+
+        $estadoAnterior = $usuario->activo;
         $usuario->update(['activo' => ! $usuario->activo]);
+
+        ActivityLog::registrar(
+            'usuario.estado_cambiado',
+            User::class,
+            $usuario->id,
+            "Usuario #{$usuario->id} ({$usuario->name} {$usuario->apellidos}): "
+                . ($estadoAnterior ? 'activo' : 'inactivo') . ' → ' . ($usuario->activo ? 'activo' : 'inactivo')
+        );
+
         return response()->json(['activo' => $usuario->activo]);
     }
 
@@ -299,6 +353,16 @@ class UsuarioController extends Controller
             'password'             => Hash::make($data['password']),
             'must_change_password' => true,   // Forza al usuario a cambiarla en el próximo login
         ]);
+
+        // Vector clásico de abuso interno/ingeniería social -- sin esto no
+        // quedaba rastro de quién restableció la contraseña de quién ni
+        // cuándo. Nunca se registra la contraseña en sí, solo el hecho.
+        ActivityLog::registrar(
+            'usuario.password_restablecida',
+            User::class,
+            $usuario->id,
+            "Contraseña restablecida por un administrador para el usuario #{$usuario->id} ({$usuario->nombre_completo})"
+        );
 
         return back()->with('success', "Contraseña de {$usuario->nombre_completo} restablecida. El usuario deberá cambiarla al iniciar sesión.");
     }

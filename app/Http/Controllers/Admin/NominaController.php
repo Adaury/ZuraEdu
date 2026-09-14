@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\ConfigInstitucional;
 use App\Models\NominaEmpleado;
 use App\Models\Notificacion;
@@ -200,7 +201,27 @@ class NominaController extends Controller
         $data['exento_isr']  = $request->boolean('exento_isr');
         $data['tss_porcentaje'] = $data['tss_porcentaje'] ?? 3.04;
 
+        // Snapshot antes de mutar -- cambiar la cuenta bancaria/banco de un
+        // empleado (a dónde se deposita su sueldo) es un vector clásico de
+        // fraude interno y no dejaba ningún rastro.
+        $anterior = $nomina->only(['cargo', 'cedula', 'cuenta_bancaria', 'banco', 'salario_base', 'tss_porcentaje', 'exento_isr', 'tipo_contrato', 'activo']);
+
         $nomina->update($data);
+
+        $cambios = [];
+        foreach ($anterior as $campo => $valorAnterior) {
+            $valorNuevo = $nomina->{$campo};
+            if ((string) $valorAnterior === (string) $valorNuevo) continue;
+            $cambios[] = "{$campo}: " . ($valorAnterior ?? '—') . ' → ' . ($valorNuevo ?? '—');
+        }
+        if ($cambios) {
+            ActivityLog::registrar(
+                'nomina.empleado_editado',
+                NominaEmpleado::class,
+                $nomina->id,
+                "Nómina #{$nomina->id} ({$nomina->user?->name}): " . implode(' | ', $cambios)
+            );
+        }
 
         return redirect()->route('admin.nomina.index')
             ->with('success', 'Registro de nómina actualizado correctamente.');
@@ -209,6 +230,17 @@ class NominaController extends Controller
     // ── Destroy ────────────────────────────────────────────────────────────
     public function destroy(NominaEmpleado $nomina)
     {
+        // NominaEmpleado no usa SoftDeletes -- este delete() es físico e
+        // irreversible. Sin este log no quedaría ningún rastro de quién
+        // era el empleado ni de quién lo eliminó de la nómina.
+        $nomina->loadMissing('user');
+        ActivityLog::registrar(
+            'nomina.empleado_eliminado',
+            NominaEmpleado::class,
+            $nomina->id,
+            "Nómina #{$nomina->id} eliminada: {$nomina->user?->name} ({$nomina->user?->email}) | Cargo: {$nomina->cargo} | Salario base: {$nomina->salario_base}"
+        );
+
         $nomina->delete();
         return redirect()->route('admin.nomina.index')
             ->with('success', 'Empleado eliminado de la nómina.');
@@ -296,10 +328,27 @@ class NominaController extends Controller
         $totalDeduc = ($data['desc_tss'] ?? 0) + ($data['desc_isr'] ?? 0) + ($data['desc_otros'] ?? 0);
         $neto       = $totalIngresos - $totalDeduc;
 
+        // Snapshot antes de mutar -- editar el pago mensual (bonos,
+        // deducciones) afecta directamente cuánto se le paga a alguien ese
+        // mes, sin dejar ningún rastro de quién lo cambió ni el valor
+        // anterior.
+        $pagoAnterior = PagoNomina::where(['nomina_empleado_id' => $nomina->id, 'mes' => $mes])->first();
+        $netoAnterior = $pagoAnterior?->salario_neto;
+
         PagoNomina::updateOrCreate(
             ['nomina_empleado_id' => $nomina->id, 'mes' => $mes],
             array_merge($data, ['deducciones' => $totalDeduc, 'salario_neto' => $neto])
         );
+
+        if ($netoAnterior === null || (float) $netoAnterior !== (float) $neto) {
+            ActivityLog::registrar(
+                'nomina.pago_editado',
+                PagoNomina::class,
+                $pagoAnterior?->id,
+                "Pago de nómina #{$nomina->id} ({$nomina->user?->name}) | Mes: {$mes} | Salario neto: "
+                    . ($netoAnterior !== null ? number_format($netoAnterior, 2) : '—') . ' → ' . number_format($neto, 2)
+            );
+        }
 
         return back()->with('success', 'Pago actualizado correctamente.');
     }

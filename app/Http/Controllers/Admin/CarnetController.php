@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\CarnetIdentidad;
 use App\Models\CarnetZona;
 use App\Models\Matricula;
@@ -73,15 +74,37 @@ class CarnetController extends Controller
 
     public function suspender(CarnetIdentidad $carnet)
     {
+        $estadoAnterior = $carnet->estado;
         $nuevo = $carnet->estado === 'activo' ? 'suspendido' : 'activo';
         $carnet->update(['estado' => $nuevo]);
         CarnetQrService::invalidarCache($carnet);
+
+        // El carnet controla acceso físico al plantel vía QR -- sin esto no
+        // quedaba rastro de quién suspendió o reactivó el acceso de alguien.
+        $carnet->loadMissing('user');
+        ActivityLog::registrar(
+            'carnet.estado_cambiado',
+            CarnetIdentidad::class,
+            $carnet->id,
+            "Carnet #{$carnet->id} ({$carnet->user?->name}, {$carnet->tipo}): {$estadoAnterior} → {$nuevo}"
+        );
 
         return back()->with('success', "Carnet {$nuevo}.");
     }
 
     public function destroy(CarnetIdentidad $carnet)
     {
+        // CarnetIdentidad no usa SoftDeletes -- este delete() es físico e
+        // irreversible. Sin este log no quedaría ningún rastro de quién
+        // tenía este carnet ni de quién lo eliminó.
+        $carnet->loadMissing('user');
+        ActivityLog::registrar(
+            'carnet.eliminado',
+            CarnetIdentidad::class,
+            $carnet->id,
+            "Carnet #{$carnet->id} eliminado: {$carnet->user?->name} ({$carnet->tipo}) | Número: {$carnet->numero_carnet} | Estado: {$carnet->estado}"
+        );
+
         CarnetQrService::invalidarCache($carnet);
         $carnet->delete();
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\CasoSeguimiento;
 use App\Models\ConfigInstitucional;
 use App\Models\Estudiante;
@@ -178,7 +179,27 @@ class SeguimientoSocialController extends Controller
             'fecha_cierre'   => 'nullable|date|after_or_equal:fecha_apertura',
         ]);
 
+        // Snapshot antes de mutar -- casos de trabajo social (PII sensible,
+        // posible riesgo real para un menor). Bajar en silencio el nivel de
+        // riesgo o cerrar un caso no dejaba ningún rastro de quién lo hizo.
+        $anterior = $caso->only(['tipo', 'nivel_riesgo', 'estado', 'responsable_id']);
+
         $caso->update($data);
+
+        $cambios = [];
+        foreach ($anterior as $campo => $valorAnterior) {
+            $valorNuevo = $caso->{$campo};
+            if ((string) $valorAnterior === (string) $valorNuevo) continue;
+            $cambios[] = "{$campo}: " . ($valorAnterior ?? '—') . ' → ' . ($valorNuevo ?? '—');
+        }
+        if ($cambios) {
+            ActivityLog::registrar(
+                'seguimiento.caso_editado',
+                CasoSeguimiento::class,
+                $caso->id,
+                "Caso #{$caso->id} (Estudiante #{$caso->estudiante_id}): " . implode(' | ', $cambios)
+            );
+        }
 
         return back()->with('success', 'Caso actualizado correctamente.');
     }
@@ -187,6 +208,16 @@ class SeguimientoSocialController extends Controller
 
     public function destroy(CasoSeguimiento $caso)
     {
+        // CasoSeguimiento no usa SoftDeletes -- este delete() es físico e
+        // irreversible. Sin este log se podría eliminar el rastro de un
+        // caso de riesgo real para un estudiante sin dejar evidencia.
+        ActivityLog::registrar(
+            'seguimiento.caso_eliminado',
+            CasoSeguimiento::class,
+            $caso->id,
+            "Caso #{$caso->id} eliminado | Estudiante #{$caso->estudiante_id} | Tipo: {$caso->tipo} | Nivel de riesgo: {$caso->nivel_riesgo} | Estado: {$caso->estado}"
+        );
+
         $caso->delete();
         return redirect()
             ->route('admin.seguimiento-social.index')

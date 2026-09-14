@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Helpers\Setting;
+use App\Models\ActivityLog;
 use App\Models\Beca;
 use App\Models\BecaEstudiante;
 use App\Models\ConfigInstitucional;
@@ -144,7 +145,31 @@ class BecaController extends Controller
 
         $data['activo'] = $request->boolean('activo', true);
 
+        // Ni Beca ni BecaEstudiante tienen registrado_por/modificado_por --
+        // editar el valor de una beca afecta a TODOS los estudiantes que la
+        // tienen asignada a la vez, en silencio, sin este log.
+        $valorAnterior  = $beca->valor;
+        $tipoAnterior   = $beca->tipo;
+        $activoAnterior = $beca->activo;
+
         $beca->update($data);
+
+        $cambios = [];
+        if ((float) $valorAnterior !== (float) $beca->valor || $tipoAnterior !== $beca->tipo) {
+            $cambios[] = "valor: {$tipoAnterior} {$valorAnterior} → {$beca->tipo} {$beca->valor}";
+        }
+        if ($activoAnterior !== $beca->activo) {
+            $cambios[] = 'estado: ' . ($activoAnterior ? 'activa' : 'inactiva') . ' → ' . ($beca->activo ? 'activa' : 'inactiva');
+        }
+        if ($cambios) {
+            ActivityLog::registrar(
+                'beca.editada',
+                Beca::class,
+                $beca->id,
+                "Beca #{$beca->id} ({$beca->nombre}): " . implode(' | ', $cambios)
+                    . ' | Afecta a ' . $beca->becasEstudiante()->where('activo', true)->count() . ' estudiante(s) activo(s)'
+            );
+        }
 
         return redirect()->route('admin.becas.index')
             ->with('success', 'Beca actualizada correctamente.');
@@ -224,6 +249,8 @@ class BecaController extends Controller
             ->where('matricula_id', $data['matricula_id'])
             ->first();
 
+        $eraReactivacion = $existente && ! $existente->activo;
+
         if ($existente) {
             $existente->update([
                 'fecha_inicio' => $data['fecha_inicio'],
@@ -231,10 +258,22 @@ class BecaController extends Controller
                 'activo'       => true,
                 'notas'        => $data['notas'] ?? null,
             ]);
+            $becaEstudianteId = $existente->id;
         } else {
             $data['activo'] = true;
-            BecaEstudiante::create($data);
+            $becaEstudianteId = BecaEstudiante::create($data)->id;
         }
+
+        // Asignar una beca reduce lo que paga la familia -- sin esto no
+        // quedaba rastro de quién la asignó ni cuándo.
+        ActivityLog::registrar(
+            'beca.asignada',
+            BecaEstudiante::class,
+            $becaEstudianteId,
+            "Beca #{$data['beca_id']} asignada a Matrícula #{$data['matricula_id']}"
+                . ($eraReactivacion ? ' (reactivación)' : '')
+                . " | Desde: {$data['fecha_inicio']}" . (($data['fecha_fin'] ?? null) ? " hasta {$data['fecha_fin']}" : '')
+        );
 
         try {
             $becaEst = BecaEstudiante::where('beca_id', $data['beca_id'])
@@ -265,6 +304,14 @@ class BecaController extends Controller
     {
         $becaEstudiante->load(['beca', 'matricula.estudiante.representantes']);
         $becaEstudiante->update(['activo' => false, 'fecha_fin' => today()]);
+
+        ActivityLog::registrar(
+            'beca.revocada',
+            BecaEstudiante::class,
+            $becaEstudiante->id,
+            "Beca #{$becaEstudiante->beca_id} ({$becaEstudiante->beca?->nombre}) revocada de Matrícula #{$becaEstudiante->matricula_id}"
+                . ($becaEstudiante->matricula?->estudiante ? " ({$becaEstudiante->matricula->estudiante->nombre_completo})" : '')
+        );
 
         try {
             $estudiante = $becaEstudiante->matricula?->estudiante;

@@ -90,17 +90,40 @@
             {{ $asignacion->grupo?->grado?->nombre }} {{ $asignacion->grupo?->seccion?->nombre }}
         </div>
     </div>
-    <div style="display:flex;gap:.5rem;flex-shrink:0;">
+    <div style="display:flex;gap:.5rem;flex-shrink:0;flex-wrap:wrap;">
         <a href="{{ route('portal.docente.planif-anual.pdf', [$asignacion, $plan]) }}"
            style="background:#0f172a;color:#fff;border-radius:8px;padding:.42rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:.35rem;">
             <i class="bi bi-file-earmark-pdf-fill"></i>PDF
         </a>
+        <a href="{{ route('portal.docente.planif-anual.plantilla', [$asignacion, $plan]) }}"
+           style="background:#fff;color:#475569;border:1.5px solid #e2e8f0;border-radius:8px;padding:.42rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:.35rem;"
+           title="Plantilla en blanco (CSV) para llenar varias unidades fuera del sistema">
+            <i class="bi bi-file-earmark-arrow-down"></i>Plantilla
+        </a>
+        @if($plan->unidades->isNotEmpty())
+        <a href="{{ route('portal.docente.planif-anual.exportar', [$asignacion, $plan]) }}"
+           style="background:#fff;color:#475569;border:1.5px solid #e2e8f0;border-radius:8px;padding:.42rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:.35rem;"
+           title="Exportar las unidades actuales a CSV">
+            <i class="bi bi-file-earmark-excel"></i>Exportar
+        </a>
+        @endif
+        <button onclick="document.getElementById('importar-unidades-input').click()"
+            style="background:#fff;color:#475569;border:1.5px solid #e2e8f0;border-radius:8px;padding:.42rem .85rem;font-size:.78rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;"
+            title="Subir CSV/Excel de unidades (crea o actualiza por número)">
+            <i class="bi bi-file-earmark-arrow-up"></i>Importar
+        </button>
         <button onclick="agregarUnidad()"
             style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:.42rem .85rem;font-size:.78rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;">
             <i class="bi bi-plus-lg"></i>Agregar Unidad
         </button>
     </div>
 </div>
+
+<form id="form-importar-unidades" action="{{ route('portal.docente.planif-anual.importar', [$asignacion, $plan]) }}" method="POST" enctype="multipart/form-data" style="display:none;">
+    @csrf
+    <input type="file" id="importar-unidades-input" name="archivo" accept=".csv,.txt,.xlsx,.xls"
+        onchange="document.getElementById('form-importar-unidades').submit()">
+</form>
 
 {{-- Descripción del plan --}}
 <div style="margin-bottom:1rem;">

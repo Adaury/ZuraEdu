@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Asignacion;
 use App\Models\Asignatura;
 use App\Models\CalificacionAcademica;
+use App\Models\Docente;
 use App\Models\Grado;
 use App\Models\Grupo;
 use App\Models\Matricula;
@@ -73,6 +74,19 @@ class CalificacionPeriodoCerradoTest extends TestCase
         app()->forgetInstance('tenant');
 
         return compact('tenant', 'sy', 'asignacion', 'matricula');
+    }
+
+    /** Crea un docente y lo asigna como dueño de $asignacion (docente_id). */
+    private function docenteDe(Tenant $tenant, Asignacion $asignacion): User
+    {
+        app()->instance('tenant', $tenant);
+        $docenteUser = User::factory()->create(['activo' => true, 'tenant_id' => $tenant->id]);
+        $docenteUser->assignRole('Docente');
+        $docente = Docente::factory()->create(['user_id' => $docenteUser->id]);
+        $asignacion->update(['docente_id' => $docente->id]);
+        app()->forgetInstance('tenant');
+
+        return $docenteUser;
     }
 
     private function crearPeriodo(Tenant $tenant, SchoolYear $sy, int $numero, bool $cerrado): Periodo
@@ -191,5 +205,64 @@ class CalificacionPeriodoCerradoTest extends TestCase
 
         $response->assertOk();
         $this->assertDatabaseHas('calificaciones', ['matricula_id' => $e['matricula']->id]);
+    }
+
+    // ── Portal Docente (mismo bloqueo, agregado 2026-09-14 -- el portal
+    //    docente no comprobaba periodos.cerrado en absoluto, ver
+    //    project_bypass_periodo_cerrado_docente_2026_09_14) ────────────────
+
+    public function test_docente_guardar_celda_rechaza_si_el_periodo_esta_cerrado(): void
+    {
+        $e       = $this->crearEscenario();
+        $periodo = $this->crearPeriodo($e['tenant'], $e['sy'], 1, cerrado: true);
+        $docenteUser = $this->docenteDe($e['tenant'], $e['asignacion']);
+
+        $response = $this->actingAs($docenteUser)->patchJson(
+            route('portal.docente.calificaciones.acad.celda', $e['asignacion']),
+            ['matricula_id' => $e['matricula']->id, 'campo' => 'comp1_p1', 'valor' => 90]
+        );
+
+        $response->assertForbidden();
+        $this->assertDatabaseMissing('calificaciones_academicas', ['matricula_id' => $e['matricula']->id]);
+    }
+
+    public function test_docente_guardar_celda_funciona_si_el_periodo_esta_abierto(): void
+    {
+        $e       = $this->crearEscenario();
+        $this->crearPeriodo($e['tenant'], $e['sy'], 1, cerrado: false);
+        $docenteUser = $this->docenteDe($e['tenant'], $e['asignacion']);
+
+        $response = $this->actingAs($docenteUser)->patchJson(
+            route('portal.docente.calificaciones.acad.celda', $e['asignacion']),
+            ['matricula_id' => $e['matricula']->id, 'campo' => 'comp1_p1', 'valor' => 90]
+        );
+
+        $response->assertOk();
+        $this->assertDatabaseHas('calificaciones_academicas', ['matricula_id' => $e['matricula']->id, 'comp1_p1' => 90]);
+    }
+
+    public function test_docente_guardar_calificaciones_academica_congela_columna_del_periodo_cerrado(): void
+    {
+        $e  = $this->crearEscenario();
+        $this->crearPeriodo($e['tenant'], $e['sy'], 1, cerrado: true);
+        $this->crearPeriodo($e['tenant'], $e['sy'], 2, cerrado: false);
+        $docenteUser = $this->docenteDe($e['tenant'], $e['asignacion']);
+
+        app()->instance('tenant', $e['tenant']);
+        CalificacionAcademica::create([
+            'matricula_id' => $e['matricula']->id, 'asignacion_id' => $e['asignacion']->id,
+            'school_year_id' => $e['sy']->id, 'comp1_p1' => 80,
+        ]);
+        app()->forgetInstance('tenant');
+
+        $response = $this->actingAs($docenteUser)->post(
+            route('portal.docente.calificaciones.guardar', $e['asignacion']),
+            ['notas' => [$e['matricula']->id => ['p1' => 99, 'p2' => 70]]]
+        );
+
+        $response->assertRedirect();
+        $reg = CalificacionAcademica::where('matricula_id', $e['matricula']->id)->first();
+        $this->assertEquals(80.0, (float) $reg->comp1_p1, 'El período cerrado no debe cambiar aunque el docente lo intente.');
+        $this->assertEquals(70.0, (float) $reg->comp1_p2, 'El período abierto sí debe guardarse.');
     }
 }

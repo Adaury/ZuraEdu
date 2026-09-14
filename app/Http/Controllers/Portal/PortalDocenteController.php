@@ -1112,6 +1112,19 @@ class PortalDocenteController extends Controller
 
         $schoolYear = SchoolYear::actual();
 
+        // El lado Admin ya bloquea un período cerrado (guardarAcademica());
+        // este endpoint de "una celda" del portal docente no lo comprobaba
+        // -- un docente podía seguir editando comp{c}_pN de un período que
+        // Admin ya cerró. nota_cc/nota_ce no están atadas a un período (son
+        // post-año, igual que en el lado Admin) y no se bloquean por esto.
+        if (preg_match('/^comp[1-4]_[pr]([1-4])$/', $request->campo, $m)) {
+            $periodoCerrado = Periodo::where('school_year_id', $schoolYear?->id)
+                ->where('numero', (int) $m[1])
+                ->where('cerrado', true)
+                ->exists();
+            abort_if($periodoCerrado, 403, 'Este período está cerrado. No se pueden modificar sus calificaciones.');
+        }
+
         $cal = CalificacionAcademica::firstOrNew([
             'matricula_id'   => $request->matricula_id,
             'asignacion_id'  => $asignacion->id,
@@ -1190,6 +1203,11 @@ class PortalDocenteController extends Controller
             ]);
 
             $periodoId = (int) $request->periodo_id;
+
+            // Mismo bloqueo que CalificacionController::guardar() (Admin) --
+            // el portal docente no lo comprobaba en absoluto.
+            $periodoTecnico = Periodo::find($periodoId);
+            abort_if($periodoTecnico?->cerrado, 403, 'Este período está cerrado. No se pueden modificar sus calificaciones.');
 
             $ras = $asignacion->asignatura
                 ->resultadosAprendizaje()
@@ -1328,12 +1346,40 @@ class PortalDocenteController extends Controller
         // rec_per[mat_id][p1][0], rec_per[mat_id][p1][1], …
         $recPerInput = $request->input('rec_per', []);
 
+        // Mismo patrón que CalificacionAcademicaController::guardarAcademica()
+        // (Admin): un período cerrado no bloquea el guardado entero (bloquearía
+        // también los períodos que sí siguen abiertos) -- en su lugar, ese
+        // período queda congelado en su valor ya guardado. El portal docente
+        // no comprobaba esto en absoluto.
+        $periodosCerrados = Periodo::where('school_year_id', $schoolYear?->id)
+            ->where('cerrado', true)
+            ->pluck('numero')->all();
+
         foreach ($request->notas as $matriculaId => $vals) {
             $periodos = ['p1', 'p2', 'p3', 'p4'];
             $recAcad  = [];   // {p1: [r1,r2,...], p2: [...], ...}
             $finales  = [];   // nota final de cada período
 
+            // Se busca una sola vez por matrícula y se reutiliza más abajo
+            // también como snapshot "anterior" de la auditoría.
+            $anterior = CalificacionAcademica::where([
+                'matricula_id'   => $matriculaId,
+                'asignacion_id'  => $asignacion->id,
+                'school_year_id' => $schoolYear?->id,
+            ])->first();
+            $situacionAnterior = $anterior?->situacion;
+
             foreach ($periodos as $pk) {
+                $numeroPeriodo = (int) substr($pk, 1);
+                if (in_array($numeroPeriodo, $periodosCerrados, true)) {
+                    // Ignorar lo que haya mandado el request para este período
+                    // -- se conserva el valor ya guardado (comp1_pN, la misma
+                    // columna que lee esta misma rama más abajo).
+                    $finales[$pk] = $anterior?->{"comp1_p{$numeroPeriodo}"} !== null
+                        ? (float) $anterior->{"comp1_p{$numeroPeriodo}"} : null;
+                    continue;
+                }
+
                 $grade = isset($vals[$pk]) && $vals[$pk] !== '' ? (float) $vals[$pk] : null;
 
                 if ($grade === null) {
@@ -1375,16 +1421,6 @@ class PortalDocenteController extends Controller
             $fp2 = $finales['p2'] ?? null;
             $fp3 = $finales['p3'] ?? null;
             $fp4 = $finales['p4'] ?? null;
-
-            // Snapshot antes de mutar, para la auditoría -- este es el guardado
-            // masivo por período donde el docente decide A/R; antes no dejaba
-            // rastro (ver [[project_auditoria_boletin_completiva_gap_2026_09_13]]).
-            $anterior = CalificacionAcademica::where([
-                'matricula_id'   => $matriculaId,
-                'asignacion_id'  => $asignacion->id,
-                'school_year_id' => $schoolYear?->id,
-            ])->first();
-            $situacionAnterior = $anterior?->situacion;
 
             $rec = [
                 // comp_X_pN = nota final del período N (post-recuperación)
@@ -4017,6 +4053,11 @@ class PortalDocenteController extends Controller
         $importados = 0;
         $omitidos   = 0;
 
+        // Mismo bloqueo que guardarCalificaciones()/guardarCeldaAcad() -- una
+        // importación no debe poder colar notas de un período cerrado.
+        $periodosCerrados = Periodo::where('school_year_id', $schoolYear?->id)
+            ->where('cerrado', true)->pluck('numero')->all();
+
         foreach ($filas as $fila) {
             if ($fila['status'] === 'error' || ! $fila['matId']) {
                 $omitidos++;
@@ -4028,6 +4069,7 @@ class PortalDocenteController extends Controller
             if ($esTecnica) {
                 $pId = $fila['pId'];
                 if (! $pId) { $omitidos++; continue; }
+                if (Periodo::find($pId)?->cerrado) { $omitidos++; continue; }
 
                 $dbData = ['modificado_por' => auth()->id()];
                 $suma = 0.0; $hayNota = false;
@@ -4059,14 +4101,24 @@ class PortalDocenteController extends Controller
                 );
             } else {
                 ['p1' => $p1, 'p2' => $p2, 'p3' => $p3, 'p4' => $p4] = $notas + ['p1'=>null,'p2'=>null,'p3'=>null,'p4'=>null];
-                $filled = array_filter([$p1, $p2, $p3, $p4], fn($v) => $v !== null);
-                if (empty($filled)) { $omitidos++; continue; }
-                $nf = round(array_sum($filled) / count($filled), 2);
-                $situacionNueva = $nf >= 70 ? 'A' : 'R';
 
                 $anterior = CalificacionAcademica::where(
                     ['matricula_id' => $fila['matId'], 'asignacion_id' => $asignacion->id, 'school_year_id' => $schoolYear?->id]
                 )->first();
+
+                // Congelar columnas de períodos cerrados -- ignorar lo que
+                // traiga el archivo para esos períodos, conservar lo guardado.
+                foreach ([1 => &$p1, 2 => &$p2, 3 => &$p3, 4 => &$p4] as $n => &$valorPeriodo) {
+                    if (in_array($n, $periodosCerrados, true)) {
+                        $valorPeriodo = $anterior?->{"comp1_p{$n}"} !== null ? (float) $anterior->{"comp1_p{$n}"} : null;
+                    }
+                }
+                unset($valorPeriodo);
+
+                $filled = array_filter([$p1, $p2, $p3, $p4], fn($v) => $v !== null);
+                if (empty($filled)) { $omitidos++; continue; }
+                $nf = round(array_sum($filled) / count($filled), 2);
+                $situacionNueva = $nf >= 70 ? 'A' : 'R';
 
                 $rec = [
                     'comp1_p1' => $p1, 'comp2_p1' => $p1, 'comp3_p1' => $p1, 'comp4_p1' => $p1,
@@ -4136,6 +4188,10 @@ class PortalDocenteController extends Controller
 
         $importados = 0; $omitidos = 0; $errores = [];
 
+        // Mismo bloqueo que confirmarImportarCalificaciones()/guardarCalificaciones().
+        $periodosCerrados = Periodo::where('school_year_id', $schoolYear?->id)
+            ->where('cerrado', true)->pluck('numero')->all();
+
         if ($esTecnica) {
             $ras   = $asignacion->asignatura->resultadosAprendizaje()->where('activo', true)->orderBy('numero')->get();
             $numRA = $ras->count() ?: ($asignacion->asignatura->num_ra ?? 3);
@@ -4158,6 +4214,7 @@ class PortalDocenteController extends Controller
                 $pNum = (int) trim($row['periodo'] ?? 1);
                 $pId  = $periodoId ?: $this->getPeriodos($schoolYear)->where('numero', $pNum)->first()?->id;
                 if (! $pId) { $errores[] = "Fila {$linea}: período {$pNum} no encontrado."; $omitidos++; continue; }
+                if (Periodo::find($pId)?->cerrado) { $errores[] = "Fila {$linea}: el período {$pNum} está cerrado."; $omitidos++; continue; }
 
                 $data = ['modificado_por' => auth()->id()];
                 $suma = 0.0; $hayNota = false;
@@ -4189,14 +4246,24 @@ class PortalDocenteController extends Controller
             } else {
                 $p1 = $this->parseNota($row['p1'] ?? ''); $p2 = $this->parseNota($row['p2'] ?? '');
                 $p3 = $this->parseNota($row['p3'] ?? ''); $p4 = $this->parseNota($row['p4'] ?? '');
-                $filled = array_filter([$p1, $p2, $p3, $p4], fn($v) => $v !== null);
-                if (empty($filled)) { $errores[] = "Fila {$linea}: sin notas válidas."; $omitidos++; continue; }
-                $nf = round(array_sum($filled) / count($filled), 2);
-                $situacionNueva = $nf >= 70 ? 'A' : 'R';
 
                 $anterior = CalificacionAcademica::where(
                     ['matricula_id' => $mat->id, 'asignacion_id' => $asignacion->id, 'school_year_id' => $schoolYear?->id]
                 )->first();
+
+                // Congelar columnas de períodos cerrados -- igual que en
+                // confirmarImportarCalificaciones().
+                foreach ([1 => &$p1, 2 => &$p2, 3 => &$p3, 4 => &$p4] as $n => &$valorPeriodo) {
+                    if (in_array($n, $periodosCerrados, true)) {
+                        $valorPeriodo = $anterior?->{"comp1_p{$n}"} !== null ? (float) $anterior->{"comp1_p{$n}"} : null;
+                    }
+                }
+                unset($valorPeriodo);
+
+                $filled = array_filter([$p1, $p2, $p3, $p4], fn($v) => $v !== null);
+                if (empty($filled)) { $errores[] = "Fila {$linea}: sin notas válidas."; $omitidos++; continue; }
+                $nf = round(array_sum($filled) / count($filled), 2);
+                $situacionNueva = $nf >= 70 ? 'A' : 'R';
 
                 $rec = [
                     'comp1_p1' => $p1, 'comp2_p1' => $p1, 'comp3_p1' => $p1, 'comp4_p1' => $p1,

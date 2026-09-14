@@ -501,6 +501,7 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
     Route::prefix('/asignacion/{asignacion}/planes-clase')->name('planes-clase.')->group(function () {
         Route::get('/lista/pdf',                 [PlanClaseDocenteController::class, 'planesListaPdf'])->name('lista-pdf');
         Route::get('/lista/excel',               [PlanClaseDocenteController::class, 'planesListaExcel'])->name('lista-excel');
+        Route::get('/plantilla',                 [PlanClaseDocenteController::class, 'planesPlantilla'])->name('plantilla');
         Route::get('/',                          [PlanClaseDocenteController::class, 'planesIndex'])->name('index');
         Route::get('/crear',                     [PlanClaseDocenteController::class, 'planesCreate'])->name('create');
         Route::post('/',                         [PlanClaseDocenteController::class, 'planesStore'])->name('store');

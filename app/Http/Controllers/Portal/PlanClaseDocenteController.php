@@ -177,6 +177,30 @@ class PlanClaseDocenteController extends Controller
         return Storage::disk('public')->download($planClase->archivo_path, $planClase->archivo_nombre);
     }
 
+    /**
+     * Plantilla en blanco (PDF) con el mismo formato oficial que planesPdf() --
+     * para imprimir/llenar a mano o como referencia antes de crear el plan en
+     * el sistema. El "subir" ya existe (campo `archivo` de planesStore()) y
+     * el "bajar" del archivo adjunto también (planesDownload()); esto llena
+     * el hueco de la plantilla descargable, pedido explícito del usuario.
+     */
+    public function planesPlantilla(Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        if ($asignacion->docente_id !== $docente->id) abort(403);
+
+        $asignacion->load(['asignatura', 'grupo.grado', 'grupo.seccion']);
+        $estrategias = PlanClase::$estrategiasCatalogo;
+        $inst = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'portal.docente.planes_clase.plantilla_pdf',
+            compact('asignacion', 'docente', 'inst', 'estrategias')
+        )->setPaper('letter', 'portrait');
+
+        return $pdf->download('plantilla_plan_clase.pdf');
+    }
+
     public function planesListaPdf(Asignacion $asignacion)
     {
         $docente = $this->getDocente();

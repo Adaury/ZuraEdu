@@ -37,6 +37,9 @@
             <a href="{{ route('portal.docente.planes-clase.lista-excel', $asignacion) }}" class="btn btn-success btn-sm">
                 <i class="bi bi-file-earmark-excel-fill me-1"></i>Excel
             </a>
+            <a href="{{ route('portal.docente.planes-clase.plantilla', $asignacion) }}" class="btn btn-outline-secondary btn-sm" title="Plantilla en blanco para llenar a mano o como referencia">
+                <i class="bi bi-file-earmark-arrow-down me-1"></i>Plantilla
+            </a>
             <a href="{{ route('portal.docente.planes-clase.create', $asignacion) }}" class="btn btn-primary btn-sm">
                 <i class="bi bi-plus-circle me-1"></i> Nuevo Plan
             </a>

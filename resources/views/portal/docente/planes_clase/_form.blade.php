@@ -156,7 +156,12 @@
 
         {{-- Archivo --}}
         <div class="card shadow-sm mb-4">
-            <div class="card-header fw-semibold"><i class="bi bi-paperclip me-1"></i>Archivo Adjunto</div>
+            <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-paperclip me-1"></i>Archivo Adjunto</span>
+                <a href="{{ route('portal.docente.planes-clase.plantilla', $asignacion) }}" class="small">
+                    <i class="bi bi-download me-1"></i>Descargar plantilla en blanco
+                </a>
+            </div>
             <div class="card-body">
                 @if($isEdit && $planData?->tieneArchivo())
                 <div class="alert alert-info py-2 small mb-2">
@@ -165,7 +170,7 @@
                 @endif
                 <input type="file" name="archivo" class="form-control @error('archivo') is-invalid @enderror"
                     accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png">
-                <div class="form-text">PDF, Word, Excel, PPT — máx. 10 MB</div>
+                <div class="form-text">PDF, Word, Excel, PPT — máx. 10 MB. ¿No sabes por dónde empezar? Descarga la plantilla en blanco, complétala y súbela aquí.</div>
                 @error('archivo')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
         </div>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\AlertaSistema;
 use App\Models\ConfigInstitucional;
 use App\Models\Docente;
@@ -174,7 +175,35 @@ class DisciplinaController extends Controller
 
         $data['resuelto'] = $request->boolean('resuelto');
 
+        // Snapshot legible antes de mutar -- suavizar o cambiar en silencio
+        // un expediente disciplinario (ej. de falta_grave a tardanza) no
+        // dejaba ningún rastro de quién lo hizo ni cuál era el valor
+        // anterior.
+        $legible = fn ($campo, FaltaDisciplinaria $f) => match ($campo) {
+            'fecha'    => optional($f->fecha)->format('Y-m-d'),
+            'resuelto' => $f->resuelto ? 'Sí' : 'No',
+            default    => $f->{$campo},
+        };
+
+        $campos   = ['tipo', 'descripcion', 'fecha', 'resuelto', 'notas_resolucion'];
+        $anterior = collect($campos)->mapWithKeys(fn ($c) => [$c => $legible($c, $disciplina)])->all();
+
         $disciplina->update($data);
+
+        $cambios = [];
+        foreach ($campos as $campo) {
+            $valorNuevo = $legible($campo, $disciplina);
+            if ((string) $anterior[$campo] === (string) $valorNuevo) continue;
+            $cambios[] = "{$campo}: " . ($anterior[$campo] ?? '—') . ' → ' . ($valorNuevo ?? '—');
+        }
+        if ($cambios) {
+            ActivityLog::registrar(
+                'disciplina.falta_editada',
+                FaltaDisciplinaria::class,
+                $disciplina->id,
+                "Falta #{$disciplina->id} (Estudiante #{$disciplina->estudiante_id}): " . implode(' | ', $cambios)
+            );
+        }
 
         return redirect()->route('admin.disciplina.index')
             ->with('success', 'Falta disciplinaria actualizada.');
@@ -184,6 +213,19 @@ class DisciplinaController extends Controller
 
     public function destroy(FaltaDisciplinaria $disciplina)
     {
+        // FaltaDisciplinaria no usa SoftDeletes -- este delete() es físico
+        // e irreversible. Sin este log se podría borrar evidencia de mala
+        // conducta sin dejar ningún rastro de quién lo hizo.
+        $disciplina->loadMissing('estudiante');
+        ActivityLog::registrar(
+            'disciplina.falta_eliminada',
+            FaltaDisciplinaria::class,
+            $disciplina->id,
+            "Falta #{$disciplina->id} eliminada | Estudiante: " . ($disciplina->estudiante?->nombre_completo ?? "#{$disciplina->estudiante_id}")
+                . " | Tipo: {$disciplina->tipo} | Fecha: " . optional($disciplina->fecha)->format('Y-m-d')
+                . " | Descripción: " . \Illuminate\Support\Str::limit($disciplina->descripcion, 200)
+        );
+
         $disciplina->delete();
 
         return back()->with('success', 'Falta disciplinaria eliminada.');

@@ -611,8 +611,11 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::post('/nueva/ra',                 [PlanificacionDocenteController::class, 'storeRa'])->name('store-ra');
         Route::get('/nueva/actividad',           [PlanificacionDocenteController::class, 'createActividad'])->name('create-actividad');
         Route::post('/nueva/actividad',          [PlanificacionDocenteController::class, 'storeActividad'])->name('store-actividad');
+        Route::get('/nueva/ra/plantilla',        [PlanificacionDocenteController::class, 'plantilla'])->name('plantilla-ra');
+        Route::post('/nueva/ra/importar',        [PlanificacionDocenteController::class, 'importarRa'])->name('importar-ra');
         Route::get('/{planificacion}',           [PlanificacionDocenteController::class, 'show'])->name('show');
         Route::get('/{planificacion}/editar',    [PlanificacionDocenteController::class, 'edit'])->name('edit');
+        Route::get('/{planificacion}/exportar-ra', [PlanificacionDocenteController::class, 'exportarRa'])->name('exportar-ra');
         Route::put('/{planificacion}',           [PlanificacionDocenteController::class, 'update'])->name('update');
         Route::patch('/{planificacion}/publicado',[PlanificacionDocenteController::class, 'togglePublicado'])->name('toggle-publicado');
         Route::delete('/{planificacion}',        [PlanificacionDocenteController::class, 'destroy'])->name('destroy');

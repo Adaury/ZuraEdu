@@ -52,7 +52,17 @@
             @if($schoolYear) · {{ $schoolYear->nombre }} @endif
         </div>
     </div>
-    <div style="display:flex;gap:.5rem;">
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <a href="{{ route('portal.docente.planificacion.plantilla-ra', $asignacion) }}"
+           style="background:#fff;color:#475569;border:1.5px solid #e2e8f0;border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.35rem;"
+           title="Plantilla CSV para preparar una planificación por RA fuera del sistema">
+            <i class="bi bi-file-earmark-arrow-down"></i>Plantilla RA
+        </a>
+        <button onclick="document.getElementById('importar-ra-input').click()"
+            style="background:#fff;color:#475569;border:1.5px solid #e2e8f0;border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:.35rem;"
+            title="Subir CSV/Excel de RA (crea una planificación nueva)">
+            <i class="bi bi-file-earmark-arrow-up"></i>Importar RA
+        </button>
         <a href="{{ route('portal.docente.planificacion.create-ra', $asignacion) }}"
            style="background:#1d4ed8;color:#fff;border-radius:8px;padding:.4rem .85rem;font-size:.78rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.35rem;">
             <i class="bi bi-plus-circle"></i>Por RA
@@ -63,6 +73,12 @@
         </a>
     </div>
 </div>
+
+<form id="form-importar-ra" action="{{ route('portal.docente.planificacion.importar-ra', $asignacion) }}" method="POST" enctype="multipart/form-data" style="display:none;">
+    @csrf
+    <input type="file" id="importar-ra-input" name="archivo" accept=".csv,.txt,.xlsx,.xls"
+        onchange="document.getElementById('form-importar-ra').submit()">
+</form>
 
 @if(session('success'))
 <div style="background:#dcfce7;color:#15803d;border-radius:8px;padding:.6rem 1rem;margin-bottom:.75rem;font-size:.82rem;display:flex;align-items:center;gap:.5rem;">

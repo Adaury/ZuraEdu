@@ -76,6 +76,13 @@
             {{ $asignacion->asignatura?->nombre }} · {{ $asignacion->grupo?->nombre_completo }}
         </div>
     </div>
+    @if($planificacion->tipo === 'ra')
+    <a href="{{ route('portal.docente.planificacion.exportar-ra', [$asignacion, $planificacion]) }}" class="no-print"
+       style="background:#f1f5f9;color:#374151;border-radius:8px;padding:.4rem .85rem;font-size:.8rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.4rem;"
+       title="Exportar los RA de esta planificación a CSV">
+        <i class="bi bi-file-earmark-arrow-down"></i>Exportar
+    </a>
+    @endif
     <a href="{{ route('portal.docente.planificacion.edit', [$asignacion, $planificacion]) }}"
        style="background:#1d4ed8;color:#fff;border-radius:8px;padding:.4rem .85rem;font-size:.8rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:.4rem;">
         <i class="bi bi-pencil-fill"></i>Editar

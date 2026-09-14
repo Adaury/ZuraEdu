@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use App\Traits\HasDocenteContext;
+use App\Traits\NormalizesFileEncoding;
 use App\Models\Asignacion;
 use App\Models\Docente;
 use App\Models\Planificacion;
@@ -17,6 +18,21 @@ use Illuminate\Http\Request;
 class PlanificacionDocenteController extends Controller
 {
     use HasDocenteContext;
+    use NormalizesFileEncoding;
+
+    /**
+     * Columnas del CSV de planificación por RA. Los campos de la
+     * planificación (familia_profesional..fecha_fin) van repetidos en cada
+     * fila (formato "ancho", una fila = un RA) porque un archivo crea UNA
+     * sola Planificacion con N items -- se toman del primer valor no vacío
+     * encontrado entre todas las filas.
+     */
+    private const COLUMNAS_RA = [
+        'familia_profesional', 'denominacion', 'modulo_nombre', 'mf_codigo', 'uc_codigo',
+        'sesion', 'nivel', 'horas', 'fecha_inicio', 'fecha_fin',
+        'ra_codigo', 'ra_descripcion', 'nivel_taxonomico', 'elementos_capacidad',
+        'fecha_ra_desde', 'fecha_ra_hasta', 'actividades', 'instrumentos_evaluacion', 'contenidos',
+    ];
 
     private function schoolYear(): SchoolYear
     {
@@ -447,5 +463,178 @@ class PlanificacionDocenteController extends Controller
         $planificacion->delete();
         return redirect()->route('portal.docente.planificacion.index', $asignacion)
             ->with('success', 'Planificación eliminada.');
+    }
+
+    // ── Plantilla / Importar / Exportar (por RA) ───────────────────────────
+    // Solo para el tipo "ra": tiene una lista de items naturalmente tabular
+    // (como las unidades de Planificación Anual). El tipo "actividad" es un
+    // único bloque por plan (no una lista), así que no aplica un CSV masivo.
+
+    public function plantilla(Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        $this->verificarAsignacion($asignacion, $docente);
+
+        $comun = ['Mecánica Automotriz', 'Mantenimiento de Motores', 'Motores I', 'MF01', 'UC0001', '1ra sesión', 'II', 40, '2025-08-25', '2025-12-19'];
+
+        $filas = [
+            array_merge($comun, ['RA1', 'Diagnostica fallas del sistema de encendido.', 'Aplicar', 'Identifica componentes;Interpreta manuales técnicos', '2025-08-25', '2025-09-19', 'Práctica de taller guiada.', 'Lista de cotejo', 'Sistema de encendido convencional y electrónico.']),
+            array_merge($comun, ['RA2', 'Repara fallas del sistema de encendido.', 'Aplicar', 'Ejecuta reparación siguiendo protocolo', '2025-09-22', '2025-10-17', 'Práctica de taller supervisada.', 'Rúbrica de desempeño', 'Procedimientos de reparación y normas de seguridad.']),
+        ];
+
+        return $this->generarCsvResponse(self::COLUMNAS_RA, $filas, 'plantilla_planificacion_ra');
+    }
+
+    public function exportarRa(Asignacion $asignacion, Planificacion $planificacion)
+    {
+        $docente = $this->getDocente();
+        $this->verificarAsignacion($asignacion, $docente);
+        if ($planificacion->asignacion_id !== $asignacion->id) abort(404);
+        abort_unless($planificacion->tipo === 'ra', 422, 'Solo las planificaciones por RA se pueden exportar.');
+
+        $comun = [
+            $planificacion->familia_profesional, $planificacion->denominacion, $planificacion->modulo_nombre,
+            $planificacion->mf_codigo, $planificacion->uc_codigo, $planificacion->sesion, $planificacion->nivel,
+            $planificacion->horas, optional($planificacion->fecha_inicio)->format('Y-m-d'), optional($planificacion->fecha_fin)->format('Y-m-d'),
+        ];
+
+        $filas = $planificacion->raItems->map(function (PlanificacionRaItem $item) use ($comun) {
+            $fechas = $item->fechas[0] ?? [];
+            $elementos = collect($item->elementos_capacidad ?? [])->pluck('descripcion')->implode(';');
+            return array_merge($comun, [
+                $item->ra_codigo, $item->ra_descripcion, $item->nivel_taxonomico, $elementos,
+                $fechas['desde'] ?? '', $fechas['hasta'] ?? '',
+                $item->actividades, $item->instrumentos_evaluacion, $item->contenidos,
+            ]);
+        })->all();
+
+        $slug = \Illuminate\Support\Str::slug($planificacion->modulo_nombre ?: $planificacion->denominacion ?: 'planificacion-ra');
+        return $this->generarCsvResponse(self::COLUMNAS_RA, $filas, "planificacion_ra_{$slug}");
+    }
+
+    /**
+     * Sube un CSV/Excel con el formato de plantilla() y crea UNA
+     * Planificacion nueva (tipo=ra) con todos sus PlanificacionRaItem --
+     * equivalente a llenar storeRa() a mano fila por fila, pero de una vez.
+     */
+    public function importarRa(Request $request, Asignacion $asignacion)
+    {
+        $docente = $this->getDocente();
+        $this->verificarAsignacion($asignacion, $docente);
+
+        $request->validate([
+            'archivo' => 'required|file|mimes:csv,txt,xlsx,xls|max:5120',
+        ]);
+
+        $rows = $this->leerArchivoImportGenerico($request->file('archivo'));
+        if (empty($rows)) {
+            return back()->with('error', 'El archivo no tiene filas para importar.');
+        }
+
+        // Metadata del plan: primer valor no vacío encontrado entre todas las filas.
+        $camposComunes = ['familia_profesional', 'denominacion', 'modulo_nombre', 'mf_codigo', 'uc_codigo', 'sesion', 'nivel', 'horas', 'fecha_inicio', 'fecha_fin'];
+        $meta = [];
+        foreach ($camposComunes as $campo) {
+            foreach ($rows as $row) {
+                if (trim($row[$campo] ?? '') !== '') { $meta[$campo] = trim($row[$campo]); break; }
+            }
+        }
+
+        $schoolYear = $this->schoolYear();
+
+        $plan = Planificacion::create([
+            'asignacion_id'       => $asignacion->id,
+            'school_year_id'      => $schoolYear->id,
+            'tipo'                => 'ra',
+            'familia_profesional' => $meta['familia_profesional'] ?? null,
+            'denominacion'        => $meta['denominacion'] ?? null,
+            'modulo_nombre'       => $meta['modulo_nombre'] ?? null,
+            'mf_codigo'           => $meta['mf_codigo'] ?? null,
+            'uc_codigo'           => $meta['uc_codigo'] ?? null,
+            'sesion'              => $meta['sesion'] ?? null,
+            'nivel'               => $meta['nivel'] ?? null,
+            'horas'               => $meta['horas'] ?? null,
+            'fecha_inicio'        => $meta['fecha_inicio'] ?? null,
+            'fecha_fin'           => $meta['fecha_fin'] ?? null,
+            'publicado'           => false,
+            'creado_por'          => auth()->id(),
+        ]);
+
+        $orden = 0;
+        foreach ($rows as $row) {
+            if (trim($row['ra_descripcion'] ?? '') === '' && trim($row['ra_codigo'] ?? '') === '') continue;
+
+            $elementos = [];
+            foreach (array_filter(explode(';', $row['elementos_capacidad'] ?? '')) as $ec) {
+                $ec = trim($ec);
+                if ($ec !== '') $elementos[] = ['descripcion' => $ec];
+            }
+            $fechas = [];
+            if (trim($row['fecha_ra_desde'] ?? '') !== '' || trim($row['fecha_ra_hasta'] ?? '') !== '') {
+                $fechas[] = ['desde' => $row['fecha_ra_desde'] ?? null, 'hasta' => $row['fecha_ra_hasta'] ?? null];
+            }
+
+            PlanificacionRaItem::create([
+                'planificacion_id'        => $plan->id,
+                'orden'                   => ++$orden,
+                'ra_codigo'               => $row['ra_codigo'] ?: null,
+                'ra_descripcion'          => $row['ra_descripcion'] ?: null,
+                'nivel_taxonomico'        => $row['nivel_taxonomico'] ?: null,
+                'elementos_capacidad'     => $elementos ?: null,
+                'fechas'                  => $fechas ?: null,
+                'actividades'             => $row['actividades'] ?: null,
+                'instrumentos_evaluacion' => $row['instrumentos_evaluacion'] ?: null,
+                'contenidos'              => $row['contenidos'] ?: null,
+            ]);
+        }
+
+        if ($orden === 0) {
+            $plan->delete();
+            return back()->with('error', 'Ninguna fila tenía código o descripción de RA -- no se creó la planificación.');
+        }
+
+        return redirect()->route('portal.docente.planificacion.show', [$asignacion, $plan])
+            ->with('success', "Planificación creada con {$orden} resultado(s) de aprendizaje importado(s).");
+    }
+
+    private function generarCsvResponse(array $headers, array $rows, string $nombre): \Illuminate\Http\Response
+    {
+        $csv = "\xEF\xBB\xBF" . implode(',', $headers) . "\n";
+        foreach ($rows as $row) {
+            $csv .= implode(',', array_map(fn ($v) => '"' . str_replace('"', '""', (string) $v) . '"', $row)) . "\n";
+        }
+        return response($csv, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $nombre . '.csv"',
+        ]);
+    }
+
+    private function leerArchivoImportGenerico($archivo): array
+    {
+        $ext  = strtolower($archivo->getClientOriginalExtension());
+        $rows = [];
+
+        if (in_array($ext, ['xlsx', 'xls'])) {
+            $sheet  = \PhpOffice\PhpSpreadsheet\IOFactory::load($archivo->getPathname())
+                        ->getActiveSheet()->toArray(null, true, true, false);
+            $header = array_map('strtolower', array_map('trim', $sheet[0] ?? []));
+            foreach (array_slice($sheet, 1) as $r) {
+                $rows[] = array_combine($header, array_pad($r, count($header), ''));
+            }
+            return $rows;
+        }
+
+        $raw    = $this->normalizeToUtf8(file_get_contents($archivo->getPathname()));
+        $lines  = array_values(array_filter(explode("\n", str_replace(["\r\n", "\r"], "\n", ltrim($raw, "\xEF\xBB\xBF")))));
+        $delim  = substr_count($lines[0] ?? '', ';') > substr_count($lines[0] ?? '', ',') ? ';' : ',';
+        $header = array_map('strtolower', array_map('trim', str_getcsv($lines[0] ?? '', $delim)));
+
+        foreach (array_slice($lines, 1) as $line) {
+            if (trim($line) === '') continue;
+            $cols   = str_getcsv($line, $delim);
+            $rows[] = array_combine($header, array_pad($cols, count($header), ''));
+        }
+
+        return $rows;
     }
 }

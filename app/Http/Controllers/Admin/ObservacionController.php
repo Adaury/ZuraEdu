@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Docente;
 use App\Models\Grupo;
 use App\Models\Notificacion;
@@ -99,6 +100,19 @@ class ObservacionController extends Controller
             }
         }
 
+        // Observacion no usa SoftDeletes -- este delete() es físico e
+        // irreversible. Sin este log se podría borrar la nota de un
+        // docente sobre un estudiante sin dejar ningún rastro.
+        $observacion->loadMissing(['estudiante', 'docente']);
+        ActivityLog::registrar(
+            'observacion.eliminada',
+            \App\Models\Observacion::class,
+            $observacion->id,
+            "Observación #{$observacion->id} eliminada | Estudiante: " . ($observacion->estudiante?->nombre_completo ?? "#{$observacion->estudiante_id}")
+                . " | Docente: " . ($observacion->docente?->nombre_completo ?? "#{$observacion->docente_id}")
+                . " | Tipo: {$observacion->tipo} | Privada: " . ($observacion->privada ? 'Sí' : 'No')
+        );
+
         $observacion->delete();
         return back()->with('success', 'Observación eliminada.');
     }
@@ -115,6 +129,18 @@ class ObservacionController extends Controller
 
         $eraPrivada = $observacion->privada;
         $observacion->update(['privada' => !$observacion->privada]);
+
+        // El paso privada->pública ya notificaba al estudiante/representante
+        // (más abajo), pero ningún sentido dejaba rastro de QUIÉN cambió la
+        // visibilidad -- en particular pública->privada ("ocultarla" después
+        // de que ya pudo haberse visto) no tenía ni notificación ni log.
+        ActivityLog::registrar(
+            'observacion.visibilidad_cambiada',
+            \App\Models\Observacion::class,
+            $observacion->id,
+            "Observación #{$observacion->id} (Estudiante #{$observacion->estudiante_id}): "
+                . ($eraPrivada ? 'privada → pública' : 'pública → privada')
+        );
 
         // Si pasó de privada a pública, notificar al estudiante/representante
         if ($eraPrivada && !$observacion->privada) {

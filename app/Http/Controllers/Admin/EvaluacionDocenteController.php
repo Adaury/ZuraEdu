@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\ConfigInstitucional;
 use App\Models\Docente;
 use App\Models\EvaluacionDocente;
@@ -129,6 +130,26 @@ class EvaluacionDocenteController extends Controller
     // ── Destroy ────────────────────────────────────────────────────────────
     public function destroy(EvaluacionDocente $evaluacionDocente)
     {
+        // EvaluacionDocente no usa SoftDeletes -- este delete() es físico e
+        // irreversible. Sin este log se podría borrar una evaluación (ej.
+        // con puntaje bajo que afecte la renovación de un docente) sin
+        // dejar ningún rastro de quién lo hizo.
+        $evaluacionDocente->loadMissing(['docente', 'evaluador']);
+        $promedio = round((
+            $evaluacionDocente->puntualidad + $evaluacionDocente->dominio_contenido
+            + $evaluacionDocente->metodologia + $evaluacionDocente->relacion_estudiantes
+            + $evaluacionDocente->planificacion
+        ) / 5, 2);
+
+        ActivityLog::registrar(
+            'evaluacion_docente.eliminada',
+            EvaluacionDocente::class,
+            $evaluacionDocente->id,
+            "Evaluación #{$evaluacionDocente->id} eliminada | Docente: {$evaluacionDocente->docente?->nombre_completo}"
+                . " | Período: {$evaluacionDocente->periodo_evaluado} | Promedio: {$promedio}"
+                . " | Evaluador original: {$evaluacionDocente->evaluador?->name}"
+        );
+
         $evaluacionDocente->delete();
 
         return redirect()

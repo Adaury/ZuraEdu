@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\BoletinConfig;
 use App\Models\ConfigInstitucional;
 use App\Models\Estudiante;
@@ -76,10 +77,32 @@ class SaludController extends Controller
             'num_seguro'          => 'nullable|string|max:60',
         ]);
 
-        FichaSalud::updateOrCreate(
+        // Snapshot antes de mutar -- un cambio erróneo o malicioso en
+        // alergias/medicamentos/tipo de sangre puede ser peligroso para la
+        // vida del estudiante. Se audita el valor completo (no solo "cambió")
+        // porque aquí, a diferencia de otros módulos, lo importante es poder
+        // verificar exactamente qué decía antes.
+        $anterior = FichaSalud::where('estudiante_id', $estudiante->id)->first();
+
+        $ficha = FichaSalud::updateOrCreate(
             ['estudiante_id' => $estudiante->id],
             $data
         );
+
+        $cambios = [];
+        foreach ($data as $campo => $valorNuevo) {
+            $valorAnterior = $anterior?->{$campo};
+            if ((string) $valorAnterior === (string) $valorNuevo) continue;
+            $cambios[] = "{$campo}: " . ($valorAnterior ?: '—') . ' → ' . ($valorNuevo ?: '—');
+        }
+        if ($cambios) {
+            ActivityLog::registrar(
+                'salud.ficha_editada',
+                FichaSalud::class,
+                $ficha->id,
+                "Ficha de salud de Estudiante #{$estudiante->id} ({$estudiante->nombre_completo}): " . implode(' | ', $cambios)
+            );
+        }
 
         return redirect()
             ->route('admin.salud.ficha', $estudiante)
@@ -200,7 +223,32 @@ class SaludController extends Controller
 
         $data['notificado_representante'] = $request->boolean('notificado_representante');
 
+        // Snapshot antes de mutar -- en particular notificado_representante:
+        // alguien podría cambiarlo de false a true en silencio para
+        // encubrir que nunca se avisó a la familia de un incidente médico.
+        $anterior = $incidente->only(['tipo', 'fecha', 'remitido_a', 'notificado_representante']);
+
         $incidente->update($data);
+
+        $cambios = [];
+        foreach ($anterior as $campo => $valorAnterior) {
+            $valorNuevo = $campo === 'notificado_representante'
+                ? ($incidente->notificado_representante ? 'Sí' : 'No')
+                : $incidente->{$campo};
+            $valorAnteriorCmp = $campo === 'notificado_representante'
+                ? ($valorAnterior ? 'Sí' : 'No')
+                : $valorAnterior;
+            if ((string) $valorAnteriorCmp === (string) $valorNuevo) continue;
+            $cambios[] = "{$campo}: " . ($valorAnteriorCmp ?? '—') . ' → ' . ($valorNuevo ?? '—');
+        }
+        if ($cambios) {
+            ActivityLog::registrar(
+                'salud.incidente_editado',
+                IncidenteMedico::class,
+                $incidente->id,
+                "Incidente #{$incidente->id} (Estudiante #{$incidente->estudiante_id}): " . implode(' | ', $cambios)
+            );
+        }
 
         return redirect()
             ->route('admin.salud.incidentes')
@@ -212,6 +260,19 @@ class SaludController extends Controller
      */
     public function eliminarIncidente(IncidenteMedico $incidente)
     {
+        // IncidenteMedico no usa SoftDeletes -- este delete() es físico e
+        // irreversible. Sin este log se podría borrar evidencia de un
+        // incidente médico (y de si se notificó o no a la familia) sin
+        // dejar rastro.
+        ActivityLog::registrar(
+            'salud.incidente_eliminado',
+            IncidenteMedico::class,
+            $incidente->id,
+            "Incidente #{$incidente->id} eliminado | Estudiante #{$incidente->estudiante_id} | Tipo: {$incidente->tipo} | Fecha: "
+                . optional($incidente->fecha)->format('Y-m-d')
+                . ' | Notificado al representante: ' . ($incidente->notificado_representante ? 'Sí' : 'No')
+        );
+
         $incidente->delete();
 
         return back()->with('success', 'Incidente eliminado.');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Traits\AsignaMateriasBasicas;
 use App\Traits\NormalizesFileEncoding;
+use App\Models\ActivityLog;
 use App\Models\Estudiante;
 use App\Models\Grado;
 use App\Models\Grupo;
@@ -229,7 +230,29 @@ class EstudianteController extends Controller
             $data['foto'] = $this->procesarFoto($request->file('foto'), 'fotos/estudiantes');
         }
 
+        // Snapshot antes de mutar -- cambiar en silencio la cédula, fecha de
+        // nacimiento u otros datos de identidad de un estudiante (riesgo de
+        // fraude de identidad/matrícula) no dejaba ningún rastro.
+        $camposSensibles = ['cedula', 'nombres', 'apellidos', 'fecha_nacimiento', 'estado'];
+        $anterior = $estudiante->only($camposSensibles);
+
         $estudiante->update($data);
+
+        $cambios = [];
+        foreach ($camposSensibles as $campo) {
+            $valorAnterior = $anterior[$campo];
+            $valorNuevo    = $estudiante->{$campo};
+            if ((string) $valorAnterior === (string) $valorNuevo) continue;
+            $cambios[] = "{$campo}: " . ($valorAnterior ?? '—') . ' → ' . ($valorNuevo ?? '—');
+        }
+        if ($cambios) {
+            ActivityLog::registrar(
+                'estudiante.editado',
+                Estudiante::class,
+                $estudiante->id,
+                "Estudiante #{$estudiante->id}: " . implode(' | ', $cambios)
+            );
+        }
 
         return redirect()->route('admin.estudiantes.index')
                          ->with('success', 'Estudiante actualizado correctamente.');

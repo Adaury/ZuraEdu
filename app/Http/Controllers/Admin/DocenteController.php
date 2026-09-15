@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Asignacion;
 use App\Models\Docente;
 use App\Models\SchoolYear;
@@ -116,6 +117,11 @@ class DocenteController extends Controller
     {
         $data = $request->validated();
 
+        // Snapshot antes de mutar -- cambiar en silencio la cédula u otros
+        // datos de identidad de un docente no dejaba ningún rastro.
+        $camposSensibles = ['cedula', 'nombres', 'apellidos', 'email'];
+        $anterior = $docente->only($camposSensibles);
+
         if ($request->hasFile('foto')) {
             if ($docente->foto) {
                 Storage::disk('public')->delete($docente->foto);
@@ -148,6 +154,22 @@ class DocenteController extends Controller
                     ->withErrors(['cedula' => 'La cédula ingresada ya está registrada para otro docente.']);
             }
             throw $e;
+        }
+
+        $cambios = [];
+        foreach ($camposSensibles as $campo) {
+            $valorAnterior = $anterior[$campo];
+            $valorNuevo    = $docente->{$campo};
+            if ((string) $valorAnterior === (string) $valorNuevo) continue;
+            $cambios[] = "{$campo}: " . ($valorAnterior ?? '—') . ' → ' . ($valorNuevo ?? '—');
+        }
+        if ($cambios) {
+            ActivityLog::registrar(
+                'docente.editado',
+                Docente::class,
+                $docente->id,
+                "Docente #{$docente->id}: " . implode(' | ', $cambios)
+            );
         }
 
         $msg = 'Docente actualizado correctamente.';

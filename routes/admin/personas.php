@@ -67,9 +67,13 @@ Route::middleware('can:gestionar-grupos')->group(function () {
     Route::get('grupos/{grupo}/asistencia-pdf',    [GrupoController::class, 'asistenciaPdf'])->name('grupos.asistencia-pdf');
     Route::get('grupos/{grupo}/notas-pdf',         [GrupoController::class, 'notasPdf'])->name('grupos.notas-pdf');
     Route::resource('grupos', GrupoController::class);
-    Route::post('secciones',              [\App\Http\Controllers\Admin\SeccionController::class, 'store'])->name('secciones.store');
-    Route::put('secciones/{seccion}',     [\App\Http\Controllers\Admin\SeccionController::class, 'update'])->name('secciones.update');
-    Route::delete('secciones/{seccion}',  [\App\Http\Controllers\Admin\SeccionController::class, 'destroy'])->name('secciones.destroy');
+    // Nombre/URI distintos de admin.secciones.* (PaginaSeccionController, bloques
+    // del sitio público en routes/admin/sitio.php) para evitar que ambos grupos
+    // de rutas colisionen en la misma tabla de matching de Laravel (mismo
+    // método+URI+nombre pisaba silenciosamente al que se registrara primero).
+    Route::post('secciones-academicas',              [\App\Http\Controllers\Admin\SeccionController::class, 'store'])->name('secciones-academicas.store');
+    Route::put('secciones-academicas/{seccion}',     [\App\Http\Controllers\Admin\SeccionController::class, 'update'])->name('secciones-academicas.update');
+    Route::delete('secciones-academicas/{seccion}',  [\App\Http\Controllers\Admin\SeccionController::class, 'destroy'])->name('secciones-academicas.destroy');
 });
 
 // ── Inscripciones (Matrícula → Inscripción → Asignación) ─────────────────

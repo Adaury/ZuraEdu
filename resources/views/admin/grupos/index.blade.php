@@ -286,7 +286,7 @@
             <div class="modal-body px-4 py-3">
 
                 {{-- Add new section form --}}
-                <form action="{{ route('admin.secciones.store') }}" method="POST" class="d-flex gap-2 mb-3">
+                <form action="{{ route('admin.secciones-academicas.store') }}" method="POST" class="d-flex gap-2 mb-3">
                     @csrf
                     <input type="text" name="nombre" class="form-control form-control-sm"
                            placeholder="Ej: F" maxlength="10" required
@@ -305,7 +305,7 @@
                              style="background:#f8fafc;border-radius:10px;border:1px solid #e5e7eb;">
 
                             {{-- Inline rename form --}}
-                            <form action="{{ route('admin.secciones.update', $sec) }}" method="POST"
+                            <form action="{{ route('admin.secciones-academicas.update', $sec) }}" method="POST"
                                   class="d-flex gap-2 flex-grow-1 align-items-center">
                                 @csrf @method('PUT')
                                 <span style="width:32px;height:32px;background:var(--primary);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.85rem;flex-shrink:0;">
@@ -327,7 +327,7 @@
                             </form>
 
                             {{-- Delete button --}}
-                            <form action="{{ route('admin.secciones.destroy', $sec) }}" method="POST"
+                            <form action="{{ route('admin.secciones-academicas.destroy', $sec) }}" method="POST"
                                   onsubmit="return confirm('¿Eliminar la sección {{ $sec->nombre }}?{{ $sec->grupos_count > 0 ? ' Tiene '.$sec->grupos_count.' grupo(s) asociado(s).' : '' }}')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="btn btn-sm"

@@ -706,36 +706,7 @@ class PortalPadreController extends Controller
     // ── Helper: datos MINERD CE/IL para el boletín ───────────────────────
     private function buildMinerdData(?Matricula $matricula, ?SchoolYear $schoolYear): ?array
     {
-        if (!$matricula || !$schoolYear) return null;
-        $ciclo = $matricula->grupo?->grado?->ciclo ?? null;
-        if (!in_array($ciclo, ['primer_ciclo', 'segundo_ciclo'])) return null;
-
-        $asignaciones = Asignacion::with([
-            'asignatura.competenciasActivas' => fn($q) => $q->where('ciclo', $ciclo)
-                ->orderBy('orden')->with(['indicadoresActivos']),
-            'docente',
-        ])
-        ->where('grupo_id', $matricula->grupo_id)
-        ->where('school_year_id', $schoolYear->id)
-        ->where('activo', true)
-        ->get();
-
-        $rawEvals = \App\Models\EvaluacionRegistro::where('matricula_id', $matricula->id)
-            ->where('school_year_id', $schoolYear->id)
-            ->get();
-
-        $evalMap = [];
-        foreach ($rawEvals as $e) {
-            $k = $e->indicador_id ? "il_{$e->indicador_id}" : "ce_{$e->competencia_id}";
-            $evalMap[$e->asignacion_id][$k][$e->periodo_id] = $e->valor_cualitativo ?? $e->nota_numerica;
-        }
-
-        return [
-            'ciclo'             => $ciclo,
-            'asignaciones'      => $asignaciones,
-            'evalMap'           => $evalMap,
-            'tieneEvaluaciones' => $rawEvals->isNotEmpty(),
-        ];
+        return (new \App\Services\MinerdBoletinService())->build($matricula, $schoolYear);
     }
 
     // ── Recursos de la materia del hijo ─────────────────────────────────

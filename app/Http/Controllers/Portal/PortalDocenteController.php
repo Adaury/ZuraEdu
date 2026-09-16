@@ -1817,6 +1817,7 @@ class PortalDocenteController extends Controller
         $asignaciones = Asignacion::with([
             'asignatura.competenciasActivas' => fn($q) => $q->where('ciclo', $ciclo)
                 ->orderBy('orden')->with(['indicadoresActivos']),
+            'docente',
         ])
         ->where('grupo_id', $matricula->grupo_id)
         ->where('school_year_id', $schoolYear->id)

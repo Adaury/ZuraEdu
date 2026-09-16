@@ -412,6 +412,7 @@ class BoletinController extends Controller
             $minerdAsigs = \App\Models\Asignacion::with([
                 'asignatura.competenciasActivas' => fn($q) => $q->where('ciclo', $ciclo)
                     ->orderBy('orden')->with(['indicadoresActivos']),
+                'docente',
             ])
             ->where('grupo_id', $matricula->grupo_id)
             ->where('school_year_id', $schoolYear?->id ?? 0)

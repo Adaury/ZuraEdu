@@ -469,8 +469,7 @@ class CierreAnoController extends Controller
                 $notasPorAsignacion[$asi->id] = $nota;
             }
 
-            $notasValidas  = array_filter($notasPorAsignacion, fn ($n) => $n !== null);
-            $promedioFinal = count($notasValidas) > 0 ? round(array_sum($notasValidas) / count($notasValidas), 2) : null;
+            $promedioFinal = $this->calcularPromedioFinalPorArea($notasPorAsignacion, $asignaciones);
 
             $situacion = match($matricula->estado) {
                 'promovida'    => 'A',
@@ -570,8 +569,7 @@ class CierreAnoController extends Controller
                 $notasPorAsignacion[$asi->id] = $nota;
             }
 
-            $notasValidas  = array_filter($notasPorAsignacion, fn ($n) => $n !== null);
-            $promedioFinal = count($notasValidas) > 0 ? round(array_sum($notasValidas) / count($notasValidas), 2) : null;
+            $promedioFinal = $this->calcularPromedioFinalPorArea($notasPorAsignacion, $asignaciones);
             $autoEstado    = $this->determinarEstadoPromocion($promedioFinal);
 
             $filas[] = [
@@ -693,6 +691,30 @@ class CierreAnoController extends Controller
     {
         return (new \App\Services\PromedioEstudianteService())
             ->calcularDesdeBulk($matriculaId, $calAcBulk, $calBulk);
+    }
+
+    /**
+     * Igual que calcularPromedioFinal() pero cuando ya se resolvió UNA nota
+     * por asignación (mezclando área académica y técnica en el mismo array,
+     * como en actaPdf()/promociones()) en vez de tener las filas de
+     * calificaciones en bulk. Separa por $asignaciones->area antes de
+     * aplicar la regla de prioridad del servicio (académica sobre técnica).
+     *
+     * @param  array<int, float|null>  $notasPorAsignacion  [asignacion_id => nota]
+     */
+    private function calcularPromedioFinalPorArea(array $notasPorAsignacion, \Illuminate\Support\Collection $asignaciones): ?float
+    {
+        $notasAcademicas = collect();
+        $notasTecnicas   = collect();
+
+        foreach ($notasPorAsignacion as $asignacionId => $nota) {
+            if ($nota === null) continue;
+            $area = $asignaciones->firstWhere('id', $asignacionId)?->area;
+            $row  = (object) ['nota_final' => $nota];
+            $area === 'tecnica' ? $notasTecnicas->push($row) : $notasAcademicas->push($row);
+        }
+
+        return (new \App\Services\PromedioEstudianteService())->calcular($notasAcademicas, $notasTecnicas);
     }
 
     private function determinarEstadoPromocion(?float $promedio): string

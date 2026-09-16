@@ -3,32 +3,7 @@
 @section('portal-name', 'Portal Docente')
 
 @section('sidebar')
-    <div class="prt-sidebar-section">Mi Portal</div>
-    <a href="{{ route('portal.docente.dashboard') }}" class="prt-sidebar-link">
-        <i class="bi bi-house-fill"></i>Inicio
-    </a>
-    <a href="{{ route('portal.docente.horario') }}" class="prt-sidebar-link active">
-        <i class="bi bi-calendar-week"></i>Mi Horario
-    </a>
-    <a href="{{ route('portal.docente.mensajes.index') }}" class="prt-sidebar-link">
-        <i class="bi bi-envelope-fill"></i>Mensajes
-    </a>
-    @if(auth()->user()->hasAnyRole(['Administrador','Director','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']))
-    <div class="prt-sidebar-section mt-2">Dirección</div>
-    <a href="{{ route('admin.ejecutivo.index') }}" class="prt-sidebar-link {{ request()->routeIs('admin.ejecutivo*') ? 'active' : '' }}">
-        <i class="bi bi-bar-chart-line-fill" style="color:#f59e0b;"></i>Dashboard Ejecutivo
-    </a>
-    <a href="{{ route('admin.rubricas.index') }}" class="prt-sidebar-link {{ request()->routeIs('admin.rubricas*') ? 'active' : '' }}">
-        <i class="bi bi-grid-3x3-gap-fill"></i>Rúbricas
-    </a>
-    @endif
-    <div class="prt-sidebar-section mt-2">Cuenta</div>
-    <form method="POST" action="{{ route('logout') }}">
-        @csrf
-        <button type="submit" class="prt-sidebar-link w-100 border-0" style="cursor:pointer;text-align:left;">
-            <i class="bi bi-box-arrow-right" style="color:#ef4444;"></i>Cerrar sesión
-        </button>
-    </form>
+    @include('portal.docente._sidebar_clase', ['activeKey' => 'horario'])
 @endsection
 
 @section('bottom-nav')

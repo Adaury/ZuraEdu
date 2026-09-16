@@ -556,9 +556,6 @@ $promedio = count($notasValidas) ? round(array_sum($notasValidas)/count($notasVa
             <span class="badge" style="background:{{ $color }}20;color:{{ $color }};font-size:.72rem;">General</span>
         </div>
 
-        {{-- Mensajes fijados --}}
-        <div id="mensajes-fijados"></div>
-
         {{-- Área de mensajes --}}
         <div id="chat-box" style="height:420px;overflow-y:auto;padding:1rem;background:#fafafa;display:flex;flex-direction:column;gap:.5rem;">
             <div class="text-center text-muted small py-4" id="chat-loading">

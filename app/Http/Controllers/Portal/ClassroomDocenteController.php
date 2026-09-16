@@ -9,7 +9,6 @@ use App\Http\Controllers\Controller;
 use App\Traits\HasDocenteContext;
 use App\Models\ArchivoEntrega;
 use App\Models\ArchivoMaterial;
-use App\Models\ClassroomMessage;
 use App\Models\ClaseVirtual;
 use App\Models\CompetenciaEspecifica;
 use App\Models\Docente;
@@ -729,20 +728,4 @@ class ClassroomDocenteController extends Controller
             ->with('success', "Aula duplicada para {$grupo?->nombre_completo}. Los materiales están despublicados; revísalos antes de publicar.");
     }
 
-    // ── Chat: mensajes fijados del aula ───────────────────────────────────
-
-    public function mensajesFijados(ClaseVirtual $claseVirtual)
-    {
-        $docente = $this->getDocente();
-        $claseVirtual->load('asignacion');
-        $this->autorizarClase($claseVirtual, $docente);
-
-        $fijados = ClassroomMessage::where('clase_virtual_id', $claseVirtual->id)
-            ->where('fijado', true)
-            ->with('user')
-            ->latest()
-            ->get();
-
-        return response()->json($fijados);
-    }
 }

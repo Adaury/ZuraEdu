@@ -2,7 +2,9 @@
 
 @section('portal-name', 'Portal del Estudiante')
 
-@section('page-title')@yield('title', 'Portal Estudiante') — SGE@endsection
+@section('page-title')
+@yield('title', 'Portal Estudiante')
+@endsection
 
 @section('sidebar')
     @include('portal.estudiante._sidebar', [

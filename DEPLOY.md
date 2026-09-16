@@ -8,7 +8,7 @@
 > producción`: el trabajo nuevo sigue yendo directo a `master` igual que
 > ahora, y `staging` se actualiza deliberadamente (merge desde `master`)
 > cuando algo está listo para probarse antes de tocar producción real.
-> `deploy.sh`/`rollback.sh` (sección 13) ya funcionan sobre la rama que
+> `deploy.sh`/`rollback.sh` (sección 14) ya funcionan sobre la rama que
 > esté activa en cada servidor, así que no necesitan cambios cuando se
 > cree la rama.
 
@@ -309,7 +309,36 @@ location /app {
 
 ---
 
-## 8. Permisos de carpetas
+## 8. PHP-FPM y OPcache
+
+OPcache no viene activado por defecto en muchas instalaciones de PHP y no
+hay ningún archivo de configuración de servidor en este repo — hay que
+activarlo a mano en el `php.ini` del pool de PHP-FPM que sirve la app
+(`/etc/php/8.3/fpm/php.ini` o el `php.ini` específico del pool):
+
+```ini
+opcache.enable=1
+opcache.enable_cli=0
+opcache.memory_consumption=256
+opcache.max_accelerated_files=20000
+opcache.validate_timestamps=0
+opcache.revalidate_freq=0
+```
+
+`validate_timestamps=0` congela el caché de bytecode — PHP-FPM **no** vuelve
+a leer los .php del disco en cada request, así que cualquier deploy nuevo
+requiere `systemctl reload php8.3-fpm` (o el equivalente del pool) después
+de `git pull`, además de `php artisan optimize` (sección 10, paso 6). Si se
+te olvida el reload, el servidor sigue sirviendo el código *anterior* al
+deploy aunque los archivos en disco ya estén actualizados.
+
+En local (Laragon/desarrollo) deja `opcache.validate_timestamps=1` o
+OPcache desactivado — si no, no vas a ver tus propios cambios sin reiniciar
+PHP en cada edición.
+
+---
+
+## 9. Permisos de carpetas
 
 ```bash
 chmod -R 775 storage bootstrap/cache
@@ -318,12 +347,12 @@ chown -R www-data:www-data storage bootstrap/cache
 
 ---
 
-## 9. Checklist de deploy (actualizaciones)
+## 10. Checklist de deploy (actualizaciones)
 
 Este checklist manual ahora está automatizado en `deploy.sh` (raíz del
 proyecto) — agrega, además de estos pasos, un **backup automático antes de
 tocar nada** (`sge:backup`, ver [[BACKUP_ZURAEDU]]) y un **tag de git para
-poder revertir** con `rollback.sh` (sección 13). Se recomienda usar el
+poder revertir** con `rollback.sh` (sección 14). Se recomienda usar el
 script en vez de correr los pasos a mano:
 
 ```bash
@@ -360,7 +389,7 @@ php artisan up
 
 ---
 
-## 10. Monitoreo
+## 11. Monitoreo
 
 | URL | Descripción |
 |---|---|
@@ -377,7 +406,7 @@ php artisan up
 
 ---
 
-## 11. Cómo comprimir el proyecto para envío
+## 12. Cómo comprimir el proyecto para envío
 
 Ejecutar desde el directorio **padre** de la carpeta `sge`:
 
@@ -398,7 +427,7 @@ tar -czf sge.tar.gz \
 
 ---
 
-## 12. Desarrollo local (Laragon)
+## 13. Desarrollo local (Laragon)
 
 ```bash
 # Terminal 1 — Queue workers
@@ -424,7 +453,7 @@ VITE_REVERB_SCHEME=http
 
 ---
 
-## 13. Rollback
+## 14. Rollback
 
 Cada corrida de `deploy.sh` crea (y publica a `origin`) un tag
 `deploy-YYYYMMDD-HHMMSS` **antes** de actualizar el código, y genera un

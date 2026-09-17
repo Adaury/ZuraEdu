@@ -66,11 +66,47 @@ class PagoController extends Controller
             ->limit(6)
             ->get();
 
+        // Recaudación por concepto (top 8) -- 'concepto' es texto libre
+        // ("Cuota Enero 2026", "Matrícula", etc., ver Pago::$fillable), no un
+        // catálogo normalizado, así que se agrupa por el texto exacto tal
+        // como quedó registrado en cada pago.
+        $porConcepto = Pago::whereHas('matricula', fn($m) => $m->where('school_year_id', $syId))
+            ->where('estado', 'pagado')
+            ->selectRaw('concepto, SUM(monto) as total, COUNT(*) as cantidad')
+            ->groupBy('concepto')
+            ->orderByDesc('total')
+            ->limit(8)
+            ->get();
+
+        // Recaudación por grado y por sección -- orden académico (nivel /
+        // nombre de sección), no por monto, porque es una vista de
+        // distribución, no un ranking.
+        $porGrado = Pago::join('matriculas', 'pagos.matricula_id', '=', 'matriculas.id')
+            ->join('grupos', 'matriculas.grupo_id', '=', 'grupos.id')
+            ->join('grados', 'grupos.grado_id', '=', 'grados.id')
+            ->where('pagos.estado', 'pagado')
+            ->where('matriculas.school_year_id', $syId)
+            ->selectRaw('grados.id, grados.nombre, grados.nivel, SUM(pagos.monto) as total')
+            ->groupBy('grados.id', 'grados.nombre', 'grados.nivel')
+            ->orderBy('grados.nivel')
+            ->get();
+
+        $porSeccion = Pago::join('matriculas', 'pagos.matricula_id', '=', 'matriculas.id')
+            ->join('grupos', 'matriculas.grupo_id', '=', 'grupos.id')
+            ->join('secciones', 'grupos.seccion_id', '=', 'secciones.id')
+            ->where('pagos.estado', 'pagado')
+            ->where('matriculas.school_year_id', $syId)
+            ->selectRaw('secciones.id, secciones.nombre, SUM(pagos.monto) as total')
+            ->groupBy('secciones.id', 'secciones.nombre')
+            ->orderBy('secciones.nombre')
+            ->get();
+
         return view('admin.pagos.dashboard', compact(
             'syActual',
             'totalPagado', 'totalPendiente', 'totalVencido',
             'countPagados', 'countPendientes', 'countVencidos',
-            'cobrosMes', 'topDeudores', 'ultimosPagos'
+            'cobrosMes', 'topDeudores', 'ultimosPagos',
+            'porConcepto', 'porGrado', 'porSeccion'
         ));
     }
 

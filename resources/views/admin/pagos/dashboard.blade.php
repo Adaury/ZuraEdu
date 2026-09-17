@@ -269,5 +269,58 @@
 
     </div>
 
+    {{-- Recaudación por concepto / grado / sección --}}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {{-- Por concepto --}}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+            <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Por concepto (top 8)</h2>
+            @forelse($porConcepto as $item)
+                <div class="flex items-center justify-between py-1.5 text-sm border-b border-gray-50 dark:border-gray-700/50 last:border-0">
+                    <div class="min-w-0">
+                        <p class="font-medium text-gray-800 dark:text-gray-200 truncate text-xs">{{ $item->concepto }}</p>
+                        <p class="text-[10px] text-gray-400">{{ $item->cantidad }} pago{{ $item->cantidad != 1 ? 's' : '' }}</p>
+                    </div>
+                    <span class="ml-2 shrink-0 text-xs font-bold text-green-600 dark:text-green-400">
+                        RD${{ number_format($item->total, 0, '.', ',') }}
+                    </span>
+                </div>
+            @empty
+                <p class="text-xs text-gray-400 text-center py-3">Sin pagos registrados</p>
+            @endforelse
+        </div>
+
+        {{-- Por grado --}}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+            <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Por grado</h2>
+            @forelse($porGrado as $item)
+                <div class="flex items-center justify-between py-1.5 text-sm border-b border-gray-50 dark:border-gray-700/50 last:border-0">
+                    <p class="font-medium text-gray-800 dark:text-gray-200 text-xs">{{ $item->nombre }}</p>
+                    <span class="ml-2 shrink-0 text-xs font-bold text-green-600 dark:text-green-400">
+                        RD${{ number_format($item->total, 0, '.', ',') }}
+                    </span>
+                </div>
+            @empty
+                <p class="text-xs text-gray-400 text-center py-3">Sin pagos registrados</p>
+            @endforelse
+        </div>
+
+        {{-- Por sección --}}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+            <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Por sección</h2>
+            @forelse($porSeccion as $item)
+                <div class="flex items-center justify-between py-1.5 text-sm border-b border-gray-50 dark:border-gray-700/50 last:border-0">
+                    <p class="font-medium text-gray-800 dark:text-gray-200 text-xs">Sección {{ $item->nombre }}</p>
+                    <span class="ml-2 shrink-0 text-xs font-bold text-green-600 dark:text-green-400">
+                        RD${{ number_format($item->total, 0, '.', ',') }}
+                    </span>
+                </div>
+            @empty
+                <p class="text-xs text-gray-400 text-center py-3">Sin pagos registrados</p>
+            @endforelse
+        </div>
+
+    </div>
+
 </div>
 @endsection

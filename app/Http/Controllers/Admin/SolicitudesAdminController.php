@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
+use App\Models\Asistencia;
 use App\Models\Notificacion;
 use App\Models\SolicitudRepresentante;
 use Illuminate\Http\Request;
@@ -71,6 +73,42 @@ class SolicitudesAdminController extends Controller
             'respondido_en' => now(),
         ]);
 
+        // Si es una justificación de ausencia aprobada, reflejar el cambio en
+        // el registro real de Asistencia. Antes la solicitud quedaba
+        // "aprobada" sin que el % de asistencia (el que alimenta
+        // calcularPromocion()) cambiara en absoluto -- la aprobación no
+        // surtía ningún efecto real.
+        $asistenciasActualizadas = 0;
+        if ($data['estado'] === 'aprobada' && $solicitud->tipo === 'justificacion_ausencia' && $solicitud->fecha_evento) {
+            $tipoKey = null;
+            if (preg_match('/^Tipo: (.+?)\n/', (string) $solicitud->descripcion, $m)) {
+                $tipoKey = array_search($m[1], Asistencia::TIPOS_JUSTIFICACION, true) ?: null;
+            }
+
+            $asistencias = Asistencia::whereHas('matricula', fn ($q) => $q->where('estudiante_id', $solicitud->estudiante_id))
+                ->whereDate('fecha', $solicitud->fecha_evento)
+                ->whereIn('estado', ['ausente', 'tarde'])
+                ->get();
+
+            foreach ($asistencias as $asistencia) {
+                $estadoAnterior = $asistencia->estado;
+                $asistencia->update([
+                    'estado'             => 'excusa',
+                    'justificacion'      => $solicitud->descripcion,
+                    'justificacion_tipo' => $tipoKey,
+                    'registrado_por'     => Auth::id(),
+                ]);
+
+                ActivityLog::registrar(
+                    'asistencia.estado_cambiado',
+                    Asistencia::class,
+                    $asistencia->id,
+                    "Matrícula #{$asistencia->matricula_id} | Fecha: {$asistencia->fecha} | Estado: {$estadoAnterior} → excusa (justificación de representante aprobada, solicitud #{$solicitud->id})"
+                );
+                $asistenciasActualizadas++;
+            }
+        }
+
         // Notificar al representante si tiene cuenta de usuario
         $userId = $solicitud->representante?->user_id;
         if ($userId) {
@@ -89,6 +127,13 @@ class SolicitudesAdminController extends Controller
         Cache::forget("t{$tid}_solicitudes_rep_stats");
         Cache::forget("t{$tid}_sol_rep_pend");
 
-        return back()->with('success', 'Respuesta enviada correctamente.');
+        $mensaje = 'Respuesta enviada correctamente.';
+        if ($data['estado'] === 'aprobada' && $solicitud->tipo === 'justificacion_ausencia') {
+            $mensaje .= $asistenciasActualizadas > 0
+                ? " Se actualizó la asistencia de {$asistenciasActualizadas} clase(s) a justificada."
+                : ' No se encontró ningún registro de asistencia ausente/tarde para esa fecha — revísalo si el docente aún no la ha tomado.';
+        }
+
+        return back()->with('success', $mensaje);
     }
 }

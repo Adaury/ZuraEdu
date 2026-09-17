@@ -101,10 +101,29 @@ class MatriculaController extends Controller
         $enrolledIds = Matricula::where('school_year_id', $schoolYear?->id)
             ->pluck('estudiante_id');
 
-        $estudiantes = Estudiante::activos()
+        // Candidatos a reingreso: estudiantes con estado 'inactivo' (lo pone
+        // SincronizaEstadoEstudiante al no tener ninguna matrícula 'activa')
+        // pero que en algún momento tuvieron una matrícula 'retirada'. Antes
+        // Estudiante::activos() los excluía del todo del selector -- un
+        // estudiante que se retiraba quedaba imposible de volver a matricular,
+        // ni siquiera en un año escolar nuevo.
+        $ultimaBajaPorEstudiante = Matricula::where('estado', 'retirada')
+            ->orderByDesc('fecha_baja')
+            ->get(['estudiante_id', 'fecha_baja', 'motivo_baja'])
+            ->unique('estudiante_id')
+            ->keyBy('estudiante_id');
+
+        $estudiantes = Estudiante::where(fn ($q) => $q->where('estado', 'activo')
+                ->orWhereIn('id', $ultimaBajaPorEstudiante->keys()))
             ->whereNotIn('id', $enrolledIds)
             ->orderBy('apellidos')
-            ->get();
+            ->get()
+            ->map(function ($e) use ($ultimaBajaPorEstudiante) {
+                $baja = $ultimaBajaPorEstudiante->get($e->id);
+                $e->reingreso_fecha_baja  = $baja?->fecha_baja;
+                $e->reingreso_motivo_baja = $baja?->motivo_baja;
+                return $e;
+            });
 
         $grupos = Grupo::with(['grado', 'seccion'])
             ->when($schoolYear, fn ($q) => $q->where('school_year_id', $schoolYear->id))
@@ -235,12 +254,27 @@ class MatriculaController extends Controller
 
         $estadoAnterior = $matricula->estado;
 
-        $matricula->update([
+        $update = [
             'estado'       => $data['estado'],
             'observaciones'=> $motivo
                 ? ($matricula->observaciones ? $matricula->observaciones . ' | ' : '') . $motivo
                 : $matricula->observaciones,
-        ]);
+        ];
+
+        // fecha_baja/motivo_baja existían en la tabla pero nunca se usaban
+        // (el motivo solo quedaba en 'observaciones', texto libre genérico).
+        // Se necesitan como columnas reales para poder mostrar "se retiró el
+        // DD/MM/AAAA, motivo: X" en el selector de reingreso de create().
+        if (in_array($data['estado'], ['retirada', 'transferida'], true)) {
+            $update['fecha_baja']  = now()->toDateString();
+            $update['motivo_baja'] = $motivo;
+        } elseif ($data['estado'] === 'activa' && $estadoAnterior !== 'activa') {
+            // Reingreso: ya no debe mostrarse como retirado.
+            $update['fecha_baja']  = null;
+            $update['motivo_baja'] = null;
+        }
+
+        $matricula->update($update);
 
         $this->sincronizarEstadoEstudiante($matricula);
 

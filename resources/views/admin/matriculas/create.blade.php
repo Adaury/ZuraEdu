@@ -235,7 +235,8 @@
                     @enderror
 
                     <p class="text-muted mt-1" style="font-size:.73rem;">
-                        Solo se muestran estudiantes activos que aún no están matriculados en el año actual.
+                        Se muestran estudiantes activos y estudiantes que se retiraron previamente (reingreso),
+                        que aún no están matriculados en el año actual.
                     </p>
                 </div>
 
@@ -333,7 +334,14 @@
     // ── Student search / picker ──────────────────────────────────────────────
     @php
         $studentsJs = $estudiantes->map(function($e) {
-            return ['id' => $e->id, 'name' => $e->nombre_completo, 'numero' => $e->numero_matricula ?? ''];
+            return [
+                'id'         => $e->id,
+                'name'       => $e->nombre_completo,
+                'numero'     => $e->numero_matricula ?? '',
+                'reingreso'  => (bool) $e->reingreso_fecha_baja,
+                'bajaFecha'  => $e->reingreso_fecha_baja?->format('d/m/Y'),
+                'bajaMotivo' => $e->reingreso_motivo_baja,
+            ];
         })->values();
     @endphp
     const students = @json($studentsJs);
@@ -377,8 +385,14 @@
             matches.forEach(s => {
                 const item = document.createElement('div');
                 item.className = 'student-picker-item';
+                const reingresoBadge = s.reingreso
+                    ? `<div style="margin-top:.2rem;font-size:.7rem;color:#b45309;background:#fef3c7;border-radius:6px;padding:.15rem .5rem;display:inline-block;">
+                           <i class="bi bi-arrow-repeat"></i> Reingreso — se retiró el ${s.bajaFecha || '—'}${s.bajaMotivo ? ' · ' + s.bajaMotivo : ''}
+                       </div>`
+                    : '';
                 item.innerHTML = `<div class="s-name">${s.name}</div>
-                                  <div class="s-id">Nº matrícula: ${s.numero || '—'}</div>`;
+                                  <div class="s-id">Nº matrícula: ${s.numero || '—'}</div>
+                                  ${reingresoBadge}`;
                 item.addEventListener('click', () => {
                     setStudent(s);
                     pickerList.classList.remove('show');
@@ -392,7 +406,8 @@
     function setStudent(s) {
         hiddenInput.value        = s.id;
         searchInput.value        = s.name;
-        selectedName.textContent = s.name + (s.numero ? ' — Nº ' + s.numero : '');
+        selectedName.textContent = s.name + (s.numero ? ' — Nº ' + s.numero : '')
+            + (s.reingreso ? ' (Reingreso — se retiró el ' + (s.bajaFecha || '—') + ')' : '');
         selectedCard.classList.add('show');
         searchInput.style.display = 'none';
         pickerList.classList.remove('show');

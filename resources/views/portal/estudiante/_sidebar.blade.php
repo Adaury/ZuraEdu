@@ -139,9 +139,7 @@ try {
     <i class="bi bi-clipboard-check-fill"></i>Encuestas
 </a>
 
-{{-- ── BIBLIOTECA ── --}}
-<div class="prt-sidebar-section mt-2">Biblioteca</div>
-
+{{-- Biblioteca (fusionado en Vida Escolar: 1 solo ítem no amerita sección propia) --}}
 <a href="{{ route('portal.estudiante.mis-prestamos') }}"
    class="prt-sidebar-link {{ $ak === 'mis-prestamos' ? 'active' : '' }}">
     <i class="bi bi-book-half"></i>Mis Préstamos
@@ -166,7 +164,7 @@ try {
 } catch(\Exception $e) { $moduleGamif = false; }
 @endphp
 @if($moduleGamif)
-<div class="prt-sidebar-section mt-2">Logros</div>
+{{-- Logros (fusionado en Vida Escolar: 2 ítems no ameritan sección propia) --}}
 <a href="{{ route('portal.estudiante.logros') }}"
    class="prt-sidebar-link {{ $ak === 'logros' ? 'active' : '' }}">
     <i class="bi bi-trophy-fill"></i>Mis Logros

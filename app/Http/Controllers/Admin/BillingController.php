@@ -279,6 +279,32 @@ class BillingController extends Controller
         });
     }
 
+    // ── Recibo de suscripción (PDF) ───────────────────────────────────────
+    // GAP 10 del roadmap (docs/MATRIZ_GAPS_PRODUCTO_ZURAEDU.php): Stripe
+    // genera invoices internamente pero ZuraEdu no las exponía en ninguna
+    // UI. Subscription no usa BelongsToTenant, así que el route-model-binding
+    // NO aísla por tenant solo -- hay que verificar la relación real contra
+    // la BD (regla de CLAUDE.md), no confiar en que el ID venga "limpio".
+    public function reciboPdf(Subscription $subscription)
+    {
+        $tenant = app('tenant');
+        if ($subscription->tenant_id !== $tenant->id) abort(403);
+
+        if ($subscription->monto_pagado <= 0) {
+            return back()->with('error', 'El plan Free no genera recibo de pago.');
+        }
+
+        $subscription->load('plan');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'admin.billing.recibo_pdf',
+            ['subscription' => $subscription, 'tenant' => $tenant]
+        )->setPaper([0, 0, 340, 500], 'portrait');
+
+        $slug = 'recibo_suscripcion_' . $subscription->id . '_' . now()->format('Ymd');
+        return $pdf->download("{$slug}.pdf");
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────
 
     private function limitesPlan(string $plan): array

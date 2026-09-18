@@ -291,7 +291,8 @@
                     <th>Método</th>
                     <th>Monto</th>
                     <th>Estado</th>
-                    <th class="pe-3">Referencia</th>
+                    <th>Referencia</th>
+                    <th class="pe-3"></th>
                 </tr>
             </thead>
             <tbody>
@@ -337,10 +338,19 @@
                         {{ ucfirst($sub->estado) }}
                     </span>
                 </td>
-                <td class="pe-3">
+                <td>
                     <code style="font-size:.72rem;color:#94a3b8;">
                         {{ Str::limit($sub->referencia_pago ?? $sub->stripe_session_id ?? '—', 20) }}
                     </code>
+                </td>
+                <td class="pe-3 text-end">
+                    @if($sub->monto_pagado > 0)
+                    <a href="{{ route('admin.billing.recibo', $sub) }}"
+                       class="btn btn-sm btn-outline-secondary" style="font-size:.72rem;padding:.2rem .55rem;"
+                       title="Descargar recibo">
+                        <i class="bi bi-file-earmark-pdf-fill"></i> Recibo
+                    </a>
+                    @endif
                 </td>
             </tr>
             @endforeach

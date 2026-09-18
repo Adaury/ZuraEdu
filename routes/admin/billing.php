@@ -8,4 +8,5 @@ Route::prefix('billing')->name('billing.')->middleware('can:acceso-billing')->gr
     Route::get('/success',       [BillingController::class, 'success'])->name('success');
     Route::get('/cancel',        [BillingController::class, 'cancel'])->name('cancel');
     Route::post('/transferencia',[BillingController::class, 'transferencia'])->name('transferencia');
+    Route::get('/{subscription}/recibo', [BillingController::class, 'reciboPdf'])->name('recibo');
 });

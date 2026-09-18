@@ -53,6 +53,14 @@
                     <td style="padding:.4rem 0;">{{ $solicitud->estudiante->nombre_completo }}</td>
                 </tr>
                 @endif
+                @if($solicitud->docente)
+                <tr>
+                    <td class="text-muted fw-600" style="padding:.4rem 0;">Docente solicitado</td>
+                    <td style="padding:.4rem 0;">
+                        <i class="bi bi-person-lines-fill me-1" style="color:#1e3a6e;"></i>{{ $solicitud->docente->nombre_completo }}
+                    </td>
+                </tr>
+                @endif
             </table>
 
             <hr style="margin:1rem 0;">

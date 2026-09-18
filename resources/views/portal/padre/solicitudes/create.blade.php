@@ -74,6 +74,21 @@
         @error('fecha_evento')<div style="color:#dc2626;font-size:.75rem;margin-top:.3rem;">{{ $message }}</div>@enderror
     </div>
 
+    {{-- Docente (solo para cita_docente) --}}
+    <div id="campo-docente" style="margin-bottom:1rem;display:none;">
+        <label for="docente_id" style="font-size:.82rem;font-weight:700;color:#374151;display:block;margin-bottom:.4rem;">
+            Docente <span style="color:#dc2626;">*</span>
+        </label>
+        <select name="docente_id" id="docente_id" class="form-select form-select-sm">
+            <option value="">— Selecciona un hijo primero —</option>
+        </select>
+        <div style="font-size:.72rem;color:#9ca3af;margin-top:.25rem;">
+            Se listan los docentes activos del hijo seleccionado arriba. La fecha/hora concreta se
+            coordina con el centro luego de enviar la solicitud.
+        </div>
+        @error('docente_id')<div style="color:#dc2626;font-size:.75rem;margin-top:.3rem;">{{ $message }}</div>@enderror
+    </div>
+
     {{-- Asunto --}}
     <div style="margin-bottom:1rem;">
         <label for="asunto" style="font-size:.82rem;font-weight:700;color:#374151;display:block;margin-bottom:.4rem;">
@@ -134,6 +149,38 @@
 </style>
 
 <script>
+const docentesPorHijo = @json($docentesPorHijo ?? []);
+const estudianteSelect = document.getElementById('estudiante_id');
+const docenteSelect    = document.getElementById('docente_id');
+const oldDocenteId     = '{{ old('docente_id') }}';
+
+function poblarDocentes() {
+    if (!docenteSelect) return;
+    const hijoId = estudianteSelect ? estudianteSelect.value : '';
+    const lista  = docentesPorHijo[hijoId] || [];
+
+    docenteSelect.innerHTML = '';
+    if (!hijoId) {
+        docenteSelect.innerHTML = '<option value="">— Selecciona un hijo primero —</option>';
+        return;
+    }
+    if (lista.length === 0) {
+        docenteSelect.innerHTML = '<option value="">— Sin docentes activos para este hijo —</option>';
+        return;
+    }
+    docenteSelect.innerHTML = '<option value="">— Selecciona un docente —</option>' +
+        lista.map(d => `<option value="${d.id}" ${String(d.id) === oldDocenteId ? 'selected' : ''}>${d.label}</option>`).join('');
+}
+
+function actualizarCampoDocente() {
+    const tipoSeleccionado = document.querySelector('.tipo-radio:checked');
+    const esCita = tipoSeleccionado && tipoSeleccionado.value === 'cita_docente';
+    document.getElementById('campo-docente').style.display = esCita ? 'block' : 'none';
+    if (esCita) poblarDocentes();
+}
+
+if (estudianteSelect) estudianteSelect.addEventListener('change', actualizarCampoDocente);
+
 // Tipo radio styling
 document.querySelectorAll('.tipo-radio').forEach(r => {
     r.addEventListener('change', () => {
@@ -151,6 +198,7 @@ document.querySelectorAll('.tipo-radio').forEach(r => {
         // Show date field for justificacion_ausencia
         document.getElementById('campo-fecha').style.display =
             r.value === 'justificacion_ausencia' && r.checked ? 'block' : 'none';
+        actualizarCampoDocente();
     });
 });
 
@@ -164,6 +212,7 @@ if (checked) {
         document.getElementById('campo-fecha').style.display = 'block';
     }
 }
+actualizarCampoDocente();
 
 // Char counter
 const desc = document.getElementById('descripcion');

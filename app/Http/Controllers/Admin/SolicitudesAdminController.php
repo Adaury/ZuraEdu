@@ -53,7 +53,7 @@ class SolicitudesAdminController extends Controller
 
     public function show(SolicitudRepresentante $solicitud)
     {
-        $solicitud->load(['representante', 'estudiante', 'respondidoPor']);
+        $solicitud->load(['representante', 'estudiante', 'docente', 'respondidoPor']);
         $tipos   = SolicitudRepresentante::TIPOS;
         $estados = SolicitudRepresentante::estados();
         return view('admin.solicitudes.show', compact('solicitud', 'tipos', 'estados'));

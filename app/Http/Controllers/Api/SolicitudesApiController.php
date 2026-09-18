@@ -73,7 +73,7 @@ class SolicitudesApiController extends Controller
 
             $sol = SolicitudRepresentante::where('id', $id)
                 ->where('representante_id', $rep->id)
-                ->with('estudiante')
+                ->with(['estudiante', 'docente'])
                 ->first();
             if (! $sol) return response()->json(['message' => 'Solicitud no encontrada.'], 404);
 
@@ -269,14 +269,40 @@ class SolicitudesApiController extends Controller
         if (! $rep) return response()->json(['message' => 'Perfil no encontrado.'], 404);
 
         $solicitudes = SolicitudRepresentante::where('representante_id', $rep->id)
-            ->with('estudiante')
+            ->with(['estudiante', 'docente'])
             ->orderByDesc('created_at')
             ->get();
 
-        $hijos = $rep->estudiantes()->get()->map(fn($e) => [
+        $hijosModels = $rep->estudiantes()->get();
+        $hijos = $hijosModels->map(fn($e) => [
             'id'     => $e->id,
             'nombre' => $e->nombre_completo,
         ]);
+
+        // Docentes reales por hijo, para picker de cita_docente (mismo criterio
+        // que el formulario web, ver Portal\SolicitudesController::create()).
+        $schoolYear = \App\Models\SchoolYear::actual();
+        $docentesPorHijo = [];
+        foreach ($hijosModels as $hijo) {
+            $matricula = $hijo->matriculas()
+                ->where('estado', 'activa')
+                ->when($schoolYear, fn ($q) => $q->where('school_year_id', $schoolYear->id))
+                ->latest()->first();
+
+            $docentesPorHijo[$hijo->id] = $matricula
+                ? \App\Models\Asignacion::with(['docente', 'asignatura'])
+                    ->where('grupo_id', $matricula->grupo_id)
+                    ->where('activo', true)
+                    ->whereNotNull('docente_id')
+                    ->get()
+                    ->unique('docente_id')
+                    ->map(fn ($a) => [
+                        'id'    => $a->docente_id,
+                        'label' => trim(($a->docente?->nombre_completo ?? 'Docente') . ' — ' . ($a->asignatura?->nombre ?? '')),
+                    ])
+                    ->values()
+                : [];
+        }
 
         $stats = [
             'pendientes'  => $solicitudes->where('estado', 'pendiente')->count(),
@@ -286,10 +312,11 @@ class SolicitudesApiController extends Controller
         ];
 
         return response()->json([
-            'tipos'       => SolicitudRepresentante::TIPOS,
-            'hijos'       => $hijos,
-            'stats'       => $stats,
-            'solicitudes' => $solicitudes->map(fn($s) => $this->formatRepresentante($s)),
+            'tipos'             => SolicitudRepresentante::TIPOS,
+            'hijos'             => $hijos,
+            'docentes_por_hijo' => $docentesPorHijo,
+            'stats'             => $stats,
+            'solicitudes'       => $solicitudes->map(fn($s) => $this->formatRepresentante($s)),
         ]);
     }
 
@@ -304,6 +331,7 @@ class SolicitudesApiController extends Controller
             'descripcion'   => ['required', 'string', 'max:3000'],
             'fecha_evento'  => ['nullable', 'date'],
             'estudiante_id' => ['nullable', 'integer'],
+            'docente_id'    => ['nullable', 'integer'],
         ]);
 
         $estudianteId = null;
@@ -314,9 +342,30 @@ class SolicitudesApiController extends Controller
             }
         }
 
+        // docente_id solo aplica a cita_docente, y solo si ese docente
+        // realmente da clase al hijo elegido -- mismo chequeo que el
+        // formulario web (SolicitudesController::store()), nunca confiar en
+        // el ID que llega del cliente.
+        $docenteId = null;
+        if ($validated['tipo'] === 'cita_docente' && $estudianteId && ! empty($validated['docente_id'])) {
+            $schoolYear = \App\Models\SchoolYear::actual();
+            $matricula  = \App\Models\Matricula::where('estudiante_id', $estudianteId)
+                ->where('estado', 'activa')
+                ->when($schoolYear, fn ($q) => $q->where('school_year_id', $schoolYear->id))
+                ->latest()->first();
+
+            if ($matricula && \App\Models\Asignacion::where('grupo_id', $matricula->grupo_id)
+                    ->where('docente_id', (int) $validated['docente_id'])
+                    ->where('activo', true)
+                    ->exists()) {
+                $docenteId = (int) $validated['docente_id'];
+            }
+        }
+
         $sol = SolicitudRepresentante::create([
             'representante_id' => $rep->id,
             'estudiante_id'    => $estudianteId,
+            'docente_id'       => $docenteId,
             'tipo'             => $validated['tipo'],
             'asunto'           => $validated['asunto'],
             'descripcion'      => $validated['descripcion'],
@@ -357,6 +406,8 @@ class SolicitudesApiController extends Controller
             'fecha_evento'   => $s->fecha_evento?->toDateString(),
             'estudiante_id'  => $s->estudiante_id,
             'estudiante'     => $s->estudiante?->nombre_completo,
+            'docente_id'     => $s->docente_id,
+            'docente'        => $s->docente?->nombre_completo,
             'estado'         => $s->estado,
             'estado_label'   => $ec['label'],
             'estado_color'   => $ec['color'],

@@ -13,7 +13,7 @@ class SolicitudRepresentante extends Model
     protected $table = 'solicitudes_representante';
 
     protected $fillable = [
-        'tenant_id', 'representante_id', 'estudiante_id',
+        'tenant_id', 'representante_id', 'estudiante_id', 'docente_id',
         'tipo', 'asunto', 'descripcion', 'fecha_evento', 'adjunto',
         'estado', 'respuesta', 'respondido_por', 'respondido_en',
     ];
@@ -40,6 +40,11 @@ class SolicitudRepresentante extends Model
     public function estudiante()
     {
         return $this->belongsTo(Estudiante::class);
+    }
+
+    public function docente()
+    {
+        return $this->belongsTo(Docente::class);
     }
 
     public function respondidoPor()

@@ -64,6 +64,7 @@ Route::middleware('can:ver-calificaciones')->group(function () {
     Route::get('calificaciones/resumen',                  [CalificacionController::class,         'resumen'])->name('calificaciones.resumen');
     Route::get('calificaciones/ranking',                  [CalificacionController::class,         'ranking'])->name('calificaciones.ranking');
     Route::get('calificaciones/planilla-academica',       [CalificacionAcademicaController::class,'planillaAcademica'])->name('calificaciones.planilla-academica');
+    Route::get('calificaciones/planilla-academica/estudiante/{matricula}', [CalificacionAcademicaController::class,'detalleAnualEstudiante'])->name('calificaciones.planilla-academica.estudiante');
 });
 
 // Auditoría Don Bosco (Sección 4): "ver" y "exportar" estaban empaquetados

@@ -112,6 +112,52 @@
     font-size:.72rem;text-align:center;padding:.35rem .25rem;
     border-top:2px solid #a5b4fc;
 }
+/* ── Panel de planilla anual del estudiante (abajo o al lado) ───────── */
+#planilla-layout.dock-bottom {display:block;}
+#planilla-layout.dock-bottom .panel-anual {margin-top:.9rem;}
+#planilla-layout.dock-side {display:flex;gap:.9rem;align-items:flex-start;}
+#planilla-layout.dock-side .planilla-outer {flex:1 1 auto;min-width:0;}
+#planilla-layout.dock-side .panel-anual {
+    flex:0 0 360px;width:360px;position:sticky;top:.5rem;
+    max-height:80vh;overflow-y:auto;
+}
+@media (max-width: 991.98px) {
+    /* En pantallas angostas siempre va abajo */
+    #planilla-layout.dock-side {display:block;}
+    #planilla-layout.dock-side .panel-anual {width:auto;position:static;max-height:none;margin-top:.9rem;}
+}
+.panel-anual {
+    background:#fff;border-radius:10px;box-shadow:0 2px 20px rgba(0,0,0,.12);
+    border:1px solid #e5e7eb;
+}
+.panel-anual[hidden] {display:none;}
+.pa-head {
+    display:flex;justify-content:space-between;align-items:flex-start;gap:.6rem;
+    padding:.7rem .9rem;border-bottom:1px solid #e5e7eb;
+    background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;border-radius:10px 10px 0 0;
+}
+.pa-est {font-weight:800;font-size:.9rem;}
+.pa-grupo {font-size:.74rem;opacity:.85;}
+.pa-actions {display:flex;gap:.3rem;flex-shrink:0;}
+.pa-actions .btn {background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.4);color:#fff;font-size:.72rem;}
+.pa-actions .btn:hover {background:rgba(255,255,255,.3);color:#fff;}
+.pa-body {padding:.6rem .8rem .9rem;}
+.pa-tbl {width:100%;border-collapse:collapse;font-size:.76rem;}
+.pa-tbl th {background:#f3f4f6;color:#374151;font-weight:700;text-align:center;padding:.35rem .3rem;border:1px solid #e5e7eb;}
+.pa-tbl td {border:1px solid #e5e7eb;padding:.3rem .35rem;text-align:center;}
+.pa-tbl td.pa-mat {text-align:left;font-weight:600;color:#1e293b;}
+.pa-tbl tr.pa-actual td.pa-mat {background:#dbeafe;}
+.pa-sum {display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.7rem;font-size:.74rem;}
+.pa-chip {padding:.2rem .6rem;border-radius:12px;font-weight:700;background:#e0e7ff;color:#1e3a6e;}
+.pa-loading,.pa-error {font-size:.8rem;color:#6b7280;padding:.4rem 0;}
+.pa-error {color:#991b1b;}
+.fila-est.fila-sel td {background:#e0e7ff!important;}
+.fila-est.fila-sel .s-num, .fila-est.fila-sel .s-nom {background:#c7d2fe!important;}
+[data-theme="dark"] .panel-anual {background:#1f2937;border-color:#374151;}
+[data-theme="dark"] .pa-tbl th {background:#374151;color:#e5e7eb;border-color:#4b5563;}
+[data-theme="dark"] .pa-tbl td {border-color:#4b5563;color:#e5e7eb;}
+[data-theme="dark"] .pa-tbl td.pa-mat {color:#f1f5f9;}
+[data-theme="dark"] .pa-tbl tr.pa-actual td.pa-mat {background:#1e3a5f;}
 /* ── Actions ─────────────────────────────────────────────────────────── */
 .action-bar {
     background:#fff;border-radius:10px;
@@ -208,7 +254,8 @@
     </div>
 </div>
 
-{{-- ══════════════════ TABLA EXCEL ══════════════════ --}}
+{{-- ══════════════════ TABLA EXCEL (+ panel anual al lado/abajo) ══════════════════ --}}
+<div id="planilla-layout" class="dock-bottom">
 <div class="planilla-outer">
 <table id="tbl-ac">
 <thead>
@@ -436,6 +483,28 @@
 </table>
 </div>
 
+@if($puedeVerPanel)
+{{-- Panel: planilla anual del estudiante seleccionado --}}
+<aside id="panel-anual" class="panel-anual" aria-live="polite" hidden>
+    <div class="pa-head">
+        <div class="pa-title">
+            <div class="pa-est" id="pa-est">—</div>
+            <div class="pa-grupo" id="pa-grupo"></div>
+        </div>
+        <div class="pa-actions">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="pa-dock" title="Cambiar posición del panel">
+                <i class="bi bi-layout-sidebar-inset-reverse"></i> <span id="pa-dock-txt">Al lado</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="pa-close" aria-label="Cerrar panel">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    </div>
+    <div class="pa-body" id="pa-body"></div>
+</aside>
+@endif
+</div>
+
 {{-- ══════════════════ INDICADORES DE LOGRO ══════════════════ --}}
 <div class="mt-4 mb-2">
     <div class="d-flex align-items-center gap-2 mb-3">
@@ -562,6 +631,9 @@
     const ASIGNACION_ID_AC  = {{ $asignacion->id }};
     const SCHOOL_YEAR_ID_AC = {{ $schoolYear->id }};
     const CSRF_AC           = document.querySelector('meta[name="csrf-token"]').content;
+    @if($puedeVerPanel)
+    const ROUTE_DETALLE_AC  = "{{ route('admin.calificaciones.planilla-academica.estudiante', ['matricula' => '__MID__']) }}";
+    @endif
 </script>
 
 @endsection
@@ -584,6 +656,8 @@ function marcarPendiente() {
 function limpiarPendiente() {
     _hayPendientes = false;
     document.getElementById('unsaved-dot').style.display = 'none';
+    // Se llama tras un guardado exitoso: refrescar el panel de planilla anual.
+    if (window.planillaPanelInvalidar) window.planillaPanelInvalidar();
 }
 window.addEventListener('beforeunload', e => {
     if (_hayPendientes) { e.preventDefault(); return e.returnValue = '¿Deseas salir? Hay cambios sin guardar.'; }
@@ -957,6 +1031,117 @@ function publicarPlanilla() {
     }).catch(()=>toast('Error de conexión.','danger'))
     .finally(()=>btn.disabled=false);
 }
+
+/* ── Panel: planilla anual del estudiante seleccionado ───────── */
+(function () {
+    const panel = document.getElementById('panel-anual');
+    if (!panel || typeof ROUTE_DETALLE_AC === 'undefined') return;   // docentes: sin panel
+
+    const layout = document.getElementById('planilla-layout');
+    const body   = document.getElementById('pa-body');
+    const cache  = new Map();           // mid -> datos (se invalida al guardar)
+    let midActual = null, reqSeq = 0, timer = null;
+
+    // Posición preferida (abajo / al lado); localStorage puede no estar disponible.
+    function leerDock()  { try { return localStorage.getItem('planilla_panel_dock') === 'side' ? 'side' : 'bottom'; } catch (e) { return 'bottom'; } }
+    function guardarDock(v) { try { localStorage.setItem('planilla_panel_dock', v); } catch (e) {} }
+    function aplicarDock(v) {
+        layout.classList.toggle('dock-side', v === 'side');
+        layout.classList.toggle('dock-bottom', v !== 'side');
+        document.getElementById('pa-dock-txt').textContent = v === 'side' ? 'Abajo' : 'Al lado';
+    }
+    aplicarDock(leerDock());
+    document.getElementById('pa-dock').addEventListener('click', () => {
+        const nuevo = layout.classList.contains('dock-side') ? 'bottom' : 'side';
+        aplicarDock(nuevo); guardarDock(nuevo);
+    });
+    document.getElementById('pa-close').addEventListener('click', () => {
+        panel.hidden = true; midActual = null;
+        document.querySelectorAll('.fila-sel').forEach(f => f.classList.remove('fila-sel'));
+    });
+
+    const fmt = v => (v === null || v === undefined) ? '—' : String(v);
+    function celdaNota(v) {
+        const td = document.createElement('td');
+        td.textContent = fmt(v);
+        if (v !== null && v !== undefined) {
+            td.style.fontWeight = '700';
+            td.style.color = v >= 70 ? '#15803d' : '#991b1b';
+        }
+        return td;
+    }
+
+    function render(d, asigActual) {
+        document.getElementById('pa-est').textContent   = d.estudiante || '—';
+        document.getElementById('pa-grupo').textContent = d.grupo || '';
+        body.replaceChildren();
+
+        const tbl = document.createElement('table'); tbl.className = 'pa-tbl';
+        const thead = tbl.createTHead().insertRow();
+        ['Materia', 'P1', 'P2', 'P3', 'P4', 'Final', 'Sit.'].forEach(t => {
+            const th = document.createElement('th'); th.textContent = t; thead.appendChild(th);
+        });
+        const tb = tbl.createTBody();
+        d.materias.forEach(m => {
+            const tr = tb.insertRow();
+            if (m.asignacion_id === asigActual) tr.className = 'pa-actual';
+            const tdm = tr.insertCell(); tdm.className = 'pa-mat'; tdm.textContent = m.materia;
+            [1, 2, 3, 4].forEach(p => tr.appendChild(celdaNota(m.periodos[p])));
+            const tf = celdaNota(m.nota_final); tf.style.background = '#f9fafb'; tr.appendChild(tf);
+            const ts = tr.insertCell(); ts.textContent = m.situacion || '—'; ts.style.fontWeight = '800';
+            ts.style.color = m.situacion === 'A' ? '#15803d' : (m.situacion === 'R' ? '#991b1b' : '#9ca3af');
+        });
+        if (!d.materias.length) {
+            const tr = tb.insertRow(); const td = tr.insertCell(); td.colSpan = 7;
+            td.textContent = 'Sin materias académicas registradas.';
+        }
+        body.appendChild(tbl);
+
+        const sum = document.createElement('div'); sum.className = 'pa-sum';
+        [['Promedio general: ' + fmt(d.promedio)], ['Aprobadas: ' + d.aprobadas], ['Reprobadas: ' + d.reprobadas]].forEach(([t]) => {
+            const c = document.createElement('span'); c.className = 'pa-chip'; c.textContent = t; sum.appendChild(c);
+        });
+        body.appendChild(sum);
+    }
+
+    function mensaje(clase, texto) {
+        body.replaceChildren();
+        const p = document.createElement('div'); p.className = clase; p.textContent = texto; body.appendChild(p);
+    }
+
+    function cargar(mid) {
+        const seq = ++reqSeq;
+        panel.hidden = false;
+        if (cache.has(mid)) { render(cache.get(mid), ASIGNACION_ID_AC); return; }
+        mensaje('pa-loading', 'Cargando planilla anual…');
+        const url = ROUTE_DETALLE_AC.replace('__MID__', encodeURIComponent(mid)) + '?asignacion_id=' + ASIGNACION_ID_AC;
+        fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+            .then(d => { cache.set(mid, d); if (seq === reqSeq) render(d, ASIGNACION_ID_AC); })
+            .catch(() => { if (seq === reqSeq) mensaje('pa-error', 'No se pudo cargar la planilla anual de este estudiante.'); });
+    }
+
+    function seleccionar(fila) {
+        const mid = fila.dataset.mid;
+        if (mid === midActual) return;
+        midActual = mid;
+        document.querySelectorAll('.fila-sel').forEach(f => f.classList.remove('fila-sel'));
+        fila.classList.add('fila-sel');
+        clearTimeout(timer);
+        timer = setTimeout(() => cargar(mid), 120);   // evita ráfagas al moverse con Tab
+    }
+
+    // Seleccionar una nota (foco en un input) o hacer clic en la fila abre el panel.
+    const tbody = document.getElementById('tbody-est');
+    tbody.addEventListener('focusin', e => { const f = e.target.closest('.fila-est'); if (f) seleccionar(f); });
+    tbody.addEventListener('click',   e => { const f = e.target.closest('.fila-est'); if (f) seleccionar(f); });
+
+    // Tras guardar, la nota del estudiante abierto cambió: invalidar caché y recargar.
+    window.planillaPanelInvalidar = function () {
+        cache.clear();
+        if (midActual) { const m = midActual; midActual = null; const f = tbody.querySelector('.fila-est[data-mid="' + m + '"]'); if (f) seleccionar(f); }
+    };
+})();
 
 /* ── Inicialización ──────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {

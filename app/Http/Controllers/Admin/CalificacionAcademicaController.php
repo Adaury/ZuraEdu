@@ -92,9 +92,87 @@ class CalificacionAcademicaController extends Controller
             ->get()
             ->groupBy('periodo_numero');
 
+        // El panel de detalle anual es solo para admin/coordinación (no para el docente).
+        $puedeVerPanel = $docente === null;
+
         return view('admin.calificaciones.planilla_academica', compact(
-            'asignacion', 'matriculas', 'registros', 'schoolYear', 'periodos', 'indicadoresPorPeriodo'
+            'asignacion', 'matriculas', 'registros', 'schoolYear', 'periodos', 'indicadoresPorPeriodo', 'puedeVerPanel'
         ));
+    }
+
+    // ── Detalle anual de un estudiante (panel de la planilla) ─────────────
+    // JSON: todas las materias académicas del grupo con nota por período,
+    // nota final y situación. Solo admin/coordinación (docentes → 403).
+    public function detalleAnualEstudiante(Request $request, Matricula $matricula)
+    {
+        $request->validate(['asignacion_id' => 'required|integer']);
+
+        if ($this->docenteActual() !== null) {
+            abort(403);
+        }
+
+        // No confiar en los IDs del navegador: la matrícula debe ser del mismo
+        // grupo y año que la asignación cuya planilla está abierta (ambos
+        // modelos quedan aislados por tenant con BelongsToTenant).
+        $asignacion = Asignacion::findOrFail($request->integer('asignacion_id'));
+        abort_unless(
+            $asignacion->grupo_id === $matricula->grupo_id
+                && $asignacion->school_year_id === $matricula->school_year_id,
+            404
+        );
+
+        $matricula->load('estudiante', 'grupo.grado', 'grupo.seccion');
+
+        $asignaciones = Asignacion::with('asignatura')
+            ->where('grupo_id', $matricula->grupo_id)
+            ->where('school_year_id', $matricula->school_year_id)
+            ->where('activo', true)
+            ->where(fn ($q) => $q->whereNull('area')->orWhere('area', 'academica'))
+            ->get()
+            ->sortBy(fn ($a) => $a->asignatura?->nombre)
+            ->values();
+
+        $califs = CalificacionAcademica::where('matricula_id', $matricula->id)
+            ->where('school_year_id', $matricula->school_year_id)
+            ->whereIn('asignacion_id', $asignaciones->pluck('id'))
+            ->get()
+            ->keyBy('asignacion_id');
+
+        $materias = $asignaciones->map(function ($a) use ($califs) {
+            $c = $califs->get($a->id);
+
+            // Nota del período = promedio de las competencias que tienen nota ese período.
+            $periodos = [];
+            for ($p = 1; $p <= 4; $p++) {
+                $vals = [];
+                if ($c) {
+                    for ($k = 1; $k <= 4; $k++) {
+                        $v = $c->{"avg_comp{$k}_p{$p}"};
+                        if ($v !== null) $vals[] = (float) $v;
+                    }
+                }
+                $periodos[$p] = $vals ? round(array_sum($vals) / count($vals), 1) : null;
+            }
+
+            return [
+                'asignacion_id' => $a->id,
+                'materia'       => $a->asignatura?->nombre ?? 'S/A',
+                'periodos'      => $periodos,
+                'nota_final'    => $c?->nota_final !== null ? round((float) $c->nota_final, 1) : null,
+                'situacion'     => $c?->situacion,
+            ];
+        });
+
+        $finales = $materias->pluck('nota_final')->filter(fn ($v) => $v !== null);
+
+        return response()->json([
+            'estudiante' => $matricula->estudiante?->nombre_completo,
+            'grupo'      => $matricula->grupo?->nombre_completo,
+            'materias'   => $materias,
+            'promedio'   => $finales->isNotEmpty() ? round($finales->avg(), 1) : null,
+            'aprobadas'  => $materias->where('situacion', 'A')->count(),
+            'reprobadas' => $materias->where('situacion', 'R')->count(),
+        ]);
     }
 
     // ── Guardar académica: AJAX save for full-year planilla ───────────────

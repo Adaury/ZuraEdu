@@ -190,11 +190,11 @@
         <tbody>
             @php
                 // Helper: extract nota_final from matrix value (may be Calificacion object or scalar)
-                function getNotaFinal($val) {
+                $getNotaFinal = function ($val) {
                     if ($val === null) return null;
                     if (is_object($val)) return $val->nota_final ?? null;
                     return is_numeric($val) ? (float)$val : null;
-                }
+                };
 
                 // Pre-compute student averages for ranking
                 $estudiantesData = [];
@@ -203,7 +203,7 @@
                     foreach($asignaciones as $asig) {
                         foreach($periodos as $per) {
                             $raw2 = $matrix[$m->id][$asig->id][$per->id] ?? null;
-                            $nota2 = getNotaFinal($raw2);
+                            $nota2 = $getNotaFinal($raw2);
                             if ($nota2 !== null) $todasNotas[] = $nota2;
                         }
                     }
@@ -226,13 +226,13 @@
                 }
 
                 // Helper to get color class
-                function notaClass($n) {
+                $notaClass = function ($n) {
                     if ($n === null) return 'nota-nu';
                     if ($n >= 90) return 'nota-ex';
                     if ($n >= 75) return 'nota-bu';
                     if ($n >= 70) return 'nota-pr';
                     return 'nota-in';
-                }
+                };
             @endphp
 
             @foreach($matriculas as $m)
@@ -249,10 +249,10 @@
                     @foreach($periodos as $per)
                         @php
                             $raw = $matrix[$m->id][$asig->id][$per->id] ?? null;
-                            $nota = getNotaFinal($raw);
+                            $nota = $getNotaFinal($raw);
                         @endphp
                         @if($nota !== null) @php $notasAsig[] = $nota; @endphp @endif
-                        <td class="{{ notaClass($nota) }}">
+                        <td class="{{ $notaClass($nota) }}">
                             {{ $nota !== null ? number_format($nota, 1) : '—' }}
                         </td>
                     @endforeach
@@ -261,11 +261,11 @@
                             ? round(array_sum($notasAsig) / count($notasAsig), 2)
                             : null;
                     @endphp
-                    <td class="prom-asig {{ notaClass($promAsig) }}">
+                    <td class="prom-asig {{ $notaClass($promAsig) }}">
                         {{ $promAsig !== null ? number_format($promAsig, 1) : '—' }}
                     </td>
                 @endforeach
-                <td class="prom-gral {{ notaClass($promGral) }}">
+                <td class="prom-gral {{ $notaClass($promGral) }}">
                     {{ $promGral !== null ? number_format($promGral, 1) : '—' }}
                 </td>
                 <td class="rank-cell">

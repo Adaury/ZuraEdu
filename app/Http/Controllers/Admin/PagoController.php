@@ -144,11 +144,19 @@ class PagoController extends Controller
         $pagos = $q->latest('fecha_vencimiento')->paginate(30)->withQueryString();
 
         // Resumen
+        // Una sola consulta agrupada en vez de 4 con el mismo exists() sobre matrículas
+        // (con 49.500 pagos cada una costaba ~400 ms).
+        $porEstado = Pago::whereHas('matricula', fn ($m) => $m->where('school_year_id', $syActual?->id))
+            ->whereIn('estado', ['pendiente', 'pagado', 'vencido'])
+            ->selectRaw('estado, SUM(monto) as total_monto, COUNT(*) as cantidad')
+            ->groupBy('estado')
+            ->get()
+            ->keyBy('estado');
         $resumen = [
-            'pendiente' => Pago::whereHas('matricula', fn ($m) => $m->where('school_year_id', $syActual?->id))->where('estado', 'pendiente')->sum('monto'),
-            'pagado'    => Pago::whereHas('matricula', fn ($m) => $m->where('school_year_id', $syActual?->id))->where('estado', 'pagado')->sum('monto'),
-            'vencido'   => Pago::whereHas('matricula', fn ($m) => $m->where('school_year_id', $syActual?->id))->where('estado', 'vencido')->sum('monto'),
-            'total'     => Pago::whereHas('matricula', fn ($m) => $m->where('school_year_id', $syActual?->id))->whereIn('estado', ['pendiente','pagado','vencido'])->count(),
+            'pendiente' => (float) ($porEstado['pendiente']->total_monto ?? 0),
+            'pagado'    => (float) ($porEstado['pagado']->total_monto ?? 0),
+            'vencido'   => (float) ($porEstado['vencido']->total_monto ?? 0),
+            'total'     => (int) $porEstado->sum('cantidad'),
         ];
 
         // Cobros por mes (últimos 6 meses)

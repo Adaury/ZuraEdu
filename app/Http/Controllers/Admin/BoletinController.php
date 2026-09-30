@@ -93,7 +93,10 @@ class BoletinController extends Controller
         $ciclo = $request->query('ciclo');   // '1' | '2' | null
         $area  = $request->query('area');    // 'academica' | 'tecnica' | null
 
+        // withCount en vez de ->matriculas()->count() por grupo en la vista (N+1: 150 consultas con 150 grupos).
         $gruposQuery = Grupo::with(['grado', 'seccion'])
+            ->withCount(['matriculas as matriculas_activas_count' => fn ($q) => $q
+                ->activas()->where('school_year_id', $schoolYear->id)])
             ->where('school_year_id', $schoolYear->id)
             ->whereHas('grado');
 

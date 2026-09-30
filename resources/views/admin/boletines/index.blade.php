@@ -154,7 +154,7 @@
                         <div class="fw-semibold" style="font-size:.9rem;">{{ $grupo->nombre_completo }}</div>
                         <div class="text-muted" style="font-size:.77rem;">
                             <i class="bi bi-people me-1"></i>
-                            {{ $grupo->matriculas()->activas()->where('school_year_id', $schoolYear->id)->count() }} estudiantes
+                            {{ $grupo->matriculas_activas_count }} estudiantes
                         </div>
                     </div>
                     <i class="bi bi-chevron-right text-muted" style="font-size:.8rem;"></i>

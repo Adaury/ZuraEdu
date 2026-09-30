@@ -112,6 +112,7 @@ class CalificacionController extends Controller
         $area  = request('area');
 
         $grupos = Grupo::with(['grado','seccion','asignaciones.asignatura','asignaciones.docente'])
+            ->withCount(['matriculas as matriculas_activas_count' => fn($q) => $q->activas()])
             ->where('school_year_id', $schoolYear->id)
             ->when($ciclo == 1, fn($q) => $q->whereHas('grado', fn($g) => $g->whereBetween('nivel', [1, 3])))
             ->when($ciclo == 2, fn($q) => $q->whereHas('grado', fn($g) => $g->whereBetween('nivel', [4, 6])))

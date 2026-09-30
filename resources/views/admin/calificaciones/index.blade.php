@@ -416,7 +416,7 @@ function switchArea(area) {
                             {{ $grupo->asignaciones->count() }} asignacion(es)
                             &nbsp;&bull;&nbsp;
                             <i class="bi bi-people me-1"></i>
-                            {{ $grupo->matriculas()->activas()->count() }} estudiantes
+                            {{ $grupo->matriculas_activas_count }} estudiantes
                         </div>
                     </div>
                     <i class="bi bi-chevron-right text-muted" style="font-size:.8rem;"></i>
@@ -523,7 +523,28 @@ function switchArea(area) {
     const asignacionesPorGrupo   = @json($asignacionesPorGrupoJs);
     const ROUTE_GRILLA           = "{{ route('admin.calificaciones.grilla') }}";
     const ROUTE_PLANILLA_AC      = "{{ route('admin.calificaciones.planilla-academica') }}";
+    const periodosCal            = @json($periodos->map(fn ($p) => ['id' => $p->id, 'nombre' => $p->nombre])->values());
 </script>
+
+<style>
+.btn-abrir-planilla {
+    display:inline-flex;align-items:center;gap:.4rem;flex-shrink:0;
+    padding:.42rem .95rem;border:0;border-radius:999px;cursor:pointer;
+    background:linear-gradient(135deg,#2563eb,#4f46e5);color:#fff!important;
+    font-size:.78rem;font-weight:700;text-decoration:none;white-space:nowrap;
+    box-shadow:0 2px 8px rgba(79,70,229,.35);
+    transition:transform .12s,box-shadow .12s,filter .12s;
+}
+.btn-abrir-planilla:hover {transform:translateY(-1px);box-shadow:0 4px 14px rgba(79,70,229,.5);filter:brightness(1.07);}
+.btn-abrir-planilla:active {transform:translateY(0);}
+.btn-abrir-planilla:focus-visible {outline:3px solid rgba(79,70,229,.4);outline-offset:2px;}
+.btn-abrir-planilla.dropdown-toggle::after {margin-left:.15rem;}
+.asignacion-item .dropdown-menu {font-size:.82rem;}
+@media (max-width: 575.98px) {
+    .btn-abrir-planilla span {display:none;}   /* solo el ícono en móvil */
+    .btn-abrir-planilla {padding:.5rem .7rem;}
+}
+</style>
 
 <script>
 // Filtro de grupos — calificaciones
@@ -541,6 +562,35 @@ function switchArea(area) {
 
 let selectedAsignacionId = null;
 let selectedGrupoId      = null;
+
+// Botón "Abrir planilla" en cada asignatura: evita bajar al botón de abajo.
+// Académica → planilla anual directa. Técnica/RA → menú con los períodos (grilla).
+// stopPropagation: no debe marcar la fila como seleccionada.
+function botonAbrirPlanilla(a) {
+    if (a.area === 'academica') {
+        return `<a class="btn-abrir-planilla" href="${ROUTE_PLANILLA_AC}?asignacion_id=${encodeURIComponent(a.id)}"
+                   onclick="event.stopPropagation()">
+                    <i class="bi bi-box-arrow-up-right"></i><span>Abrir planilla</span>
+                </a>`;
+    }
+    if (!periodosCal.length) return '';
+    const items = periodosCal.map(p => {
+        const url = `${ROUTE_GRILLA}?asignacion_id=${encodeURIComponent(a.id)}&periodo_id=${encodeURIComponent(p.id)}`;
+        const a1 = document.createElement('a');
+        a1.className = 'dropdown-item';
+        a1.href = url;
+        a1.textContent = p.nombre;           // textContent: el nombre del período no se interpreta como HTML
+        return `<li>${a1.outerHTML}</li>`;
+    }).join('');
+    return `<div class="dropdown" onclick="event.stopPropagation()">
+                <button type="button" class="btn-abrir-planilla dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-table"></i><span>Abrir planilla</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li><h6 class="dropdown-header">Elige el período</h6></li>${items}
+                </ul>
+            </div>`;
+}
 
 function seleccionarGrupo(el) {
     document.querySelectorAll('.grupo-card').forEach(c => c.classList.remove('selected'));
@@ -579,6 +629,7 @@ function seleccionarGrupo(el) {
                     </div>
                     <div class="text-muted" style="font-size:.78rem;"><i class="bi bi-person me-1"></i>${a.docente}</div>
                 </div>
+                ${botonAbrirPlanilla(a)}
                 <i class="bi bi-circle asig-check text-muted" style="font-size:1rem;"></i>
             </div>
         `).join('');

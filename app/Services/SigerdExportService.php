@@ -233,10 +233,12 @@ class SigerdExportService
             $no = $i + 1;
             if (empty($e?->cedula)) {
                 $errores[] = ['no' => $no, 'nombre' => $name, 'descripcion' => 'Sin cedula/RNE'];
-            } elseif (in_array($e->cedula, $cedulasVistas)) {
+            } elseif (isset($cedulasVistas[(string) $e->cedula])) {
+                // Conjunto hash: in_array() dentro del bucle era O(n²) (4.950 matrículas ≈ 4,7 s) y,
+                // al comparar sin strict, "0123" == "123" daba duplicados falsos.
                 $errores[] = ['no' => $no, 'nombre' => $name, 'descripcion' => 'Cedula duplicada: ' . $e->cedula];
             }
-            if (!empty($e?->cedula)) { $cedulasVistas[] = $e->cedula; }
+            if (!empty($e?->cedula)) { $cedulasVistas[(string) $e->cedula] = true; }
             if (empty($e?->fecha_nacimiento)) {
                 $errores[] = ['no' => $no, 'nombre' => $name, 'descripcion' => 'Sin fecha de nacimiento'];
             }

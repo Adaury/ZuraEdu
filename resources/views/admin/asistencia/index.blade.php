@@ -150,23 +150,22 @@
                     @if(optional($a->grupo)->tutor)
                         <span><i class="bi bi-star-fill me-1" style="color:#f59e0b;"></i><strong>Guía:</strong> {{ $a->grupo->tutor->name }}</span>
                     @endif
-                    <span><i class="bi bi-people-fill me-1"></i>{{ optional($a->grupo)->matriculas()->activas()->count() ?? 0 }} est.</span>
+                    <span><i class="bi bi-people-fill me-1"></i>{{ $matriculasPorGrupo[$a->grupo_id] ?? 0 }} est.</span>
                 </div>
             </div>
 
             {{-- Stats mini --}}
             @php
-                $hoy      = now()->format('Y-m-d');
-                $asistHoy = \App\Models\Asistencia::where('asignacion_id', $a->id)->where('fecha', $hoy)->get();
+                $asistHoy = $asistHoyPorAsignacion[$a->id] ?? collect();
             @endphp
-            @if($asistHoy->count() > 0)
+            @if($asistHoy->sum() > 0)
             <div class="stats-mini d-flex gap-1 align-items-center">
                 <span style="background:#d1fae5;color:#065f46;font-size:.72rem;font-weight:700;padding:.2em .6em;border-radius:12px;">
                     <i class="bi bi-check-circle-fill me-1"></i>Tomada hoy
                 </span>
-                <span class="stat-p"><i class="bi bi-check2"></i> {{ $asistHoy->where('estado','presente')->count() }}</span>
-                <span class="stat-a"><i class="bi bi-x"></i> {{ $asistHoy->where('estado','ausente')->count() }}</span>
-                <span class="stat-t"><i class="bi bi-clock"></i> {{ $asistHoy->where('estado','tardanza')->count() }}</span>
+                <span class="stat-p"><i class="bi bi-check2"></i> {{ $asistHoy['presente'] ?? 0 }}</span>
+                <span class="stat-a"><i class="bi bi-x"></i> {{ $asistHoy['ausente'] ?? 0 }}</span>
+                <span class="stat-t"><i class="bi bi-clock"></i> {{ $asistHoy['tarde'] ?? 0 }}</span>
             </div>
             @else
             <div class="stats-mini d-flex gap-1 align-items-center">

@@ -66,7 +66,26 @@ class AsistenciaController extends Controller
         elseif ($ciclo == 2 && $area === 'academica') $contexto = 'Segundo Ciclo — Área Académica';
         elseif ($ciclo == 2 && $area === 'tecnica')   $contexto = 'Segundo Ciclo — Área Técnica';
 
-        return view('admin.asistencia.index', compact('asignaciones', 'schoolYear', 'docente', 'ciclo', 'area', 'contexto'));
+        // Conteos agregados en 2 consultas (antes: 2 consultas por asignación en la vista).
+        // Matricula/Asistencia usan BelongsToTenant, así que quedan aisladas por tenant.
+        $matriculasPorGrupo = Matricula::activas()
+            ->whereIn('grupo_id', $asignaciones->pluck('grupo_id')->filter()->unique())
+            ->selectRaw('grupo_id, COUNT(*) as total')
+            ->groupBy('grupo_id')
+            ->pluck('total', 'grupo_id');
+
+        $asistHoyPorAsignacion = Asistencia::whereIn('asignacion_id', $asignaciones->pluck('id'))
+            ->where('fecha', now()->format('Y-m-d'))
+            ->selectRaw('asignacion_id, estado, COUNT(*) as total')
+            ->groupBy('asignacion_id', 'estado')
+            ->get()
+            ->groupBy('asignacion_id')
+            ->map(fn ($filas) => $filas->pluck('total', 'estado'));
+
+        return view('admin.asistencia.index', compact(
+            'asignaciones', 'schoolYear', 'docente', 'ciclo', 'area', 'contexto',
+            'matriculasPorGrupo', 'asistHoyPorAsignacion'
+        ));
     }
 
     // ── Registrar: attendance entry for a date ────────────────────────────

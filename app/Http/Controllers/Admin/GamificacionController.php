@@ -353,7 +353,7 @@ class GamificacionController extends Controller
         $total = $asistencias->count();
         if ($total === 0) return null;
 
-        $presentes = $asistencias->whereIn('estado', ['presente', 'tardanza'])->count();
+        $presentes = $asistencias->whereIn('estado', ['presente', 'tarde'])->count();
         return round($presentes / $total * 100, 1);
     }
 

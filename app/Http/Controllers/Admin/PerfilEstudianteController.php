@@ -70,19 +70,19 @@ class PerfilEstudianteController extends Controller
                 ->get();
 
             $total     = $asistencias->count();
-            $presentes = $asistencias->whereIn('estado', ['presente', 'tardanza'])->count();
+            $presentes = $asistencias->whereIn('estado', ['presente', 'tarde'])->count();
             $ausentes  = $asistencias->where('estado', 'ausente')->count();
-            $tardanzas = $asistencias->where('estado', 'tardanza')->count();
+            $tardanzas = $asistencias->where('estado', 'tarde')->count();
 
             $porMateria = $asistencias->groupBy('asignacion_id')->map(function ($rows) {
                 $t = $rows->count();
-                $p = $rows->whereIn('estado', ['presente', 'tardanza'])->count();
+                $p = $rows->whereIn('estado', ['presente', 'tarde'])->count();
                 return [
                     'asignatura'  => $rows->first()->asignacion?->asignatura?->nombre ?? '—',
                     'total'       => $t,
                     'presentes'   => $p,
                     'ausentes'    => $rows->where('estado', 'ausente')->count(),
-                    'tardanzas'   => $rows->where('estado', 'tardanza')->count(),
+                    'tardanzas'   => $rows->where('estado', 'tarde')->count(),
                     'porcentaje'  => $t > 0 ? round($p / $t * 100, 1) : null,
                 ];
             })->values();
@@ -190,7 +190,7 @@ class PerfilEstudianteController extends Controller
             $calAcad     = $califsPorMat->get($m->id, collect());
             $asistencias = $asisPorMat->get($m->id, collect());
             $totalAs     = $asistencias->count();
-            $presentesAs = $asistencias->whereIn('estado', ['presente', 'tardanza'])->count();
+            $presentesAs = $asistencias->whereIn('estado', ['presente', 'tarde'])->count();
 
             return [
                 'matricula'  => $m,
@@ -240,7 +240,7 @@ class PerfilEstudianteController extends Controller
             $calAcad     = $califsPorMat->get($m->id, collect());
             $asistencias = $asisPorMat->get($m->id, collect());
             $totalAs     = $asistencias->count();
-            $presentesAs = $asistencias->whereIn('estado', ['presente', 'tardanza'])->count();
+            $presentesAs = $asistencias->whereIn('estado', ['presente', 'tarde'])->count();
             return [
                 'matricula'  => $m,
                 'schoolYear' => $m->schoolYear,
@@ -405,20 +405,20 @@ class PerfilEstudianteController extends Controller
 
         $porAsignacion = $asistencias->groupBy('asignacion_id')->map(function ($rows) {
             $total    = $rows->count();
-            $presentes= $rows->whereIn('estado', ['presente', 'tardanza', 'justificado'])->count();
+            $presentes= $rows->whereIn('estado', ['presente', 'tarde', 'excusa'])->count();
             return [
                 'asignatura' => $rows->first()->asignacion?->asignatura?->nombre ?? '—',
                 'total'      => $total,
                 'presentes'  => $presentes,
                 'ausentes'   => $rows->where('estado', 'ausente')->count(),
-                'tardanzas'  => $rows->where('estado', 'tardanza')->count(),
-                'justificado'=> $rows->where('estado', 'justificado')->count(),
+                'tardanzas'  => $rows->where('estado', 'tarde')->count(),
+                'justificado'=> $rows->where('estado', 'excusa')->count(),
                 'pct'        => $total > 0 ? round($presentes / $total * 100, 1) : null,
             ];
         })->sortBy('asignatura')->values();
 
         $totalGeneral = $asistencias->count();
-        $presGeneral  = $asistencias->whereIn('estado', ['presente', 'tardanza', 'justificado'])->count();
+        $presGeneral  = $asistencias->whereIn('estado', ['presente', 'tarde', 'excusa'])->count();
         $pctGeneral   = $totalGeneral > 0 ? round($presGeneral / $totalGeneral * 100, 1) : null;
 
         $inst   = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
@@ -457,7 +457,7 @@ class PerfilEstudianteController extends Controller
                 ->sortBy(fn($c) => $c->asignacion?->asignatura?->nombre);
             $asistencias = $asisPorMat->get($m->id, collect());
             $totalAs     = $asistencias->count();
-            $presentesAs = $asistencias->whereIn('estado', ['presente', 'tardanza', 'justificado'])->count();
+            $presentesAs = $asistencias->whereIn('estado', ['presente', 'tarde', 'excusa'])->count();
 
             return [
                 'matricula'  => $m,
@@ -512,7 +512,7 @@ class PerfilEstudianteController extends Controller
                 ->sortBy(fn($c) => $c->asignacion?->asignatura?->nombre);
             $asistencias = $asisPorMat->get($m->id, collect());
             $totalAs     = $asistencias->count();
-            $presentesAs = $asistencias->whereIn('estado', ['presente', 'tardanza', 'justificado'])->count();
+            $presentesAs = $asistencias->whereIn('estado', ['presente', 'tarde', 'excusa'])->count();
 
             return [
                 'matricula'  => $m,
@@ -571,14 +571,14 @@ class PerfilEstudianteController extends Controller
 
         $porAsignacion = $asistencias->groupBy('asignacion_id')->map(function ($rows) {
             $total    = $rows->count();
-            $presentes= $rows->whereIn('estado', ['presente', 'tardanza', 'justificado'])->count();
+            $presentes= $rows->whereIn('estado', ['presente', 'tarde', 'excusa'])->count();
             return [
                 'asignatura' => $rows->first()->asignacion?->asignatura?->nombre ?? '—',
                 'total'      => $total,
                 'presentes'  => $presentes,
                 'ausentes'   => $rows->where('estado', 'ausente')->count(),
-                'tardanzas'  => $rows->where('estado', 'tardanza')->count(),
-                'justificado'=> $rows->where('estado', 'justificado')->count(),
+                'tardanzas'  => $rows->where('estado', 'tarde')->count(),
+                'justificado'=> $rows->where('estado', 'excusa')->count(),
                 'pct'        => $total > 0 ? round($presentes / $total * 100, 1) : null,
             ];
         })->sortBy('asignatura')->values();

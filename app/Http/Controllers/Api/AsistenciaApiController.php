@@ -44,17 +44,17 @@ class AsistenciaApiController extends Controller
             ->where('matricula_id', $matricula->id)->orderBy('fecha','desc')->get();
 
         $total     = $asistencias->count();
-        $presentes = $asistencias->whereIn('estado',['presente','tardanza'])->count();
+        $presentes = $asistencias->whereIn('estado',['presente','tarde'])->count();
         $ausentes  = $asistencias->where('estado','ausente')->count();
-        $tardanzas = $asistencias->where('estado','tardanza')->count();
+        $tardanzas = $asistencias->where('estado', 'tarde')->count();
 
         $porMateria = $asistencias->groupBy('asignacion_id')->map(fn($rows) => [
             'asignatura' => $rows->first()->asignacion?->asignatura?->nombre ?? '—',
             'total'      => $rows->count(),
-            'presentes'  => $rows->whereIn('estado',['presente','tardanza'])->count(),
+            'presentes'  => $rows->whereIn('estado',['presente','tarde'])->count(),
             'ausentes'   => $rows->where('estado','ausente')->count(),
             'porcentaje' => $rows->count() > 0
-                ? round($rows->whereIn('estado',['presente','tardanza'])->count() / $rows->count() * 100, 1)
+                ? round($rows->whereIn('estado',['presente','tarde'])->count() / $rows->count() * 100, 1)
                 : null,
         ])->values();
 

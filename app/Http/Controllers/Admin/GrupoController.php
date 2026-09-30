@@ -449,8 +449,8 @@ class GrupoController extends Controller
             $asis = $mat->asistencias;
 
             $total    = $asis->count();
-            $pres     = $asis->whereIn('estado', ['presente', 'tardanza'])->count();
-            $tard     = $asis->where('estado', 'tardanza')->count();
+            $pres     = $asis->whereIn('estado', ['presente', 'tarde'])->count();
+            $tard     = $asis->where('estado', 'tarde')->count();
             $aus      = $asis->where('estado', 'ausente')->count();
             $pct      = $total > 0 ? round($pres / $total * 100, 1) : null;
             $estado   = $pct === null ? '—' : ($pct >= 80 ? 'Regular' : 'Riesgo');

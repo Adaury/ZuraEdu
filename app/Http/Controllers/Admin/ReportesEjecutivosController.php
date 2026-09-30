@@ -79,7 +79,7 @@ class ReportesEjecutivosController extends Controller
             ->groupBy('estado')
             ->pluck('total', 'estado');
         $totalAsist    = $asistenciaMes->sum();
-        $presenteAsist = ($asistenciaMes['presente'] ?? 0) + ($asistenciaMes['tardanza'] ?? 0);
+        $presenteAsist = ($asistenciaMes['presente'] ?? 0) + ($asistenciaMes['tarde'] ?? 0);
         $pctAsistencia = $totalAsist > 0 ? round($presenteAsist / $totalAsist * 100, 1) : null;
 
         // Pagos
@@ -184,7 +184,7 @@ class ReportesEjecutivosController extends Controller
             ->groupBy('estado')
             ->pluck('total', 'estado');
         $totalAsist    = $asistenciaMes->sum();
-        $presenteAsist = ($asistenciaMes['presente'] ?? 0) + ($asistenciaMes['tardanza'] ?? 0);
+        $presenteAsist = ($asistenciaMes['presente'] ?? 0) + ($asistenciaMes['tarde'] ?? 0);
         $pctAsistencia = $totalAsist > 0 ? round($presenteAsist / $totalAsist * 100, 1) : null;
 
         $statsPagos = null;
@@ -250,7 +250,7 @@ class ReportesEjecutivosController extends Controller
             ->selectRaw('estado, COUNT(*) as total')
             ->groupBy('estado')->pluck('total', 'estado');
         $totalAsist    = $asistenciaMes->sum();
-        $presenteAsist = ($asistenciaMes['presente'] ?? 0) + ($asistenciaMes['tardanza'] ?? 0);
+        $presenteAsist = ($asistenciaMes['presente'] ?? 0) + ($asistenciaMes['tarde'] ?? 0);
         $pctAsistencia = $totalAsist > 0 ? round($presenteAsist / $totalAsist * 100, 1) : 0;
 
         $matriculasPorGrado = Matricula::join('grupos', 'matriculas.grupo_id', '=', 'grupos.id')
@@ -548,7 +548,7 @@ class ReportesEjecutivosController extends Controller
             $byEstado = $rows->get($key, collect())->pluck('total', 'estado');
 
             $data['presente'][] = (int) ($byEstado['presente'] ?? 0);
-            $data['tardanza'][] = (int) ($byEstado['tardanza'] ?? 0);
+            $data['tardanza'][] = (int) ($byEstado['tarde'] ?? 0);
             $data['ausente'][]  = (int) ($byEstado['ausente'] ?? 0);
         }
 

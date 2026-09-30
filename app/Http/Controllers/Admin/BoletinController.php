@@ -420,7 +420,7 @@ class BoletinController extends Controller
             'evaluaciones', 'observacionesList',
             'boletinObservaciones', 'promocion',
             'vistaDocente', 'rankingGrupo', 'progreso',
-            'minerdData', 'ciclo', 'deudaVencida'
+            'minerdData', 'deudaVencida'
         );
     }
 

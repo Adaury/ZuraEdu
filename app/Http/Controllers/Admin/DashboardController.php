@@ -290,8 +290,13 @@ class DashboardController extends Controller
                     ->pluck('total', 'grado');
 
                 // Asistencia global del mes actual
-                $mesActual = now()->month;
-                $asistenciaMes = \App\Models\Asistencia::whereMonth('fecha', $mesActual)
+                // Rango de fechas (sargable) en lugar de MONTH(fecha): con 742k filas la
+                // función sobre la columna impedía el índice (~9 s). Además acota al año
+                // actual; whereMonth() mezclaba el mismo mes de todos los años.
+                $asistenciaMes = \App\Models\Asistencia::whereBetween('fecha', [
+                        now()->startOfMonth()->toDateString(),
+                        now()->endOfMonth()->toDateString(),
+                    ])
                     ->selectRaw("estado, COUNT(*) as total")
                     ->groupBy('estado')
                     ->pluck('total', 'estado');

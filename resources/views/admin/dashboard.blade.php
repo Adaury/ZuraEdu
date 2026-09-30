@@ -1980,7 +1980,7 @@ document.addEventListener('DOMContentLoaded', function () {
     @php
         $presente = $chartData['asistenciaMes']['presente'] ?? 0;
         $ausente  = $chartData['asistenciaMes']['ausente']  ?? 0;
-        $tardanza = $chartData['asistenciaMes']['tardanza'] ?? 0;
+        $tardanza = $chartData['asistenciaMes']['tarde'] ?? 0;   // enum real: 'tarde' (no 'tardanza')
     @endphp
     new Chart(document.getElementById('chartAsistencia'), {
         type: 'doughnut',

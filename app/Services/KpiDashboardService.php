@@ -45,15 +45,20 @@ class KpiDashboardService
     {
         $hoy = now()->toDateString();
 
-        $counts = Asistencia::whereDate('fecha', $hoy)
+        // `fecha` es DATE: comparar directo (no whereDate/DATE()) para poder usar el índice.
+        // Con 742k asistencias, date(fecha)=? tardaba ~7 s (escaneo completo).
+        $counts = Asistencia::where('fecha', $hoy)
             ->selectRaw("estado, COUNT(*) as total")
             ->groupBy('estado')
             ->pluck('total', 'estado');
 
-        $presentes    = (int) ($counts['presente']    ?? 0);
-        $ausentes     = (int) ($counts['ausente']      ?? 0);
-        $tardanzas    = (int) ($counts['tardanza']     ?? 0);
-        $justificados = (int) ($counts['justificado']  ?? 0);
+        // Valores reales del enum asistencias.estado (migración 2026_03_17_000071):
+        // presente/ausente/tarde/excusa/retiro. Antes se buscaban 'tardanza'/'justificado'
+        // (enum viejo), así que estos dos contadores siempre daban 0.
+        $presentes    = (int) ($counts['presente'] ?? 0);
+        $ausentes     = (int) ($counts['ausente']  ?? 0);
+        $tardanzas    = (int) ($counts['tarde']    ?? 0);
+        $justificados = (int) ($counts['excusa']   ?? 0);
         $total        = $presentes + $ausentes + $tardanzas + $justificados;
 
         return [

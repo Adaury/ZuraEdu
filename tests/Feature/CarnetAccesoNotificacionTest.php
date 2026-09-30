@@ -160,4 +160,67 @@ class CarnetAccesoNotificacionTest extends TestCase
 
         Queue::assertPushed(EnviarNotificacionJob::class, fn($job) => $job->userId === $representante->user_id);
     }
+
+    // ── GAP 06: abordaje de bus ──────────────────────────────────────────────
+
+    private function rutaConEstudiante(Tenant $tenant, CarnetIdentidad $carnet, bool $asignar = true): \App\Models\RutaTransporte
+    {
+        app()->instance('tenant', $tenant);
+        $ruta = \App\Models\RutaTransporte::create(['nombre' => 'Ruta Norte', 'capacidad' => 20, 'activo' => true]);
+        if ($asignar) {
+            \App\Models\EstudianteRuta::create([
+                'ruta_id' => $ruta->id, 'estudiante_id' => $carnet->matricula->estudiante_id, 'tipo' => 'ambos',
+            ]);
+        }
+        app()->forgetInstance('tenant');
+        return $ruta;
+    }
+
+    public function test_bus_subida_registra_acceso_con_ruta_y_notifica_con_nombre_de_ruta(): void
+    {
+        Queue::fake();
+        [$tenant, $carnet] = $this->escenarioConMatricula();
+        $ruta = $this->rutaConEstudiante($tenant, $carnet);
+
+        $this->actingAs($this->staff($tenant))
+            ->postJson(route('admin.carnet.scan'), [
+                'qr_token' => $carnet->qr_token, 'tipo_evento' => 'bus_subida', 'ruta_id' => $ruta->id,
+            ])->assertOk();
+
+        $this->assertDatabaseHas('carnet_accesos', [
+            'carnet_identidad_id' => $carnet->id, 'tipo_evento' => 'bus_subida', 'ruta_id' => $ruta->id,
+        ]);
+        Queue::assertPushed(NotificarPadreAccesoJob::class,
+            fn($job) => $job->tipoEvento === 'bus_subida' && $job->rutaNombre === 'Ruta Norte');
+    }
+
+    public function test_bus_rechaza_estudiante_no_asignado_a_la_ruta(): void
+    {
+        Queue::fake();
+        [$tenant, $carnet] = $this->escenarioConMatricula();
+        $ruta = $this->rutaConEstudiante($tenant, $carnet, asignar: false);
+
+        $this->actingAs($this->staff($tenant))
+            ->postJson(route('admin.carnet.scan'), [
+                'qr_token' => $carnet->qr_token, 'tipo_evento' => 'bus_subida', 'ruta_id' => $ruta->id,
+            ])->assertStatus(403);
+
+        $this->assertDatabaseMissing('carnet_accesos', ['tipo_evento' => 'bus_subida']);
+        Queue::assertNotPushed(NotificarPadreAccesoJob::class);
+    }
+
+    public function test_bus_exige_ruta_id_y_la_api_movil_tambien_valida_asignacion(): void
+    {
+        Queue::fake();
+        [$tenant, $carnet] = $this->escenarioConMatricula();
+        $ruta = $this->rutaConEstudiante($tenant, $carnet, asignar: false);
+
+        Sanctum::actingAs($this->staff($tenant));
+
+        $this->postJson('/api/v1/carnet/scan', ['qr_token' => $carnet->qr_token, 'tipo_evento' => 'bus_bajada'])
+            ->assertStatus(422);
+        $this->postJson('/api/v1/carnet/scan', [
+            'qr_token' => $carnet->qr_token, 'tipo_evento' => 'bus_bajada', 'ruta_id' => $ruta->id,
+        ])->assertStatus(403);
+    }
 }

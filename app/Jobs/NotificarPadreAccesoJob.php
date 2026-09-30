@@ -19,6 +19,7 @@ class NotificarPadreAccesoJob extends TenantJob
         public readonly string $estado,
         public readonly string $hora,
         int $tenantId = 0,
+        public readonly ?string $rutaNombre = null,
     ) {
         parent::__construct();
         if ($tenantId > 0) $this->tenantId = $tenantId;
@@ -33,12 +34,21 @@ class NotificarPadreAccesoJob extends TenantJob
         if (! $carnet) return;
 
         $nombre = $carnet->user?->name ?? 'El estudiante';
-        $tipo   = $this->tipoEvento === 'entrada' ? 'ingresó' : 'salió';
+        $tipo   = match ($this->tipoEvento) {
+            'entrada'    => 'ingresó',
+            'bus_subida' => 'abordó el bus',
+            'bus_bajada' => 'bajó del bus',
+            default      => 'salió',
+        };
+        $esBus  = in_array($this->tipoEvento, CarnetAcceso::EVENTOS_BUS, true);
+        $lugar  = $esBus ? ($this->rutaNombre ? " ({$this->rutaNombre})" : '') : '';
 
         $titulo  = "Carnet+ — {$tipo} a las {$this->hora}";
         // $mensaje alimenta la notificación in-app más abajo, que no debe
         // personalizarse por esta plantilla -- solo el canal WhatsApp la usa.
-        $mensaje = "{$nombre} {$tipo} del centro a las {$this->hora}.";
+        $mensaje = $esBus
+            ? "{$nombre} {$tipo}{$lugar} a las {$this->hora}."
+            : "{$nombre} {$tipo} del centro a las {$this->hora}.";
         $msgWhatsApp = \App\Services\PlantillaComunicacionService::render('carnet_acceso', 'whatsapp', [
             'estudiante' => $nombre, 'accion' => $tipo, 'hora' => $this->hora,
         ]) ?? $mensaje;

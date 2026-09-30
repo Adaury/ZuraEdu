@@ -29,7 +29,8 @@ class CarnetCheckinController extends Controller
         $request->validate([
             'qr_token'    => 'required|string',
             'zona_id'     => 'nullable|integer',
-            'tipo_evento' => 'nullable|in:entrada,salida,biblioteca,comedor,laboratorio,evento,prestamo',
+            'tipo_evento' => 'nullable|in:entrada,salida,biblioteca,comedor,laboratorio,evento,prestamo,bus_subida,bus_bajada',
+            'ruta_id'     => 'nullable|integer|required_if:tipo_evento,bus_subida,bus_bajada',
         ]);
 
         $tenant   = app()->bound('tenant') ? app('tenant') : null;
@@ -54,6 +55,20 @@ class CarnetCheckinController extends Controller
             $horaEntrada = now()->setTimeFromTimeString('07:30:00');
             if (now()->greaterThan($horaEntrada)) {
                 $estado = 'tardanza';
+            }
+        }
+
+        // Abordaje de bus (GAP 06): el estudiante debe estar asignado a esa ruta.
+        $ruta = null;
+        if (in_array($tipoEvento, CarnetAcceso::EVENTOS_BUS, true)) {
+            $ruta = CarnetAcceso::rutaAsignada($carnet, (int) $request->ruta_id);
+            if (! $ruta) {
+                return response()->json([
+                    'success' => false,
+                    'estado'  => 'denegado',
+                    'mensaje' => "{$carnet->nombre_completo} no está asignado a esta ruta.",
+                    'color'   => 'danger',
+                ], 403);
             }
         }
 
@@ -85,6 +100,7 @@ class CarnetCheckinController extends Controller
             'tipo_evento'         => $tipoEvento,
             'estado'              => $tipoEvento === 'salida' ? 'salida_anticipada' : $estado,
             'zona_id'             => $request->zona_id,
+            'ruta_id'             => $ruta?->id,
             'dispositivo'         => $request->userAgent(),
             'ip_address'          => $request->ip(),
             'registrado_por'      => auth()->id(),
@@ -116,6 +132,7 @@ class CarnetCheckinController extends Controller
                 estado:     $acceso->estado,
                 hora:       $hora,
                 tenantId:   $tenantId,
+                rutaNombre: $ruta?->nombre,
             ));
         }
 

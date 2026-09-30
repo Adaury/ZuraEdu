@@ -155,8 +155,9 @@ class CarnetApiController extends Controller
     {
         $request->validate([
             'qr_token'    => 'required|string',
-            'tipo_evento' => 'nullable|in:entrada,salida,biblioteca,comedor,laboratorio,evento,prestamo',
+            'tipo_evento' => 'nullable|in:entrada,salida,biblioteca,comedor,laboratorio,evento,prestamo,bus_subida,bus_bajada',
             'zona_id'     => 'nullable|integer',
+            'ruta_id'     => 'nullable|integer|required_if:tipo_evento,bus_subida,bus_bajada',
         ]);
 
         $tenant   = app()->bound('tenant') ? app('tenant') : null;
@@ -174,6 +175,15 @@ class CarnetApiController extends Controller
             $estado = 'tardanza';
         }
         if ($tipoEvento === 'salida') $estado = 'salida_anticipada';
+
+        // Abordaje de bus (GAP 06): el estudiante debe estar asignado a esa ruta.
+        $ruta = null;
+        if (in_array($tipoEvento, CarnetAcceso::EVENTOS_BUS, true)) {
+            $ruta = CarnetAcceso::rutaAsignada($carnet, (int) $request->ruta_id);
+            if (! $ruta) {
+                return response()->json(['success' => false, 'message' => 'El estudiante no está asignado a esta ruta.'], 403);
+            }
+        }
 
         // Dedupe: el mismo carnet+evento escaneado dos veces seguidas no debe
         // generar dos registros ni dos WhatsApp al padre.
@@ -193,6 +203,7 @@ class CarnetApiController extends Controller
             'tipo_evento'         => $tipoEvento,
             'estado'              => $estado,
             'zona_id'             => $request->zona_id,
+            'ruta_id'             => $ruta?->id,
             'dispositivo'         => $request->userAgent(),
             'ip_address'          => $request->ip(),
             'registrado_por'      => $request->user()?->id,
@@ -209,6 +220,7 @@ class CarnetApiController extends Controller
                 estado:     $acceso->estado,
                 hora:       $acceso->hora,
                 tenantId:   $tenantId,
+                rutaNombre: $ruta?->nombre,
             ));
         }
 

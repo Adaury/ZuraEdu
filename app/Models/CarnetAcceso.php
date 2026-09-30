@@ -14,7 +14,7 @@ class CarnetAcceso extends Model
 
     protected $fillable = [
         'carnet_identidad_id', 'tipo_evento', 'estado',
-        'zona_id', 'dispositivo', 'ip_address', 'notas', 'registrado_por',
+        'zona_id', 'ruta_id', 'dispositivo', 'ip_address', 'notas', 'registrado_por',
     ];
 
     const TIPOS_EVENTO = [
@@ -25,7 +25,11 @@ class CarnetAcceso extends Model
         'laboratorio'=> 'Laboratorio',
         'evento'     => 'Evento',
         'prestamo'   => 'Préstamo',
+        'bus_subida' => 'Abordó el bus',
+        'bus_bajada' => 'Bajó del bus',
     ];
+
+    const EVENTOS_BUS = ['bus_subida', 'bus_bajada'];
 
     const ESTADOS = [
         'presente'         => ['label' => 'Presente',          'color' => 'success', 'icon' => 'bi-check-circle-fill'],
@@ -44,6 +48,11 @@ class CarnetAcceso extends Model
     public function zona(): BelongsTo
     {
         return $this->belongsTo(CarnetZona::class, 'zona_id');
+    }
+
+    public function ruta(): BelongsTo
+    {
+        return $this->belongsTo(RutaTransporte::class, 'ruta_id');
     }
 
     public function registrador(): BelongsTo
@@ -83,6 +92,22 @@ class CarnetAcceso extends Model
             ->where('tipo_evento', $tipoEvento)
             ->where('created_at', '>=', now()->subSeconds(self::VENTANA_DEDUPE_SEGUNDOS))
             ->latest('created_at')
+            ->first();
+    }
+
+    /**
+     * Ruta activa del tenant a la que el estudiante del carnet está asignado
+     * realmente (estudiantes_ruta), o null. No confía en el ruta_id del cliente:
+     * verifica la asignación contra la BD.
+     */
+    public static function rutaAsignada(CarnetIdentidad $carnet, int $rutaId): ?RutaTransporte
+    {
+        $estudianteId = $carnet->matricula?->estudiante_id;
+        if (! $estudianteId) return null;
+
+        return RutaTransporte::where('id', $rutaId)
+            ->where('activo', true)
+            ->whereHas('estudiantesRuta', fn ($q) => $q->where('estudiante_id', $estudianteId))
             ->first();
     }
 

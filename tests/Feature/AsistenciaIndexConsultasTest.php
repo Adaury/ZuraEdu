@@ -137,6 +137,41 @@ class AsistenciaIndexConsultasTest extends TestCase
         $this->assertMatchesRegularExpression('#stat-t"><i class="bi bi-clock"></i> 1</span>#', $html);
     }
 
+    public function test_index_asistencia_pagina_y_busca_en_el_servidor(): void
+    {
+        ['admin' => $admin, 'sy' => $sy] = $this->contexto();
+
+        $g = $this->grupoConAsignaciones($sy, 45, 1);   // 45 asignaciones -> 2 páginas de 40
+        $materia = $g['asignaciones'][44]->asignatura;
+        $materia->update(['nombre' => 'Quimica Organica Especial']);
+
+        $pag1 = $this->actingAs($admin)->get(route('admin.asistencia.index'))->assertOk();
+        $this->assertSame(40, substr_count($pag1->getContent(), 'class="asig-row-card'));
+        $pag1->assertSee('45</strong> asignaciones activas', false);
+
+        $pag2 = $this->actingAs($admin)->get(route('admin.asistencia.index', ['page' => 2]))->assertOk();
+        $this->assertSame(5, substr_count($pag2->getContent(), 'class="asig-row-card'));
+
+        // La búsqueda filtra en el servidor y no mezcla resultados de otras páginas.
+        $busq = $this->actingAs($admin)->get(route('admin.asistencia.index', ['q' => 'Quimica Organica']))->assertOk();
+        $this->assertSame(1, substr_count($busq->getContent(), 'class="asig-row-card'));
+        $busq->assertSee('Quimica Organica Especial');
+
+        $this->actingAs($admin)->get(route('admin.asistencia.index', ['q' => 'no-existe-xyz']))
+            ->assertOk()->assertSee('No se encontraron resultados');
+    }
+
+    public function test_index_asistencia_busqueda_no_interpreta_comodines_ni_html(): void
+    {
+        ['admin' => $admin, 'sy' => $sy] = $this->contexto();
+        $this->grupoConAsignaciones($sy, 3, 1);
+
+        // '%' literal no debe coincidir con todo, y el texto buscado se escapa en la vista.
+        $res = $this->actingAs($admin)->get(route('admin.asistencia.index', ['q' => '%<script>x</script>']))->assertOk();
+        $this->assertSame(0, substr_count($res->getContent(), 'class="asig-row-card'));
+        $res->assertDontSee('<script>x</script>', false);
+    }
+
     public function test_resumen_calificaciones_se_renderiza_dos_veces_en_el_mismo_proceso(): void
     {
         ['admin' => $admin, 'sy' => $sy] = $this->contexto();

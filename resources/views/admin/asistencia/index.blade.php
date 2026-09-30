@@ -80,16 +80,22 @@
     <div class="card-body py-2 px-3">
         <div class="row g-2 align-items-center">
             <div class="col-md-5">
-                <div class="input-group input-group-sm">
+                <form method="GET" action="{{ route('admin.asistencia.index') }}" class="input-group input-group-sm">
+                    @if($ciclo)<input type="hidden" name="ciclo" value="{{ $ciclo }}">@endif
+                    @if($area)<input type="hidden" name="area" value="{{ $area }}">@endif
                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                    <input type="text" id="filtro-busqueda" class="form-control border-start-0 ps-0"
-                           placeholder="Buscar asignatura, grupo o docente..."
-                           oninput="filtrarAsignaciones(this.value)">
-                </div>
+                    <input type="text" name="q" id="filtro-busqueda" class="form-control border-start-0 ps-0"
+                           value="{{ $q }}" maxlength="100"
+                           placeholder="Buscar asignatura, grupo o docente...">
+                    <button class="btn btn-outline-primary" type="submit">Buscar</button>
+                    @if($q !== '')
+                        <a class="btn btn-outline-secondary" href="{{ route('admin.asistencia.index', array_filter(['ciclo' => $ciclo, 'area' => $area])) }}" title="Limpiar búsqueda"><i class="bi bi-x-lg"></i></a>
+                    @endif
+                </form>
             </div>
             <div class="col-auto ms-auto text-muted" style="font-size:.8rem;">
                 <i class="bi bi-collection me-1"></i>
-                <strong>{{ $asignaciones->count() }}</strong> asignaciones activas
+                <strong>{{ $asignaciones->total() }}</strong> asignaciones activas
             </div>
         </div>
     </div>
@@ -104,13 +110,6 @@
 @endphp
 
 <div id="lista-asignaciones">
-@foreach($asignaciones as $a)
-    {{-- hidden items for JS search --}}
-    <div class="asig-item d-none" data-ciclo="{{ optional(optional($a->grupo)->grado)->nivel <= 3 ? 'primer' : 'segundo' }}"
-         data-texto="{{ strtolower(optional($a->asignatura)->nombre . ' ' . optional($a->grupo)->nombre_completo . ' ' . optional($a->docente)->nombre_completo . ' ' . ($a->area ?? '')) }}">
-    </div>
-@endforeach
-
 @foreach($porCiclo as $cicloLabel => $asigsCiclo)
 <div class="mb-4">
     <div class="d-flex align-items-center gap-2 mb-2">
@@ -193,7 +192,16 @@
 </div>
 @endforeach
 
-@if($asignaciones->isEmpty())
+@if($asignaciones->hasPages())
+<div class="d-flex justify-content-center mt-3">{{ $asignaciones->links() }}</div>
+@endif
+
+@if($asignaciones->isEmpty() && $q !== '')
+<div class="text-center py-4 text-muted">
+    <i class="bi bi-search" style="font-size:2rem;opacity:.3;"></i>
+    <p class="mt-2 mb-0">No se encontraron resultados para «{{ $q }}».</p>
+</div>
+@elseif($asignaciones->isEmpty())
 <div class="empty-state-enhanced">
     <div class="empty-illustration"><i class="bi bi-calendar-x"></i></div>
     <div class="empty-title">No hay asignaciones activas</div>
@@ -207,24 +215,4 @@
 @endif
 </div>
 
-<div id="sin-resultados" class="text-center py-4 text-muted d-none">
-    <i class="bi bi-search" style="font-size:2rem;opacity:.3;"></i>
-    <p class="mt-2 mb-0">No se encontraron resultados.</p>
-</div>
-
 @endsection
-
-@push('scripts')
-<script>
-function filtrarAsignaciones(q) {
-    q = q.toLowerCase().trim();
-    let visible = 0;
-    document.querySelectorAll('.asig-item').forEach(el => {
-        const match = q === '' || (el.dataset.texto || '').includes(q);
-        el.style.display = match ? '' : 'none';
-        if (match) visible++;
-    });
-    document.getElementById('sin-resultados').classList.toggle('d-none', visible > 0 || q === '');
-}
-</script>
-@endpush

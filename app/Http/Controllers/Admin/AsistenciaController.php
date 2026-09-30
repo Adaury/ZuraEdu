@@ -59,7 +59,21 @@ class AsistenciaController extends Controller
             }
         }
 
-        $asignaciones = $query->orderBy('grupo_id')->get();
+        // Búsqueda en el servidor (asignatura, docente, grado o sección). Antes se pintaban
+        // todas las asignaciones y se filtraba en el navegador: con 1.500 asignaciones el
+        // index tardaba ~4 s solo en renderizar.
+        $q = trim((string) $request->input('q', ''));
+        if ($q !== '') {
+            $like = '%' . addcslashes($q, '%_\\') . '%';
+            $query->where(function ($w) use ($like) {
+                $w->whereHas('asignatura', fn ($a) => $a->where('nombre', 'like', $like))
+                  ->orWhereHas('docente', fn ($d) => $d->where('nombres', 'like', $like)->orWhere('apellidos', 'like', $like))
+                  ->orWhereHas('grupo.grado', fn ($g) => $g->where('nombre', 'like', $like))
+                  ->orWhereHas('grupo.seccion', fn ($s) => $s->where('nombre', 'like', $like));
+            });
+        }
+
+        $asignaciones = $query->orderBy('grupo_id')->orderBy('id')->paginate(40)->withQueryString();
 
         $contexto = null;
         if ($ciclo == 1) $contexto = 'Primer Ciclo (1ro–3ro)';
@@ -83,7 +97,7 @@ class AsistenciaController extends Controller
             ->map(fn ($filas) => $filas->pluck('total', 'estado'));
 
         return view('admin.asistencia.index', compact(
-            'asignaciones', 'schoolYear', 'docente', 'ciclo', 'area', 'contexto',
+            'asignaciones', 'schoolYear', 'docente', 'ciclo', 'area', 'contexto', 'q',
             'matriculasPorGrupo', 'asistHoyPorAsignacion'
         ));
     }
@@ -226,11 +240,11 @@ class AsistenciaController extends Controller
                 'total'       => $total,
                 'presente'    => $registros->where('estado', 'presente')->count(),
                 'ausente'     => $registros->where('estado', 'ausente')->count(),
-                'tardanza'    => $registros->where('estado', 'tardanza')->count(),
-                'justificado' => $registros->where('estado', 'justificado')->count(),
+                'tardanza'    => $registros->where('estado', 'tarde')->count(),
+                'justificado' => $registros->where('estado', 'excusa')->count(),
                 'pct_asistencia' => $total > 0
                     ? round(
-                        ($registros->whereIn('estado', ['presente', 'tardanza', 'justificado'])->count() / $total) * 100,
+                        ($registros->whereIn('estado', ['presente', 'tarde', 'excusa'])->count() / $total) * 100,
                         1
                     )
                     : null,
@@ -263,11 +277,11 @@ class AsistenciaController extends Controller
                 'total'       => $total,
                 'presente'    => $registros->where('estado', 'presente')->count(),
                 'ausente'     => $registros->where('estado', 'ausente')->count(),
-                'tardanza'    => $registros->where('estado', 'tardanza')->count(),
-                'justificado' => $registros->where('estado', 'justificado')->count(),
+                'tardanza'    => $registros->where('estado', 'tarde')->count(),
+                'justificado' => $registros->where('estado', 'excusa')->count(),
                 'pct_asistencia' => $total > 0
                     ? round(
-                        ($registros->whereIn('estado', ['presente', 'tardanza', 'justificado'])->count() / $total) * 100,
+                        ($registros->whereIn('estado', ['presente', 'tarde', 'excusa'])->count() / $total) * 100,
                         1
                     )
                     : null,
@@ -563,7 +577,7 @@ class AsistenciaController extends Controller
         foreach ($matriculas as $i => $m) {
             $row      = $i + 3;
             $registros= $todasAsistencias->where('matricula_id', $m->id);
-            $presentes= $registros->whereIn('estado', ['presente', 'tardanza', 'tarde', 'justificado'])->count();
+            $presentes= $registros->whereIn('estado', ['presente', 'tarde', 'excusa'])->count();
             $total    = $registros->count();
             $pct      = $total > 0 ? round($presentes / $total * 100, 1) : null;
 
@@ -737,7 +751,7 @@ class AsistenciaController extends Controller
             $sheet->setCellValue("B{$row}", $m->estudiante->nombre_completo ?? '');
             $sheet->setCellValue("C{$row}", $asis->where('estado', 'presente')->count());
             $sheet->setCellValue("D{$row}", $asis->where('estado', 'ausente')->count());
-            $sheet->setCellValue("E{$row}", $asis->where('estado', 'tardanza')->count() + $asis->where('estado', 'tarde')->count());
+            $sheet->setCellValue("E{$row}", $asis->where('estado', 'tarde')->count());
             $sheet->setCellValue("F{$row}", $asis->where('estado', 'excusa')->count());
             $sheet->setCellValue("G{$row}", $asis->where('estado', 'retiro')->count());
             $sheet->setCellValue("H{$row}", $total);
@@ -1060,9 +1074,11 @@ class AsistenciaController extends Controller
         $estadosValidos = ['presente', 'ausente', 'tardanza', 'tarde', 'excusa', 'justificado', 'retiro'];
 
         // Pre-load all active matriculas for this group, keyed by numero_matricula and cedula
-        $matriculasPorNum   = $asignacion->grupo->matriculas()->activas()->with('estudiante')
-            ->get()->keyBy('numero_matricula');
-        $matriculasPorCedula = $matriculasPorNum->groupBy(fn ($m) => $m->estudiante->cedula ?? '');
+        // numero_matricula vive en Estudiante, no en Matricula: keyBy('numero_matricula') sobre la
+        // matrícula nunca indexaba nada y la importación solo encontraba alumnos por cédula.
+        $matriculasGrupo     = $asignacion->grupo->matriculas()->activas()->with('estudiante')->get();
+        $matriculasPorNum    = $matriculasGrupo->keyBy(fn ($m) => $m->estudiante->numero_matricula ?? '');
+        $matriculasPorCedula = $matriculasGrupo->groupBy(fn ($m) => $m->estudiante->cedula ?? '');
 
         $importados = 0;
         $omitidos   = 0;
@@ -1104,6 +1120,9 @@ class AsistenciaController extends Controller
                 $errores[] = "Fila {$linea}: Estado '{$estado}' no válido. Se usó 'presente'.";
                 $estado = 'presente';
             }
+            // Sinónimos del enum anterior: la columna solo admite presente/ausente/tarde/excusa/retiro
+            // (migración 2026_03_17_000071). Guardar 'tardanza'/'justificado' daba "Data truncated".
+            $estado = ['tardanza' => 'tarde', 'justificado' => 'excusa'][$estado] ?? $estado;
 
             Asistencia::updateOrCreate(
                 [

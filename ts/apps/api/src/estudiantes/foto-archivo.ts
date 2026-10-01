@@ -9,7 +9,12 @@ import { isAbsolute, relative, resolve, sep } from 'node:path';
  * comprueba que el resultado quede DENTRO de la carpeta base.
  */
 export function rutaSegura(base: string, fotoRelativa: string): string | null {
-  if (fotoRelativa === '' || fotoRelativa.includes('\0') || isAbsolute(fotoRelativa)) return null;
+  // Laravel guarda rutas con "/": una barra invertida o una letra de unidad (C:) no es legítima en ningún sistema, y su significado
+  // cambia entre Windows y Linux (en Linux `C:\x` es solo un nombre de archivo), así que se rechazan SIEMPRE: el resultado no debe
+  // depender del sistema operativo.
+  if (fotoRelativa === '' || fotoRelativa.includes('\0') || fotoRelativa.includes('\\') || /^[A-Za-z]:/.test(fotoRelativa) || isAbsolute(fotoRelativa)) {
+    return null;
+  }
   const raiz = resolve(base);
   const destino = resolve(raiz, fotoRelativa);
   const rel = relative(raiz, destino);

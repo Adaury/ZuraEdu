@@ -7,7 +7,7 @@ import { ipDe, leerCookie, origenValido } from './validacion';
  * de la petición es la interna, y una absoluta mandaría al usuario a esa dirección.
  */
 export function redirigir(ubicacion: string, cookies: string[] = []): Response {
-  const h = new Headers({ Location: ubicacion, 'Cache-Control': 'no-store' });
+  const h = new Headers({ Location: `${config.base}${ubicacion}`, 'Cache-Control': 'no-store' });
   for (const c of cookies) h.append('Set-Cookie', c);
   return new Response(null, { status: 303, headers: h });
 }

@@ -183,7 +183,8 @@ jobs:
         working-directory: ts
         run: |
           npm run build -w @zuraedu/api
-          npm run build -w @zuraedu/web
+          # Como en producción: la web bajo /nuevo (Laravel ya usa /login y / en el mismo servidor). Next fija el prefijo al compilar.
+          WEB_BASE_PATH=/nuevo npm run build -w @zuraedu/web
 
       - name: Prueba de humo de la web (login, listado, edición, CSRF, aislamiento, cierre de sesión)
         working-directory: ts
@@ -195,15 +196,15 @@ jobs:
           (cd "$GITHUB_WORKSPACE/public" && nohup php -S 127.0.0.1:8000 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php > "$LOGS/laravel.log" 2>&1 &)
           # API: sin límite de peticiones ni caché de autenticación para que el cierre de sesión se note al instante.
           (cd apps/api && RATE_LIMIT_PER_MINUTE=0 AUTH_CACHE_TTL_SECONDS=0 NODE_ENV=production DATABASE_URL=mysql://root:root@127.0.0.1:3306/sge_e2e API_PORT=3100 nohup node dist/main.js > "$LOGS/api.log" 2>&1 &)
-          (cd apps/web && API_URL=http://127.0.0.1:3100 LARAVEL_URL=http://127.0.0.1:8000 COOKIE_SECURE=false NODE_ENV=production nohup npx next start -p 3101 > "$LOGS/web.log" 2>&1 &)
+          (cd apps/web && WEB_BASE_PATH=/nuevo API_URL=http://127.0.0.1:3100 LARAVEL_URL=http://127.0.0.1:8000 COOKIE_SECURE=false NODE_ENV=production nohup npx next start -p 3101 -H 127.0.0.1 > "$LOGS/web.log" 2>&1 &)
           for i in $(seq 1 60); do
-            a=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $SMOKE_HOST" http://127.0.0.1:3101/login) || true
+            a=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $SMOKE_HOST" http://127.0.0.1:3101/nuevo/login) || true
             b=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3100/health) || true
             [ "$a" = 200 ] && [ "$b" = 200 ] && break
             sleep 1
           done
           [ "$a" = 200 ] && [ "$b" = 200 ] || { echo "Los servicios no arrancaron a tiempo (web=$a api=$b)"; exit 1; }
-          WEB_URL=http://127.0.0.1:3101 API_URL=http://127.0.0.1:3100 node apps/web/test/smoke.mjs
+          WEB_URL=http://127.0.0.1:3101 SMOKE_BASE=/nuevo API_URL=http://127.0.0.1:3100 node apps/web/test/smoke.mjs
 
       - name: Registros de los servicios (solo si algo falló)
         if: failure()

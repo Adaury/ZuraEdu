@@ -4,11 +4,15 @@
 // Uso:  WEB_URL=http://127.0.0.1:3101 API_URL=http://127.0.0.1:3100 SMOKE_HOST=demo.zuraedu.com \
 //       SMOKE_EMAIL=admin@demo.com SMOKE_PASSWORD=... [SMOKE_AJENO_ID=<id de un estudiante de OTRO colegio>] node test/smoke.mjs
 // Sale con código 1 si falla algo.
-import { request } from 'node:http';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
 
 const WEB = new URL(process.env.WEB_URL ?? 'http://127.0.0.1:3101');
 const API = new URL(process.env.API_URL ?? 'http://127.0.0.1:3100');
 const HOST = process.env.SMOKE_HOST ?? 'demo.zuraedu.com';
+// Prefijo bajo el que vive la web (WEB_BASE_PATH), p. ej. /nuevo; vacío = raíz. Con https://… y SMOKE_INSECURE=1 se acepta un certificado autofirmado.
+const B = (process.env.SMOKE_BASE ?? '').replace(/\/+$/, '');
+const INSEGURO = process.env.SMOKE_INSECURE === '1';
 const EMAIL = process.env.SMOKE_EMAIL;
 const PASSWORD = process.env.SMOKE_PASSWORD;
 const AJENO = process.env.SMOKE_AJENO_ID;
@@ -23,7 +27,9 @@ function http(base, { path, method = 'GET', headers = {}, cuerpo }) {
     const datos = cuerpo === undefined ? undefined : typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo);
     const h = { Host: HOST, ...headers };
     if (datos !== undefined) h['Content-Length'] = String(Buffer.byteLength(datos));
-    const req = request({ host: base.hostname, port: base.port, path, method, headers: h }, (res) => {
+    const https = base.protocol === 'https:';
+    const opciones = { host: base.hostname, port: base.port, path, method, headers: h, ...(https && INSEGURO ? { rejectUnauthorized: false } : {}) };
+    const req = (https ? httpsRequest : httpRequest)(opciones, (res) => {
       const trozos = [];
       res.on('data', (t) => trozos.push(t));
       res.on('end', () => resolver({ status: res.statusCode, headers: res.headers, texto: Buffer.concat(trozos).toString('utf8') }));
@@ -33,8 +39,8 @@ function http(base, { path, method = 'GET', headers = {}, cuerpo }) {
     req.end();
   });
 }
-const web = (o) => http(WEB, o);
-const ORIGEN = `http://${HOST}`;
+const web = (o) => http(WEB, { ...o, path: `${B}${o.path}` }); // todo lo de la web va bajo el prefijo
+const ORIGEN = `${WEB.protocol}//${HOST}`;
 const formulario = (obj) => new URLSearchParams(obj).toString();
 const post = (path, obj, { cookie, origin = ORIGEN } = {}) =>
   web({
@@ -56,14 +62,19 @@ function verificar(descripcion, condicion, detalle = '') {
     console.log(`  ✗ ${descripcion}${detalle ? `\n      ${detalle}` : ''}`);
   }
 }
-const ubicacion = (r) => r.headers.location ?? '';
+// La ubicación se compara SIN el prefijo de la web, para que las mismas comprobaciones valgan con y sin él.
+const ubicacion = (r) => {
+  const l = r.headers.location ?? '';
+  return B && l.startsWith(B) ? l.slice(B.length) || '/' : l;
+};
 const esRedireccion = (r, destino) => [301, 302, 303, 307, 308].includes(r.status) && ubicacion(r).startsWith(destino);
 const cookieDe = (r) => (r.headers['set-cookie'] ?? []).find((c) => c.startsWith('zura_token='));
 
-console.log(`Web ${WEB.origin} · API ${API.origin} · Host ${HOST} · usuario ${EMAIL}`);
+console.log(`Web ${WEB.origin}${B} · API ${API.origin} · Host ${HOST} · usuario ${EMAIL}`);
 
 console.log('\n1) Sin sesión');
-verificar('GET / redirige al login', esRedireccion(await get('/'), '/login'));
+// Con prefijo la raíz de la web es `/nuevo` (sin barra final): `get('')` + prefijo; sin prefijo es `/`.
+verificar('la raíz de la web redirige al login', esRedireccion(await get(B ? '' : '/'), '/login'));
 verificar('GET /estudiantes redirige al login', esRedireccion(await get('/estudiantes'), '/login'));
 verificar('GET /estudiantes/1/editar redirige al login', esRedireccion(await get('/estudiantes/1/editar'), '/login'));
 const login = await get('/login');
@@ -77,7 +88,7 @@ verificar('?error=<script> no se refleja: sin <script> inyectado y sin aviso vis
 console.log('\n2) CSRF en el login');
 verificar('POST sin Origin → 403', (await post('/sesion/entrar', { email: EMAIL, password: PASSWORD }, { origin: null })).status === 403);
 verificar('POST con Origin de otro sitio → 403', (await post('/sesion/entrar', { email: EMAIL, password: PASSWORD }, { origin: 'https://evil.example' })).status === 403);
-verificar('POST con Origin parecido (host.evil) → 403', (await post('/sesion/entrar', { email: EMAIL, password: PASSWORD }, { origin: `http://${HOST}.evil.example` })).status === 403);
+verificar('POST con Origin parecido (host.evil) → 403', (await post('/sesion/entrar', { email: EMAIL, password: PASSWORD }, { origin: `${WEB.protocol}//${HOST}.evil.example` })).status === 403);
 
 console.log('\n3) Inicio de sesión');
 const mala = await post('/sesion/entrar', { email: EMAIL, password: `${PASSWORD}-mala` });
@@ -87,7 +98,7 @@ verificar('campos vacíos → credenciales', esRedireccion(vacia, '/login?error=
 const ok = await post('/sesion/entrar', { email: EMAIL, password: PASSWORD });
 const set = cookieDe(ok) ?? '';
 verificar('credenciales correctas → 303 a /estudiantes', ok.status === 303 && ubicacion(ok) === '/estudiantes', `status ${ok.status} → ${ubicacion(ok)} ${ok.texto.slice(0, 100)}`);
-verificar('cookie HttpOnly + SameSite=Lax + Path=/ + Max-Age', /HttpOnly/i.test(set) && /SameSite=Lax/i.test(set) && /Path=\//.test(set) && /Max-Age=\d+/.test(set), set);
+verificar('cookie HttpOnly + SameSite=Lax + Path=/ + Max-Age', /HttpOnly/i.test(set) && /SameSite=Lax/i.test(set) && set.includes(`Path=${B || '/'}`) && /Max-Age=\d+/.test(set), set);
 const valorCookie = decodeURIComponent((set.split(';')[0] ?? '').replace('zura_token=', ''));
 verificar('el token tiene el formato de Sanctum (id|texto)', /^\d+\|[A-Za-z0-9]{20,}$/.test(valorCookie));
 const COOKIE = `zura_token=${encodeURIComponent(valorCookie)}`;
@@ -97,7 +108,7 @@ console.log('\n4) Listado');
 const lista = await get('/estudiantes', COOKIE);
 verificar('GET /estudiantes → 200 con tabla y paginación', lista.status === 200 && lista.texto.includes('<table') && sinComentarios(lista.texto).includes('Página 1 de'), `status ${lista.status}`);
 verificar('la página NO contiene el token (la cookie es HttpOnly y no se refleja)', !lista.texto.includes(valorCookie.split('|')[1] ?? 'xx'));
-const ids = [...lista.texto.matchAll(/href="\/estudiantes\/(\d+)\/editar"/g)].map((m) => Number(m[1]));
+const ids = [...lista.texto.matchAll(new RegExp(`href="${B}/estudiantes/(\\d+)/editar"`, 'g'))].map((m) => Number(m[1]));
 verificar('hay estudiantes con enlace de edición', ids.length > 0, `ids: ${ids.length}`);
 const filas = (html) => (html.match(/<tr>/g) ?? []).length;
 verificar('el listado trae como máximo 20 filas por página', filas(lista.texto) <= 20 + 1 && filas(lista.texto) >= 2);
@@ -113,7 +124,7 @@ verificar('página fuera de rango → 200 con "No hay estudiantes" (no un error)
 console.log('\n5) Edición');
 const id = ids[0];
 const editar = await get(`/estudiantes/${id}/editar`, COOKIE);
-verificar('GET editar → 200 con el formulario y el id correcto', editar.status === 200 && editar.texto.includes(`action="/estudiantes/${id}/guardar"`), `status ${editar.status}`);
+verificar('GET editar → 200 con el formulario y el id correcto', editar.status === 200 && editar.texto.includes(`action="${B}/estudiantes/${id}/guardar"`), `status ${editar.status}`);
 verificar('?e=<script> no se refleja; ?e=invalido&c=nombres marca el campo', (await get(`/estudiantes/${id}/editar?e=%3Cscript%3Ealert(1)%3C/script%3E`, COOKIE)).texto.includes('<script>alert') === false
   && (await get(`/estudiantes/${id}/editar?e=invalido&c=nombres`, COOKIE)).texto.includes('aria-invalid="true"'));
 verificar('id con formato raro (abc, 1e3, 0x10, 007) → 404', (await Promise.all(['abc', '1e3', '0x10', '007', '-1'].map((x) => get(`/estudiantes/${x}/editar`, COOKIE)))).every((r) => r.status === 404));

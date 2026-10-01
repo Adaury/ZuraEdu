@@ -1,6 +1,7 @@
 import { ESTUDIANTE_ESTADOS } from '@zuraedu/shared';
 import { notFound, redirect } from 'next/navigation';
 import { obtenerEstudiante } from '@/lib/api';
+import { ruta } from '@/lib/config';
 import { requerirSesion } from '@/lib/sesion';
 import { codigoPorEstado, esCodigoError, idValido, leerCampos, MENSAJES } from '@/lib/validacion';
 
@@ -57,7 +58,7 @@ export default async function Editar({
         </p>
       )}
 
-      <form method="post" action={`/estudiantes/${id}/guardar`} className="tarjeta">
+      <form method="post" action={ruta(`/estudiantes/${id}/guardar`)} className="tarjeta">
         <label htmlFor="nombres">Nombres</label>
         <input id="nombres" name="nombres" defaultValue={e.nombres} required maxLength={100} aria-invalid={invalido('nombres')} />
 
@@ -86,7 +87,7 @@ export default async function Editar({
           <button type="submit" className="boton">
             Guardar cambios
           </button>
-          <a href="/estudiantes">Volver al listado</a>
+          <a href={ruta('/estudiantes')}>Volver al listado</a>
         </div>
       </form>
     </>

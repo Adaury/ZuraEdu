@@ -44,14 +44,22 @@ navegador ──► Next.js (esta app) ──► Laravel      POST /api/v1/auth/
 |---|---|---|
 | `API_URL` | `http://127.0.0.1:3100` | API TypeScript |
 | `LARAVEL_URL` | `http://127.0.0.1:8000` | Laravel (login/logout) |
+| `WEB_BASE_PATH` | vacío (raíz) | prefijo bajo el que vive la web (en producción `/nuevo`). **Debe ser el mismo al compilar y al arrancar**: Next lo fija en `next build` |
 | `COOKIE_SECURE` | `true` en producción | `false` solo para probar por http sin TLS |
 
-Detrás de Nginx, `Host` debe llegar intacto (`proxy_set_header Host $host`) y `X-Forwarded-For` también.
+**La web escucha solo en `127.0.0.1`** (el script `start` lleva `-H 127.0.0.1`; sin esa opción `next start` abre `0.0.0.0` y se salta el proxy).
+
+Detrás de Nginx, `Host` debe llegar intacto (`proxy_set_header Host $host`) y `X-Forwarded-For` también. La configuración completa (TLS, prefijo,
+límites por IP) y lo que se probó está en [`../../deploy/nginx/`](../../deploy/nginx/README.md).
+
+**Por qué un prefijo:** Laravel ya tiene `/login` y `/` en el mismo servidor, y un subdominio no sirve (la API decide el colegio por el primer segmento del
+`Host`). Con `WEB_BASE_PATH=/nuevo` las pantallas viven en `/nuevo/login`, `/nuevo/estudiantes`…, y la cookie del token lleva `Path=/nuevo`, así que **no se
+envía a ninguna ruta de Laravel**. Un valor inválido (con espacios, `..`, saltos de línea…) hace fallar el arranque y la compilación.
 
 ## Pruebas
 
-- `npm test -w @zuraedu/web`: utilidades puras (ids, consulta, CSRF, códigos de error, cookies, IP) — 81 pruebas.
-- `test/smoke.mjs`: **45 comprobaciones** por HTTP contra servicios reales (login con credenciales buenas y malas, cookie, listado,
+- `npm test -w @zuraedu/web`: utilidades puras (ids, consulta, CSRF, códigos de error, cookies, IP, prefijo) — 108 pruebas.
+- `test/smoke.mjs`: **45 comprobaciones** (también con `SMOKE_BASE=/nuevo`, `https://…` y `SMOKE_INSECURE=1` para un certificado autofirmado) por HTTP contra servicios reales (login con credenciales buenas y malas, cookie, listado,
   búsqueda, parámetros hostiles, edición, errores 400/409, CSRF, ids raros, otro colegio, cierre de sesión y token revocado).
   `test/preparar-smoke.mjs` crea los datos; el CI lo ejecuta (job `e2e`). Ver la cabecera del archivo para correrlo en local.
 

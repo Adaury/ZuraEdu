@@ -1,7 +1,7 @@
 import { ESTUDIANTE_ESTADOS } from '@zuraedu/shared';
 import { redirect } from 'next/navigation';
 import { listarEstudiantes } from '@/lib/api';
-import { config } from '@/lib/config';
+import { config, ruta } from '@/lib/config';
 import { requerirSesion } from '@/lib/sesion';
 import { codigoPorEstado, consultaParaApi, enlaceListado, leerConsulta, MENSAJES } from '@/lib/validacion';
 
@@ -21,7 +21,7 @@ export default async function Estudiantes({ searchParams }: { searchParams: Prom
     <>
       <h1>Estudiantes</h1>
 
-      <form method="get" action="/estudiantes" className="filtros" role="search">
+      <form method="get" action={ruta('/estudiantes')} className="filtros" role="search">
         <div>
           <label htmlFor="q">Buscar</label>
           <input id="q" name="q" type="search" defaultValue={consulta.q} maxLength={100} placeholder="Nombre, apellido, matrícula o cédula" />
@@ -50,7 +50,7 @@ export default async function Estudiantes({ searchParams }: { searchParams: Prom
       ) : r.data.data.length === 0 ? (
         <div className="tarjeta vacio">
           <p>No hay estudiantes con esos criterios.</p>
-          {consulta.page > 1 && <a href={enlaceListado(consulta, 1)}>Volver a la primera página</a>}
+          {consulta.page > 1 && <a href={ruta(enlaceListado(consulta, 1))}>Volver a la primera página</a>}
         </div>
       ) : (
         <>
@@ -80,7 +80,7 @@ export default async function Estudiantes({ searchParams }: { searchParams: Prom
                     <td>{e.nombres}</td>
                     <td>{ETIQUETA_ESTADO[e.estado] ?? e.estado}</td>
                     <td>
-                      <a href={`/estudiantes/${e.id}/editar`} aria-label={`Editar a ${e.nombres} ${e.apellidos}`}>
+                      <a href={ruta(`/estudiantes/${e.id}/editar`)} aria-label={`Editar a ${e.nombres} ${e.apellidos}`}>
                         Editar
                       </a>
                     </td>
@@ -91,11 +91,11 @@ export default async function Estudiantes({ searchParams }: { searchParams: Prom
           </div>
 
           <nav className="paginacion" aria-label="Paginación">
-            {r.data.meta.page > 1 ? <a href={enlaceListado(consulta, r.data.meta.page - 1)}>← Anterior</a> : <span />}
+            {r.data.meta.page > 1 ? <a href={ruta(enlaceListado(consulta, r.data.meta.page - 1))}>← Anterior</a> : <span />}
             <span>
               Página {r.data.meta.page} de {r.data.meta.lastPage}
             </span>
-            {r.data.meta.page < r.data.meta.lastPage ? <a href={enlaceListado(consulta, r.data.meta.page + 1)}>Siguiente →</a> : <span />}
+            {r.data.meta.page < r.data.meta.lastPage ? <a href={ruta(enlaceListado(consulta, r.data.meta.page + 1))}>Siguiente →</a> : <span />}
           </nav>
         </>
       )}

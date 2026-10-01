@@ -127,15 +127,15 @@ export function leerCampos(valor: string): CampoEdicion[] {
 }
 
 /** Valor de la cookie `Set-Cookie` de sesión (HttpOnly, SameSite=Lax, Path=/). */
-export function serializarCookie(nombre: string, valor: string, opciones: { secure: boolean; maxAgeSegundos: number }): string {
-  const partes = [`${nombre}=${encodeURIComponent(valor)}`, 'Path=/', 'HttpOnly', 'SameSite=Lax', `Max-Age=${opciones.maxAgeSegundos}`];
+export function serializarCookie(nombre: string, valor: string, opciones: { secure: boolean; maxAgeSegundos: number; path?: string }): string {
+  const partes = [`${nombre}=${encodeURIComponent(valor)}`, `Path=${opciones.path || '/'}`, 'HttpOnly', 'SameSite=Lax', `Max-Age=${opciones.maxAgeSegundos}`];
   if (opciones.secure) partes.push('Secure');
   return partes.join('; ');
 }
 
 /** Cookie que borra la de sesión. */
-export function cookieBorrada(nombre: string, secure: boolean): string {
-  return serializarCookie(nombre, '', { secure, maxAgeSegundos: 0 });
+export function cookieBorrada(nombre: string, secure: boolean, path?: string): string {
+  return serializarCookie(nombre, '', { secure, maxAgeSegundos: 0, path });
 }
 
 /** Valor de una cookie en la cabecera `Cookie`, o `null`. Nunca lanza con un valor mal codificado. */

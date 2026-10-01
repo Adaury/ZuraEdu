@@ -4,9 +4,9 @@
   "private": true,
   "description": "Web Next.js de ZuraEdu (esqueleto). Consume la API NestJS con los tipos de @zuraedu/shared.",
   "scripts": {
-    "dev": "next dev -p 3101",
+    "dev": "next dev -p 3101 -H 127.0.0.1",
     "build": "next build",
-    "start": "next start -p 3101",
+    "start": "next start -p 3101 -H 127.0.0.1",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "jest --config jest.config.js"
   },

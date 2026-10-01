@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { ruta } from '@/lib/config';
 import { contextoActual } from '@/lib/sesion';
 import { esCodigoError, MENSAJES } from '@/lib/validacion';
 
@@ -19,7 +20,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<Re
           {MENSAJES[codigo]}
         </p>
       )}
-      <form method="post" action="/sesion/entrar">
+      <form method="post" action={ruta('/sesion/entrar')}>
         <label htmlFor="email">Correo electrónico</label>
         <input id="email" name="email" type="email" autoComplete="username" required maxLength={150} />
         <label htmlFor="password">Contraseña</label>

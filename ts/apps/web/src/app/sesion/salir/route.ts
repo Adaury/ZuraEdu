@@ -12,5 +12,5 @@ export async function POST(request: Request): Promise<Response> {
 
   const ctx = contextoDe(request);
   if (ctx.token) await cerrarSesionLaravel(ctx);
-  return redirigir('/login', [cookieBorrada(config.cookieSesion, config.cookieSecure)]);
+  return redirigir('/login', [cookieBorrada(config.cookieSesion, config.cookieSecure, config.base || '/')]);
 }

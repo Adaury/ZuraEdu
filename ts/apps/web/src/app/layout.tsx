@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
-import { config } from '@/lib/config';
+import { config, ruta } from '@/lib/config';
 import './estilos.css';
 
 export const metadata = {
@@ -15,11 +15,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang="es">
       <body>
         <header className="barra">
-          <a className="marca" href={conSesion ? '/estudiantes' : '/login'}>
+          <a className="marca" href={ruta(conSesion ? '/estudiantes' : '/login')}>
             ZuraEdu
           </a>
           {conSesion && (
-            <form method="post" action="/sesion/salir">
+            <form method="post" action={ruta('/sesion/salir')}>
               <button type="submit" className="boton secundario">
                 Cerrar sesión
               </button>

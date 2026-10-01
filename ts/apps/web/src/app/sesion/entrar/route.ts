@@ -19,5 +19,5 @@ export async function POST(request: Request): Promise<Response> {
   if (!r.ok) return redirigir(`/login?error=${r.codigo}`);
 
   // Siempre al listado: no se acepta un destino desde la URL (evita redirecciones abiertas).
-  return redirigir('/estudiantes', [serializarCookie(config.cookieSesion, r.token, { secure: config.cookieSecure, maxAgeSegundos: config.sesionSegundos })]);
+  return redirigir('/estudiantes', [serializarCookie(config.cookieSesion, r.token, { secure: config.cookieSecure, maxAgeSegundos: config.sesionSegundos, path: config.base || '/' })]);
 }

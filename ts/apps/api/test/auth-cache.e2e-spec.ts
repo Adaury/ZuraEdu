@@ -7,11 +7,20 @@ import { DATABASE_URL, dormir, Fixtures, TenantCreado } from './helpers/fixtures
 process.env.DATABASE_URL = DATABASE_URL;
 
 import { AppModule } from '../src/app.module';
+import { RELOJ } from '../src/auth/auth-cache';
 import { QUERY_COUNTER, QueryCounter } from '../src/db/query-counter';
 
-async function crearApp(ttlSegundos: number): Promise<INestApplication> {
+/**
+ * `reloj` es el reloj de la CACHÉ. Las pruebas de vencimiento por TTL usan uno controlable y avanzan el tiempo a
+ * voluntad: así no dependen de que el equipo o el runner no se detengan entre dos peticiones (con reloj real, una
+ * pausa de >1 s entre "pedir" y "volver a pedir" hacía fallar la comprobación "dentro del TTL").
+ */
+async function crearApp(ttlSegundos: number, reloj?: () => number): Promise<INestApplication> {
   process.env.AUTH_CACHE_TTL_SECONDS = String(ttlSegundos);
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+  const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+    .overrideProvider(RELOJ)
+    .useValue(reloj ?? (() => Date.now()))
+    .compile();
   const app = moduleRef.createNestApplication();
   await app.listen(0); // un solo servidor escuchando: supertest no abre uno por petición
   return app;
@@ -25,9 +34,15 @@ async function crearApp(ttlSegundos: number): Promise<INestApplication> {
 describe('API · caché de autenticación (e2e, MySQL real)', () => {
   const fx = new Fixtures();
   let colegio: TenantCreado; // colegio temporal propio (no depende de datos previos)
-  let corta: INestApplication; // TTL 1 s
+  let corta: INestApplication; // TTL 1 s, con reloj controlable
   let sinCache: INestApplication; // TTL 0
-  let larga: INestApplication; // TTL 30 s
+  let larga: INestApplication; // TTL 30 s, con reloj real (el vencimiento del token lo calcula MySQL con la hora real)
+
+  /** Hora que ve la caché de `corta`. Solo avanza cuando la prueba lo ordena. */
+  let ahora = Date.now();
+  const avanzar = (ms: number) => {
+    ahora += ms;
+  };
 
   const get = (app: INestApplication, bearer: string) =>
     request(app.getHttpServer()).get('/api/v1/estudiantes?perPage=5').set('Authorization', `Bearer ${bearer}`);
@@ -35,7 +50,7 @@ describe('API · caché de autenticación (e2e, MySQL real)', () => {
 
   beforeAll(async () => {
     colegio = await fx.crearTenant('cache');
-    corta = await crearApp(1);
+    corta = await crearApp(1, () => ahora);
     sinCache = await crearApp(0);
     larga = await crearApp(30);
   }, 60000);
@@ -90,7 +105,7 @@ describe('API · caché de autenticación (e2e, MySQL real)', () => {
       await fx.pool.query('delete from personal_access_tokens where id = ?', [t.id]); // "logout" en Laravel
       await get(corta, t.bearer).expect(200); // compromiso documentado: aún dentro del TTL
 
-      await dormir(1200);
+      avanzar(1000); // vence el TTL de 1 s (reloj controlable, sin dormir)
       await get(corta, t.bearer).expect(401);
     });
 
@@ -109,7 +124,7 @@ describe('API · caché de autenticación (e2e, MySQL real)', () => {
       await fx.pool.query('delete from model_has_roles where model_id = ?', [userId]); // se le quita el rol
       await get(corta, t.bearer).expect(200); // dentro del TTL
 
-      await dormir(1200);
+      avanzar(1000); // vence el TTL de 1 s (reloj controlable, sin dormir)
       await get(corta, t.bearer).expect(403);
     });
 
@@ -121,16 +136,17 @@ describe('API · caché de autenticación (e2e, MySQL real)', () => {
       await fx.pool.query('update users set activo = 0 where id = ?', [userId]);
       await get(corta, t.bearer).expect(200);
 
-      await dormir(1200);
+      avanzar(1000); // vence el TTL de 1 s (reloj controlable, sin dormir)
       await get(corta, t.bearer).expect(401);
     });
 
     it('la entrada cacheada nunca sobrevive al expires_at del token', async () => {
-      // TTL 30 s, pero el token vence en 2 s: la entrada debe vencer con el token, no a los 30 s.
-      const t = await fx.crearToken(await fx.crearUsuario(colegio.id, 'expira', 'Administrador'), 2);
+      // TTL 30 s, pero el token vence en 3 s: la entrada debe vencer con el token, no a los 30 s. Es la única prueba
+      // con tiempo real: el vencimiento lo calcula MySQL (utc_timestamp) y la API con Date.now.
+      const t = await fx.crearToken(await fx.crearUsuario(colegio.id, 'expira', 'Administrador'), 3);
       await get(larga, t.bearer).expect(200);
 
-      await dormir(2400);
+      await dormir(3400);
       await get(larga, t.bearer).expect(401);
     });
   });

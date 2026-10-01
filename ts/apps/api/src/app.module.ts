@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ClsModule } from 'nestjs-cls';
 import { AuditService } from './audit/audit.service';
-import { AuthCache } from './auth/auth-cache';
+import { AuthCache, RELOJ } from './auth/auth-cache';
 import { PermissionGuard } from './auth/permission.guard';
 import { PermissionsService } from './auth/permissions.service';
 import { SanctumGuard } from './auth/sanctum.guard';
@@ -24,6 +24,7 @@ import { TenantContext } from './tenancy/tenant-context';
   ],
   controllers: [HealthController, OpenApiController, EstudiantesController],
   providers: [
+    { provide: RELOJ, useValue: () => Date.now() },
     AuthCache,
     TenantContext,
     AuditService,

@@ -1,7 +1,14 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { TtlCache } from '../common/ttl-cache';
 import { ENV, Env } from '../config/env';
 import type { AuthContext } from '../tenancy/tenant.store';
+
+/**
+ * Reloj de la caché (milisegundos). En producción es Date.now; las pruebas lo sustituyen por uno controlable para
+ * avanzar el tiempo sin dormir (los plazos de vencimiento se verifican de forma determinista, sin depender de que el
+ * equipo o el runner no se detengan entre dos peticiones).
+ */
+export const RELOJ = Symbol('RELOJ');
 
 export interface PermisosUsuario {
   esSuperAdmin: boolean;
@@ -26,8 +33,11 @@ export class AuthCache {
   readonly sesiones: TtlCache<AuthContext>;
   readonly permisos: TtlCache<PermisosUsuario>;
 
-  constructor(@Inject(ENV) env: Env) {
-    const opciones = { ttlMs: env.AUTH_CACHE_TTL_SECONDS * 1000, maxEntries: env.AUTH_CACHE_MAX_ENTRIES };
+  constructor(
+    @Inject(ENV) env: Env,
+    @Optional() @Inject(RELOJ) reloj?: () => number,
+  ) {
+    const opciones = { ttlMs: env.AUTH_CACHE_TTL_SECONDS * 1000, maxEntries: env.AUTH_CACHE_MAX_ENTRIES, now: reloj };
     this.sesiones = new TtlCache<AuthContext>(opciones);
     this.permisos = new TtlCache<PermisosUsuario>(opciones);
   }

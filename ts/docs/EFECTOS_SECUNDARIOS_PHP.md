@@ -74,7 +74,10 @@ muerto. Consecuencias:
 
 **El único evento con listener** es `PagoConfirmado` → `NotificarPagoConfirmado`
 (`app/Providers/EventServiceProvider.php`), más `Registered` (verificación de correo, del framework). Los eventos de tiempo
-real usan Reverb (broadcasting): una API TypeScript que quiera emitirlos necesita su propia conexión a Reverb/Redis.
+real usan Reverb (broadcasting). La API TypeScript ya puede emitirlos: `ReverbPublisher` (`src/realtime/reverb.publisher.ts`)
+publica por HTTP firmado (protocolo Pusher) con los mismos nombres de evento y canal que Laravel (`private-tenant.{id}`…);
+probado contra un Reverb real (`test/reverb.e2e-spec.ts`). Cada módulo migrado debe llamarlo para los eventos que su controlador
+de PHP despacha.
 
 También se encolan jobs desde los controladores: `EnviarMensajeCircularJob`, `EnviarNotificacionJob`, `EnviarPushLoteJob`,
 `ImportarCalificacionesJob`, `EnviarWhatsApp`.

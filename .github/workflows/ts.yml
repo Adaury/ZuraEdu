@@ -128,6 +128,17 @@ jobs:
           php artisan migrate --force
           php artisan db:seed --class=RolesSeeder --force
 
+      # Reverb efímero con credenciales INVENTADAS (solo viven en este job) para la prueba de tiempo real de la API TypeScript.
+      - name: Arrancar Reverb de pruebas
+        env:
+          REVERB_APP_ID: ci-app
+          REVERB_APP_KEY: ci-key
+          REVERB_APP_SECRET: ci-secret
+        run: |
+          nohup php artisan reverb:start --host=127.0.0.1 --port=8080 > reverb.log 2>&1 &
+          for i in $(seq 1 30); do (echo > /dev/tcp/127.0.0.1/8080) 2>/dev/null && exit 0; sleep 1; done
+          echo "Reverb no arrancó:"; cat reverb.log; exit 1
+
       # ── 2) API TypeScript sobre esa base ─────────────────────────────────────────────────────────
       - uses: actions/setup-node@v7
         with:
@@ -154,4 +165,7 @@ jobs:
         env:
           TEST_DATABASE_URL: mysql://root:root@127.0.0.1:3306/sge_e2e
           TEST_REDIS_HOST: 127.0.0.1
+          TEST_REVERB_APP_ID: ci-app
+          TEST_REVERB_APP_KEY: ci-key
+          TEST_REVERB_APP_SECRET: ci-secret
         run: npm run test:e2e -w @zuraedu/api

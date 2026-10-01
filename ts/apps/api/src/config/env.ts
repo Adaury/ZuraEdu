@@ -52,17 +52,37 @@ const schema = z.object({
   REDIS_PREFIX: opcionalComoLaravel,
   /** Prefijo de la CACHÉ de Laravel (cache.prefix = CACHE_PREFIX). */
   CACHE_PREFIX: opcionalComoLaravel,
+
+  // ── Reverb / tiempo real (OPCIONAL). Mismos nombres que el .env de Laravel. ───────────────────────────────
+  // Sin REVERB_APP_ID la API funciona igual pero NO emite eventos en tiempo real (las pantallas abiertas no se refrescan
+  // solas). Con ella, publica en Reverb por HTTP (protocolo Pusher, firmado con REVERB_APP_SECRET).
+  REVERB_APP_ID: opcionalComoLaravel,
+  REVERB_APP_KEY: opcionalComoLaravel,
+  REVERB_APP_SECRET: opcionalComoLaravel,
+  REVERB_HOST: z.string().min(1).default('localhost'),
+  REVERB_PORT: z.coerce.number().int().min(1).max(65535).default(8080),
+  REVERB_SCHEME: z.enum(['http', 'https']).default('http'),
 }).superRefine((env, ctx) => {
   // Si falta alguno de los dos prefijos, "invalidar" una clave apuntaría a una clave que no existe y la caché de Laravel
   // seguiría vieja sin que nadie lo notara. Por eso no tienen valor por defecto y son obligatorios con Redis.
-  if (env.REDIS_HOST === undefined) return;
-  for (const nombre of ['REDIS_PREFIX', 'CACHE_PREFIX'] as const) {
-    if (!env[nombre]) {
-      ctx.addIssue({
-        code: 'custom',
-        path: [nombre],
-        message: `Obligatoria cuando REDIS_HOST está definido: copia el valor de ${nombre} del .env de Laravel (con APP_NAME largo el prefijo es largo y NO se puede adivinar).`,
-      });
+  if (env.REDIS_HOST !== undefined) {
+    for (const nombre of ['REDIS_PREFIX', 'CACHE_PREFIX'] as const) {
+      if (!env[nombre]) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [nombre],
+          message: `Obligatoria cuando REDIS_HOST está definido: copia el valor de ${nombre} del .env de Laravel (con APP_NAME largo el prefijo es largo y NO se puede adivinar).`,
+        });
+      }
+    }
+  }
+  // Reverb: o las tres credenciales o ninguna (una configuración a medias falla en silencio al firmar).
+  const credenciales = ['REVERB_APP_ID', 'REVERB_APP_KEY', 'REVERB_APP_SECRET'] as const;
+  if (credenciales.some((n) => env[n] !== undefined)) {
+    for (const nombre of credenciales) {
+      if (!env[nombre]) {
+        ctx.addIssue({ code: 'custom', path: [nombre], message: 'Reverb necesita REVERB_APP_ID, REVERB_APP_KEY y REVERB_APP_SECRET juntas (copia las del .env de Laravel).' });
+      }
     }
   }
 });

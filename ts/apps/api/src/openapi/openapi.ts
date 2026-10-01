@@ -1,7 +1,7 @@
 import { PER_PAGE_DEFAULT, PER_PAGE_MAX } from '@zuraedu/shared';
 import { z } from 'zod';
 import { ESTUDIANTE_ESTADOS } from '@zuraedu/shared';
-import { actualizarEstudianteSchema } from '../estudiantes/estudiantes.update';
+import { actualizarEstudianteSchema, crearEstudianteSchema } from '../estudiantes/estudiantes.update';
 import { errorSchema, estudianteDtoSchema, estudiantesPageSchema, healthSchema } from './respuestas';
 
 type Json = Record<string, unknown>;
@@ -23,26 +23,32 @@ function respuestaError(descripcion: string) {
  * peticiones (entrada) y las respuestas (salida); las pruebas verifican que cada ruta registrada en Nest
  * esté documentada aquí y que las respuestas reales cumplan el esquema.
  */
-export function construirOpenApi(version = '0.1.0'): Json {
-  const cuerpoActualizar = {
-    ...jsonSchema(actualizarEstudianteSchema, 'input'),
-    // El "al menos un campo" es un refinamiento de zod y no se traduce solo.
-    minProperties: 1,
-  } as unknown as Json & { properties: Record<string, Json> };
-  cuerpoActualizar.properties.fechaNacimiento = {
-    ...cuerpoActualizar.properties.fechaNacimiento,
+/** Detalles que zod no traduce solo a JSON Schema (formatos y descripciones). Se aplican igual a crear y editar. */
+function refinarCamposEstudiante<T extends Json>(esquema: T): T & { properties: Record<string, Json> } {
+  const e = esquema as unknown as T & { properties: Record<string, Json> };
+  e.properties.fechaNacimiento = {
+    ...e.properties.fechaNacimiento,
     format: 'date',
     description: 'AAAA-MM-DD; debe ser anterior a hoy.',
   };
-  cuerpoActualizar.properties.email = {
-    ...cuerpoActualizar.properties.email,
-    format: 'email',
-    description: 'null o cadena vacía lo quita.',
+  e.properties.email = { ...e.properties.email, format: 'email', description: 'null o cadena vacía lo quita.' };
+  e.properties.cedula = { ...e.properties.cedula, description: 'null o cadena vacía la quita. Única por colegio.' };
+  e.properties.numeroMatricula = {
+    ...e.properties.numeroMatricula,
+    description: 'Único por colegio. Al crear, si no se envía se genera (AAAA-NNNNN).',
   };
-  cuerpoActualizar.properties.cedula = {
-    ...cuerpoActualizar.properties.cedula,
-    description: 'null o cadena vacía la quita. Única por colegio.',
+  e.properties.nacionalidad = {
+    ...e.properties.nacionalidad,
+    description: 'No admite null. Al crear, si no se envía toma el valor por defecto de la columna (Dominicana).',
   };
+  return e;
+}
+
+export function construirOpenApi(version = '0.1.0'): Json {
+  // El "al menos un campo" es un refinamiento de zod y no se traduce solo.
+  const cuerpoActualizar = refinarCamposEstudiante({ ...jsonSchema(actualizarEstudianteSchema, 'input'), minProperties: 1 });
+  // En crear, `required` (nombres, apellidos, fechaNacimiento, sexo, estado) sí lo genera zod.
+  const cuerpoCrear = refinarCamposEstudiante(jsonSchema(crearEstudianteSchema, 'input'));
 
   return {
     openapi: '3.1.0',
@@ -56,7 +62,7 @@ export function construirOpenApi(version = '0.1.0'): Json {
     servers: [{ url: '/' }],
     tags: [
       { name: 'Sistema', description: 'Estado del servicio.' },
-      { name: 'Estudiantes', description: 'Consulta y edición de estudiantes del colegio del usuario autenticado.' },
+      { name: 'Estudiantes', description: 'Consulta, alta, edición y borrado de estudiantes del colegio del usuario autenticado.' },
     ],
     paths: {
       '/health': {
@@ -100,6 +106,24 @@ export function construirOpenApi(version = '0.1.0'): Json {
             '403': respuestaError('Sin permiso, institución suspendida o token usado en el dominio de otro colegio.'),
           },
         },
+        post: {
+          tags: ['Estudiantes'],
+          summary: 'Crear un estudiante',
+          description:
+            'Requiere el permiso `gestionar-estudiantes`. El colegio sale del token. Obligatorios: `nombres`, `apellidos`, ' +
+            '`fechaNacimiento`, `sexo` y `estado`. Si no se envía `numeroMatricula` se genera (AAAA-NNNNN). Deja en ' +
+            '`activity_logs` el registro `estudiante.creado`, igual que Laravel. No admite `grupo_id` (matricular es otro ' +
+            'módulo) ni `foto`; los campos desconocidos se rechazan con 400.',
+          operationId: 'crearEstudiante',
+          requestBody: { required: true, content: { 'application/json': { schema: cuerpoCrear } } },
+          responses: {
+            '201': { description: 'Estudiante creado.', content: { 'application/json': { schema: ref('Estudiante') } } },
+            '400': respuestaError('Cuerpo inválido, campos obligatorios ausentes o campo desconocido.'),
+            '401': respuestaError('No autenticado.'),
+            '403': respuestaError('Sin el permiso `gestionar-estudiantes`.'),
+            '409': respuestaError('La cédula o el número de matrícula ya existen en el colegio.'),
+          },
+        },
       },
       '/api/v1/estudiantes/{id}': {
         patch: {
@@ -107,9 +131,10 @@ export function construirOpenApi(version = '0.1.0'): Json {
           summary: 'Editar los datos de un estudiante',
           description:
             'Requiere el permiso `gestionar-estudiantes`. Edición parcial (al menos un campo). Todo ocurre en una ' +
-            'transacción con la fila bloqueada y deja en `activity_logs` los mismos dos registros que Laravel ' +
-            '(`estudiante.actualizado` y `estudiante.editado`). Si no cambia ningún campo no se escribe ni se audita. ' +
-            'Los campos desconocidos (p. ej. `tenant_id`) se rechazan con 400.',
+            'transacción con la fila bloqueada. Auditoría igual que Laravel: `estudiante.actualizado` siempre que cambie ' +
+            'alguna columna y `estudiante.editado` solo si cambia un campo sensible (cédula, nombres, apellidos, fecha de ' +
+            'nacimiento, estado). Si no cambia ningún campo no se escribe ni se audita. Los campos desconocidos (p. ej. ' +
+            '`tenant_id`) se rechazan con 400.',
           operationId: 'actualizarEstudiante',
           parameters: [
             { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 }, description: 'Id del estudiante.' },
@@ -121,7 +146,26 @@ export function construirOpenApi(version = '0.1.0'): Json {
             '401': respuestaError('No autenticado.'),
             '403': respuestaError('Sin el permiso `gestionar-estudiantes`.'),
             '404': respuestaError('No existe, está borrado lógicamente o es de otro colegio (no se distingue).'),
-            '409': respuestaError('La cédula ya existe en el colegio.'),
+            '409': respuestaError('La cédula o el número de matrícula ya existen en el colegio.'),
+          },
+        },
+        delete: {
+          tags: ['Estudiantes'],
+          summary: 'Borrar un estudiante (borrado lógico)',
+          description:
+            'Requiere el permiso `gestionar-estudiantes`. Borrado lógico, como Laravel: el estudiante deja de aparecer ' +
+            'pero se conserva. Deja en `activity_logs` el registro `estudiante.eliminado`. Diferencia conocida: Laravel ' +
+            'además borra el archivo de la foto del disco; aquí no se toca.',
+          operationId: 'eliminarEstudiante',
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 }, description: 'Id del estudiante.' },
+          ],
+          responses: {
+            '204': { description: 'Borrado. Sin cuerpo.' },
+            '400': respuestaError('Id inválido.'),
+            '401': respuestaError('No autenticado.'),
+            '403': respuestaError('Sin el permiso `gestionar-estudiantes`.'),
+            '404': respuestaError('No existe, ya estaba borrado o es de otro colegio (no se distingue).'),
           },
         },
       },

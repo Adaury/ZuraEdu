@@ -10,10 +10,12 @@ import {
   ValoresPorColumna,
 } from '../audit/descripcion-cambios';
 import { Database, DB } from '../db/db.module';
+import { TenantContext } from '../tenancy/tenant-context';
 import { COLUMNAS_EDITABLES, NOMBRES_COLUMNAS_EDITABLES } from './estudiante-columnas';
 import type { EstudiantesQuery } from './estudiantes.query';
 import { consultaPagina, consultaTotal } from './estudiantes.queries';
-import type { ActualizarEstudiante } from './estudiantes.update';
+import type { ActualizarEstudiante, CrearEstudiante } from './estudiantes.update';
+import { patronNumerosDelAnio, siguienteNumeroMatricula } from './numero-matricula';
 
 export interface MetaPeticion {
   ip?: string | null;
@@ -71,6 +73,7 @@ export class EstudiantesService {
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly auditoria: AuditService,
+    private readonly contexto: TenantContext,
   ) {}
 
   async listar(q: EstudiantesQuery): Promise<EstudiantesPage> {
@@ -177,5 +180,137 @@ export class EstudiantesService {
       if (esDuplicado(e)) throw new ConflictException(mensajeDeDuplicado(e));
       throw e;
     }
+  }
+
+  /**
+   * Alta de un estudiante del colegio del usuario autenticado (el tenant sale del token, nunca del cuerpo).
+   *
+   * Auditoría igual que Laravel: `estudiante.creado` (lo genera EstudianteObserver::created) con
+   * "Estudiante creado: Apellidos, Nombres (Matr: AAAA-NNNNN)". Alta y auditoría van en la misma transacción.
+   *
+   * Si no viene `numeroMatricula` se genera el siguiente del año (ver siguienteNumeroMatricula), serializando la
+   * asignación por colegio con un bloqueo de fila: las altas simultáneas obtienen números consecutivos sin colisionar.
+   * Por si otro sistema (Laravel calcula el suyo con count+1) toma el mismo número entre medias, la restricción única
+   * lo detecta y se reintenta con el siguiente (hasta 5 veces). Un número dado por el cliente que ya exista, o una
+   * cédula repetida en el colegio → 409.
+   */
+  async crear(entrada: CrearEstudiante, meta: MetaPeticion): Promise<EstudianteDto> {
+    const generar = entrada.numeroMatricula === undefined;
+    const maxIntentos = generar ? 5 : 1;
+
+    for (let intento = 1; ; intento++) {
+      try {
+        return await this.db.transaction().execute(async (trx) => {
+          const ahora = ahoraUtc();
+          let numero = entrada.numeroMatricula;
+          if (numero === undefined) {
+            // Serializa la asignación de números POR COLEGIO: se bloquea la fila del tenant hasta confirmar la
+            // transacción (se libera sola). Sin esto, N altas simultáneas calculan el mismo "máximo + 1" y solo una
+            // gana; los reintentos no alcanzan con muchas a la vez y a un cliente que no envió número le llegaría un
+            // 409 por una colisión interna. La tabla `tenants` no lleva filtro de tenant, así que se filtra por id.
+            await trx
+              .selectFrom('tenants')
+              .select('id')
+              .where('id', '=', this.contexto.tenantId)
+              .forUpdate()
+              .executeTakeFirstOrThrow();
+
+            const anio = new Date().getUTCFullYear();
+            // Sin filtrar deleted_at: la restricción única también cuenta a los borrados lógicamente.
+            // (Orden lexicográfico: correcto mientras el sufijo tenga 5 dígitos, es decir, hasta 99.999 altas al año.)
+            const ultimo = await trx
+              .selectFrom('estudiantes')
+              .select('numero_matricula')
+              .where('numero_matricula', 'like', patronNumerosDelAnio(anio))
+              .orderBy('numero_matricula', 'desc')
+              .limit(1)
+              .executeTakeFirst();
+            numero = siguienteNumeroMatricula(anio, ultimo?.numero_matricula ?? null);
+          }
+
+          // Las claves salen de la tabla COLUMNAS_EDITABLES, nunca del cliente; tenant_id sale del token.
+          const valores: Record<string, unknown> = {
+            tenant_id: this.contexto.tenantId,
+            numero_matricula: numero,
+            created_at: ahora,
+            updated_at: ahora,
+          };
+          for (const [api, col] of COLUMNAS_EDITABLES) {
+            if (col === 'numero_matricula') continue;
+            const valor = entrada[api];
+            if (valor !== undefined) valores[col] = valor;
+          }
+
+          const resultado = await trx
+            .insertInto('estudiantes')
+            .values(valores as never)
+            .executeTakeFirstOrThrow();
+          const id = Number(resultado.insertId);
+
+          await this.auditoria.registrar(trx, {
+            accion: 'estudiante.creado',
+            modelo: MODELO_ESTUDIANTE,
+            modeloId: id,
+            descripcion: `Estudiante creado: ${entrada.apellidos}, ${entrada.nombres} (Matr: ${numero})`,
+            ip: meta.ip,
+            userAgent: meta.userAgent,
+          });
+
+          return aDto({
+            id,
+            numero_matricula: numero,
+            cedula: entrada.cedula ?? null,
+            nombres: entrada.nombres,
+            apellidos: entrada.apellidos,
+            sexo: entrada.sexo,
+            estado: entrada.estado,
+          });
+        });
+      } catch (e) {
+        if (esDuplicado(e)) {
+          const esMatricula = mensajeDeDuplicado(e).includes('matrícula');
+          if (generar && esMatricula && intento < maxIntentos) continue; // otra alta simultánea tomó ese número
+          throw new ConflictException(mensajeDeDuplicado(e));
+        }
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * Borrado LÓGICO (como Laravel: SoftDeletes). Eloquent marca `deleted_at` y `updated_at` y dispara el evento
+   * `deleted` (no el `updated`), así que se escribe solo `estudiante.eliminado` ("Estudiante eliminado: Apellidos,
+   * Nombres"). Un estudiante de otro colegio o ya borrado → 404.
+   *
+   * Diferencia conocida: Laravel además borra el archivo de la foto del disco; desde TypeScript no se toca (el archivo
+   * queda huérfano, sin ningún efecto visible) hasta que se decida dónde viven los archivos.
+   */
+  async eliminar(id: number, meta: MetaPeticion): Promise<void> {
+    await this.db.transaction().execute(async (trx) => {
+      const actual = await trx
+        .selectFrom('estudiantes')
+        .select(['id', 'nombres', 'apellidos'])
+        .where('estudiantes.id', '=', id)
+        .where('estudiantes.deleted_at', 'is', null)
+        .forUpdate()
+        .executeTakeFirst();
+      if (!actual) throw new NotFoundException('Estudiante no encontrado.');
+
+      const ahora = ahoraUtc();
+      await trx
+        .updateTable('estudiantes')
+        .set({ deleted_at: ahora, updated_at: ahora })
+        .where('estudiantes.id', '=', id)
+        .executeTakeFirstOrThrow();
+
+      await this.auditoria.registrar(trx, {
+        accion: 'estudiante.eliminado',
+        modelo: MODELO_ESTUDIANTE,
+        modeloId: id,
+        descripcion: `Estudiante eliminado: ${actual.apellidos}, ${actual.nombres}`,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+    });
   }
 }

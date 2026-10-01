@@ -97,11 +97,33 @@ En memoria, por proceso, con vencimiento (`AUTH_CACHE_TTL_SECONDS`, 30 s por def
 
 ## Escrituras y auditoría
 
-Primera escritura migrada: `PATCH /api/v1/estudiantes/:id` — edición parcial (al menos un campo) de **todos los campos
-del formulario de Laravel salvo la foto**: matrícula, cédula, nombres, apellidos, fecha de nacimiento, sexo, nacionalidad,
-lugar de nacimiento, teléfono, correo, dirección, sector, municipio, provincia, estado, datos del tutor (nombre,
-parentesco, teléfono, trabajo) y notas médicas. Requiere `gestionar-estudiantes`, igual que las rutas de mutación de
-Laravel. La foto queda fuera: depende de dónde se guarden los archivos (decisión pendiente, ver "Pendiente").
+Ciclo completo de estudiantes migrado (todo con el permiso `gestionar-estudiantes`, igual que las rutas de mutación de Laravel):
+
+| Operación | Ruta | Auditoría (como el observer de Laravel) |
+|---|---|---|
+| Alta | `POST /api/v1/estudiantes` → `201` | `estudiante.creado` |
+| Edición parcial | `PATCH /api/v1/estudiantes/:id` → `200` | `estudiante.actualizado` y, si cambia un campo sensible, `estudiante.editado` |
+| Borrado lógico | `DELETE /api/v1/estudiantes/:id` → `204` | `estudiante.eliminado` |
+
+El `PATCH` y el `POST` aceptan **todos los campos del formulario de Laravel salvo la foto**: matrícula, cédula, nombres,
+apellidos, fecha de nacimiento, sexo, nacionalidad, lugar de nacimiento, teléfono, correo, dirección, sector, municipio,
+provincia, estado, datos del tutor (nombre, parentesco, teléfono, trabajo) y notas médicas. Comparten **una sola definición**
+de campos (`estudiantes.update.ts`), así que las reglas no se desalinean. Quedan fuera: la **foto** (depende de dónde se guarden
+los archivos) y matricular al crear (`grupo_id`, que es el módulo de matrículas). Ambos se rechazan con 400.
+
+**Antes de migrar otro módulo, lee [`docs/EFECTOS_SECUNDARIOS_PHP.md`](docs/EFECTOS_SECUNDARIOS_PHP.md)**: inventario de los
+observers, hooks, eventos, cachés y efectos en archivos de Laravel, con su estado de paridad en TypeScript y las diferencias
+deliberadas.
+
+**Alta.** El colegio sale del token. Si no se envía `numeroMatricula` se genera (`AAAA-NNNNN`): la asignación está
+**serializada por colegio** con un bloqueo de fila sobre el tenant (se libera al confirmar), así que 12 altas simultáneas
+obtienen números consecutivos y sin colisiones; se reintenta además por si Laravel (que calcula el suyo con `count()+1`) toma
+el mismo número entre medias. A diferencia de Laravel, el número **no se reutiliza tras un borrado** (allí colisionaría y daría
+un 500). Cédula o matrícula repetidas en el colegio → `409` (la misma cédula en otro colegio es válida).
+
+**Borrado.** Es lógico (como `SoftDeletes`): se marcan `deleted_at` y `updated_at`, la fila se conserva y solo se audita
+`estudiante.eliminado` (Eloquent dispara `deleted`, no `updated`). Un número de matrícula de un estudiante borrado no se puede
+reutilizar (la restricción única los cuenta). Diferencia conocida: Laravel además borra el archivo de la foto; aquí no se toca.
 
 - **Dos registros de auditoría, como Laravel, con las mismas condiciones.** Se escriben en `activity_logs`, en este orden:
   1. `estudiante.actualizado` — lo genera `EstudianteObserver::updated()` en PHP: **siempre** que cambie alguna
@@ -195,14 +217,17 @@ así que el índice nuevo también le serviría (requiere una migración nueva d
 
 ## Pendiente (orden sugerido)
 
-1. **Más escrituras**, con la misma plantilla (transacción + auditoría + `zod` estricto): foto del estudiante (primero
-   decidir dónde se guardan los archivos: hoy el disco de Laravel), crear y borrar estudiantes (el observer escribe
-   `estudiante.creado` / `estudiante.eliminado`), luego asistencia y calificaciones (estas respetando `periodos.cerrado`). Pagos y MINERD al final, con tests de paridad.
-   **Antes de cada módulo, inventariar sus observers/eventos/listeners de PHP** (ver "Escrituras y auditoría"): no se
-   disparan desde TypeScript y hay que reproducir sus efectos (auditoría, notificaciones, recálculos).
-2. **Conteo con filtros** (búsqueda por texto / estado): sin filtros ya es index-only (1,6 ms); con filtros el optimizador decide.
-3. **Redis**: `/health` solo comprueba la base; añadir cuando haya colas en TypeScript. Mover ahí la caché de autenticación
-   si hay más de una instancia de la API.
-4. **Autenticación de la web** (hoy la web solo muestra el estado de la API).
-5. **Siguiente módulo de lectura** — propuesta: portales de solo lectura (padre/estudiante).
-6. **Proxy de enrutamiento** (Nginx) para mandar cada ruta a Laravel o a TypeScript durante la transición.
+1. **Foto del estudiante** — primero decidir dónde se guardan los archivos (hoy el disco de Laravel; al borrar un estudiante
+   Laravel además borra el archivo). Después, **matrículas** (cupo del grupo y los disparos explícitos de `DashboardActualizado`;
+   ojo: `MatriculaObserver` no está registrado, ver el inventario).
+2. **Más escrituras**, con la misma plantilla (transacción + auditoría + `zod` estricto): asistencia y calificaciones (estas
+   respetando `periodos.cerrado`); pagos y MINERD al final, con tests de paridad. **Antes de cada módulo, repetir el
+   inventario de [`docs/EFECTOS_SECUNDARIOS_PHP.md`](docs/EFECTOS_SECUNDARIOS_PHP.md)**: los observers, eventos, cachés y
+   archivos de PHP no se disparan desde TypeScript y hay que reproducir sus efectos.
+3. **Redis**: `/health` solo comprueba la base; hace falta para (a) invalidar las cachés de Laravel desde las escrituras de
+   TypeScript, (b) emitir eventos en tiempo real (Reverb) y (c) mover ahí la caché de autenticación si hay más de una
+   instancia de la API.
+4. **Conteo con filtros** (búsqueda por texto / estado): sin filtros ya es index-only (1,6 ms); con filtros el optimizador decide.
+5. **Autenticación de la web** (hoy la web solo muestra el estado de la API).
+6. **Siguiente módulo de lectura** — propuesta: portales de solo lectura (padre/estudiante).
+7. **Proxy de enrutamiento** (Nginx) para mandar cada ruta a Laravel o a TypeScript durante la transición.

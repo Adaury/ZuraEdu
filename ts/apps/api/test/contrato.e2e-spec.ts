@@ -35,8 +35,9 @@ describe('API · contrato OpenAPI vs respuestas reales (e2e, MySQL real)', () =>
   let doc: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   /** Estados HTTP observados por operación: se comprueba al final que todos estaban declarados. */
   const observados: Array<{ metodo: string; ruta: string; estado: number }> = [];
+  const VALIDO = { nombres: 'Nuevo', apellidos: 'Alumno', fechaNacimiento: '2012-05-01', sexo: 'F', estado: 'activo' };
 
-  const llamar = async (metodo: 'get' | 'patch', ruta: string, plantilla: string, tok?: string, cuerpo?: object) => {
+  const llamar = async (metodo: 'get' | 'patch' | 'post' | 'delete', ruta: string, plantilla: string, tok?: string, cuerpo?: object) => {
     let r = request(app.getHttpServer())[metodo](ruta);
     if (tok) r = r.set('Authorization', `Bearer ${tok}`);
     if (cuerpo) r = r.send(cuerpo);
@@ -107,16 +108,39 @@ describe('API · contrato OpenAPI vs respuestas reales (e2e, MySQL real)', () =>
       expect(estudianteDtoSchema.safeParse(res.body).success).toBe(true);
       expect(res.body.nombres).toBe('Anita');
     });
+
+    it('POST /api/v1/estudiantes → 201 con un estudiante que cumple el esquema', async () => {
+      const res = await llamar('post', '/api/v1/estudiantes', '/api/v1/estudiantes', admin, VALIDO);
+      expect(res.status).toBe(201);
+      expect(estudianteDtoSchema.safeParse(res.body).success).toBe(true);
+      expect(res.body.numeroMatricula).toMatch(/^\d{4}-\d{5}$/);
+    });
+
+    it('DELETE /api/v1/estudiantes/:id → 204 sin cuerpo', async () => {
+      const creado = await llamar('post', '/api/v1/estudiantes', '/api/v1/estudiantes', admin, { ...VALIDO, nombres: 'Temporal' });
+      const res = await llamar('delete', `/api/v1/estudiantes/${creado.body.id}`, '/api/v1/estudiantes/{id}', admin);
+      expect(res.status).toBe(204);
+      expect(res.text).toBe('');
+    });
   });
 
   describe('los errores reales tienen la forma documentada y su estado está declarado', () => {
-    const casos: Array<[string, 'get' | 'patch', () => string, string, () => string | undefined, object | undefined, number]> = [
+    const casos: Array<[string, 'get' | 'patch' | 'post' | 'delete', () => string, string, () => string | undefined, object | undefined, number]> = [
       ['GET sin token → 401', 'get', () => '/api/v1/estudiantes', '/api/v1/estudiantes', () => undefined, undefined, 401],
       ['GET parámetros inválidos → 400', 'get', () => '/api/v1/estudiantes?perPage=999', '/api/v1/estudiantes', () => admin, undefined, 400],
       ['PATCH sin permiso → 403', 'patch', () => `/api/v1/estudiantes/${idA}`, '/api/v1/estudiantes/{id}', () => lector, { nombres: 'Xx' }, 403],
       ['PATCH cuerpo inválido → 400', 'patch', () => `/api/v1/estudiantes/${idA}`, '/api/v1/estudiantes/{id}', () => admin, { estado: 'x' }, 400],
       ['PATCH campo desconocido → 400', 'patch', () => `/api/v1/estudiantes/${idA}`, '/api/v1/estudiantes/{id}', () => admin, { tenant_id: 1 }, 400],
       ['PATCH de otro colegio → 404', 'patch', () => `/api/v1/estudiantes/${idB}`, '/api/v1/estudiantes/{id}', () => admin, { nombres: 'Xx' }, 404],
+      ['POST sin token → 401', 'post', () => '/api/v1/estudiantes', '/api/v1/estudiantes', () => undefined, VALIDO, 401],
+      ['POST sin permiso → 403', 'post', () => '/api/v1/estudiantes', '/api/v1/estudiantes', () => lector, VALIDO, 403],
+      ['POST cuerpo vacío → 400', 'post', () => '/api/v1/estudiantes', '/api/v1/estudiantes', () => admin, {}, 400],
+      ['POST campo desconocido (tenant_id) → 400', 'post', () => '/api/v1/estudiantes', '/api/v1/estudiantes', () => admin, { ...VALIDO, tenant_id: 1 }, 400],
+      ['POST cédula repetida → 409', 'post', () => '/api/v1/estudiantes', '/api/v1/estudiantes', () => admin, { ...VALIDO, cedula: '00100000002' }, 409],
+      ['DELETE sin token → 401', 'delete', () => `/api/v1/estudiantes/${idA}`, '/api/v1/estudiantes/{id}', () => undefined, undefined, 401],
+      ['DELETE sin permiso → 403', 'delete', () => `/api/v1/estudiantes/${idA}`, '/api/v1/estudiantes/{id}', () => lector, undefined, 403],
+      ['DELETE id inválido → 400', 'delete', () => '/api/v1/estudiantes/abc', '/api/v1/estudiantes/{id}', () => admin, undefined, 400],
+      ['DELETE de otro colegio → 404', 'delete', () => `/api/v1/estudiantes/${idB}`, '/api/v1/estudiantes/{id}', () => admin, undefined, 404],
       ['PATCH cédula repetida → 409', 'patch', () => `/api/v1/estudiantes/${idA}`, '/api/v1/estudiantes/{id}', () => admin, { cedula: '00100000002' }, 409],
     ];
 

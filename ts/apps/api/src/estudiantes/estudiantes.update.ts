@@ -33,44 +33,64 @@ const correo = z
   .refine((v) => v === null || z.email().safeParse(v).success, 'Correo electrónico inválido.');
 
 /**
- * Cuerpo de PATCH /api/v1/estudiantes/:id (edición parcial; al menos un campo).
+ * Definición ÚNICA de los campos de un estudiante, compartida por crear (POST) y editar (PATCH): mismas reglas en
+ * los dos sitios, sin copias que se desalineen.
  *
- * Mismas reglas que UpdateEstudianteRequest de Laravel, con una diferencia deliberada: donde la regla de Laravel es
- * MÁS PERMISIVA que la columna real, aquí manda la columna (así un valor demasiado largo da 400 y no un error 500 de
- * base de datos como en PHP): tutor_parentesco ≤ 50 (Laravel: 150), tutor_trabajo ≤ 100 (Laravel: 150) y
+ * Mismas reglas que StoreEstudianteRequest / UpdateEstudianteRequest de Laravel, con una diferencia deliberada: donde la
+ * regla de Laravel es MÁS PERMISIVA que la columna real, aquí manda la columna (así un valor demasiado largo da 400 y no
+ * un error 500 de base de datos como en PHP): tutor_parentesco ≤ 50 (Laravel: 150), tutor_trabajo ≤ 100 (Laravel: 150) y
  * nacionalidad NO admite null (la columna es NOT NULL; Laravel dice `nullable`). `tutor_email` de las reglas de Laravel
  * no existe como columna ni en $fillable, así que no se acepta.
+ */
+const camposEstudiante = {
+  numeroMatricula: z.string().trim().min(1, 'El número de matrícula es obligatorio.').max(20),
+  cedula: textoNulable(20),
+  nombres: z.string().trim().min(2, 'El nombre es obligatorio.').max(100),
+  apellidos: z.string().trim().min(2, 'El apellido es obligatorio.').max(100),
+  fechaNacimiento: fechaReal.refine((s) => s < hoyUtc(), 'La fecha de nacimiento debe ser anterior a hoy.'),
+  sexo: z.enum(['M', 'F']),
+  nacionalidad: z.string().trim().min(1, 'La nacionalidad es obligatoria.').max(50),
+  lugarNacimiento: textoNulable(100),
+  telefono: textoNulable(20),
+  email: correo,
+  direccion: textoNulable(500),
+  sector: textoNulable(100),
+  municipio: textoNulable(100),
+  provincia: textoNulable(100),
+  estado: z.enum(ESTUDIANTE_ESTADOS),
+  tutorNombre: textoNulable(150),
+  tutorParentesco: textoNulable(50),
+  tutorTelefono: textoNulable(20),
+  tutorTrabajo: textoNulable(100),
+  notasMedicas: textoNulable(2000),
+};
+
+/**
+ * Cuerpo de PATCH /api/v1/estudiantes/:id (edición parcial; al menos un campo).
  *
  * `.strict()`: cualquier campo desconocido (p. ej. `tenant_id`, `id`, `deleted_at`, `user_id`) se RECHAZA en vez de
  * ignorarse → protección contra asignación masiva. Nunca se acepta un tenant que mande el cliente.
  */
 export const actualizarEstudianteSchema = z
-  .strictObject({
-    numeroMatricula: z.string().trim().min(1, 'El número de matrícula es obligatorio.').max(20),
-    cedula: textoNulable(20),
-    nombres: z.string().trim().min(2, 'El nombre es obligatorio.').max(100),
-    apellidos: z.string().trim().min(2, 'El apellido es obligatorio.').max(100),
-    fechaNacimiento: fechaReal.refine((s) => s < hoyUtc(), 'La fecha de nacimiento debe ser anterior a hoy.'),
-    sexo: z.enum(['M', 'F']),
-    nacionalidad: z.string().trim().min(1, 'La nacionalidad es obligatoria.').max(50),
-    lugarNacimiento: textoNulable(100),
-    telefono: textoNulable(20),
-    email: correo,
-    direccion: textoNulable(500),
-    sector: textoNulable(100),
-    municipio: textoNulable(100),
-    provincia: textoNulable(100),
-    estado: z.enum(ESTUDIANTE_ESTADOS),
-    tutorNombre: textoNulable(150),
-    tutorParentesco: textoNulable(50),
-    tutorTelefono: textoNulable(20),
-    tutorTrabajo: textoNulable(100),
-    notasMedicas: textoNulable(2000),
-  })
+  .strictObject(camposEstudiante)
   .partial()
   .refine((o) => Object.keys(o).length > 0, 'Envía al menos un campo para actualizar.');
 
+/**
+ * Cuerpo de POST /api/v1/estudiantes. Obligatorios los mismos que en Laravel: nombres, apellidos, fecha de nacimiento,
+ * sexo y estado. `numeroMatricula` es opcional: si no viene se genera (AAAA-NNNNN). `nacionalidad`, si no viene, toma el
+ * valor por defecto de la columna (Dominicana). Mismo modo estricto que el PATCH.
+ *
+ * Fuera de alcance a propósito: `grupo_id` (matricular de inmediato es el módulo de matrículas, que se migra aparte con su
+ * control de cupo y su evento en tiempo real; sigue en Laravel) y `foto` (depende de dónde se guarden los archivos).
+ */
+export const crearEstudianteSchema = z
+  .strictObject(camposEstudiante)
+  .partial()
+  .required({ nombres: true, apellidos: true, fechaNacimiento: true, sexo: true, estado: true });
+
 export type ActualizarEstudiante = z.infer<typeof actualizarEstudianteSchema>;
+export type CrearEstudiante = z.infer<typeof crearEstudianteSchema>;
 
 /** El id de la ruta: entero positivo (nunca se concatena en SQL; solo se usa como parámetro). */
 export const idEstudianteSchema = z.coerce.number().int().positive();

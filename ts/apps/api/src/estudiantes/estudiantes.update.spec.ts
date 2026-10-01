@@ -1,6 +1,68 @@
-import { actualizarEstudianteSchema, idEstudianteSchema } from './estudiantes.update';
+import { actualizarEstudianteSchema, crearEstudianteSchema, idEstudianteSchema } from './estudiantes.update';
 
 const ok = (o: unknown) => actualizarEstudianteSchema.safeParse(o);
+
+describe('crearEstudianteSchema', () => {
+  const minimo = { nombres: 'Ana', apellidos: 'Perez', fechaNacimiento: '2012-05-01', sexo: 'F', estado: 'activo' };
+  const crear = (o: unknown) => crearEstudianteSchema.safeParse(o);
+
+  it('acepta los cinco campos obligatorios y nada más', () => {
+    expect(crear(minimo)).toMatchObject({ success: true, data: minimo });
+  });
+
+  it.each(['nombres', 'apellidos', 'fechaNacimiento', 'sexo', 'estado'])('rechaza si falta el obligatorio "%s"', (campo) => {
+    const { [campo]: _quitado, ...sinCampo } = minimo as Record<string, string>;
+    const r = crear(sinCampo);
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.error.issues.map((i) => i.path.join('.'))).toContain(campo);
+  });
+
+  it('rechaza un cuerpo vacío', () => {
+    expect(crear({}).success).toBe(false);
+  });
+
+  it('numeroMatricula, cédula, nacionalidad y el resto son opcionales', () => {
+    expect(crear({ ...minimo, numeroMatricula: '2026-00099', cedula: '001', nacionalidad: 'Haitiana', telefono: '809' }).success).toBe(true);
+  });
+
+  it('NO inventa valores: lo que no se envía no aparece (nacionalidad la pone el DEFAULT de la columna)', () => {
+    const r = crear(minimo);
+    expect(r.success && 'nacionalidad' in r.data).toBe(false);
+    expect(r.success && 'numeroMatricula' in r.data).toBe(false);
+  });
+
+  it('nacionalidad no admite null ni vacío; numeroMatricula vacío o null se rechaza (para autogenerar, se omite)', () => {
+    expect(crear({ ...minimo, nacionalidad: null }).success).toBe(false);
+    expect(crear({ ...minimo, nacionalidad: '' }).success).toBe(false);
+    expect(crear({ ...minimo, numeroMatricula: '' }).success).toBe(false);
+    expect(crear({ ...minimo, numeroMatricula: null }).success).toBe(false);
+  });
+
+  describe('protección contra asignación masiva (strict)', () => {
+    it.each(['tenant_id', 'tenantId', 'id', 'user_id', 'userId', 'deleted_at', 'created_at', 'grupo_id', 'grupoId', 'foto', 'tutor_email'])(
+      'rechaza el campo no permitido "%s"',
+      (campo) => {
+        expect(crear({ ...minimo, [campo]: 1 }).success).toBe(false);
+      },
+    );
+  });
+
+  it('aplica las mismas reglas que la edición (fecha futura, estado inválido, sexo inválido, nombre corto, correo)', () => {
+    expect(crear({ ...minimo, fechaNacimiento: '2999-01-01' }).success).toBe(false);
+    expect(crear({ ...minimo, estado: 'borrado' }).success).toBe(false);
+    expect(crear({ ...minimo, sexo: 'X' }).success).toBe(false);
+    expect(crear({ ...minimo, nombres: 'A' }).success).toBe(false);
+    expect(crear({ ...minimo, email: 'no-es-correo' }).success).toBe(false);
+    expect(crear({ ...minimo, tutorParentesco: 'a'.repeat(51) }).success).toBe(false);
+  });
+
+  it('recorta espacios y guarda los opcionales vacíos como null', () => {
+    expect(crear({ ...minimo, nombres: '  Ana  ', telefono: '   ', sector: null })).toMatchObject({
+      success: true,
+      data: { nombres: 'Ana', telefono: null, sector: null },
+    });
+  });
+});
 
 describe('actualizarEstudianteSchema', () => {
   it('acepta una edición parcial de un solo campo', () => {

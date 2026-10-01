@@ -143,6 +143,39 @@ describe('contrato OpenAPI', () => {
     });
   });
 
+  describe('alta y borrado', () => {
+    const post = () => doc.paths['/api/v1/estudiantes'].post;
+    const cuerpoPost = () => post().requestBody.content['application/json'].schema;
+
+    it('POST documenta exactamente los cinco campos obligatorios, y 201/400/401/403/409', () => {
+      expect([...cuerpoPost().required].sort()).toEqual(['apellidos', 'estado', 'fechaNacimiento', 'nombres', 'sexo']);
+      expect(Object.keys(post().responses).sort()).toEqual(['201', '400', '401', '403', '409']);
+      expect(cuerpoPost().additionalProperties).toBe(false);
+    });
+
+    it('POST admite los mismos campos que el PATCH (una sola definición) y ninguno peligroso', () => {
+      const patch = doc.paths['/api/v1/estudiantes/{id}'].patch.requestBody.content['application/json'].schema;
+      expect(Object.keys(cuerpoPost().properties).sort()).toEqual(Object.keys(patch.properties).sort());
+      for (const prohibido of ['tenant_id', 'tenantId', 'id', 'user_id', 'deleted_at', 'grupo_id', 'grupoId', 'foto']) {
+        expect(cuerpoPost().properties[prohibido]).toBeUndefined();
+      }
+    });
+
+    it('POST: el contrato dice que la matrícula se genera sola y que la nacionalidad tiene valor por defecto', () => {
+      expect(cuerpoPost().properties.numeroMatricula.description).toMatch(/genera/);
+      expect(cuerpoPost().properties.nacionalidad.description).toMatch(/Dominicana/);
+      expect(cuerpoPost().required).not.toContain('numeroMatricula');
+      expect(cuerpoPost().required).not.toContain('nacionalidad');
+    });
+
+    it('DELETE responde 204 sin cuerpo, y documenta 400/401/403/404', () => {
+      const del = doc.paths['/api/v1/estudiantes/{id}'].delete;
+      expect(Object.keys(del.responses).sort()).toEqual(['204', '400', '401', '403', '404']);
+      expect(del.responses['204'].content).toBeUndefined();
+      expect(del.operationId).toBe('eliminarEstudiante');
+    });
+  });
+
   describe('respuestas', () => {
     it('Estudiante: propiedades obligatorias = las del DTO compartido', () => {
       const s = doc.components.schemas.Estudiante;

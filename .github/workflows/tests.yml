@@ -16,7 +16,7 @@ permissions:
 jobs:
   phpunit:
     name: PHPUnit (suite completa, incluye RouteSmokeTest)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
 
     # ZuraEdu requiere MySQL 8+ y Redis 6+ en producción (ver DEPLOY.md) —

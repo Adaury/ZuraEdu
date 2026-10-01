@@ -29,7 +29,7 @@ permissions:
 jobs:
   ts:
     name: Typecheck + unitarias + build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
       run:
@@ -57,7 +57,7 @@ jobs:
 
   e2e:
     name: E2E contra MySQL con el esquema de Laravel
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
 
     services:

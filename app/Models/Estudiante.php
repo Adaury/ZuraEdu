@@ -159,6 +159,31 @@ class Estudiante extends Model
         return $q->where('estado', 'activo');
     }
 
+    /** Índice de la migración 2026_09_30_000003 (tenant_id, deleted_at, apellidos, nombres). */
+    public const INDICE_LISTADO = 'est_tenant_listado_idx';
+
+    /**
+     * Fuerza el índice del listado paginado SIN filtros. El paginador ejecuta
+     * `count(*) where tenant_id = ? and deleted_at is null`; el optimizador de MySQL estima mal las
+     * filas del índice único (tenant_id, cedula) y lo prefiere, leyendo cada fila: ~12 ms con 4.950
+     * estudiantes. Con este índice es index-only: ~1,6 ms, total exacto.
+     *
+     * Solo se aplica si el índice EXISTE: FORCE INDEX sobre un índice inexistente da el error 1176
+     * (500), y un entorno puede tener el código nuevo con la migración sin aplicar. La comprobación
+     * se cachea 1 h (es una propiedad del esquema, común a todos los tenants; no hay datos de tenant).
+     * No usar con filtros de texto/grado/ciclo: ahí el optimizador debe decidir.
+     */
+    public function scopeConIndiceDeListado($q)
+    {
+        $existe = \Illuminate\Support\Facades\Cache::remember(
+            'db_schema_idx_' . self::INDICE_LISTADO,
+            3600,
+            fn () => \Illuminate\Support\Facades\Schema::hasIndex('estudiantes', self::INDICE_LISTADO)
+        );
+
+        return $existe ? $q->forceIndex(self::INDICE_LISTADO) : $q;
+    }
+
     public function casosSeguimiento()
     {
         return $this->hasMany(CasoSeguimiento::class);

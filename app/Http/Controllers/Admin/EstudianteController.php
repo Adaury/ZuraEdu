@@ -42,7 +42,11 @@ class EstudianteController extends Controller
 
         $grados = Grado::orderBy('orden')->get();
 
+        // Sin ningún filtro, el paginador usa el índice del listado (ver Estudiante::scopeConIndiceDeListado).
+        $sinFiltros = $buscar === '' && $letra === '' && ! $gradoId && ! $ciclo;
+
         $estudiantes = Estudiante::query()
+            ->when($sinFiltros, fn ($q) => $q->conIndiceDeListado())
             // ── Búsqueda por texto ────────────────────────────────────────
             ->when($buscar !== '', function ($q) use ($buscar, $campo) {
                 $term = "%{$buscar}%";

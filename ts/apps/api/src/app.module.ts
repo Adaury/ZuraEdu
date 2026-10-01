@@ -12,6 +12,8 @@ import { EstudiantesController } from './estudiantes/estudiantes.controller';
 import { EstudiantesService } from './estudiantes/estudiantes.service';
 import { HealthController } from './health/health.controller';
 import { OpenApiController } from './openapi/openapi.controller';
+import { NotificacionesService } from './notificaciones/notificaciones.service';
+import { ReverbPublisher } from './realtime/reverb.publisher';
 import { RateLimitGuard } from './ratelimit/rate-limit.guard';
 import { RateLimiter } from './ratelimit/rate-limiter';
 import { RedisModule } from './redis/redis.module';
@@ -36,6 +38,8 @@ import { TenantContext } from './tenancy/tenant-context';
     PermissionsService,
     EstudiantesService,
     RateLimiter,
+    ReverbPublisher,
+    NotificacionesService,
     // Orden = orden de ejecución: primero autenticar y fijar tenant, luego permisos.
     // Todo es privado por defecto; solo lo marcado con @Public() (/health) no pide token.
     { provide: APP_GUARD, useClass: SanctumGuard },

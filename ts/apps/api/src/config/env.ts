@@ -53,6 +53,9 @@ const schema = z.object({
   /** Prefijo de la CACHÉ de Laravel (cache.prefix = CACHE_PREFIX). */
   CACHE_PREFIX: opcionalComoLaravel,
 
+  /** Endpoint de push de Expo (mismo que `PushNotificationService::EXPO_URL`). Solo se cambia en pruebas. */
+  EXPO_PUSH_URL: z.string().url().default('https://exp.host/--/api/v2/push/send'),
+
   // ── Reverb / tiempo real (OPCIONAL). Mismos nombres que el .env de Laravel. ───────────────────────────────
   // Sin REVERB_APP_ID la API funciona igual pero NO emite eventos en tiempo real (las pantallas abiertas no se refrescan
   // solas). Con ella, publica en Reverb por HTTP (protocolo Pusher, firmado con REVERB_APP_SECRET).

@@ -118,6 +118,18 @@ por WhatsApp a su representante. Ahora ambos endpoints lo verifican contra la BD
 nada de eso existe aún en la API (solo Redis). Migrar solo el `upsert` dejaría a los padres sin aviso de ausencia, que es
 una regresión visible. Orden sugerido: (1) cola/notificaciones en TS, (2) Reverb, (3) esta escritura.
 
+## Notificaciones desde TypeScript (2026-10-01)
+
+`NotificacionesService.enviar()` (`src/notificaciones/`) reproduce `Notificacion::enviar()` / `EnviarNotificacionJob`: gate in-app de la
+institución (`notif_inapp_{categoría}`, la categoría `sistema` no se apaga), fila en `notificaciones`, borrado de la caché
+`user_{id}_notif_unread` de Laravel, push a Expo (institución `notif_push_{cat}` Y usuario `notif_push_prefs[cat]`) y el evento
+`notification.created` por Reverb a `private-user.{id}`. El catálogo (ICONOS, TIPO_CATEGORIA, CATEGORIAS) se compara en una prueba con
+`app/Models/Notificacion.php`, así que cambiarlo en PHP sin actualizar TypeScript rompe las pruebas.
+
+Diferencias deliberadas: el push y el evento en tiempo real van **en segundo plano** (PHP los saca del request con la cola; Expo puede
+tardar 8 s); el destinatario se valida contra la BD (usuario del mismo colegio) antes de insertar; la hora del evento es UTC.
+No cubre: notificaciones masivas (`enviarA`, push por lotes con `EnviarPushLoteJob`) ni el WhatsApp.
+
 ## Diferencias conocidas y deliberadas (estudiantes)
 
 | Tema | Laravel | TypeScript | Motivo |

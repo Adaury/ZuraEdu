@@ -91,6 +91,9 @@ export class Fixtures {
     // Orden: lo que referencia a otras tablas primero.
     if (this.tokens.length) await this.pool.query('delete from personal_access_tokens where id in (?)', [this.tokens]);
     if (this.tenants.length) await this.pool.query('delete from activity_logs where tenant_id in (?)', [this.tenants]);
+    if (this.tenants.length) await this.pool.query('delete from notificaciones where tenant_id in (?)', [this.tenants]);
+    if (this.tenants.length) await this.pool.query('delete from system_settings where tenant_id in (?)', [this.tenants]);
+    if (this.usuarios.length) await this.pool.query('delete from device_tokens where user_id in (?)', [this.usuarios]);
     // Por colegio (no solo los ids creados aquí): la API también crea estudiantes durante las pruebas.
     if (this.tenants.length) await this.pool.query('delete from estudiantes where tenant_id in (?)', [this.tenants]);
     if (this.estudiantes.length) await this.pool.query('delete from estudiantes where id in (?)', [this.estudiantes]);

@@ -4,6 +4,7 @@ import { ClsService } from 'nestjs-cls';
 import { createPool, Pool } from 'mysql2';
 import { ENV, Env } from '../config/env';
 import type { DB as Schema } from './db';
+import { QUERY_COUNTER, QueryCounter } from './query-counter';
 import { TenantScopePlugin } from './tenant-scope.plugin';
 import type { TenantStore } from '../tenancy/tenant.store';
 
@@ -24,6 +25,13 @@ export async function loadTenantTables(db: Database): Promise<ReadonlySet<string
     where table_schema = database() and column_name = 'tenant_id'
   `.execute(db);
   return new Set(rows.map((r) => r.tabla));
+}
+
+/** Callback de log de Kysely que solo cuenta consultas (no guarda el SQL: sin costo ni riesgo de filtrar datos). */
+function contar(contador: QueryCounter) {
+  return (evento: { level: string }) => {
+    if (evento.level === 'query') contador.total++;
+  };
 }
 
 class DbLifecycle implements OnApplicationShutdown {
@@ -51,10 +59,12 @@ class DbLifecycle implements OnApplicationShutdown {
           bigNumberStrings: false,
         }),
     },
+    { provide: QUERY_COUNTER, useValue: new QueryCounter() },
     {
       provide: SYSTEM_DB,
-      inject: [MYSQL_POOL],
-      useFactory: (pool: Pool): Database => new Kysely<Schema>({ dialect: new MysqlDialect({ pool }) }),
+      inject: [MYSQL_POOL, QUERY_COUNTER],
+      useFactory: (pool: Pool, contador: QueryCounter): Database =>
+        new Kysely<Schema>({ dialect: new MysqlDialect({ pool }), log: contar(contador) }),
     },
     {
       provide: TENANT_TABLES,
@@ -63,15 +73,21 @@ class DbLifecycle implements OnApplicationShutdown {
     },
     {
       provide: DB,
-      inject: [MYSQL_POOL, TENANT_TABLES, ClsService],
-      useFactory: (pool: Pool, tablas: ReadonlySet<string>, cls: ClsService<TenantStore>): Database =>
+      inject: [MYSQL_POOL, TENANT_TABLES, ClsService, QUERY_COUNTER],
+      useFactory: (
+        pool: Pool,
+        tablas: ReadonlySet<string>,
+        cls: ClsService<TenantStore>,
+        contador: QueryCounter,
+      ): Database =>
         new Kysely<Schema>({
           dialect: new MysqlDialect({ pool }),
+          log: contar(contador),
           plugins: [new TenantScopePlugin(tablas, () => cls.get('tenantId'))],
         }),
     },
     DbLifecycle,
   ],
-  exports: [DB, SYSTEM_DB, TENANT_TABLES],
+  exports: [DB, SYSTEM_DB, TENANT_TABLES, QUERY_COUNTER],
 })
 export class DbModule {}

@@ -9,11 +9,13 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { ClsService } from 'nestjs-cls';
+import type { Loaded } from '../common/ttl-cache';
 import { Database, SYSTEM_DB } from '../db/db.module';
 import { HostTenantResolver } from '../tenancy/host-tenant.resolver';
 import type { AuthContext, TenantStore } from '../tenancy/tenant.store';
+import { AuthCache } from './auth-cache';
 import { IS_PUBLIC } from './decorators';
-import { hashesIguales, hashToken, parseBearer } from './sanctum-token';
+import { hashesIguales, hashToken, ParsedToken, parseBearer } from './sanctum-token';
 
 const USER_MODEL = 'App\\Models\\User';
 
@@ -29,6 +31,10 @@ export type AuthenticatedRequest = Request & { auth?: AuthContext };
  *    (como Tenant::estaActivo()).
  *  - El tenant sale del USUARIO. Si el Host identifica a otro tenant → 403 (token del colegio
  *    A usado en el dominio del colegio B). Nunca se acepta un tenant que mande el cliente.
+ *
+ * Caché: la validación completa (token → usuario → tenant) se cachea por AUTH_CACHE_TTL_SECONDS
+ * (ver AuthCache; 3 consultas menos por petición). La comprobación del Host NO se cachea aquí:
+ * corre en cada petición porque depende de lo que mande el cliente.
  */
 @Injectable()
 export class SanctumGuard implements CanActivate {
@@ -36,6 +42,7 @@ export class SanctumGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly cls: ClsService<TenantStore>,
     private readonly hosts: HostTenantResolver,
+    private readonly cache: AuthCache,
     @Inject(SYSTEM_DB) private readonly db: Database,
   ) {}
 
@@ -48,6 +55,24 @@ export class SanctumGuard implements CanActivate {
     if (!token) throw new UnauthorizedException('No autenticado.');
 
     const hash = hashToken(token.plain);
+    // La clave lleva el HASH del token (nunca el token en claro); un secreto equivocado da otra clave.
+    const clave = `${token.id ?? 'h'}:${hash}`;
+    const auth = await this.cache.sesiones.getOrLoad(clave, () => this.cargarSesion(token, hash));
+    if (!auth) throw new UnauthorizedException('No autenticado.');
+
+    const tenantDelHost = await this.hosts.resolve(req.headers.host);
+    if (tenantDelHost !== undefined && tenantDelHost !== auth.tenantId) {
+      throw new ForbiddenException('El token no pertenece a esta institución.');
+    }
+
+    req.auth = auth;
+    this.cls.set('tenantId', auth.tenantId);
+    this.cls.set('userId', auth.userId);
+    return true;
+  }
+
+  /** Validación completa contra la base. Lanza (y por tanto NO cachea) ante cualquier rechazo. */
+  private async cargarSesion(token: ParsedToken, hash: string): Promise<Loaded<AuthContext>> {
     const fila = token.id
       ? await this.db
           .selectFrom('personal_access_tokens')
@@ -63,8 +88,13 @@ export class SanctumGuard implements CanActivate {
     if (!fila || !hashesIguales(String(fila.token), hash) || fila.tokenable_type !== USER_MODEL) {
       throw new UnauthorizedException('No autenticado.');
     }
-    if (fila.expires_at && new Date(String(fila.expires_at).replace(' ', 'T') + 'Z').getTime() <= Date.now()) {
-      throw new UnauthorizedException('Token expirado.');
+
+    // expires_at lo escribe Laravel en UTC (config/app.php timezone = UTC).
+    let msHastaExpirar: number | undefined;
+    if (fila.expires_at) {
+      const expira = new Date(String(fila.expires_at).replace(' ', 'T') + 'Z').getTime();
+      msHastaExpirar = expira - Date.now();
+      if (msHastaExpirar <= 0) throw new UnauthorizedException('Token expirado.');
     }
 
     const usuario = await this.db
@@ -88,15 +118,10 @@ export class SanctumGuard implements CanActivate {
       throw new ForbiddenException('Institución suspendida o no disponible.');
     }
 
-    const tenantDelHost = await this.hosts.resolve(req.headers.host);
-    if (tenantDelHost !== undefined && tenantDelHost !== Number(tenant.id)) {
-      throw new ForbiddenException('El token no pertenece a esta institución.');
-    }
-
-    const auth: AuthContext = { userId: Number(usuario.id), tenantId: Number(tenant.id), name: String(usuario.name) };
-    req.auth = auth;
-    this.cls.set('tenantId', auth.tenantId);
-    this.cls.set('userId', auth.userId);
-    return true;
+    return {
+      // Si el token vence antes que el TTL, la entrada cacheada vence con él (nunca sobrevive al token).
+      ttlMs: msHastaExpirar,
+      value: { userId: Number(usuario.id), tenantId: Number(tenant.id), name: String(usuario.name) },
+    };
   }
 }

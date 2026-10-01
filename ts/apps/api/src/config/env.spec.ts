@@ -6,6 +6,19 @@ describe('loadEnv', () => {
     expect(env.API_PORT).toBe(3100);
     expect(env.NODE_ENV).toBe('development');
     expect(env.TENANCY_BASE_DOMAIN).toBe('zuraedu.com');
+    expect(env.AUTH_CACHE_TTL_SECONDS).toBe(30);
+    expect(env.AUTH_CACHE_MAX_ENTRIES).toBe(5000);
+  });
+
+  it('permite desactivar la caché de autenticación con 0', () => {
+    expect(loadEnv({ DATABASE_URL: 'mysql://u@h/db', AUTH_CACHE_TTL_SECONDS: '0' }).AUTH_CACHE_TTL_SECONDS).toBe(0);
+  });
+
+  it('acota el TTL de la caché (un valor enorme dejaría permisos revocados por demasiado tiempo)', () => {
+    const base = { DATABASE_URL: 'mysql://u@h/db' };
+    expect(() => loadEnv({ ...base, AUTH_CACHE_TTL_SECONDS: '301' })).toThrow(/AUTH_CACHE_TTL_SECONDS/);
+    expect(() => loadEnv({ ...base, AUTH_CACHE_TTL_SECONDS: '-1' })).toThrow(/AUTH_CACHE_TTL_SECONDS/);
+    expect(() => loadEnv({ ...base, AUTH_CACHE_MAX_ENTRIES: '0' })).toThrow(/AUTH_CACHE_MAX_ENTRIES/);
   });
 
   it('convierte el puerto a número', () => {

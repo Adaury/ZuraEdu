@@ -13,6 +13,13 @@ const schema = z.object({
     .url()
     .refine((u) => u.startsWith('mysql://'), 'DATABASE_URL debe empezar por mysql://'),
   TENANCY_BASE_DOMAIN: z.string().min(1).default('zuraedu.com'),
+  /**
+   * Vida de la caché de sesión (token→usuario→tenant) y de permisos, en segundos. 0 la desactiva.
+   * Es también el retraso MÁXIMO con que se nota en esta API un token revocado, un usuario
+   * desactivado, un tenant suspendido o un permiso quitado en Laravel (no hay invalidación cruzada).
+   */
+  AUTH_CACHE_TTL_SECONDS: z.coerce.number().int().min(0).max(300).default(30),
+  AUTH_CACHE_MAX_ENTRIES: z.coerce.number().int().min(1).max(100_000).default(5000),
 });
 
 export type Env = z.infer<typeof schema>;

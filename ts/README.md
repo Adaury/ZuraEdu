@@ -73,6 +73,23 @@ Reglas del proyecto (CLAUDE.md): aislar por tenant y **no confiar en el cliente*
   `model_has_permissions` (sin "teams"). `super_admin` pasa siempre, como el `Gate::before` de Laravel.
 - Se usa con `@RequirePermission('ver-estudiantes')`; los nombres están tipados en `@zuraedu/shared`.
 
+### Caché de sesión y permisos (`AuthCache`)
+
+En memoria, por proceso, con vencimiento (`AUTH_CACHE_TTL_SECONDS`, 30 s por defecto, `0` la desactiva, máximo 300).
+
+- **Qué cachea:** `token → usuario → tenant` (3 consultas) y `usuario → todos sus permisos` (2–3 consultas).
+  Pasa de 7 a **2 consultas por petición** (solo las de datos).
+- **La clave lleva el hash del token** (`<id>:<sha256>`), nunca el token en claro. Un secreto equivocado produce
+  otra clave, así que jamás acierta la caché (hay una prueba e2e).
+- **Solo se cachean sesiones válidas.** Un token rechazado nunca queda guardado.
+- **Nunca sobrevive al token:** si el token tiene `expires_at`, la entrada vence con él.
+- **Single-flight:** peticiones concurrentes por la misma clave cargan una sola vez.
+- **La comprobación del `Host` no se cachea** (depende de lo que manda el cliente; corre en cada petición).
+- **Compromiso explícito:** no hay invalidación cruzada con Laravel. Revocar un token, desactivar un usuario,
+  suspender un tenant o quitar un permiso tarda **hasta `AUTH_CACHE_TTL_SECONDS`** en notarse aquí
+  (probado con MySQL real). Si no te sirve esa ventana, baja el TTL o ponlo en `0`.
+  Con varias instancias de la API cada una tiene su caché; cuando haya Redis en TypeScript conviene moverla ahí.
+
 ## Decisiones tomadas (y por qué)
 
 | Decisión | Motivo |
@@ -91,12 +108,29 @@ MySQL con buffer pool de 128 MB: **~31 ms por petición** (p95 41 ms) y **~176 r
 Con búsqueda por texto y página 40: ~65 ms. No es comparable con la página HTML de Laravel (que además
 renderiza vistas); sirve como línea base.
 
-Cada petición hace hoy ~8 consultas, la mayoría de **autenticación y permisos sin caché**. Es la primera
-optimización pendiente (ver abajo).
+**Con la caché de autenticación:** las consultas por petición bajan de 7 a 2, pero la latencia casi no cambia
+(30,3 → 30,0 ms; 214 → 223 req/s con 20 conexiones). Es esperable: las consultas de autenticación eran baratas.
+Midiendo por partes, Node + Nest cuestan ~1 ms (`/health`: 0,94 ms) y **todo lo demás son las 2 consultas de
+datos** a MySQL: `count(*)` 11,7 ms y el listado ordenado 17,3 ms para solo 4.950 filas. La caché reduce la carga
+sobre la base de datos (importante con muchos usuarios), no la latencia de una petición suelta.
+
+El cuello de botella es el índice, no el lenguaje. En `sge_bench` (solo medición, sin aplicar a la base real):
+
+| Consulta | Hoy | Con índice `(tenant_id, deleted_at, apellidos, nombres)` |
+|---|---|---|
+| Listado, página 1 | 17,0 ms (usa `filesort`) | **0,4 ms** |
+| Listado, página 100 | 27,1 ms | 7,8 ms |
+| `count(*)` | 11,6 ms | 11,6 ms (el optimizador sigue eligiendo el índice único `(tenant_id, cedula)`) |
+
+Forzando un índice estrecho `(tenant_id, deleted_at)` el `count(*)` baja a 1,5 ms, pero MySQL 8.0.30 no lo elige
+solo y Kysely no ofrece hints sin romper el filtro de tenant. Es la misma consulta que usa el listado de Laravel,
+así que el índice nuevo también le serviría (requiere una migración nueva de Laravel).
 
 ## Pendiente (orden sugerido)
 
-1. **Caché de permisos y de validación de token** (TTL corto) — es el grueso de las consultas por petición.
+1. **Índice de listado y estrategia del `count(*)`** (ver "Medido"): es donde está hoy el tiempo de cada petición.
+   Opciones para el conteo: caché corta del total por tenant/filtros, o un conteo que el optimizador resuelva
+   con el índice estrecho.
 2. **Escrituras** con auditoría (`ActivityLog`) y respeto de `periodos.cerrado`, antes de migrar calificaciones.
 3. **Redis**: `/health` solo comprueba la base; añadir cuando haya colas en TypeScript.
 4. **Autenticación de la web** (hoy la web solo muestra el estado de la API).

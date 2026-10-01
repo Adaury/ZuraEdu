@@ -7,6 +7,8 @@ import request from 'supertest';
 // Debe fijarse ANTES de importar AppModule: ConfigModule lee process.env al crear el módulo.
 const DATABASE_URL = process.env.TEST_DATABASE_URL ?? 'mysql://root@127.0.0.1:3306/sge_bench';
 process.env.DATABASE_URL = DATABASE_URL;
+// Esta suite cambia datos y exige efecto inmediato: sin caché de autenticación (la caché tiene su propia suite).
+process.env.AUTH_CACHE_TTL_SECONDS = '0';
 
 import { AppModule } from '../src/app.module';
 

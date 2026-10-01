@@ -32,13 +32,18 @@ npm run dev:web               # http://127.0.0.1:3101
 |---|---|
 | `npm run typecheck` | Compila shared + api + web sin emitir |
 | `npm test` | Pruebas unitarias de la API (no necesitan base de datos) |
-| `npm run test:e2e -w @zuraedu/api` | E2E contra MySQL real (`TEST_DATABASE_URL`, por defecto `sge_bench`) |
+| `npm run test:e2e -w @zuraedu/api` | E2E contra MySQL real (`TEST_DATABASE_URL`, por defecto `sge_bench`). Cada prueba crea y borra sus propios colegios, usuarios y tokens: sirve cualquier base con el esquema migrado y `RolesSeeder` |
 | `npm run db:types` | Regenera `apps/api/src/db/db.d.ts` desde el esquema real |
 | `npm run db:types:check -w @zuraedu/api` | Falla si `db.d.ts` quedó desfasado del esquema |
 | `npm run build` | Compila todo para producción |
 
 Después de **cada migración de Laravel** ejecuta `npm run db:types` y revisa el diff de `db.d.ts`:
 así el compilador te avisa de cualquier cambio de esquema que rompa la API.
+
+**CI** (`.github/workflows/ts.yml`): typecheck, unitarias y build; y un segundo trabajo que levanta MySQL, aplica las
+migraciones de Laravel y `RolesSeeder` (como en producción), comprueba que `db.d.ts` sigue al día y corre las e2e.
+Se dispara también cuando cambian `database/migrations/**` o `RolesSeeder.php`: un cambio de esquema en PHP que rompa
+la API tiene que saltar ahí, no en producción.
 
 ## Seguridad multi-tenant
 
@@ -90,6 +95,31 @@ En memoria, por proceso, con vencimiento (`AUTH_CACHE_TTL_SECONDS`, 30 s por def
   (probado con MySQL real). Si no te sirve esa ventana, baja el TTL o ponlo en `0`.
   Con varias instancias de la API cada una tiene su caché; cuando haya Redis en TypeScript conviene moverla ahí.
 
+## Escrituras y auditoría
+
+Primera escritura migrada: `PATCH /api/v1/estudiantes/:id` (edición parcial de los campos de identidad: `cedula`,
+`nombres`, `apellidos`, `fechaNacimiento`, `estado`). Requiere `gestionar-estudiantes`, igual que las rutas de
+mutación de Laravel.
+
+- **Auditoría idéntica a Laravel.** Escribe en `activity_logs` con `accion = estudiante.editado`,
+  `modelo = App\Models\Estudiante` y la descripción `Estudiante #12: cedula: — → 001 | estado: activo → inactivo`
+  (mismo orden de campos, `—` para nulos, fechas como `2012-05-01 00:00:00` porque Laravel castea a `date`).
+  La pantalla de auditoría actual muestra juntos los cambios hechos desde PHP y desde TypeScript.
+  `tenant_id` y `user_id` salen del token, nunca del cuerpo.
+- **Atómica y sin carreras.** Todo ocurre en una transacción con la fila bloqueada (`for update`): se leen los
+  valores, se calculan los cambios, se actualiza y se audita. Si algo falla no queda nada a medias, y dos ediciones
+  simultáneas no se pisan (la cadena de auditoría "antes → después" queda coherente; hay pruebas e2e de ambas cosas).
+- **Sin cambios no hay escritura**: si ningún campo auditado cambia, responde 200 sin tocar la fila ni auditar (como Laravel).
+- **Asignación masiva imposible**: el cuerpo se valida con `zod` en modo estricto; un campo desconocido
+  (`tenant_id`, `id`, `deleted_at`...) se **rechaza con 400** en vez de ignorarse.
+- **Códigos de respuesta**: 404 si el estudiante es de otro colegio, está borrado lógicamente o no existe (no se
+  distingue); 409 si la cédula ya existe en el colegio (la unicidad es `(tenant_id, cedula)`, así que la misma
+  cédula en otro colegio es válida); 403 sin permiso; 401 sin token; 400 si la validación falla.
+- Las mismas reglas de validación de `UpdateEstudianteRequest`: nombres/apellidos 2–100, cédula ≤ 20, fecha anterior a hoy.
+
+Patrón para las próximas escrituras: `AuditService.registrar(trx, ...)` dentro de la misma transacción, `TenantContext`
+para el tenant/usuario, y un esquema `zod` estricto.
+
 ## Decisiones tomadas (y por qué)
 
 | Decisión | Motivo |
@@ -128,14 +158,12 @@ así que el índice nuevo también le serviría (requiere una migración nueva d
 
 ## Pendiente (orden sugerido)
 
-1. **Índice de listado y estrategia del `count(*)`** (ver "Medido"): es donde está hoy el tiempo de cada petición.
-   Opciones para el conteo: caché corta del total por tenant/filtros, o un conteo que el optimizador resuelva
-   con el índice estrecho.
-2. **Escrituras** con auditoría (`ActivityLog`) y respeto de `periodos.cerrado`, antes de migrar calificaciones.
-3. **Redis**: `/health` solo comprueba la base; añadir cuando haya colas en TypeScript.
+1. **Más escrituras**, con la misma plantilla (transacción + auditoría + `zod` estricto): resto de campos del estudiante,
+   luego asistencia y calificaciones (estas respetando `periodos.cerrado`). Pagos y MINERD al final, con tests de paridad.
+2. **Conteo con filtros** (búsqueda por texto / estado): sin filtros ya es index-only (1,6 ms); con filtros el optimizador decide.
+3. **Redis**: `/health` solo comprueba la base; añadir cuando haya colas en TypeScript. Mover ahí la caché de autenticación
+   si hay más de una instancia de la API.
 4. **Autenticación de la web** (hoy la web solo muestra el estado de la API).
-5. **E2E en CI**: necesita una base con el esquema de Laravel; hoy solo corren typecheck, unitarias y build.
-6. **Siguiente módulo** — propuesta: portales de solo lectura (padre/estudiante), luego asistencia y
-   calificaciones, y al final pagos y MINERD (tests de paridad contra Laravel primero).
-7. **Proxy de enrutamiento** (Nginx) para mandar cada ruta a Laravel o a TypeScript durante la transición.
-8. **Documentación OpenAPI** de la API (hoy el contrato vive en `@zuraedu/shared`).
+5. **Siguiente módulo de lectura** — propuesta: portales de solo lectura (padre/estudiante).
+6. **Proxy de enrutamiento** (Nginx) para mandar cada ruta a Laravel o a TypeScript durante la transición.
+7. **Documentación OpenAPI** de la API (hoy el contrato vive en `@zuraedu/shared`).

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ClsModule } from 'nestjs-cls';
+import { AuditService } from './audit/audit.service';
 import { AuthCache } from './auth/auth-cache';
 import { PermissionGuard } from './auth/permission.guard';
 import { PermissionsService } from './auth/permissions.service';
@@ -11,6 +12,7 @@ import { EstudiantesController } from './estudiantes/estudiantes.controller';
 import { EstudiantesService } from './estudiantes/estudiantes.service';
 import { HealthController } from './health/health.controller';
 import { HostTenantResolver } from './tenancy/host-tenant.resolver';
+import { TenantContext } from './tenancy/tenant-context';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { HostTenantResolver } from './tenancy/host-tenant.resolver';
   controllers: [HealthController, EstudiantesController],
   providers: [
     AuthCache,
+    TenantContext,
+    AuditService,
     HostTenantResolver,
     PermissionsService,
     EstudiantesService,

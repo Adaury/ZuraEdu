@@ -9,5 +9,7 @@ module.exports = {
   moduleFileExtensions: ['js', 'json', 'ts'],
   testRegex: 'test/.*\\.e2e-spec\\.ts$',
   transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.json', diagnostics: { ignoreCodes: [151002] } }] },
+  // Los e2e hacen decenas de peticiones con el mismo usuario: sin límite salvo en la prueba del limitador, que lo activa.
+  setupFiles: ['<rootDir>/test/setup-env.js'],
   testTimeout: 30000,
 };

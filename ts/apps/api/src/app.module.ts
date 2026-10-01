@@ -12,6 +12,8 @@ import { EstudiantesController } from './estudiantes/estudiantes.controller';
 import { EstudiantesService } from './estudiantes/estudiantes.service';
 import { HealthController } from './health/health.controller';
 import { OpenApiController } from './openapi/openapi.controller';
+import { RateLimitGuard } from './ratelimit/rate-limit.guard';
+import { RateLimiter } from './ratelimit/rate-limiter';
 import { RedisModule } from './redis/redis.module';
 import { HostTenantResolver } from './tenancy/host-tenant.resolver';
 import { TenantContext } from './tenancy/tenant-context';
@@ -33,9 +35,11 @@ import { TenantContext } from './tenancy/tenant-context';
     HostTenantResolver,
     PermissionsService,
     EstudiantesService,
+    RateLimiter,
     // Orden = orden de ejecución: primero autenticar y fijar tenant, luego permisos.
     // Todo es privado por defecto; solo lo marcado con @Public() (/health) no pide token.
     { provide: APP_GUARD, useClass: SanctumGuard },
+    { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: PermissionGuard },
   ],
 })

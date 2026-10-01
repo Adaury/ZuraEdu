@@ -288,7 +288,9 @@ simultáneos, y la latencia de PHP (26 ms) ya es buena. El ahorro sería de cost
 no es justo y no se usa como evidencia); no hay PHP-FPM/Apache real con varios workers ni un servidor Linux.
 
 **Diferencias que hay que conocer antes de comparar APIs completas**
-- La API TypeScript **no tiene limitación de tasa** (`throttle`), PHP sí (60/min en el grupo `api`). Hay que añadirla antes de
-  exponerla: sin ella un cliente puede saturarla.
+- ~~La API TypeScript no tiene limitación de tasa~~ — **resuelto el 2026-10-01**: `RATE_LIMIT_PER_MINUTE` (60 por usuario y
+  minuto, como el grupo `api` de Laravel; `RateLimitGuard` + `RateLimiter`, contador compartido por Redis entre instancias o en
+  memoria si no hay Redis). Responde `429` con `Retry-After` y `X-RateLimit-*`. No limita por IP las peticiones sin token
+  (detrás de un proxy `req.ip` es la del proxy): eso corresponde a Nginx `limit_req`.
 - La caché de autenticación de 30 s es la mitad de la ventaja a 1 conexión (450 → 282 req/s sin ella) y a cambio un token
   revocado tarda hasta 30 s en dejar de valer (ver "Caché de autenticación").

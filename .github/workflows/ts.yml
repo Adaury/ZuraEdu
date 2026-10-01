@@ -1,0 +1,49 @@
+name: TypeScript
+
+# Solo corre cuando cambia el workspace TypeScript (ts/) o este workflow.
+on:
+  push:
+    branches: [master]
+    paths: ['ts/**', '.github/workflows/ts.yml']
+  pull_request:
+    branches: [master]
+    paths: ['ts/**', '.github/workflows/ts.yml']
+
+concurrency:
+  group: ts-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ts:
+    name: Typecheck + unitarias + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ts
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ts/package-lock.json
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Typecheck (shared + api + web)
+        run: npm run typecheck
+
+      - name: Pruebas unitarias de la API (no necesitan base de datos)
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Las pruebas e2e necesitan una base MySQL con el esquema de Laravel (migraciones + datos).
+      # Quedan fuera de CI hasta montar ese servicio; ver ts/README.md ("Pendiente").

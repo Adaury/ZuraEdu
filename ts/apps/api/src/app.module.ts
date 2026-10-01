@@ -11,6 +11,7 @@ import { DbModule } from './db/db.module';
 import { EstudiantesController } from './estudiantes/estudiantes.controller';
 import { EstudiantesService } from './estudiantes/estudiantes.service';
 import { HealthController } from './health/health.controller';
+import { OpenApiController } from './openapi/openapi.controller';
 import { HostTenantResolver } from './tenancy/host-tenant.resolver';
 import { TenantContext } from './tenancy/tenant-context';
 
@@ -21,7 +22,7 @@ import { TenantContext } from './tenancy/tenant-context';
     ConfigModule,
     DbModule,
   ],
-  controllers: [HealthController, EstudiantesController],
+  controllers: [HealthController, OpenApiController, EstudiantesController],
   providers: [
     AuthCache,
     TenantContext,

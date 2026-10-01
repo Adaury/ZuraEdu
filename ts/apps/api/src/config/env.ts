@@ -20,6 +20,11 @@ const schema = z.object({
    */
   AUTH_CACHE_TTL_SECONDS: z.coerce.number().int().min(0).max(300).default(30),
   AUTH_CACHE_MAX_ENTRIES: z.coerce.number().int().min(1).max(100_000).default(5000),
+  /** Sirve el contrato en GET /openapi.json. Es público (no contiene datos de colegios); ponlo en false para ocultarlo. */
+  OPENAPI_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
 });
 
 export type Env = z.infer<typeof schema>;

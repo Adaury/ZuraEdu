@@ -127,6 +127,23 @@ mutación de Laravel.
 Patrón para las próximas escrituras: `AuditService.registrar(trx, ...)` dentro de la misma transacción, `TenantContext`
 para el tenant/usuario, y un esquema `zod` estricto.
 
+## Contrato OpenAPI
+
+`GET /openapi.json` (OpenAPI 3.1, público, apagable con `OPENAPI_ENABLED=false`) describe las rutas, los parámetros, el
+cuerpo del `PATCH`, las respuestas y el esquema de seguridad (`bearerAuth` con el token de Sanctum). No se escribe a mano
+nada que pueda desfasarse:
+
+- Los esquemas de **respuesta** salen de `src/openapi/respuestas.ts` (`zod`), y cada uno lleva
+  `satisfies z.ZodType<Dto>`: si cambia el DTO compartido (el que usan la web y la app móvil) y no el esquema, **no compila**.
+- El **cuerpo del `PATCH`** sale del mismo esquema `zod` que valida la petición.
+- Prueba unitaria de **cobertura**: recorre las rutas registradas en Nest y exige que cada una esté documentada
+  (añadir un endpoint sin documentarlo rompe el CI). Otras pruebas comprueban que los límites del contrato (`perPage` máximo,
+  longitudes, enums) son los que aplica la validación de verdad.
+- Prueba e2e: las respuestas **reales** del servidor (incluidos los errores 400/401/403/404/409) cumplen los esquemas, y cada
+  código de estado observado está declarado en su operación.
+
+Al añadir una ruta: documentarla en `src/openapi/openapi.ts` (el test de cobertura te lo exige).
+
 ## Decisiones tomadas (y por qué)
 
 | Decisión | Motivo |
@@ -175,4 +192,3 @@ así que el índice nuevo también le serviría (requiere una migración nueva d
 4. **Autenticación de la web** (hoy la web solo muestra el estado de la API).
 5. **Siguiente módulo de lectura** — propuesta: portales de solo lectura (padre/estudiante).
 6. **Proxy de enrutamiento** (Nginx) para mandar cada ruta a Laravel o a TypeScript durante la transición.
-7. **Documentación OpenAPI** de la API (hoy el contrato vive en `@zuraedu/shared`).

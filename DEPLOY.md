@@ -336,6 +336,78 @@ En local (Laragon/desarrollo) deja `opcache.validate_timestamps=1` o
 OPcache desactivado — si no, no vas a ver tus propios cambios sin reiniciar
 PHP en cada edición.
 
+> **Medido (2026-09-30, desarrollo):** con OPcache apagado `/login` tardaba
+> ~400 ms; con OPcache activo, ~57 ms (≈7×). No dejes producción sin él.
+
+### Regla de configuración: nada de `env()` fuera de `config/`
+
+`deploy.sh` ejecuta `php artisan optimize`, que cachea la configuración
+(`config:cache`). Con la configuración cacheada, `env()` llamado desde
+`app/`, `resources/` o `routes/` devuelve **`null`**: el valor del `.env` se
+ignora en silencio. Por eso toda variable de entorno se lee en un archivo de
+`config/` y el código usa `config('archivo.clave')`. Ejemplos:
+`config/horarios.php` (`HORARIO_MAX_ITER`, `HORARIO_MAX_TIME`,
+`HORARIO_DEBUG`), `config/horizon.php` (`HORIZON_ALLOWED_EMAILS`) y
+`config/app.php` (`APP_PRODUCT_NAME`). `tests/Feature/ConfigCacheSeguraTest`
+falla si alguien vuelve a poner un `env()` fuera de `config/`.
+
+Para el nombre de la institución en vistas y PDFs usa
+`$boletinConfig->nombre_institucion` o `config('tenant.nombre')` (lo fija
+`ResolveTenant` en cada petición), nunca un nombre escrito en el código.
+
+---
+
+## 8b. MySQL — ajustes de rendimiento
+
+El `my.cnf` por defecto (y el de Laragon) está pensado para un equipo de
+desarrollo. Medido con una BD sintética de un colegio grande (4.950
+estudiantes, 49.500 notas, 742.500 asistencias, 49.500 pagos): la tabla
+`asistencias` ocupa ~374 MB y el `innodb_buffer_pool_size` por defecto es
+**128 MB**, así que MySQL lee del disco en cada consulta que toca esa tabla.
+
+```ini
+[mysqld]
+# 60–70 % de la RAM que tenga el servidor de BD (p. ej. 4G en uno de 8 GB).
+# Debe ser mayor que las tablas calientes: asistencias, calificaciones_academicas, pagos.
+innodb_buffer_pool_size = 4G
+
+# Mantener en 1 (durabilidad total): hay pagos y notas oficiales.
+innodb_flush_log_at_trx_commit = 1
+
+# Ver las consultas lentas. Apagado por defecto (long_query_time = 10 s no sirve).
+slow_query_log      = 1
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time     = 0.5
+```
+
+Comprobar que quedó aplicado:
+
+```sql
+SHOW VARIABLES WHERE Variable_name IN
+  ('innodb_buffer_pool_size','slow_query_log','long_query_time');
+```
+
+Revisar las 10 consultas más costosas (cada semana o tras un deploy grande):
+
+```bash
+mysqldumpslow -s t -t 10 /var/log/mysql/slow.log
+```
+
+**Reglas para los índices** (ver migración
+`2026_09_30_000002_optimizar_indices_redundantes`):
+
+- Un índice `(tenant_id)` solo es inútil si ya existe `(tenant_id, …)`: el
+  compuesto sirve igual para `where tenant_id = ?` y para la clave foránea.
+  Crea índices compuestos con `tenant_id` primero, no uno por columna.
+- Antes de agregar un índice, comprueba que no sea prefijo de otro existente
+  (cada índice de más encarece INSERT/UPDATE y ocupa buffer pool).
+- Filtros por fecha: compara la columna directamente (`where fecha = ?`,
+  `whereBetween`), no con `whereDate`/`whereMonth`/`DATE()`: la función sobre
+  la columna impide usar el índice (con 742.500 filas costó ~9 s por consulta).
+- `asistencias` crece rápido: con asistencia por asignatura y ~10 materias,
+  un colegio grande llega a ~9 millones de filas por año. Decide una política
+  de archivado o particionado por año escolar antes de que pase de ese orden.
+
 ---
 
 ## 9. Permisos de carpetas

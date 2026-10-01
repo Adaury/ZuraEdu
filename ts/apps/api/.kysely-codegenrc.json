@@ -1,0 +1,9 @@
+{
+  "dialect": "mysql",
+  "outFile": "src/db/db.d.ts",
+  "typeMapping": {
+    "date": "string",
+    "datetime": "string",
+    "timestamp": "string"
+  }
+}

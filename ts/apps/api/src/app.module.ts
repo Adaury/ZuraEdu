@@ -12,6 +12,8 @@ import { EstudiantesController } from './estudiantes/estudiantes.controller';
 import { EstudiantesService } from './estudiantes/estudiantes.service';
 import { HealthController } from './health/health.controller';
 import { OpenApiController } from './openapi/openapi.controller';
+import { MatriculasController } from './matriculas/matriculas.controller';
+import { MatriculasService } from './matriculas/matriculas.service';
 import { NotificacionesService } from './notificaciones/notificaciones.service';
 import { ReverbPublisher } from './realtime/reverb.publisher';
 import { RateLimitGuard } from './ratelimit/rate-limit.guard';
@@ -28,7 +30,7 @@ import { TenantContext } from './tenancy/tenant-context';
     DbModule,
     RedisModule,
   ],
-  controllers: [HealthController, OpenApiController, EstudiantesController],
+  controllers: [HealthController, OpenApiController, EstudiantesController, MatriculasController],
   providers: [
     { provide: RELOJ, useValue: () => Date.now() },
     AuthCache,
@@ -40,6 +42,7 @@ import { TenantContext } from './tenancy/tenant-context';
     RateLimiter,
     ReverbPublisher,
     NotificacionesService,
+    MatriculasService,
     // Orden = orden de ejecución: primero autenticar y fijar tenant, luego permisos.
     // Todo es privado por defecto; solo lo marcado con @Public() (/health) no pide token.
     { provide: APP_GUARD, useClass: SanctumGuard },

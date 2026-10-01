@@ -221,8 +221,9 @@ así que el índice nuevo también le serviría (requiere una migración nueva d
    Laravel además borra el archivo). Verificado el 2026-10-01: en Laravel el borrado es lógico (`SoftDeletes`) y **ningún código
    restaura estudiantes** (`restore`/`withTrashed` no se usan), así que borrar el archivo allí es coherente; en TypeScript el
    `DELETE` deja el archivo huérfano en el disco de Laravel. Mientras la foto no se migre, **eliminar estudiantes con foto debe
-   hacerse desde la web de Laravel** (o aceptar archivos huérfanos). Después, **matrículas** (cupo del grupo y los disparos explícitos de `DashboardActualizado`;
-   ojo: `MatriculaObserver` no está registrado, ver el inventario).
+   hacerse desde la web de Laravel** (o aceptar archivos huérfanos). **Matrículas — `POST /api/v1/matriculas` HECHO** (2026-10-01: cupo, orden, evento del dashboard y notificaciones; ver
+   [`docs/EFECTOS_SECUNDARIOS_PHP.md`](docs/EFECTOS_SECUNDARIOS_PHP.md)); siguen en Laravel la matrícula masiva, el cambio de grupo, el
+   cambio de estado y la baja (ojo: `MatriculaObserver` no está registrado).
 2. **Más escrituras**, con la misma plantilla (transacción + auditoría + `zod` estricto): asistencia y calificaciones (estas
    respetando `periodos.cerrado`); pagos y MINERD al final, con tests de paridad. **Antes de cada módulo, repetir el
    inventario de [`docs/EFECTOS_SECUNDARIOS_PHP.md`](docs/EFECTOS_SECUNDARIOS_PHP.md)**: los observers, eventos, cachés y

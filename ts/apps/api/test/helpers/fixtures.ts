@@ -92,6 +92,19 @@ export class Fixtures {
     if (this.tokens.length) await this.pool.query('delete from personal_access_tokens where id in (?)', [this.tokens]);
     if (this.tenants.length) await this.pool.query('delete from activity_logs where tenant_id in (?)', [this.tenants]);
     if (this.tenants.length) await this.pool.query('delete from notificaciones where tenant_id in (?)', [this.tenants]);
+    if (this.tenants.length) {
+      // Matrículas y todo lo que cuelga de ellas, antes que los estudiantes y los usuarios.
+      await this.pool.query('delete from matriculas where tenant_id in (?)', [this.tenants]);
+      await this.pool.query(
+        'delete er from estudiante_representante er join estudiantes e on e.id = er.estudiante_id where e.tenant_id in (?)',
+        [this.tenants],
+      );
+      await this.pool.query('delete from representantes where tenant_id in (?)', [this.tenants]);
+      await this.pool.query('delete from grupos where tenant_id in (?)', [this.tenants]);
+      await this.pool.query('delete from grados where tenant_id in (?)', [this.tenants]);
+      await this.pool.query('delete from secciones where tenant_id in (?)', [this.tenants]);
+      await this.pool.query('delete from school_years where tenant_id in (?)', [this.tenants]);
+    }
     if (this.tenants.length) await this.pool.query('delete from system_settings where tenant_id in (?)', [this.tenants]);
     if (this.usuarios.length) await this.pool.query('delete from device_tokens where user_id in (?)', [this.usuarios]);
     // Por colegio (no solo los ids creados aquí): la API también crea estudiantes durante las pruebas.

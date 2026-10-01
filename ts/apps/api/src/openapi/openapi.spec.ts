@@ -70,6 +70,18 @@ describe('contrato OpenAPI', () => {
     });
   });
 
+  describe('matrículas', () => {
+    it('POST /api/v1/matriculas documenta 201/400/401/403/409/422/429 y exige los cuatro campos, sin campos extra', () => {
+      const post = doc.paths['/api/v1/matriculas'].post;
+      expect(Object.keys(post.responses).sort()).toEqual(['201', '400', '401', '403', '409', '422', '429']);
+      expect(post.operationId).toBe('crearMatricula');
+      const cuerpo = post.requestBody.content['application/json'].schema;
+      expect([...cuerpo.required].sort()).toEqual(['estudianteId', 'fechaMatricula', 'grupoId', 'schoolYearId']);
+      expect(cuerpo.additionalProperties).toBe(false);
+      expect(doc.components.schemas.Matricula).toBeDefined();
+    });
+  });
+
   describe('cobertura: ninguna ruta sin documentar', () => {
     it('cada ruta registrada en Nest aparece en el documento (excepto el propio /openapi.json)', () => {
       const registradas = rutasRegistradas().filter((r) => r !== 'GET /openapi.json');

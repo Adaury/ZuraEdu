@@ -3,6 +3,8 @@ import {
   EstudianteDto,
   EstudiantesPage,
   HealthResponse,
+  MATRICULA_ESTADOS,
+  MatriculaDto,
 } from '@zuraedu/shared';
 import { z } from 'zod';
 
@@ -34,6 +36,17 @@ export const estudiantesPageSchema = z.object({
     lastPage: z.number().int().min(1),
   }),
 }) satisfies z.ZodType<EstudiantesPage>;
+
+export const matriculaDtoSchema = z.object({
+  id: z.number().int().positive(),
+  schoolYearId: z.number().int().positive(),
+  estudianteId: z.number().int().positive(),
+  grupoId: z.number().int().positive(),
+  fechaMatricula: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  numeroOrden: z.number().int().positive(),
+  estado: z.enum(MATRICULA_ESTADOS),
+  observaciones: z.string().nullable(),
+}) satisfies z.ZodType<MatriculaDto>;
 
 export const healthSchema = z.object({
   status: z.enum(['ok', 'degraded']),

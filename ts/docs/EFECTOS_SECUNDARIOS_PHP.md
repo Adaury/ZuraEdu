@@ -130,6 +130,31 @@ Diferencias deliberadas: el push y el evento en tiempo real van **en segundo pla
 tardar 8 s); el destinatario se valida contra la BD (usuario del mismo colegio) antes de insertar; la hora del evento es UTC.
 No cubre: notificaciones masivas (`enviarA`, push por lotes con `EnviarPushLoteJob`) ni el WhatsApp.
 
+## Matrículas: `POST /api/v1/matriculas` (2026-10-01)
+
+Reproduce `MatriculaController@store` (permiso `gestionar-matriculas`): bloqueo del grupo, cupo (solo cuentan las matrículas `activa`),
+`numero_orden` (cuenta TODAS las del grupo), matrícula `activa`; después `DashboardActualizado` (`private-tenant.{id}`, evento
+`dashboard.updated`, `{tipo: 'nueva_matricula', datos: {grupo_id}}`) y la notificación «✅ Matrícula confirmada» (tipo `general`) al usuario del
+estudiante y de cada representante. Los mensajes de error de cupo y de «ya matriculado» son idénticos a los de Laravel.
+
+Diferencias deliberadas (TypeScript es MÁS estricto o más trazable):
+
+| Tema | Laravel | TypeScript |
+|---|---|---|
+| Validación de ids | `exists:tabla,id`: **no filtra por colegio ni por borrado lógico** → acepta un estudiante/año de otro colegio y un estudiante borrado | año, estudiante y grupo deben existir en ESTE colegio y no estar borrados (422) |
+| Grupo y año | no comprueba que el grupo sea del año indicado | 422 si el grupo es de otro año |
+| Auditoría | ninguna (y `matriculas` no guarda quién matriculó) | `activity_logs`: `matricula.creada` |
+| Evento del dashboard | `ShouldBroadcastNow`: bloquea la respuesta hasta que Reverb contesta | en segundo plano (`ReverbPublisher.emitir`) |
+| Notificaciones | un fallo corta el resto del bloque (un único `try/catch`) | un fallo por destinatario no afecta a los demás |
+| Códigos | todo es 422 de validación | 422 referencia inválida; 409 ya matriculado o sin cupo |
+
+**Lección (la cazó la prueba de concurrencia: 8 matrículas a un grupo de 3 entraban las 8, todas con orden 1):** el `for update` del grupo
+tiene que ser la PRIMERA sentencia de la transacción. MySQL (REPEATABLE READ) fija la instantánea en la primera lectura normal; si antes
+se lee otra tabla, tras conseguir el bloqueo los `count` siguen viendo la instantánea vieja. Laravel lo cumple sin proponérselo (su primera
+sentencia es `lockForUpdate`). **Toda escritura futura con "bloquear, contar, insertar" debe hacer lo mismo.**
+
+No cubre: matrícula masiva (`storeMasivo`), cambio de grupo, cambio de estado ni baja (siguen en Laravel).
+
 ## Diferencias conocidas y deliberadas (estudiantes)
 
 | Tema | Laravel | TypeScript | Motivo |

@@ -1,18 +1,11 @@
-import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import type { EstudianteDto, EstudiantesPage } from '@zuraedu/shared';
 import type { Request } from 'express';
-import type { ZodError } from 'zod';
 import { RequirePermission } from '../auth/decorators';
+import { peticionInvalida } from '../common/peticion-invalida';
 import { estudiantesQuerySchema } from './estudiantes.query';
 import { EstudiantesService } from './estudiantes.service';
 import { actualizarEstudianteSchema, crearEstudianteSchema, idEstudianteSchema } from './estudiantes.update';
-
-function peticionInvalida(error: ZodError): BadRequestException {
-  return new BadRequestException({
-    message: 'Parámetros inválidos.',
-    errors: error.issues.map((i) => ({ campo: i.path.join('.'), mensaje: i.message })),
-  });
-}
 
 @Controller('api/v1/estudiantes')
 export class EstudiantesController {

@@ -2,7 +2,8 @@ import { PER_PAGE_DEFAULT, PER_PAGE_MAX } from '@zuraedu/shared';
 import { z } from 'zod';
 import { ESTUDIANTE_ESTADOS } from '@zuraedu/shared';
 import { actualizarEstudianteSchema, crearEstudianteSchema } from '../estudiantes/estudiantes.update';
-import { errorSchema, estudianteDtoSchema, estudiantesPageSchema, healthSchema } from './respuestas';
+import { crearMatriculaSchema } from '../matriculas/matriculas.input';
+import { errorSchema, estudianteDtoSchema, estudiantesPageSchema, healthSchema, matriculaDtoSchema } from './respuestas';
 
 type Json = Record<string, unknown>;
 
@@ -49,6 +50,7 @@ export function construirOpenApi(version = '0.1.0'): Json {
   const cuerpoActualizar = refinarCamposEstudiante({ ...jsonSchema(actualizarEstudianteSchema, 'input'), minProperties: 1 });
   // En crear, `required` (nombres, apellidos, fechaNacimiento, sexo, estado) sí lo genera zod.
   const cuerpoCrear = refinarCamposEstudiante(jsonSchema(crearEstudianteSchema, 'input'));
+  const cuerpoMatricula = jsonSchema(crearMatriculaSchema, 'input');
 
   return {
     openapi: '3.1.0',
@@ -173,6 +175,31 @@ export function construirOpenApi(version = '0.1.0'): Json {
           },
         },
       },
+      '/api/v1/matriculas': {
+        post: {
+          tags: ['Matrículas'],
+          summary: 'Matricular a un estudiante en un grupo',
+          description:
+            'Requiere el permiso `gestionar-matriculas`. El colegio sale del token; el estado (`activa`) y el `numeroOrden` los ' +
+            'decide el servidor. Todo ocurre en una transacción que bloquea el grupo: comprueba el cupo (solo cuentan las ' +
+            'matrículas `activa`), calcula el orden (cuenta todas las del grupo) y crea la matrícula. Después de confirmar emite ' +
+            '`dashboard.updated` por Reverb y notifica «Matrícula confirmada» al estudiante y a sus representantes (in-app, ' +
+            'push y tiempo real); esos efectos nunca hacen fallar la matrícula. Deja en `activity_logs` el registro ' +
+            '`matricula.creada` (Laravel no audita el alta). Más estricto que Laravel: año escolar, estudiante y grupo deben ' +
+            'existir en este colegio (no borrados) y el grupo debe ser del año indicado.',
+          operationId: 'crearMatricula',
+          requestBody: { required: true, content: { 'application/json': { schema: cuerpoMatricula } } },
+          responses: {
+            '201': { description: 'Matrícula creada.', content: { 'application/json': { schema: ref('Matricula') } } },
+            '400': respuestaError('Cuerpo inválido, campos obligatorios ausentes o campo desconocido.'),
+            '401': respuestaError('No autenticado.'),
+            '403': respuestaError('Sin el permiso `gestionar-matriculas`.'),
+            '409': respuestaError('El estudiante ya está matriculado en ese año escolar, o el grupo no tiene cupo.'),
+            '422': respuestaError('El año escolar, el estudiante o el grupo no existen en este colegio, o el grupo es de otro año.'),
+            '429': respuestaError('Demasiadas solicitudes (límite por usuario y minuto). Ver cabeceras `Retry-After` y `X-RateLimit-*`.'),
+          },
+        },
+      },
     },
     components: {
       securitySchemes: {
@@ -184,6 +211,7 @@ export function construirOpenApi(version = '0.1.0'): Json {
       },
       schemas: {
         Estudiante: jsonSchema(estudianteDtoSchema),
+        Matricula: jsonSchema(matriculaDtoSchema),
         EstudiantesPage: jsonSchema(estudiantesPageSchema),
         Health: jsonSchema(healthSchema),
         Error: jsonSchema(errorSchema),

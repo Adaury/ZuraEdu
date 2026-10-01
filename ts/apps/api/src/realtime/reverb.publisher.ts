@@ -1,5 +1,5 @@
 import { createHash, createHmac } from 'node:crypto';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
 import { ENV, Env } from '../config/env';
 
 export interface CredencialesReverb {
@@ -39,8 +39,9 @@ export const canalPrivado = (nombre: string): string => `private-${nombre}`;
  * Solo EMITE: no abre conexiones WebSocket ni autoriza canales (eso lo hace Laravel en `/broadcasting/auth`).
  */
 @Injectable()
-export class ReverbPublisher {
+export class ReverbPublisher implements OnApplicationShutdown {
   private readonly logger = new Logger(ReverbPublisher.name);
+  private readonly pendientes = new Set<Promise<unknown>>();
   private readonly cred: CredencialesReverb | null;
   private readonly base: string;
 
@@ -74,6 +75,25 @@ export class ReverbPublisher {
       signal: AbortSignal.timeout(3000),
     });
     if (!res.ok) throw new Error(`Reverb respondió ${res.status} ${res.statusText}`);
+  }
+
+  /**
+   * Emite SIN esperar (segundo plano): la petición HTTP no se retiene hasta 3 s si Reverb está lento o caído (en Laravel,
+   * `ShouldBroadcastNow` sí bloquea). Los errores solo van al registro. Con `drenar()` se espera a que terminen.
+   */
+  emitir(canales: string[], evento: string, datos: unknown): void {
+    const tarea = this.publicarMejorEsfuerzo(canales, evento, datos);
+    this.pendientes.add(tarea);
+    void tarea.finally(() => this.pendientes.delete(tarea));
+  }
+
+  /** Espera a que terminen las emisiones en segundo plano (pruebas y cierre ordenado). */
+  async drenar(): Promise<void> {
+    await Promise.allSettled([...this.pendientes]);
+  }
+
+  async onApplicationShutdown(): Promise<void> {
+    await this.drenar();
   }
 
   /**

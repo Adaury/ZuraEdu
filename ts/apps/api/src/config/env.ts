@@ -53,6 +53,12 @@ const schema = z.object({
   /** Prefijo de la CACHÉ de Laravel (cache.prefix = CACHE_PREFIX). */
   CACHE_PREFIX: opcionalComoLaravel,
 
+  /**
+   * Carpeta del disco `public` de Laravel (`storage/app/public`), para borrar la foto de un estudiante al eliminarlo, como hace
+   * Laravel. Solo funciona si la API corre en el MISMO servidor que Laravel (la arquitectura documentada con Nginx). Sin ella
+   * no se toca ningún archivo (queda huérfano) y se registra una advertencia.
+   */
+  FOTOS_PUBLICAS_DIR: opcionalComoLaravel,
   /** Endpoint de push de Expo (mismo que `PushNotificationService::EXPO_URL`). Solo se cambia en pruebas. */
   EXPO_PUSH_URL: z.string().url().default('https://exp.host/--/api/v2/push/send'),
 

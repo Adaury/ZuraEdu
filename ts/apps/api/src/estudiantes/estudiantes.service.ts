@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { EstudianteDto, EstudiantesPage } from '@zuraedu/shared';
 import { AuditService, ahoraUtc, MODELO_ESTUDIANTE } from '../audit/audit.service';
 import {
@@ -9,9 +9,11 @@ import {
   EstudianteAuditable,
   ValoresPorColumna,
 } from '../audit/descripcion-cambios';
+import { ENV, Env } from '../config/env';
 import { Database, DB } from '../db/db.module';
 import { TenantContext } from '../tenancy/tenant-context';
 import { COLUMNAS_EDITABLES, NOMBRES_COLUMNAS_EDITABLES } from './estudiante-columnas';
+import { borrarFoto } from './foto-archivo';
 import type { EstudiantesQuery } from './estudiantes.query';
 import { consultaPagina, consultaTotal } from './estudiantes.queries';
 import type { ActualizarEstudiante, CrearEstudiante } from './estudiantes.update';
@@ -70,10 +72,13 @@ function mensajeDeDuplicado(e: unknown): string {
  */
 @Injectable()
 export class EstudiantesService {
+  private readonly logger = new Logger(EstudiantesService.name);
+
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly auditoria: AuditService,
     private readonly contexto: TenantContext,
+    @Inject(ENV) private readonly env: Env,
   ) {}
 
   async listar(q: EstudiantesQuery): Promise<EstudiantesPage> {
@@ -85,6 +90,21 @@ export class EstudiantesService {
       data: filas.map(aDto),
       meta: { page: q.page, perPage: q.perPage, total: totalN, lastPage: Math.max(1, Math.ceil(totalN / q.perPage)) },
     };
+  }
+
+  /**
+   * Un estudiante por id. Lo necesita la pantalla de edición. Un estudiante de otro colegio o borrado lógicamente → 404
+   * (no se distingue de "no existe"): el colegio sale del token y el id solo se usa como parámetro.
+   */
+  async obtener(id: number): Promise<EstudianteDto> {
+    const fila = await this.db
+      .selectFrom('estudiantes')
+      .select(['estudiantes.id', 'estudiantes.numero_matricula', 'estudiantes.cedula', 'estudiantes.nombres', 'estudiantes.apellidos', 'estudiantes.sexo', 'estudiantes.estado'])
+      .where('estudiantes.id', '=', id)
+      .where('estudiantes.deleted_at', 'is', null)
+      .executeTakeFirst();
+    if (!fila) throw new NotFoundException('Estudiante no encontrado.');
+    return aDto(fila);
   }
 
   /**
@@ -282,14 +302,15 @@ export class EstudiantesService {
    * `deleted` (no el `updated`), así que se escribe solo `estudiante.eliminado` ("Estudiante eliminado: Apellidos,
    * Nombres"). Un estudiante de otro colegio o ya borrado → 404.
    *
-   * Diferencia conocida: Laravel además borra el archivo de la foto del disco; desde TypeScript no se toca (el archivo
-   * queda huérfano, sin ningún efecto visible) hasta que se decida dónde viven los archivos.
+   * Como Laravel, también borra el archivo de la foto del disco público (después de confirmar), pero SOLO si la API conoce esa
+   * carpeta (`FOTOS_PUBLICAS_DIR`, mismo servidor que Laravel); si no, el archivo queda huérfano y se avisa en el registro. La
+   * ruta guardada en la BD se valida: nunca se borra algo fuera de esa carpeta.
    */
   async eliminar(id: number, meta: MetaPeticion): Promise<void> {
-    await this.db.transaction().execute(async (trx) => {
+    const foto = await this.db.transaction().execute(async (trx) => {
       const actual = await trx
         .selectFrom('estudiantes')
-        .select(['id', 'nombres', 'apellidos'])
+        .select(['id', 'nombres', 'apellidos', 'foto'])
         .where('estudiantes.id', '=', id)
         .where('estudiantes.deleted_at', 'is', null)
         .forUpdate()
@@ -311,6 +332,14 @@ export class EstudiantesService {
         ip: meta.ip,
         userAgent: meta.userAgent,
       });
+      return actual.foto;
     });
+
+    // Después de confirmar (nunca dentro de la transacción): como Laravel, se borra el archivo de la foto. La fila conserva la
+    // ruta (borrado lógico), igual que en PHP. Si la API no conoce la carpeta de Laravel, el archivo queda huérfano.
+    const r = await borrarFoto(this.env.FOTOS_PUBLICAS_DIR, foto, (m) => this.logger.warn(m));
+    if (r === 'sin-configurar') {
+      this.logger.warn(`El estudiante ${id} tenía foto pero FOTOS_PUBLICAS_DIR no está configurada: el archivo queda en el disco de Laravel.`);
+    }
   }
 }

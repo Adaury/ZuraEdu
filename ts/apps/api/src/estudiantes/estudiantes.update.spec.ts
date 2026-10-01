@@ -223,7 +223,7 @@ describe('idEstudianteSchema', () => {
     expect(idEstudianteSchema.parse('42')).toBe(42);
   });
 
-  it.each(['0', '-1', '1.5', 'abc', '', '1; drop table estudiantes', '1 or 1=1'])('rechaza %p', (v) => {
+  it.each(['0', '-1', '1.5', 'abc', '', '1; drop table estudiantes', '1 or 1=1', '1e3', '0x10', ' 7', '7 ', '007', '+7', '1234567890123456'])('rechaza %p', (v) => {
     expect(idEstudianteSchema.safeParse(v).success).toBe(false);
   });
 });

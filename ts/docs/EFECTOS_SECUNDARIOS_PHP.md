@@ -163,6 +163,6 @@ No cubre: matrícula masiva (`storeMasivo`), cambio de grupo, cambio de estado n
 | `tutor_parentesco` / `tutor_trabajo` | regla de 150 caracteres | 50 / 100 (los de la columna) | En PHP un valor largo da un 500 de la base de datos; aquí un 400 claro |
 | `nacionalidad` | `nullable` | no admite null | La columna es `NOT NULL` |
 | `tutor_email` | aparece en las reglas | se rechaza | No existe como columna ni en `$fillable` |
-| Foto del estudiante | se sube, se procesa y **se borra al eliminar** | no se acepta ni se borra | Depende de dónde se guarden los archivos (decisión pendiente) |
+| Foto del estudiante | se sube, se procesa y **se borra al eliminar** | **no se acepta** (la subida sigue en Laravel); **sí se borra al eliminar** si `FOTOS_PUBLICAS_DIR` está configurada, con defensa contra rutas fuera de la carpeta | Decisión (2026-10-01): los archivos viven en el disco de Laravel; la API TypeScript corre en el mismo servidor (Nginx), así que puede borrarlos |
 | Matricular al crear (`grupo_id`) | `Matricula::create` en el mismo request | no se acepta | Es el módulo de matrículas (cupo, eventos); se migra aparte |
 | Respuesta de crear/borrar | redirección HTML | `201` con el estudiante / `204` | Es una API |

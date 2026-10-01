@@ -123,7 +123,7 @@ un 500). Cédula o matrícula repetidas en el colegio → `409` (la misma cédul
 
 **Borrado.** Es lógico (como `SoftDeletes`): se marcan `deleted_at` y `updated_at`, la fila se conserva y solo se audita
 `estudiante.eliminado` (Eloquent dispara `deleted`, no `updated`). Un número de matrícula de un estudiante borrado no se puede
-reutilizar (la restricción única los cuenta). Diferencia conocida: Laravel además borra el archivo de la foto; aquí no se toca.
+reutilizar (la restricción única los cuenta). También se borra el archivo de la foto, como Laravel, si la API conoce la carpeta pública (`FOTOS_PUBLICAS_DIR`, mismo servidor que Laravel); sin ella queda huérfano.
 
 - **Dos registros de auditoría, como Laravel, con las mismas condiciones.** Se escriben en `activity_logs`, en este orden:
   1. `estudiante.actualizado` — lo genera `EstudianteObserver::updated()` en PHP: **siempre** que cambie alguna
@@ -220,8 +220,8 @@ así que el índice nuevo también le serviría (requiere una migración nueva d
 1. **Foto del estudiante** — primero decidir dónde se guardan los archivos (hoy el disco de Laravel; al borrar un estudiante
    Laravel además borra el archivo). Verificado el 2026-10-01: en Laravel el borrado es lógico (`SoftDeletes`) y **ningún código
    restaura estudiantes** (`restore`/`withTrashed` no se usan), así que borrar el archivo allí es coherente; en TypeScript el
-   `DELETE` deja el archivo huérfano en el disco de Laravel. Mientras la foto no se migre, **eliminar estudiantes con foto debe
-   hacerse desde la web de Laravel** (o aceptar archivos huérfanos). **Matrículas — `POST /api/v1/matriculas` HECHO** (2026-10-01: cupo, orden, evento del dashboard y notificaciones; ver
+   `DELETE` ahora también borra el archivo (si `FOTOS_PUBLICAS_DIR` apunta a `storage/app/public` de Laravel, mismo servidor; con
+   una defensa que nunca borra fuera de esa carpeta). La **subida** de fotos sigue en Laravel. **Matrículas — `POST /api/v1/matriculas` HECHO** (2026-10-01: cupo, orden, evento del dashboard y notificaciones; ver
    [`docs/EFECTOS_SECUNDARIOS_PHP.md`](docs/EFECTOS_SECUNDARIOS_PHP.md)); siguen en Laravel la matrícula masiva, el cambio de grupo, el
    cambio de estado y la baja (ojo: `MatriculaObserver` no está registrado).
 2. **Más escrituras**, con la misma plantilla (transacción + auditoría + `zod` estricto): asistencia y calificaciones (estas

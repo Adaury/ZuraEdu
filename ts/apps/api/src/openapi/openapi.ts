@@ -130,6 +130,25 @@ export function construirOpenApi(version = '0.1.0'): Json {
         },
       },
       '/api/v1/estudiantes/{id}': {
+        get: {
+          tags: ['Estudiantes'],
+          summary: 'Obtener un estudiante',
+          description:
+            'Requiere el permiso `ver-estudiantes`. Un estudiante de otro colegio o borrado lógicamente responde 404 (no se ' +
+            'distingue de uno que no existe).',
+          operationId: 'obtenerEstudiante',
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 }, description: 'Id del estudiante.' },
+          ],
+          responses: {
+            '200': { description: 'El estudiante.', content: { 'application/json': { schema: ref('Estudiante') } } },
+            '400': respuestaError('Id inválido.'),
+            '401': respuestaError('No autenticado.'),
+            '403': respuestaError('Sin el permiso `ver-estudiantes`.'),
+            '404': respuestaError('No existe, está borrado o es de otro colegio (no se distingue).'),
+            '429': respuestaError('Demasiadas solicitudes (límite por usuario y minuto). Ver cabeceras `Retry-After` y `X-RateLimit-*`.'),
+          },
+        },
         patch: {
           tags: ['Estudiantes'],
           summary: 'Editar los datos de un estudiante',
@@ -159,8 +178,9 @@ export function construirOpenApi(version = '0.1.0'): Json {
           summary: 'Borrar un estudiante (borrado lógico)',
           description:
             'Requiere el permiso `gestionar-estudiantes`. Borrado lógico, como Laravel: el estudiante deja de aparecer ' +
-            'pero se conserva. Deja en `activity_logs` el registro `estudiante.eliminado`. Diferencia conocida: Laravel ' +
-            'además borra el archivo de la foto del disco; aquí no se toca.',
+            'pero se conserva. Deja en `activity_logs` el registro `estudiante.eliminado`. Como Laravel, ' +
+            'además borra el archivo de la foto del disco público, pero solo si la API tiene configurada esa carpeta ' +
+            '(`FOTOS_PUBLICAS_DIR`); sin ella el archivo queda en el disco de Laravel.',
           operationId: 'eliminarEstudiante',
           parameters: [
             { name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 }, description: 'Id del estudiante.' },

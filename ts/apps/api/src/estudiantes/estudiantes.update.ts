@@ -93,4 +93,9 @@ export type ActualizarEstudiante = z.infer<typeof actualizarEstudianteSchema>;
 export type CrearEstudiante = z.infer<typeof crearEstudianteSchema>;
 
 /** El id de la ruta: entero positivo (nunca se concatena en SQL; solo se usa como parámetro). */
-export const idEstudianteSchema = z.coerce.number().int().positive();
+export const idEstudianteSchema = z
+  .string()
+  // Solo dígitos, sin ceros a la izquierda ni más de 15 (cabe exacto en un número JS). `z.coerce.number()` aceptaba
+  // '1e3' (1000), '0x10' (16) o ' 7 ': ids "válidos" que el cliente no escribió como número.
+  .regex(/^[1-9][0-9]{0,14}$/, 'Debe ser un entero positivo.')
+  .transform(Number);

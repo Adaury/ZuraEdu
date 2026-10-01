@@ -20,6 +20,15 @@ export class EstudiantesController {
     return this.estudiantes.listar(parsed.data);
   }
 
+  /** Un estudiante por id. Requiere `ver-estudiantes`. Otro colegio o borrado lógicamente → 404. */
+  @Get(':id')
+  @RequirePermission('ver-estudiantes')
+  async obtener(@Param('id') idCrudo: string): Promise<EstudianteDto> {
+    const id = idEstudianteSchema.safeParse(idCrudo);
+    if (!id.success) throw peticionInvalida(id.error);
+    return this.estudiantes.obtener(id.data);
+  }
+
   /**
    * Edición parcial de los datos del estudiante. Requiere `gestionar-estudiantes` (igual que las rutas de
    * mutación de Laravel). El tenant sale del token, no de la URL ni del cuerpo; un campo desconocido en el

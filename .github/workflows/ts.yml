@@ -73,6 +73,16 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
+      # Redis real para las pruebas de invalidación de la caché de Laravel y de /health (usan la base 15).
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
 
     # Para migrar y sembrar con artisan sin necesitar Redis.
     env:
@@ -143,4 +153,5 @@ jobs:
         working-directory: ts
         env:
           TEST_DATABASE_URL: mysql://root:root@127.0.0.1:3306/sge_e2e
+          TEST_REDIS_HOST: 127.0.0.1
         run: npm run test:e2e -w @zuraedu/api

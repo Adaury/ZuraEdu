@@ -83,8 +83,11 @@ También se encolan jobs desde los controladores: `EnviarMensajeCircularJob`, `E
 
 20 archivos llaman a `Cache::forget`, entre ellos `CalificacionController`, `DashboardController`, `CierreAnoController`,
 `ComunicacionesController`, `UsuarioController`, `AlertaController`, `SigerdController`, `SistemaController`,
-`SolicitudesAdminController` y `AuthController`. Mientras la API TypeScript no tenga cliente de Redis, **sus escrituras no
-invalidan esas claves** y los paneles pueden mostrar datos viejos hasta que venza el TTL (≈300 s en el dashboard).
+`SolicitudesAdminController` y `AuthController`. La API TypeScript ya tiene `LaravelCache` (`src/redis/laravel-cache.ts`:
+`olvidar`, `olvidarPorPrefijo`, `olvidarMejorEsfuerzo`), pero **cada módulo migrado debe llamarlo** para las claves que su
+controlador de PHP olvida; si no, los paneles muestran datos viejos hasta que venza el TTL (≈300 s en el dashboard).
+Claves lógicas de Laravel (`t12_dashboard_…`); el prefijo físico `REDIS_PREFIX + CACHE_PREFIX` lo añade `LaravelCache`.
+Usar `olvidarMejorEsfuerzo` DESPUÉS de confirmar la transacción: la escritura ya es válida aunque Redis falle.
 
 `EstudianteController` **no toca ninguna caché** (0 llamadas), así que crear/editar/borrar estudiantes desde TypeScript queda
 en paridad exacta con PHP en este punto.

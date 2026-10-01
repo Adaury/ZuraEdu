@@ -224,9 +224,11 @@ así que el índice nuevo también le serviría (requiere una migración nueva d
    respetando `periodos.cerrado`); pagos y MINERD al final, con tests de paridad. **Antes de cada módulo, repetir el
    inventario de [`docs/EFECTOS_SECUNDARIOS_PHP.md`](docs/EFECTOS_SECUNDARIOS_PHP.md)**: los observers, eventos, cachés y
    archivos de PHP no se disparan desde TypeScript y hay que reproducir sus efectos.
-3. **Redis**: `/health` solo comprueba la base; hace falta para (a) invalidar las cachés de Laravel desde las escrituras de
-   TypeScript, (b) emitir eventos en tiempo real (Reverb) y (c) mover ahí la caché de autenticación si hay más de una
-   instancia de la API.
+3. **Redis** — HECHO a medias: ya existe el cliente (`src/redis/`, opcional con `REDIS_HOST`), `/health` informa
+   `checks.redis` (`ok` / `error` → `degraded` / `omitido`) y `LaravelCache` invalida claves de la caché de Laravel con
+   sus DOS prefijos (verificado con Laravel real). **Falta**: llamarlo desde cada escritura que en PHP hace `Cache::forget`
+   (hoy ninguna lo necesita: estudiantes no toca cachés), (b) emitir eventos en tiempo real (Reverb) y (c) mover ahí la
+   caché de autenticación si hay más de una instancia de la API.
 4. **Conteo con filtros** (búsqueda por texto / estado): sin filtros ya es index-only (1,6 ms); con filtros el optimizador decide.
 5. **Autenticación de la web** (hoy la web solo muestra el estado de la API).
 6. **Siguiente módulo de lectura** — propuesta: portales de solo lectura (padre/estudiante).

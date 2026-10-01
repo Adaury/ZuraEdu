@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+/** Como `env()` de Laravel: una cadena vacía o el texto "null" (p. ej. `REDIS_PASSWORD=null`) significan "no definido". */
+const opcionalComoLaravel = z
+  .string()
+  .optional()
+  .transform((v) => (v === undefined || v.trim() === '' || v.trim().toLowerCase() === 'null' ? undefined : v));
+
 /**
  * Variables de entorno validadas al arrancar: si falta o está mal una, la app NO inicia
  * (mejor fallar al desplegar que descubrirlo con el primer usuario). Es el equivalente a
@@ -25,6 +31,33 @@ const schema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
+
+  // ── Redis (OPCIONAL). Mismos nombres y valores que el .env de Laravel: se copian tal cual. ─────────────
+  // Sin REDIS_HOST la API funciona igual (solo /health informa "omitido"). Con REDIS_HOST, la API puede invalidar las
+  // cachés de Laravel (misma instancia, base de datos y prefijos) y comprobar el estado de Redis en /health.
+  REDIS_HOST: opcionalComoLaravel,
+  REDIS_PORT: z.coerce.number().int().min(1).max(65535).default(6379),
+  REDIS_USERNAME: opcionalComoLaravel,
+  REDIS_PASSWORD: opcionalComoLaravel,
+  /** Base de datos de la conexión `cache` de Laravel (config/database.php: REDIS_CACHE_DB, por defecto 1). */
+  REDIS_CACHE_DB: z.coerce.number().int().min(0).max(255).default(1),
+  /** Prefijo del CLIENTE Redis de Laravel (database.redis.options.prefix = REDIS_PREFIX). */
+  REDIS_PREFIX: opcionalComoLaravel,
+  /** Prefijo de la CACHÉ de Laravel (cache.prefix = CACHE_PREFIX). */
+  CACHE_PREFIX: opcionalComoLaravel,
+}).superRefine((env, ctx) => {
+  // Si falta alguno de los dos prefijos, "invalidar" una clave apuntaría a una clave que no existe y la caché de Laravel
+  // seguiría vieja sin que nadie lo notara. Por eso no tienen valor por defecto y son obligatorios con Redis.
+  if (env.REDIS_HOST === undefined) return;
+  for (const nombre of ['REDIS_PREFIX', 'CACHE_PREFIX'] as const) {
+    if (!env[nombre]) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [nombre],
+        message: `Obligatoria cuando REDIS_HOST está definido: copia el valor de ${nombre} del .env de Laravel (con APP_NAME largo el prefijo es largo y NO se puede adivinar).`,
+      });
+    }
+  }
 });
 
 export type Env = z.infer<typeof schema>;

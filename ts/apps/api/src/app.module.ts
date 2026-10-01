@@ -12,6 +12,7 @@ import { EstudiantesController } from './estudiantes/estudiantes.controller';
 import { EstudiantesService } from './estudiantes/estudiantes.service';
 import { HealthController } from './health/health.controller';
 import { OpenApiController } from './openapi/openapi.controller';
+import { RedisModule } from './redis/redis.module';
 import { HostTenantResolver } from './tenancy/host-tenant.resolver';
 import { TenantContext } from './tenancy/tenant-context';
 
@@ -21,6 +22,7 @@ import { TenantContext } from './tenancy/tenant-context';
     ClsModule.forRoot({ global: true, middleware: { mount: true } }),
     ConfigModule,
     DbModule,
+    RedisModule,
   ],
   controllers: [HealthController, OpenApiController, EstudiantesController],
   providers: [

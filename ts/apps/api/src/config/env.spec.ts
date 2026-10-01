@@ -25,6 +25,35 @@ describe('loadEnv', () => {
     expect(loadEnv({ DATABASE_URL: 'mysql://u@h/db', API_PORT: '4000' }).API_PORT).toBe(4000);
   });
 
+  describe('Redis (opcional, mismos nombres que el .env de Laravel)', () => {
+    const base = { DATABASE_URL: 'mysql://u@h/db' };
+
+    it('sin REDIS_HOST queda desactivado y no exige prefijos', () => {
+      const env = loadEnv(base);
+      expect(env.REDIS_HOST).toBeUndefined();
+      expect(env.REDIS_PORT).toBe(6379);
+      expect(env.REDIS_CACHE_DB).toBe(1);
+    });
+
+    it('trata "null" y la cadena vacía como no definidos (igual que env() de Laravel)', () => {
+      const env = loadEnv({ ...base, REDIS_HOST: '127.0.0.1', REDIS_PASSWORD: 'null', REDIS_USERNAME: '', REDIS_PREFIX: 'a_', CACHE_PREFIX: 'b_' });
+      expect(env.REDIS_PASSWORD).toBeUndefined();
+      expect(env.REDIS_USERNAME).toBeUndefined();
+    });
+
+    it('con REDIS_HOST exige ambos prefijos (adivinarlos dejaría la caché de Laravel sin invalidar)', () => {
+      expect(() => loadEnv({ ...base, REDIS_HOST: '127.0.0.1' })).toThrow(/REDIS_PREFIX[\s\S]*CACHE_PREFIX/);
+      expect(() => loadEnv({ ...base, REDIS_HOST: '127.0.0.1', REDIS_PREFIX: 'a_' })).toThrow(/CACHE_PREFIX/);
+      expect(() => loadEnv({ ...base, REDIS_HOST: '127.0.0.1', CACHE_PREFIX: 'b_' })).toThrow(/REDIS_PREFIX/);
+    });
+
+    it('conserva los prefijos tal cual (con guiones bajos finales)', () => {
+      const env = loadEnv({ ...base, REDIS_HOST: 'h', REDIS_PREFIX: 'x_database_', CACHE_PREFIX: 'x_cache_' });
+      expect(env.REDIS_PREFIX).toBe('x_database_');
+      expect(env.CACHE_PREFIX).toBe('x_cache_');
+    });
+  });
+
   it('falla si falta DATABASE_URL', () => {
     expect(() => loadEnv({})).toThrow(/DATABASE_URL/);
   });

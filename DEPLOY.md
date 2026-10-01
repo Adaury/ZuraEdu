@@ -410,6 +410,42 @@ mysqldumpslow -s t -t 10 /var/log/mysql/slow.log
 
 ---
 
+### Índice del listado de estudiantes (`est_tenant_listado_idx`)
+
+La migración `2026_09_30_000003_indice_listado_estudiantes` crea `(tenant_id, deleted_at, apellidos, nombres)` en `estudiantes`. **`deploy.sh` ya la
+aplica** (`php artisan migrate --force`, con el backup previo y la aplicación en mantenimiento); no hay que hacer nada a mano. Es idempotente (si el
+índice ya existe no hace nada) y crear un índice secundario en InnoDB no bloquea las escrituras.
+
+**Comprobar que quedó aplicado** (en el servidor de producción, después del deploy):
+
+```sql
+SELECT index_name, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS columnas
+FROM information_schema.statistics
+WHERE table_schema = DATABASE() AND table_name = 'estudiantes' AND index_name = 'est_tenant_listado_idx'
+GROUP BY index_name;
+-- Esperado: 1 fila → est_tenant_listado_idx | tenant_id,deleted_at,apellidos,nombres
+
+SELECT migration, batch FROM migrations WHERE migration LIKE '%indice_listado_estudiantes%';
+-- Esperado: 1 fila (2026_09_30_000003_indice_listado_estudiantes)
+```
+
+**Comprobar que se usa** (sustituye `1` por el `tenant_id` de un colegio real):
+
+```sql
+EXPLAIN SELECT id, apellidos, nombres FROM estudiantes
+WHERE tenant_id = 1 AND deleted_at IS NULL ORDER BY apellidos, nombres LIMIT 20;
+-- Esperado: key = est_tenant_listado_idx y SIN "Using filesort" en Extra.
+```
+
+Medido con 4.950 estudiantes: página 1 del listado 17,0 ms → 0,4 ms; página 100, 27,1 ms → 7,8 ms. El `count(*)` del paginador no mejora con este índice; el
+código ya usa una sugerencia de índice distinta para el total (se ignora sin error si el índice no existe).
+
+**Si la migración no se aplicó** (p. ej. se desplegó con `--sin-migrar`): ejecuta `php artisan migrate --force` en una ventana tranquila. El código **no falla**
+sin el índice (`Estudiante::scopeConIndiceDeListado` comprueba que exista); solo pierde esa mejora.
+
+**Revertir** (solo si algún día hiciera falta): `ALTER TABLE estudiantes DROP INDEX est_tenant_listado_idx;`. Es seguro; no uses `migrate:rollback` para esto, porque
+revertiría el último lote completo y no solo este índice.
+
 ## 9. Permisos de carpetas
 
 ```bash

@@ -34,6 +34,11 @@ export function construirOpenApi(version = '0.1.0'): Json {
     format: 'date',
     description: 'AAAA-MM-DD; debe ser anterior a hoy.',
   };
+  cuerpoActualizar.properties.email = {
+    ...cuerpoActualizar.properties.email,
+    format: 'email',
+    description: 'null o cadena vacía lo quita.',
+  };
   cuerpoActualizar.properties.cedula = {
     ...cuerpoActualizar.properties.cedula,
     description: 'null o cadena vacía la quita. Única por colegio.',
@@ -99,7 +104,7 @@ export function construirOpenApi(version = '0.1.0'): Json {
       '/api/v1/estudiantes/{id}': {
         patch: {
           tags: ['Estudiantes'],
-          summary: 'Editar los datos de identidad de un estudiante',
+          summary: 'Editar los datos de un estudiante',
           description:
             'Requiere el permiso `gestionar-estudiantes`. Edición parcial (al menos un campo). Todo ocurre en una ' +
             'transacción con la fila bloqueada y deja en `activity_logs` los mismos dos registros que Laravel ' +

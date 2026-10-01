@@ -3,6 +3,9 @@ import { ESTUDIANTE_CAMPOS_AUDITADOS, EstudianteCampoAuditado } from '@zuraedu/s
 /** Valores de un estudiante tal como están en la base (fechas como 'YYYY-MM-DD'). */
 export type EstudianteAuditable = Record<EstudianteCampoAuditado, string | null>;
 
+/** Valores por columna (cualquier subconjunto de columnas de la tabla), todos como texto o null. */
+export type ValoresPorColumna = Readonly<Record<string, string | null | undefined>>;
+
 /**
  * Formato de fecha de Laravel en la descripción: el modelo castea `fecha_nacimiento` a `date` (Carbon) y
  * `(string) $carbon` da 'Y-m-d H:i:s'. Se replica para que los registros de auditoría de PHP y de TypeScript
@@ -43,15 +46,25 @@ export function descripcionEdicionEstudiante(id: number, cambios: string[]): str
  * Una escritura desde TypeScript no dispara los observers de PHP, así que hay que reproducirlo a mano o las
  * pantallas e informes que filtren por 'estudiante.actualizado' no verían estos cambios.
  *
- * `campos` son las columnas que cambiaron, en el orden de Laravel (el de las reglas del formulario), seguidas de
- * `updated_at` (Eloquent la incluye en getChanges()). Los nombres/apellidos son los valores NUEVOS.
+ * `campos` son las columnas que cambiaron, en el orden de la tabla, seguidas de `updated_at` (Eloquent la incluye en
+ * getChanges()). Los nombres/apellidos son los valores NUEVOS.
  */
 export function descripcionObserverActualizado(apellidos: string, nombres: string, campos: string[]): string {
   return `Estudiante actualizado: ${apellidos}, ${nombres} | Campos: ${campos.join(', ')}`;
 }
 
-/** Columnas modificadas (en orden de Laravel) + `updated_at`, tal como las lista getChanges(). */
-export function camposCambiadosComoLaravel(antes: EstudianteAuditable, despues: EstudianteAuditable): string[] {
-  const campos: string[] = ESTUDIANTE_CAMPOS_AUDITADOS.filter((c) => (antes[c] ?? '') !== (despues[c] ?? ''));
+/**
+ * Columnas modificadas + `updated_at`, tal como las lista getChanges() de Eloquent.
+ *
+ * `orden` es el orden de las columnas de la tabla (Eloquent recorre los atributos del modelo en ese orden). Se compara
+ * como texto con null ≡ '' (el middleware ConvertEmptyStringsToNull de Laravel convierte '' en null antes de guardar).
+ * Si no cambió ninguna columna devuelve [] (Laravel no dispara el evento `updated` si el modelo no está sucio).
+ */
+export function camposCambiadosComoLaravel(
+  antes: ValoresPorColumna,
+  despues: ValoresPorColumna,
+  orden: readonly string[],
+): string[] {
+  const campos = orden.filter((c) => (antes[c] ?? '') !== (despues[c] ?? ''));
   return campos.length ? [...campos, 'updated_at'] : [];
 }

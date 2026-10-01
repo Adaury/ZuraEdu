@@ -2,6 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { RowDataPacket } from 'mysql2/promise';
 import request from 'supertest';
+import { NOMBRES_COLUMNAS_EDITABLES } from '../src/estudiantes/estudiante-columnas';
 import { DATABASE_URL, Fixtures, TenantCreado } from './helpers/fixtures';
 
 // Debe fijarse ANTES de importar AppModule: ConfigModule lee process.env al crear el módulo.
@@ -284,6 +285,111 @@ describe('API · editar estudiante (e2e, MySQL real)', () => {
       const estadoTrasPrimero = primero.split('→ ')[1];
       expect(segundo).toBe(`Estudiante #${id}: estado: ${estadoTrasPrimero} → ${final}`);
       expect(final).not.toBe(estadoTrasPrimero);
+    });
+  });
+
+  describe('edición completa de los demás campos', () => {
+    it('un campo NO sensible (teléfono) escribe SOLO el registro del observer, no el "editado"', async () => {
+      const id = await fx.crearEstudiante(colegioA.id, 'Rosa', 'Mota', 40);
+      await patch(id, { telefono: '8095551234' }, adminA.bearer).expect(200);
+
+      expect((await fila(id)).telefono).toBe('8095551234');
+      const logs = await auditoria(id);
+      expect(logs.map((l) => l.accion)).toEqual(['estudiante.actualizado']); // Laravel no escribe "editado" sin cambios sensibles
+      expect(logs[0].descripcion).toBe('Estudiante actualizado: Mota, Rosa | Campos: telefono, updated_at');
+    });
+
+    it('mezcla de campos: el observer los lista en el orden de la tabla y el "editado" solo detalla los sensibles', async () => {
+      const id = await fx.crearEstudiante(colegioA.id, 'Mix', 'Campos', 41);
+      await patch(
+        id,
+        { notasMedicas: 'Alergia', estado: 'inactivo', telefono: '809', numeroMatricula: 'NUEVA-41', sexo: 'M' },
+        adminA.bearer,
+      ).expect(200);
+
+      const logs = await auditoria(id);
+      expect(logs.map((l) => l.accion)).toEqual(['estudiante.actualizado', 'estudiante.editado']);
+      expect(logs[0].descripcion).toBe(
+        'Estudiante actualizado: Campos, Mix | Campos: numero_matricula, sexo, telefono, estado, notas_medicas, updated_at',
+      );
+      expect(logs[1].descripcion).toBe(`Estudiante #${id}: estado: activo → inactivo`); // numero_matricula/sexo/telefono no son sensibles
+      expect(await fila(id)).toMatchObject({ numero_matricula: 'NUEVA-41', sexo: 'M', telefono: '809', estado: 'inactivo', notas_medicas: 'Alergia' });
+    });
+
+    it('solo se modifican las columnas enviadas: el resto queda intacto', async () => {
+      const id = await fx.crearEstudiante(colegioA.id, 'Resto', 'Intacto', 42, '009');
+      await fx.pool.query("update estudiantes set direccion = 'Calle 5', sector = 'Norte', tutor_nombre = 'Madre X' where id = ?", [id]);
+
+      await patch(id, { telefono: '555' }, adminA.bearer).expect(200);
+
+      expect(await fila(id)).toMatchObject({ direccion: 'Calle 5', sector: 'Norte', tutor_nombre: 'Madre X', cedula: '009', nombres: 'Resto' });
+    });
+
+    it('vaciar un campo (null o cadena vacía) lo guarda como null y lo audita como cambio', async () => {
+      const id = await fx.crearEstudiante(colegioA.id, 'Vacia', 'Campo', 43);
+      await fx.pool.query("update estudiantes set email = 'v@example.com', sector = 'Sur' where id = ?", [id]);
+
+      await patch(id, { email: null, sector: '' }, adminA.bearer).expect(200);
+
+      const f = await fila(id);
+      expect(f.email).toBeNull();
+      expect(f.sector).toBeNull();
+      expect((await auditoria(id, 'estudiante.actualizado'))[0].descripcion).toBe(
+        'Estudiante actualizado: Campo, Vacia | Campos: email, sector, updated_at',
+      );
+    });
+
+    it('el orden de columnas editables es el orden REAL de la tabla estudiantes (lo que usa Eloquent)', async () => {
+      const [cols] = await fx.pool.query<RowDataPacket[]>(
+        "select column_name as c from information_schema.columns where table_schema = database() and table_name = 'estudiantes' order by ordinal_position",
+      );
+      const enTabla = cols.map((r) => r.c as string).filter((c) => (NOMBRES_COLUMNAS_EDITABLES as readonly string[]).includes(c));
+      expect([...NOMBRES_COLUMNAS_EDITABLES]).toEqual(enTabla);
+    });
+
+    it('número de matrícula repetido en el colegio → 409 con su propio mensaje y sin cambios', async () => {
+      const a = await fx.crearEstudiante(colegioA.id, 'Dup', 'Uno', 44);
+      const b = await fx.crearEstudiante(colegioA.id, 'Dup', 'Dos', 45);
+      const matriculaDeA = (await fila(a)).numero_matricula as string;
+
+      const res = await patch(b, { numeroMatricula: matriculaDeA, telefono: '111' }, adminA.bearer).expect(409);
+
+      expect(res.body.message).toMatch(/matrícula/i);
+      const f = await fila(b);
+      expect(f.telefono).toBeNull(); // se deshizo todo, también el teléfono
+      expect(await auditoria(b)).toHaveLength(0);
+    });
+
+    it('el mismo número de matrícula en OTRO colegio es válido (la unicidad es por colegio)', async () => {
+      const enB = (await fila(b1)).numero_matricula as string;
+      const id = await fx.crearEstudiante(colegioA.id, 'Mismo', 'Numero', 46);
+      await patch(id, { numeroMatricula: enB }, adminA.bearer).expect(200);
+      expect((await fila(id)).numero_matricula).toBe(enB);
+    });
+
+    it('valores demasiado largos para la COLUMNA dan 400 (no el 500 de base de datos que daría PHP)', async () => {
+      const id = await fx.crearEstudiante(colegioA.id, 'Largo', 'Valor', 47);
+      await patch(id, { tutorParentesco: 'a'.repeat(51) }, adminA.bearer).expect(400);
+      await patch(id, { tutorTrabajo: 'a'.repeat(101) }, adminA.bearer).expect(400);
+      expect((await fila(id)).tutor_parentesco).toBeNull();
+    });
+
+    it('nacionalidad no admite null (columna NOT NULL) y un correo inválido da 400', async () => {
+      const id = await fx.crearEstudiante(colegioA.id, 'Pais', 'Correo', 48);
+      await patch(id, { nacionalidad: null }, adminA.bearer).expect(400);
+      await patch(id, { email: 'no-es-correo' }, adminA.bearer).expect(400);
+    });
+
+    it('tutor_email (regla de Laravel sin columna real) y foto se rechazan como campos desconocidos', async () => {
+      await patch(a2, { tutorEmail: 'x@y.com' }, adminA.bearer).expect(400);
+      await patch(a2, { foto: 'x.png' }, adminA.bearer).expect(400);
+    });
+
+    it('la edición de campos no sensibles respeta el aislamiento entre colegios (404 y nada cambia)', async () => {
+      await patch(b1, { telefono: '000', numeroMatricula: 'HACK' }, adminA.bearer).expect(404);
+      const f = await fila(b1);
+      expect(f.telefono).toBeNull();
+      expect(f.numero_matricula).not.toBe('HACK');
     });
   });
 });

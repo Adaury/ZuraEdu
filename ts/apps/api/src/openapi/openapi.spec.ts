@@ -118,7 +118,9 @@ describe('contrato OpenAPI', () => {
       });
 
       it('documenta exactamente los campos editables y ninguno más (nunca tenant_id, id ni deleted_at)', () => {
-        expect(Object.keys(cuerpo().properties).sort()).toEqual(['apellidos', 'cedula', 'estado', 'fechaNacimiento', 'nombres']);
+        expect(Object.keys(cuerpo().properties).sort()).toEqual(
+          ['apellidos', 'cedula', 'direccion', 'email', 'estado', 'fechaNacimiento', 'lugarNacimiento', 'municipio', 'nacionalidad', 'nombres', 'notasMedicas', 'numeroMatricula', 'provincia', 'sector', 'sexo', 'telefono', 'tutorNombre', 'tutorParentesco', 'tutorTelefono', 'tutorTrabajo'].sort(),
+        );
         for (const prohibido of ['tenant_id', 'tenantId', 'id', 'deleted_at', 'user_id']) {
           expect(cuerpo().properties[prohibido]).toBeUndefined();
         }
@@ -130,6 +132,8 @@ describe('contrato OpenAPI', () => {
         expect(actualizarEstudianteSchema.safeParse({ nombres: 'a'.repeat(101) }).success).toBe(false);
         expect(cuerpo().properties.estado.enum).toEqual([...ESTUDIANTE_ESTADOS]);
         expect(cuerpo().properties.fechaNacimiento.format).toBe('date');
+        expect(cuerpo().properties.email.format).toBe('email');
+        expect(cuerpo().properties.sexo.enum).toEqual(['M', 'F']);
       });
 
       it('la cédula admite null (para quitarla)', () => {

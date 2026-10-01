@@ -97,35 +97,48 @@ En memoria, por proceso, con vencimiento (`AUTH_CACHE_TTL_SECONDS`, 30 s por def
 
 ## Escrituras y auditoría
 
-Primera escritura migrada: `PATCH /api/v1/estudiantes/:id` (edición parcial de los campos de identidad: `cedula`,
-`nombres`, `apellidos`, `fechaNacimiento`, `estado`). Requiere `gestionar-estudiantes`, igual que las rutas de
-mutación de Laravel.
+Primera escritura migrada: `PATCH /api/v1/estudiantes/:id` — edición parcial (al menos un campo) de **todos los campos
+del formulario de Laravel salvo la foto**: matrícula, cédula, nombres, apellidos, fecha de nacimiento, sexo, nacionalidad,
+lugar de nacimiento, teléfono, correo, dirección, sector, municipio, provincia, estado, datos del tutor (nombre,
+parentesco, teléfono, trabajo) y notas médicas. Requiere `gestionar-estudiantes`, igual que las rutas de mutación de
+Laravel. La foto queda fuera: depende de dónde se guarden los archivos (decisión pendiente, ver "Pendiente").
 
-- **Auditoría idéntica a Laravel.** Escribe en `activity_logs` con `accion = estudiante.editado`,
-  `modelo = App\Models\Estudiante` y la descripción `Estudiante #12: cedula: — → 001 | estado: activo → inactivo`
-  (mismo orden de campos, `—` para nulos, fechas como `2012-05-01 00:00:00` porque Laravel castea a `date`).
-  La pantalla de auditoría actual muestra juntos los cambios hechos desde PHP y desde TypeScript.
-  `tenant_id` y `user_id` salen del token, nunca del cuerpo.
-- **Dos registros por edición, como Laravel.** Cada edición escribe, en este orden, `estudiante.actualizado`
-  (lo genera `EstudianteObserver::updated()`: `Estudiante actualizado: Apellidos, Nombres | Campos: nombres, estado, updated_at`)
-  y `estudiante.editado` (lo escribe el controlador). **Lección general de la migración:** los *observers*, eventos y
-  listeners de PHP **no se disparan** cuando la escritura la hace otro lenguaje; si no se reproducen a mano, las
-  pantallas e informes que dependen de ellos dejan de ver esos cambios. Antes de migrar la escritura de cada módulo hay
-  que inventariar sus observers (hoy: `Estudiante`, `Matricula`, `Calificacion`, `CalificacionAcademica`) y sus
-  `Event::dispatch` / listeners. Esta paridad se descubrió después del primer intento y la fija una prueba e2e.
+- **Dos registros de auditoría, como Laravel, con las mismas condiciones.** Se escriben en `activity_logs`, en este orden:
+  1. `estudiante.actualizado` — lo genera `EstudianteObserver::updated()` en PHP: **siempre** que cambie alguna
+     columna, `Estudiante actualizado: Apellidos, Nombres | Campos: telefono, estado, updated_at` (columnas cambiadas
+     en el **orden de la tabla**, que es el que usa Eloquent, y cerrando con `updated_at`; una prueba lo compara con
+     `information_schema`).
+  2. `estudiante.editado` — lo escribe el controlador: **solo** si cambió algún campo sensible (cédula, nombres, apellidos,
+     fecha de nacimiento, estado), con el detalle `Estudiante #12: cedula: — → 001 | estado: activo → inactivo`
+     (`—` para nulos; las fechas como `2012-05-01 00:00:00` porque Laravel castea a `date`).
+  Así, cambiar solo el teléfono deja un único registro y la pantalla de auditoría actual muestra juntos los cambios hechos
+  desde PHP y desde TypeScript. `tenant_id` y `user_id` salen del token, nunca del cuerpo.
+- **Lección general de la migración: los observers de PHP no se disparan.** Los *observers*, eventos y listeners de
+  Laravel **no se ejecutan** cuando la escritura la hace otro lenguaje; si no se reproducen a mano, las pantallas e informes
+  que dependen de ellos dejan de ver esos cambios. Antes de migrar la escritura de cada módulo hay que inventariar sus
+  observers (hoy: `Estudiante`, `Matricula`, `Calificacion`, `CalificacionAcademica`) y sus `Event::dispatch` / listeners.
+  Esta paridad se descubrió después del primer intento y la fijan pruebas e2e.
 - **Atómica y sin carreras.** Todo ocurre en una transacción con la fila bloqueada (`for update`): se leen los
-  valores, se calculan los cambios, se actualiza y se audita. Si algo falla no queda nada a medias, y dos ediciones
-  simultáneas no se pisan (la cadena de auditoría "antes → después" queda coherente; hay pruebas e2e de ambas cosas).
-- **Sin cambios no hay escritura**: si ningún campo auditado cambia, responde 200 sin tocar la fila ni auditar (como Laravel).
-- **Asignación masiva imposible**: el cuerpo se valida con `zod` en modo estricto; un campo desconocido
-  (`tenant_id`, `id`, `deleted_at`...) se **rechaza con 400** en vez de ignorarse.
+  valores, se calculan los cambios, se actualiza (solo las columnas que cambian, más `updated_at`) y se audita. Si algo
+  falla no queda nada a medias, y dos ediciones simultáneas no se pisan (la cadena "antes → después" queda coherente).
+- **Sin cambios no hay escritura**: si ninguna columna cambia, responde 200 sin tocar la fila ni auditar (como Laravel,
+  que no dispara el evento si el modelo no está sucio). Una cadena vacía y `null` son lo mismo (como el middleware
+  `ConvertEmptyStringsToNull`).
+- **Asignación masiva imposible**: el cuerpo se valida con `zod` en modo estricto; un campo desconocido (`tenant_id`,
+  `id`, `user_id`, `deleted_at`, `foto`...) se **rechaza con 400** en vez de ignorarse.
 - **Códigos de respuesta**: 404 si el estudiante es de otro colegio, está borrado lógicamente o no existe (no se
-  distingue); 409 si la cédula ya existe en el colegio (la unicidad es `(tenant_id, cedula)`, así que la misma
-  cédula en otro colegio es válida); 403 sin permiso; 401 sin token; 400 si la validación falla.
-- Las mismas reglas de validación de `UpdateEstudianteRequest`: nombres/apellidos 2–100, cédula ≤ 20, fecha anterior a hoy.
+  distingue); 409 si la cédula o el número de matrícula ya existen en el colegio (la unicidad es por colegio:
+  `(tenant_id, cedula)` y `(tenant_id, numero_matricula)`; el mensaje dice cuál); 403 sin permiso; 401 sin token; 400
+  si la validación falla.
+- **Validación: las reglas de `UpdateEstudianteRequest`, con tres correcciones deliberadas donde Laravel está desalineado
+  con la base de datos** (en PHP esos casos dan un error 500 de la base; aquí dan un 400 claro): `tutor_parentesco` ≤ 50
+  (Laravel dice 150), `tutor_trabajo` ≤ 100 (Laravel dice 150) y `nacionalidad` **no admite null** (la columna es NOT NULL;
+  Laravel dice `nullable`). `tutor_email` está en las reglas de Laravel pero no existe como columna ni en `$fillable`, así
+  que no se acepta.
 
 Patrón para las próximas escrituras: `AuditService.registrar(trx, ...)` dentro de la misma transacción, `TenantContext`
-para el tenant/usuario, y un esquema `zod` estricto.
+para el tenant/usuario, un esquema `zod` estricto, la tabla de columnas en el orden de la tabla
+(`estudiante-columnas.ts`) y la constante `MODELO_ESTUDIANTE` para el nombre de modelo.
 
 ## Contrato OpenAPI
 
@@ -182,8 +195,9 @@ así que el índice nuevo también le serviría (requiere una migración nueva d
 
 ## Pendiente (orden sugerido)
 
-1. **Más escrituras**, con la misma plantilla (transacción + auditoría + `zod` estricto): resto de campos del estudiante,
-   luego asistencia y calificaciones (estas respetando `periodos.cerrado`). Pagos y MINERD al final, con tests de paridad.
+1. **Más escrituras**, con la misma plantilla (transacción + auditoría + `zod` estricto): foto del estudiante (primero
+   decidir dónde se guardan los archivos: hoy el disco de Laravel), crear y borrar estudiantes (el observer escribe
+   `estudiante.creado` / `estudiante.eliminado`), luego asistencia y calificaciones (estas respetando `periodos.cerrado`). Pagos y MINERD al final, con tests de paridad.
    **Antes de cada módulo, inventariar sus observers/eventos/listeners de PHP** (ver "Escrituras y auditoría"): no se
    disparan desde TypeScript y hay que reproducir sus efectos (auditoría, notificaciones, recálculos).
 2. **Conteo con filtros** (búsqueda por texto / estado): sin filtros ya es index-only (1,6 ms); con filtros el optimizador decide.

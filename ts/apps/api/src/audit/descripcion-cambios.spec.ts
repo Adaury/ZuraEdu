@@ -1,3 +1,5 @@
+import { ESTUDIANTE_CAMPOS_AUDITADOS } from '@zuraedu/shared';
+import { NOMBRES_COLUMNAS_EDITABLES } from '../estudiantes/estudiante-columnas';
 import {
   camposCambiadosComoLaravel,
   cambiosAuditados,
@@ -75,21 +77,52 @@ describe('registro del observer (EstudianteObserver::updated de Laravel)', () =>
 
   it('lista solo las columnas que cambiaron, en orden de Laravel, y siempre cierra con updated_at', () => {
     const despues = { ...base, estado: 'egresado', nombres: 'Anita', cedula: '999' };
-    expect(camposCambiadosComoLaravel(base, despues)).toEqual(['cedula', 'nombres', 'estado', 'updated_at']);
+    expect(camposCambiadosComoLaravel(base, despues, ESTUDIANTE_CAMPOS_AUDITADOS)).toEqual(['cedula', 'nombres', 'estado', 'updated_at']);
   });
 
   it('sin cambios devuelve una lista vacía (Laravel no dispara el evento si el modelo no está sucio)', () => {
-    expect(camposCambiadosComoLaravel(base, { ...base })).toEqual([]);
+    expect(camposCambiadosComoLaravel(base, { ...base }, ESTUDIANTE_CAMPOS_AUDITADOS)).toEqual([]);
   });
 
   it('null y cadena vacía no cuentan como cambio, igual que en la auditoría del controlador', () => {
-    expect(camposCambiadosComoLaravel({ ...base, cedula: null }, { ...base, cedula: '' })).toEqual([]);
+    expect(camposCambiadosComoLaravel({ ...base, cedula: null }, { ...base, cedula: '' }, ESTUDIANTE_CAMPOS_AUDITADOS)).toEqual([]);
   });
 
   it('el orden de campos coincide con el de cambiosAuditados', () => {
     const despues = { ...base, estado: 'inactivo', apellidos: 'Gomez' };
-    const campos = camposCambiadosComoLaravel(base, despues).filter((c) => c !== 'updated_at');
+    const campos = camposCambiadosComoLaravel(base, despues, ESTUDIANTE_CAMPOS_AUDITADOS).filter((c) => c !== 'updated_at');
     const nombresEnDescripcion = cambiosAuditados(base, despues).map((c) => c.split(':')[0]);
     expect(campos).toEqual(nombresEnDescripcion);
+  });
+
+  describe('con todas las columnas editables (en el orden de la tabla)', () => {
+    const antes = { numero_matricula: 'M-1', telefono: null, email: 'a@b.com', sector: 'Centro', estado: 'activo', notas_medicas: null };
+
+    it('sigue el orden de las columnas de la tabla, no el orden en que llegan los campos', () => {
+      const despues = { ...antes, notas_medicas: 'Alergia', estado: 'inactivo', telefono: '8095551234', numero_matricula: 'M-2' };
+      expect(camposCambiadosComoLaravel(antes, despues, NOMBRES_COLUMNAS_EDITABLES)).toEqual([
+        'numero_matricula',
+        'telefono',
+        'estado',
+        'notas_medicas',
+        'updated_at',
+      ]);
+    });
+
+    it('un campo no sensible (teléfono) cuenta como cambio aunque no entre en el detalle de auditoría', () => {
+      expect(camposCambiadosComoLaravel(antes, { ...antes, telefono: '809' }, NOMBRES_COLUMNAS_EDITABLES)).toEqual(['telefono', 'updated_at']);
+    });
+
+    it('ignora columnas que no están en la lista editable (id, tenant_id, deleted_at...)', () => {
+      expect(camposCambiadosComoLaravel({ ...antes, tenant_id: '1' }, { ...antes, tenant_id: '2' }, NOMBRES_COLUMNAS_EDITABLES)).toEqual([]);
+    });
+
+    it('la lista editable sigue el orden de las columnas de la tabla estudiantes', () => {
+      expect([...NOMBRES_COLUMNAS_EDITABLES]).toEqual([
+        'numero_matricula', 'cedula', 'nombres', 'apellidos', 'fecha_nacimiento', 'sexo', 'nacionalidad',
+        'lugar_nacimiento', 'telefono', 'email', 'direccion', 'sector', 'municipio', 'provincia', 'estado',
+        'tutor_nombre', 'tutor_parentesco', 'tutor_telefono', 'tutor_trabajo', 'notas_medicas',
+      ]);
+    });
   });
 });

@@ -7,8 +7,10 @@ import {
   descripcionEdicionEstudiante,
   descripcionObserverActualizado,
   EstudianteAuditable,
+  ValoresPorColumna,
 } from '../audit/descripcion-cambios';
 import { Database, DB } from '../db/db.module';
+import { COLUMNAS_EDITABLES, NOMBRES_COLUMNAS_EDITABLES } from './estudiante-columnas';
 import type { EstudiantesQuery } from './estudiantes.query';
 import { consultaPagina, consultaTotal } from './estudiantes.queries';
 import type { ActualizarEstudiante } from './estudiantes.update';
@@ -46,15 +48,23 @@ function esDuplicado(e: unknown): boolean {
   return err?.code === 'ER_DUP_ENTRY' || err?.errno === 1062;
 }
 
+/** Qué restricción única saltó: el mensaje de MySQL nombra el índice (est_tenant_matricula_unique / ..._cedula_unique). */
+function mensajeDeDuplicado(e: unknown): string {
+  const texto = String((e as { sqlMessage?: string; message?: string })?.sqlMessage ?? (e as Error)?.message ?? '');
+  return texto.includes('matricula')
+    ? 'Este número de matrícula ya existe en otro estudiante.'
+    : 'Esta cédula ya está registrada en otro estudiante.';
+}
+
 /**
- * Estudiantes: listado (solo lectura) y edición parcial de los campos de identidad.
+ * Estudiantes: listado (solo lectura) y edición parcial.
  *
  * Usa la conexión `DB` (con filtro de tenant automático): si faltara el contexto de tenant la consulta
  * lanza en vez de tocar datos de otros colegios. Las consultas de lectura viven en `estudiantes.queries.ts`
  * (funciones puras, comprobables sin base de datos).
  *
  * Equivalente de Admin\EstudianteController@index / @update (Laravel): excluye borrados lógicos, ordena por
- * apellidos y nombres, y audita los mismos campos sensibles con el mismo formato.
+ * apellidos y nombres, y audita igual que Laravel (ver `actualizar`).
  */
 @Injectable()
 export class EstudiantesService {
@@ -75,86 +85,96 @@ export class EstudiantesService {
   }
 
   /**
-   * Edición parcial. Todo ocurre en UNA transacción: se bloquea la fila (`for update`), se calculan los
-   * cambios, se actualiza y se escribe la auditoría; si algo falla no queda nada a medias.
+   * Edición parcial de los campos editables (ver COLUMNAS_EDITABLES). Todo ocurre en UNA transacción: se bloquea la
+   * fila (`for update`), se calculan los cambios, se actualiza y se escribe la auditoría; si algo falla no queda nada
+   * a medias.
    *
-   *  - Un estudiante de otro colegio o borrado lógicamente → 404 (no se distingue de "no existe").
-   *  - Si no cambia ningún campo, no se escribe nada ni se audita (igual que Laravel).
-   *  - Cédula repetida dentro del colegio → 409.
+   * Auditoría, igual que Laravel:
+   *  - `estudiante.actualizado` (lo genera EstudianteObserver::updated): siempre que cambie alguna columna, con la
+   *    lista de columnas cambiadas + updated_at. Los observers de PHP no se disparan desde TypeScript: se reproduce.
+   *  - `estudiante.editado` (lo escribe el controlador): SOLO si cambió algún campo sensible (cédula, nombres,
+   *    apellidos, fecha de nacimiento, estado), con el detalle "antes → después".
+   *
+   * Un estudiante de otro colegio o borrado lógicamente → 404 (no se distingue de "no existe"). Si no cambia ninguna
+   * columna no se escribe nada ni se audita. Cédula o matrícula repetidas dentro del colegio → 409.
    */
   async actualizar(id: number, entrada: ActualizarEstudiante, meta: MetaPeticion): Promise<EstudianteDto> {
     try {
       return await this.db.transaction().execute(async (trx) => {
         const actual = await trx
           .selectFrom('estudiantes')
-          .select(['id', 'numero_matricula', 'cedula', 'nombres', 'apellidos', 'sexo', 'estado', 'fecha_nacimiento'])
+          .select(['id', 'estado', 'sexo', ...NOMBRES_COLUMNAS_EDITABLES])
           .where('estudiantes.id', '=', id)
           .where('estudiantes.deleted_at', 'is', null)
           .forUpdate()
           .executeTakeFirst();
         if (!actual) throw new NotFoundException('Estudiante no encontrado.');
 
-        const antes: EstudianteAuditable = {
-          cedula: actual.cedula ?? null,
-          nombres: actual.nombres,
-          apellidos: actual.apellidos,
-          fecha_nacimiento: actual.fecha_nacimiento ?? null,
-          estado: actual.estado ?? null,
-        };
-        const despues: EstudianteAuditable = {
-          cedula: entrada.cedula !== undefined ? entrada.cedula : antes.cedula,
-          nombres: entrada.nombres ?? antes.nombres,
-          apellidos: entrada.apellidos ?? antes.apellidos,
-          fecha_nacimiento: entrada.fechaNacimiento ?? antes.fecha_nacimiento,
-          estado: entrada.estado ?? antes.estado,
-        };
+        // Valores actuales y propuestos por columna (todo como texto/null, que es como Laravel los compara).
+        const antes: Record<string, string | null> = {};
+        const despues: Record<string, string | null> = {};
+        for (const [api, col] of COLUMNAS_EDITABLES) {
+          const valorActual = (actual as unknown as Record<string, string | null>)[col] ?? null;
+          antes[col] = valorActual;
+          const propuesto = entrada[api];
+          despues[col] = propuesto === undefined ? valorActual : (propuesto as string | null);
+        }
 
-        const cambios = cambiosAuditados(antes, despues);
-        if (cambios.length === 0) return aDto(actual);
+        const cambiadas = camposCambiadosComoLaravel(antes, despues, NOMBRES_COLUMNAS_EDITABLES);
+        if (cambiadas.length === 0) return aDto(actual);
 
+        // Solo se escriben las columnas que cambian (como el update de Eloquent) + updated_at. Las claves salen de la
+        // tabla COLUMNAS_EDITABLES, nunca del cliente.
+        const aEscribir: Record<string, string | null> = { updated_at: ahoraUtc() };
+        for (const col of cambiadas) if (col !== 'updated_at') aEscribir[col] = despues[col];
         await trx
           .updateTable('estudiantes')
-          .set({
-            cedula: despues.cedula,
-            nombres: despues.nombres!,
-            apellidos: despues.apellidos!,
-            fecha_nacimiento: despues.fecha_nacimiento,
-            estado: despues.estado as EstudianteDto['estado'],
-            updated_at: ahoraUtc(),
-          })
+          .set(aEscribir as never)
           .where('estudiantes.id', '=', id)
           .executeTakeFirstOrThrow();
 
-        // Laravel escribe DOS registros por edición y en este orden: primero el que genera
-        // EstudianteObserver::updated() (se dispara dentro de update()) y después el del controlador. Los observers de
-        // PHP no se ejecutan en una escritura desde TypeScript, así que se reproducen a mano.
+        // Laravel escribe sus registros en este orden: primero el del observer (se dispara dentro de update()) y
+        // después el del controlador.
         await this.auditoria.registrar(trx, {
           accion: 'estudiante.actualizado',
           modelo: MODELO_ESTUDIANTE,
           modeloId: id,
-          descripcion: descripcionObserverActualizado(despues.apellidos!, despues.nombres!, camposCambiadosComoLaravel(antes, despues)),
-          ip: meta.ip,
-          userAgent: meta.userAgent,
-        });
-        await this.auditoria.registrar(trx, {
-          accion: 'estudiante.editado',
-          modelo: MODELO_ESTUDIANTE,
-          modeloId: id,
-          descripcion: descripcionEdicionEstudiante(id, cambios),
+          descripcion: descripcionObserverActualizado(despues.apellidos!, despues.nombres!, cambiadas),
           ip: meta.ip,
           userAgent: meta.userAgent,
         });
 
+        const sensibles = (valores: ValoresPorColumna): EstudianteAuditable => ({
+          cedula: valores.cedula ?? null,
+          nombres: valores.nombres ?? null,
+          apellidos: valores.apellidos ?? null,
+          fecha_nacimiento: valores.fecha_nacimiento ?? null,
+          estado: valores.estado ?? null,
+        });
+        const cambiosSensibles = cambiosAuditados(sensibles(antes), sensibles(despues));
+        if (cambiosSensibles.length > 0) {
+          await this.auditoria.registrar(trx, {
+            accion: 'estudiante.editado',
+            modelo: MODELO_ESTUDIANTE,
+            modeloId: id,
+            descripcion: descripcionEdicionEstudiante(id, cambiosSensibles),
+            ip: meta.ip,
+            userAgent: meta.userAgent,
+          });
+        }
+
         return aDto({
           ...actual,
+          numero_matricula: despues.numero_matricula!,
           cedula: despues.cedula,
           nombres: despues.nombres!,
           apellidos: despues.apellidos!,
+          sexo: despues.sexo!,
           estado: despues.estado,
         });
       });
     } catch (e) {
-      if (esDuplicado(e)) throw new ConflictException('Esta cédula ya está registrada en otro estudiante.');
+      if (esDuplicado(e)) throw new ConflictException(mensajeDeDuplicado(e));
       throw e;
     }
   }

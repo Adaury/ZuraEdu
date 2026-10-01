@@ -137,11 +137,7 @@
 
 {{-- Banner: students without enrollment --}}
 @if(!$ciclo)
-@php
-    $sinMatricula = \App\Models\Estudiante::whereDoesntHave('matriculas', fn($q) =>
-        $q->where('school_year_id', \App\Models\SchoolYear::actual()?->id)
-    )->count();
-@endphp
+{{-- $sinMatricula lo calcula el controlador (antes se consultaba aquí, en la vista, en cada visita). --}}
 @if($sinMatricula > 0)
 <div class="alert alert-warning d-flex gap-2 align-items-center mb-3 py-2 px-3" style="border-radius:10px;font-size:.84rem;">
     <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>

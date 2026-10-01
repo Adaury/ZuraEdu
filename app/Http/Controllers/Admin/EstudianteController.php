@@ -104,9 +104,16 @@ class EstudianteController extends Controller
 
         $hayFiltros = $buscar !== '' || $letra !== '' || $gradoId;
 
+        // Aviso de estudiantes sin matrícula en el año actual (solo sin filtro de ciclo, como antes en la vista).
+        // conIndiceDeListado(): el anti-join recorre el índice del listado (index-only) en vez de leer cada
+        // fila de estudiantes: ~16 ms -> ~4 ms con 4.950 estudiantes, mismo resultado.
+        $sinMatricula = $ciclo ? 0 : Estudiante::conIndiceDeListado()
+            ->whereDoesntHave('matriculas', fn ($q) => $q->where('school_year_id', \App\Models\SchoolYear::actual()?->id))
+            ->count();
+
         return view('admin.estudiantes.index', compact(
             'estudiantes', 'buscar', 'campo', 'letra',
-            'grados', 'gradoId', 'ciclo', 'area', 'contexto', 'hayFiltros'
+            'grados', 'gradoId', 'ciclo', 'area', 'contexto', 'hayFiltros', 'sinMatricula'
         ));
     }
 

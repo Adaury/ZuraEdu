@@ -20,7 +20,7 @@ async function bootstrap(): Promise<void> {
   const env = loadEnv(); // falla aquí, con un mensaje claro, si la configuración es inválida
   const app = await NestFactory.create(AppModule, { logger: env.NODE_ENV === 'production' ? ['error', 'warn', 'log'] : undefined });
   app.enableShutdownHooks();
-  await app.listen(env.API_PORT);
+  await app.listen(env.API_PORT, env.API_HOST);
 }
 
 void bootstrap();

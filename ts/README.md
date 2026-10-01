@@ -294,3 +294,6 @@ no es justo y no se usa como evidencia); no hay PHP-FPM/Apache real con varios w
   (detrás de un proxy `req.ip` es la del proxy): eso corresponde a Nginx `limit_req`.
 - La caché de autenticación de 30 s es la mitad de la ventaja a 1 conexión (450 → 282 req/s sin ella) y a cambio un token
   revocado tarda hasta 30 s en dejar de valer (ver "Caché de autenticación").
+
+**Enrutamiento con Nginx:** configuración probada (límite por IP, ruta exacta por módulo, `Host` del colegio) en
+[`deploy/nginx/`](deploy/nginx/README.md). La API escucha solo en loopback por defecto (`API_HOST`).

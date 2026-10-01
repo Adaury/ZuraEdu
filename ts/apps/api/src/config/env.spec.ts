@@ -10,6 +10,13 @@ describe('loadEnv', () => {
     expect(env.AUTH_CACHE_MAX_ENTRIES).toBe(5000);
   });
 
+  it('escucha por defecto solo en loopback (detrás de Nginx) y permite cambiarlo', () => {
+    const base = { DATABASE_URL: 'mysql://u@h/db' };
+    expect(loadEnv(base).API_HOST).toBe('127.0.0.1');
+    expect(loadEnv({ ...base, API_HOST: '0.0.0.0' }).API_HOST).toBe('0.0.0.0');
+    expect(() => loadEnv({ ...base, API_HOST: '' })).toThrow(/API_HOST/);
+  });
+
   it('permite desactivar la caché de autenticación con 0', () => {
     expect(loadEnv({ DATABASE_URL: 'mysql://u@h/db', AUTH_CACHE_TTL_SECONDS: '0' }).AUTH_CACHE_TTL_SECONDS).toBe(0);
   });

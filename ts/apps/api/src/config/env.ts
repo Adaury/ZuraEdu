@@ -14,6 +14,11 @@ const opcionalComoLaravel = z
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_PORT: z.coerce.number().int().min(1).max(65535).default(3100),
+  /**
+   * Interfaz en la que escucha. Por defecto SOLO loopback: la API va detrás de Nginx (que aplica el límite por IP y fija el
+   * Host), así que no debe ser alcanzable directamente. Pon 0.0.0.0 únicamente dentro de un contenedor/red privada.
+   */
+  API_HOST: z.string().min(1).default('127.0.0.1'),
   DATABASE_URL: z
     .string()
     .url()

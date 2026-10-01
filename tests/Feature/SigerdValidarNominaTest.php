@@ -40,10 +40,10 @@ class SigerdValidarNominaTest extends TestCase
         return compact('sy', 'grupo');
     }
 
-    private function matricular(array $c, ?string $cedula, ?string $nacimiento = '2012-05-01'): void
+    private function matricular(array $c, ?string $cedula, ?string $nacimiento = '2012-05-01'): Matricula
     {
         $est = Estudiante::factory()->create(['cedula' => $cedula, 'fecha_nacimiento' => $nacimiento]);
-        Matricula::create([
+        return Matricula::create([
             'school_year_id' => $c['sy']->id, 'estudiante_id' => $est->id, 'grupo_id' => $c['grupo']->id,
             'fecha_matricula' => '2025-08-15', 'numero_orden' => Matricula::count() + 1, 'estado' => 'activa',
         ]);
@@ -83,5 +83,51 @@ class SigerdValidarNominaTest extends TestCase
 
         $this->assertTrue($res['ok'], 'Cédulas distintas no deben marcarse como duplicadas: ' . json_encode($res['errores']));
         $this->assertSame(2, $res['total']);
+    }
+
+    // La consulta ya no hidrata modelos (LEFT JOIN con 4 columnas): estos tres casos fijan lo que la relación
+    // Eloquent hacía solo y que un join podría perder.
+    public function test_estudiante_borrado_logicamente_cuenta_como_ausente(): void
+    {
+        $c = $this->contexto();
+        $m = $this->matricular($c, '00100000010');
+        $m->estudiante->delete(); // SoftDeletes: with('estudiante') lo devolvía null
+
+        $res = (new SigerdExportService())->validarNomina($c['sy'], $c['grupo']->id);
+        $desc = $this->descripciones($res);
+
+        $this->assertSame(1, $res['total']);
+        $this->assertContains('Sin cedula/RNE', $desc);
+        $this->assertContains('Sin fecha de nacimiento', $desc);
+    }
+
+    public function test_matriculas_no_activas_no_se_validan_ni_se_cuentan(): void
+    {
+        $c = $this->contexto();
+        $this->matricular($c, '00100000020');
+        $retirada = $this->matricular($c, null);
+        $retirada->update(['estado' => 'retirada']);
+
+        $res = (new SigerdExportService())->validarNomina($c['sy'], $c['grupo']->id);
+
+        $this->assertTrue($res['ok']);
+        $this->assertSame(1, $res['total']);
+    }
+
+    public function test_sin_grupo_valida_todo_el_colegio_pero_no_los_de_otro_colegio(): void
+    {
+        $a = $this->contexto();
+        $this->matricular($a, null);                       // error propio del colegio A
+        $tenantA = app('tenant');
+
+        $b = $this->contexto();                            // colegio B (cambia el tenant activo)
+        $this->matricular($b, null);
+        $this->matricular($b, null);
+
+        app()->instance('tenant', $tenantA);
+        $res = (new SigerdExportService())->validarNomina($a['sy'], null);
+
+        $this->assertSame(1, $res['total']);
+        $this->assertCount(1, $res['errores']);            // solo el "Sin cedula/RNE" del colegio A; los 2 de B no entran
     }
 }

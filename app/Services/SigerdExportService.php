@@ -224,26 +224,38 @@ class SigerdExportService
 
     public function validarNomina(SchoolYear $sy, ?int $grupoId): array
     {
-        $matriculas = Matricula::with('estudiante')->where('school_year_id', $sy->id)->where('estado', 'activa')
-            ->when($grupoId, fn ($q, $id) => $q->where('grupo_id', $id))->get();
+        // Solo 4 columnas por fila y sin hidratar modelos: con 4.950 matrículas, instanciar Matricula + Estudiante
+        // completos costaba ~470 ms de PHP para mirar cuatro campos. LEFT JOIN + deleted_at en el ON reproduce lo que
+        // hacía with('estudiante'): un estudiante borrado (soft delete) cuenta como ausente. El tenant se exige también en
+        // el join (la relación Eloquent lo aplicaba con su scope global). toBase() conserva el scope de tenant de Matricula.
+        $filas = Matricula::query()
+            ->leftJoin('estudiantes', function ($j) {
+                $j->on('estudiantes.id', '=', 'matriculas.estudiante_id')
+                  ->on('estudiantes.tenant_id', '=', 'matriculas.tenant_id')
+                  ->whereNull('estudiantes.deleted_at');
+            })
+            ->where('matriculas.school_year_id', $sy->id)->where('matriculas.estado', 'activa')
+            ->when($grupoId, fn ($q, $id) => $q->where('matriculas.grupo_id', $id))
+            ->orderBy('matriculas.id')
+            ->toBase()
+            ->get(['estudiantes.cedula', 'estudiantes.nombres', 'estudiantes.apellidos', 'estudiantes.fecha_nacimiento']);
         $errores = []; $cedulasVistas = [];
-        foreach ($matriculas as $i => $m) {
-            $e = $m->estudiante;
-            $name = trim(($e?->nombres ?? '') . '  ' . ($e?->apellidos ?? ''));
+        foreach ($filas as $i => $e) {
+            $name = trim(($e->nombres ?? '') . '  ' . ($e->apellidos ?? ''));
             $no = $i + 1;
-            if (empty($e?->cedula)) {
+            if (empty($e->cedula)) {
                 $errores[] = ['no' => $no, 'nombre' => $name, 'descripcion' => 'Sin cedula/RNE'];
             } elseif (isset($cedulasVistas[(string) $e->cedula])) {
                 // Conjunto hash: in_array() dentro del bucle era O(n²) (4.950 matrículas ≈ 4,7 s) y,
                 // al comparar sin strict, "0123" == "123" daba duplicados falsos.
                 $errores[] = ['no' => $no, 'nombre' => $name, 'descripcion' => 'Cedula duplicada: ' . $e->cedula];
             }
-            if (!empty($e?->cedula)) { $cedulasVistas[(string) $e->cedula] = true; }
-            if (empty($e?->fecha_nacimiento)) {
+            if (!empty($e->cedula)) { $cedulasVistas[(string) $e->cedula] = true; }
+            if (empty($e->fecha_nacimiento)) {
                 $errores[] = ['no' => $no, 'nombre' => $name, 'descripcion' => 'Sin fecha de nacimiento'];
             }
         }
-        return ['ok' => empty($errores), 'errores' => $errores, 'total' => $matriculas->count()];
+        return ['ok' => empty($errores), 'errores' => $errores, 'total' => $filas->count()];
     }
 
     public function validarCalificaciones(SchoolYear $sy, int $grupoId, ?int $periodoId): array

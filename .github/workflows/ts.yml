@@ -1,13 +1,23 @@
 name: TypeScript
 
-# Solo corre cuando cambia el workspace TypeScript (ts/) o este workflow.
+# Corre cuando cambia el workspace TypeScript (ts/) y también cuando cambia lo que la API lee de Laravel:
+# las migraciones (esquema) y el seeder de roles/permisos. Un cambio de esquema en PHP que rompa la API
+# TypeScript tiene que saltar aquí, no en producción.
 on:
   push:
     branches: [master]
-    paths: ['ts/**', '.github/workflows/ts.yml']
+    paths:
+      - 'ts/**'
+      - 'database/migrations/**'
+      - 'database/seeders/RolesSeeder.php'
+      - '.github/workflows/ts.yml'
   pull_request:
     branches: [master]
-    paths: ['ts/**', '.github/workflows/ts.yml']
+    paths:
+      - 'ts/**'
+      - 'database/migrations/**'
+      - 'database/seeders/RolesSeeder.php'
+      - '.github/workflows/ts.yml'
 
 concurrency:
   group: ts-${{ github.workflow }}-${{ github.ref }}
@@ -26,9 +36,9 @@ jobs:
         working-directory: ts
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -45,5 +55,92 @@ jobs:
       - name: Build
         run: npm run build
 
-      # Las pruebas e2e necesitan una base MySQL con el esquema de Laravel (migraciones + datos).
-      # Quedan fuera de CI hasta montar ese servicio; ver ts/README.md ("Pendiente").
+  e2e:
+    name: E2E contra MySQL con el esquema de Laravel
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: sge_e2e
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    # Para migrar y sembrar con artisan sin necesitar Redis.
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: sge_e2e
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      CACHE_STORE: array
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # ── 1) Base real: el esquema se crea con las migraciones de Laravel, no a mano ──────────────
+      - name: Configurar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, zip, gd, bcmath, intl, exif, curl, dom, fileinfo
+          coverage: none
+
+      - name: Cache de dependencias de Composer
+        uses: actions/cache@v6
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Instalar dependencias PHP
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Preparar .env
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Migrar y sembrar roles/permisos (como en producción)
+        run: |
+          php artisan migrate --force
+          php artisan db:seed --class=RolesSeeder --force
+
+      # ── 2) API TypeScript sobre esa base ─────────────────────────────────────────────────────────
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ts/package-lock.json
+
+      - name: Instalar dependencias de TypeScript
+        working-directory: ts
+        run: npm ci --no-audit --no-fund
+
+      - name: Compilar el paquete compartido
+        working-directory: ts
+        run: npm run build:shared
+
+      - name: Los tipos de la base (db.d.ts) siguen al día con las migraciones
+        working-directory: ts
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/sge_e2e
+        run: npm run db:types:check -w @zuraedu/api
+
+      - name: Pruebas e2e (autenticación, permisos, aislamiento entre colegios, caché)
+        working-directory: ts
+        env:
+          TEST_DATABASE_URL: mysql://root:root@127.0.0.1:3306/sge_e2e
+        run: npm run test:e2e -w @zuraedu/api

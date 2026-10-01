@@ -1,7 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { DATABASE_URL, dormir, Fixtures } from './helpers/fixtures';
+import { DATABASE_URL, dormir, Fixtures, TenantCreado } from './helpers/fixtures';
 
 // Debe fijarse ANTES de importar AppModule: ConfigModule lee process.env al compilar el módulo.
 process.env.DATABASE_URL = DATABASE_URL;
@@ -24,6 +24,7 @@ async function crearApp(ttlSegundos: number): Promise<INestApplication> {
  */
 describe('API · caché de autenticación (e2e, MySQL real)', () => {
   const fx = new Fixtures();
+  let colegio: TenantCreado; // colegio temporal propio (no depende de datos previos)
   let corta: INestApplication; // TTL 1 s
   let sinCache: INestApplication; // TTL 0
   let larga: INestApplication; // TTL 30 s
@@ -33,6 +34,7 @@ describe('API · caché de autenticación (e2e, MySQL real)', () => {
   const consultas = (app: INestApplication) => app.get<QueryCounter>(QUERY_COUNTER).total;
 
   beforeAll(async () => {
+    colegio = await fx.crearTenant('cache');
     corta = await crearApp(1);
     sinCache = await crearApp(0);
     larga = await crearApp(30);
@@ -45,7 +47,7 @@ describe('API · caché de autenticación (e2e, MySQL real)', () => {
 
   describe('ahorro de consultas', () => {
     it('la 2ª petición hace solo las 2 consultas de datos (count + select)', async () => {
-      const t = await fx.crearToken(await fx.crearUsuario(1, 'ahorro', 'Administrador'));
+      const t = await fx.crearToken(await fx.crearUsuario(colegio.id, 'ahorro', 'Administrador'));
 
       const a0 = consultas(corta);
       await get(corta, t.bearer).expect(200);
@@ -60,7 +62,7 @@ describe('API · caché de autenticación (e2e, MySQL real)', () => {
     });
 
     it('con TTL 0 cada petición vuelve a validar todo (comportamiento original)', async () => {
-      const t = await fx.crearToken(await fx.crearUsuario(1, 'sincache', 'Administrador'));
+      const t = await fx.crearToken(await fx.crearUsuario(colegio.id, 'sincache', 'Administrador'));
       await get(sinCache, t.bearer).expect(200); // calienta solo la resolución de host
 
       const a0 = consultas(sinCache);
@@ -69,7 +71,7 @@ describe('API · caché de autenticación (e2e, MySQL real)', () => {
     });
 
     it('single-flight: 10 peticiones concurrentes en frío cargan la sesión UNA vez', async () => {
-      const t = await fx.crearToken(await fx.crearUsuario(1, 'concurrente', 'Administrador'));
+      const t = await fx.crearToken(await fx.crearUsuario(colegio.id, 'concurrente', 'Administrador'));
 
       const a0 = consultas(corta);
       const respuestas = await Promise.all(Array.from({ length: 10 }, () => get(corta, t.bearer)));
@@ -82,7 +84,7 @@ describe('API · caché de autenticación (e2e, MySQL real)', () => {
 
   describe('seguridad: la revocación se nota como máximo al vencer el TTL', () => {
     it('un token revocado sigue valiendo dentro del TTL y se rechaza al vencer', async () => {
-      const t = await fx.crearToken(await fx.crearUsuario(1, 'revocado', 'Administrador'));
+      const t = await fx.crearToken(await fx.crearUsuario(colegio.id, 'revocado', 'Administrador'));
       await get(corta, t.bearer).expect(200);
 
       await fx.pool.query('delete from personal_access_tokens where id = ?', [t.id]); // "logout" en Laravel
@@ -93,14 +95,14 @@ describe('API · caché de autenticación (e2e, MySQL real)', () => {
     });
 
     it('con TTL 0 la revocación es inmediata', async () => {
-      const t = await fx.crearToken(await fx.crearUsuario(1, 'revocado0', 'Administrador'));
+      const t = await fx.crearToken(await fx.crearUsuario(colegio.id, 'revocado0', 'Administrador'));
       await get(sinCache, t.bearer).expect(200);
       await fx.pool.query('delete from personal_access_tokens where id = ?', [t.id]);
       await get(sinCache, t.bearer).expect(401);
     });
 
     it('un permiso quitado se nota al vencer el TTL', async () => {
-      const userId = await fx.crearUsuario(1, 'sinrol', 'Administrador');
+      const userId = await fx.crearUsuario(colegio.id, 'sinrol', 'Administrador');
       const t = await fx.crearToken(userId);
       await get(corta, t.bearer).expect(200);
 
@@ -112,7 +114,7 @@ describe('API · caché de autenticación (e2e, MySQL real)', () => {
     });
 
     it('un usuario desactivado se nota al vencer el TTL', async () => {
-      const userId = await fx.crearUsuario(1, 'desactivado', 'Administrador');
+      const userId = await fx.crearUsuario(colegio.id, 'desactivado', 'Administrador');
       const t = await fx.crearToken(userId);
       await get(corta, t.bearer).expect(200);
 
@@ -125,7 +127,7 @@ describe('API · caché de autenticación (e2e, MySQL real)', () => {
 
     it('la entrada cacheada nunca sobrevive al expires_at del token', async () => {
       // TTL 30 s, pero el token vence en 2 s: la entrada debe vencer con el token, no a los 30 s.
-      const t = await fx.crearToken(await fx.crearUsuario(1, 'expira', 'Administrador'), 2);
+      const t = await fx.crearToken(await fx.crearUsuario(colegio.id, 'expira', 'Administrador'), 2);
       await get(larga, t.bearer).expect(200);
 
       await dormir(2400);
@@ -135,7 +137,7 @@ describe('API · caché de autenticación (e2e, MySQL real)', () => {
 
   describe('seguridad: la clave de la caché', () => {
     it('un secreto equivocado con el id de un token cacheado NO acierta la caché', async () => {
-      const t = await fx.crearToken(await fx.crearUsuario(1, 'secreto', 'Administrador'));
+      const t = await fx.crearToken(await fx.crearUsuario(colegio.id, 'secreto', 'Administrador'));
       await get(corta, t.bearer).expect(200); // queda cacheado
 
       await get(corta, `${t.id}|${'0'.repeat(40)}`).expect(401);
@@ -151,8 +153,8 @@ describe('API · caché de autenticación (e2e, MySQL real)', () => {
     });
 
     it('dos usuarios no comparten permisos: el sin-permiso sigue recibiendo 403 aunque el admin esté cacheado', async () => {
-      const admin = await fx.crearToken(await fx.crearUsuario(1, 'admin-c', 'Administrador'));
-      const alumno = await fx.crearToken(await fx.crearUsuario(1, 'alumno-c', 'Estudiante'));
+      const admin = await fx.crearToken(await fx.crearUsuario(colegio.id, 'admin-c', 'Administrador'));
+      const alumno = await fx.crearToken(await fx.crearUsuario(colegio.id, 'alumno-c', 'Estudiante'));
 
       await get(corta, admin.bearer).expect(200);
       await get(corta, alumno.bearer).expect(403);

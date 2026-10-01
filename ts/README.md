@@ -258,3 +258,37 @@ asistencias, `CACHE_STORE=array` = siempre en frío), segunda petición de cada 
 con otro lenguaje) o por una validación puntual. **No hay lectura que justifique migrar por rendimiento.** Si se migra
 una lectura, que sea por otra razón (p. ej. para que la web nueva consuma un contrato OpenAPI), no por velocidad.
 Volver a medir si un colegio supera ~50.000 estudiantes o con concurrencia real (esta medición es de una sola petición).
+
+## Carga concurrente: Laravel vs API TypeScript (2026-10-01)
+
+Mismo trabajo en los dos lados: listar 15 estudiantes ordenados (apellidos, nombres, id) con total, autenticado con el mismo
+token Sanctum y el mismo tenant, sobre `sge_bench` (4.950 estudiantes). **Cuerpo idéntico verificado** (`data` igual, 2.106
+bytes). **Un solo proceso** de cada lado, generador de carga neutro ([`bench/`](bench/README.md)), 15 s por punto, todo en la
+misma máquina de desarrollo (el generador comparte CPU, así que las cifras son conservadoras para ambos).
+
+| Configuración (1 proceso) | 1 conexión | 10 conexiones | 50 conexiones |
+|---|---|---|---|
+| PHP 8.3 + OPcache, sin cachés de config/rutas | 14 req/s · p50 71 ms | 14 req/s · p50 730 ms | 14 req/s · p50 3.590 ms |
+| **PHP 8.3 + OPcache + `config:cache` + `route:cache`** (lo que hace `deploy.sh`) | **36 req/s · p50 26 ms** | **39 req/s · p50 247 ms** | — |
+| Node (API TypeScript), caché de auth desactivada | 282 req/s · p50 3,4 ms | 1.194 req/s · p50 8,2 ms | — |
+| Node (API TypeScript), caché de auth 30 s (por defecto) | 450 req/s · p50 2,1 ms | 2.200 req/s · p50 4 ms | 1.936 req/s · p50 23 ms |
+
+Comparación honesta (PHP con cachés de producción frente a Node sin la caché de auth, es decir, solo lenguaje y framework):
+**≈ 8× con una conexión y ≈ 30× con diez**. La mayor parte de la diferencia a 10 conexiones es que un proceso de PHP atiende de a
+una petición y uno de Node intercala la espera de MySQL; en producción PHP corre con varios workers (PHP-FPM), así que la
+cifra relevante por núcleo es la de una conexión (≈ 8×). Cero errores y cero respuestas no-2xx en todas las corridas.
+
+**Qué significa a la escala de un colegio.** 1.000 usuarios conectados pidiendo una página cada 10 s son ≈ 100 req/s. Con
+PHP cacheado (≈ 36 req/s por worker) eso son 3 workers; con Node, una fracción de un núcleo. Es una diferencia real pero **no
+cambia lo que un colegio necesita**: ninguna de las dos opciones es el cuello de botella antes de miles de usuarios
+simultáneos, y la latencia de PHP (26 ms) ya es buena. El ahorro sería de costo de servidor, no de experiencia del usuario.
+
+**Lo que esta medición NO cubre**: una sola ruta (listado simple); no hay escrituras ni rutas con renderizado de vistas
+(la página HTML de `admin/estudiantes` en PHP pesa 292 KB y dio 10 req/s por proceso, pero compararla con un JSON de 2 KB
+no es justo y no se usa como evidencia); no hay PHP-FPM/Apache real con varios workers ni un servidor Linux.
+
+**Diferencias que hay que conocer antes de comparar APIs completas**
+- La API TypeScript **no tiene limitación de tasa** (`throttle`), PHP sí (60/min en el grupo `api`). Hay que añadirla antes de
+  exponerla: sin ella un cliente puede saturarla.
+- La caché de autenticación de 30 s es la mitad de la ventaja a 1 conexión (450 → 282 req/s sin ella) y a cambio un token
+  revocado tarda hasta 30 s en dejar de valer (ver "Caché de autenticación").

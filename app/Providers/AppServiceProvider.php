@@ -15,7 +15,9 @@ use App\Helpers\Setting;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\View;
+use App\Support\Validation\TenantAwareValidator;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
@@ -44,6 +46,10 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Paginator::useBootstrapFive();
+
+        // `exists:tabla,col` debe comprobar la existencia DENTRO del colegio y sin borrados lógicos (Laravel consulta la tabla
+        // cruda y aceptaba ids de otros colegios). Cubre `$request->validate()`, FormRequest y Validator::make().
+        Validator::resolver(fn ($traductor, $datos, $reglas, $mensajes, $atributos) => new TenantAwareValidator($traductor, $datos, $reglas, $mensajes, $atributos));
 
         // Register model observers
         Calificacion::observe(CalificacionObserver::class);

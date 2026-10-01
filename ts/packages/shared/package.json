@@ -1,0 +1,12 @@
+{
+  "name": "@zuraedu/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tipos y constantes del dominio compartidos entre la API (NestJS), la web (Next.js) y, más adelante, la app móvil.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}

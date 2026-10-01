@@ -1,0 +1,61 @@
+/**
+ * Roles y permisos de Spatie tal como existen hoy en la base (RolesSeeder).
+ * La API TypeScript lee las MISMAS tablas (roles, permissions, model_has_roles,
+ * role_has_permissions), así que estos nombres deben coincidir exactamente.
+ */
+export const ROLES = [
+  'Administrador',
+  'Director',
+  'Coordinador Académico',
+  'Docente',
+  'Secretaría',
+  'Personal Administrativo',
+  'Estudiante',
+  'Representante',
+  'Encargado de Área',
+  'Coordinador Primer Ciclo',
+  'Coordinador Segundo Ciclo',
+  'Secretaria Docente',
+  'Registrador Académico',
+  'Encargado de Registro Académico',
+  'Caja / Finanzas',
+  'Biblioteca',
+  'Recepción',
+  'Docente Académico',
+  'Docente Técnico',
+  'Docente Guía',
+  'super_admin',
+] as const;
+export type Rol = (typeof ROLES)[number];
+
+export const PERMISOS = [
+  'exportar-calificaciones',
+  'exportar-pagos',
+  'gestionar-asignaciones',
+  'gestionar-asignaturas',
+  'gestionar-biblioteca',
+  'gestionar-configuracion',
+  'gestionar-docentes',
+  'gestionar-estudiantes',
+  'gestionar-grupos',
+  'gestionar-indicadores',
+  'gestionar-matriculas',
+  'gestionar-pagos',
+  'gestionar-periodos',
+  'gestionar-school-years',
+  'gestionar-usuarios',
+  'imprimir-boletines',
+  'ingresar-asistencia',
+  'ingresar-calificaciones',
+  'supervisar-registros',
+  'ver-asistencia',
+  'ver-boletines',
+  'ver-calificaciones',
+  'ver-dashboard',
+  'ver-estadisticas',
+  'ver-estudiantes',
+  'ver-pagos',
+  'ver-reportes-institucionales',
+  'ver-servicios',
+] as const;
+export type Permiso = (typeof PERMISOS)[number];

@@ -1,0 +1,28 @@
+{
+  "name": "zuraedu-ts",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Esqueleto TypeScript de ZuraEdu (NestJS + Next.js) para la migración gradual (strangler) desde Laravel.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build:shared": "npm run build -w @zuraedu/shared",
+    "build": "npm run build:shared && npm run build -w @zuraedu/api && npm run build -w @zuraedu/web",
+    "dev:api": "npm run build:shared && npm run start:dev -w @zuraedu/api",
+    "dev:web": "npm run dev -w @zuraedu/web",
+    "db:types": "npm run db:types -w @zuraedu/api",
+    "typecheck": "npm run build:shared && npm run typecheck -w @zuraedu/api && npm run typecheck -w @zuraedu/web",
+    "test": "npm run build:shared && npm run test -w @zuraedu/api"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3"
+  },
+  "overrides": {
+    "typescript": "~5.9.3"
+  }
+}

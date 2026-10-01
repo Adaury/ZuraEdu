@@ -106,6 +106,13 @@ mutación de Laravel.
   (mismo orden de campos, `—` para nulos, fechas como `2012-05-01 00:00:00` porque Laravel castea a `date`).
   La pantalla de auditoría actual muestra juntos los cambios hechos desde PHP y desde TypeScript.
   `tenant_id` y `user_id` salen del token, nunca del cuerpo.
+- **Dos registros por edición, como Laravel.** Cada edición escribe, en este orden, `estudiante.actualizado`
+  (lo genera `EstudianteObserver::updated()`: `Estudiante actualizado: Apellidos, Nombres | Campos: nombres, estado, updated_at`)
+  y `estudiante.editado` (lo escribe el controlador). **Lección general de la migración:** los *observers*, eventos y
+  listeners de PHP **no se disparan** cuando la escritura la hace otro lenguaje; si no se reproducen a mano, las
+  pantallas e informes que dependen de ellos dejan de ver esos cambios. Antes de migrar la escritura de cada módulo hay
+  que inventariar sus observers (hoy: `Estudiante`, `Matricula`, `Calificacion`, `CalificacionAcademica`) y sus
+  `Event::dispatch` / listeners. Esta paridad se descubrió después del primer intento y la fija una prueba e2e.
 - **Atómica y sin carreras.** Todo ocurre en una transacción con la fila bloqueada (`for update`): se leen los
   valores, se calculan los cambios, se actualiza y se audita. Si algo falla no queda nada a medias, y dos ediciones
   simultáneas no se pisan (la cadena de auditoría "antes → después" queda coherente; hay pruebas e2e de ambas cosas).
@@ -160,6 +167,8 @@ así que el índice nuevo también le serviría (requiere una migración nueva d
 
 1. **Más escrituras**, con la misma plantilla (transacción + auditoría + `zod` estricto): resto de campos del estudiante,
    luego asistencia y calificaciones (estas respetando `periodos.cerrado`). Pagos y MINERD al final, con tests de paridad.
+   **Antes de cada módulo, inventariar sus observers/eventos/listeners de PHP** (ver "Escrituras y auditoría"): no se
+   disparan desde TypeScript y hay que reproducir sus efectos (auditoría, notificaciones, recálculos).
 2. **Conteo con filtros** (búsqueda por texto / estado): sin filtros ya es index-only (1,6 ms); con filtros el optimizador decide.
 3. **Redis**: `/health` solo comprueba la base; añadir cuando haya colas en TypeScript. Mover ahí la caché de autenticación
    si hay más de una instancia de la API.

@@ -37,3 +37,21 @@ export function cambiosAuditados(antes: EstudianteAuditable, despues: Estudiante
 export function descripcionEdicionEstudiante(id: number, cambios: string[]): string {
   return `Estudiante #${id}: ${cambios.join(' | ')}`;
 }
+
+/**
+ * Segundo registro que escribe Laravel en cada edición: lo genera EstudianteObserver::updated() (no el controlador).
+ * Una escritura desde TypeScript no dispara los observers de PHP, así que hay que reproducirlo a mano o las
+ * pantallas e informes que filtren por 'estudiante.actualizado' no verían estos cambios.
+ *
+ * `campos` son las columnas que cambiaron, en el orden de Laravel (el de las reglas del formulario), seguidas de
+ * `updated_at` (Eloquent la incluye en getChanges()). Los nombres/apellidos son los valores NUEVOS.
+ */
+export function descripcionObserverActualizado(apellidos: string, nombres: string, campos: string[]): string {
+  return `Estudiante actualizado: ${apellidos}, ${nombres} | Campos: ${campos.join(', ')}`;
+}
+
+/** Columnas modificadas (en orden de Laravel) + `updated_at`, tal como las lista getChanges(). */
+export function camposCambiadosComoLaravel(antes: EstudianteAuditable, despues: EstudianteAuditable): string[] {
+  const campos: string[] = ESTUDIANTE_CAMPOS_AUDITADOS.filter((c) => (antes[c] ?? '') !== (despues[c] ?? ''));
+  return campos.length ? [...campos, 'updated_at'] : [];
+}

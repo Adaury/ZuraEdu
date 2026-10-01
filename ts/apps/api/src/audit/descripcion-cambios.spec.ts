@@ -1,4 +1,10 @@
-import { cambiosAuditados, descripcionEdicionEstudiante, EstudianteAuditable } from './descripcion-cambios';
+import {
+  camposCambiadosComoLaravel,
+  cambiosAuditados,
+  descripcionEdicionEstudiante,
+  descripcionObserverActualizado,
+  EstudianteAuditable,
+} from './descripcion-cambios';
 
 const base: EstudianteAuditable = {
   cedula: '00100000001',
@@ -57,5 +63,33 @@ describe('descripcionEdicionEstudiante', () => {
     expect(descripcionEdicionEstudiante(12, ['cedula: — → 001', 'estado: activo → inactivo'])).toBe(
       'Estudiante #12: cedula: — → 001 | estado: activo → inactivo',
     );
+  });
+});
+
+describe('registro del observer (EstudianteObserver::updated de Laravel)', () => {
+  it('descripcionObserverActualizado: "Estudiante actualizado: Apellidos, Nombres | Campos: ..."', () => {
+    expect(descripcionObserverActualizado('Perez', 'Ana', ['estado', 'updated_at'])).toBe(
+      'Estudiante actualizado: Perez, Ana | Campos: estado, updated_at',
+    );
+  });
+
+  it('lista solo las columnas que cambiaron, en orden de Laravel, y siempre cierra con updated_at', () => {
+    const despues = { ...base, estado: 'egresado', nombres: 'Anita', cedula: '999' };
+    expect(camposCambiadosComoLaravel(base, despues)).toEqual(['cedula', 'nombres', 'estado', 'updated_at']);
+  });
+
+  it('sin cambios devuelve una lista vacía (Laravel no dispara el evento si el modelo no está sucio)', () => {
+    expect(camposCambiadosComoLaravel(base, { ...base })).toEqual([]);
+  });
+
+  it('null y cadena vacía no cuentan como cambio, igual que en la auditoría del controlador', () => {
+    expect(camposCambiadosComoLaravel({ ...base, cedula: null }, { ...base, cedula: '' })).toEqual([]);
+  });
+
+  it('el orden de campos coincide con el de cambiosAuditados', () => {
+    const despues = { ...base, estado: 'inactivo', apellidos: 'Gomez' };
+    const campos = camposCambiadosComoLaravel(base, despues).filter((c) => c !== 'updated_at');
+    const nombresEnDescripcion = cambiosAuditados(base, despues).map((c) => c.split(':')[0]);
+    expect(campos).toEqual(nombresEnDescripcion);
   });
 });

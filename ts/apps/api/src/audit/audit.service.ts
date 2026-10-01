@@ -14,6 +14,13 @@ export interface EntradaAuditoria {
   userAgent?: string | null;
 }
 
+/**
+ * Nombre de clase del modelo Estudiante tal como lo guarda Laravel en `activity_logs.modelo` (`Estudiante::class`).
+ * Una sola constante: este literal lleva barras invertidas y escribirlo mal (`'App\Models'` sin duplicarlas
+ * da `AppModels...` sin que el compilador avise) dejaría registros que la pantalla de auditoría no reconoce.
+ */
+export const MODELO_ESTUDIANTE = 'App\\Models\\Estudiante';
+
 /** Fecha/hora UTC en el formato de Laravel ('Y-m-d H:i:s'; config/app.php timezone = UTC). */
 export function ahoraUtc(): string {
   return new Date().toISOString().slice(0, 19).replace('T', ' ');

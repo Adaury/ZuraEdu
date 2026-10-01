@@ -1,7 +1,13 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { EstudianteDto, EstudiantesPage } from '@zuraedu/shared';
-import { AuditService, ahoraUtc } from '../audit/audit.service';
-import { cambiosAuditados, descripcionEdicionEstudiante, EstudianteAuditable } from '../audit/descripcion-cambios';
+import { AuditService, ahoraUtc, MODELO_ESTUDIANTE } from '../audit/audit.service';
+import {
+  camposCambiadosComoLaravel,
+  cambiosAuditados,
+  descripcionEdicionEstudiante,
+  descripcionObserverActualizado,
+  EstudianteAuditable,
+} from '../audit/descripcion-cambios';
 import { Database, DB } from '../db/db.module';
 import type { EstudiantesQuery } from './estudiantes.query';
 import { consultaPagina, consultaTotal } from './estudiantes.queries';
@@ -119,9 +125,20 @@ export class EstudiantesService {
           .where('estudiantes.id', '=', id)
           .executeTakeFirstOrThrow();
 
+        // Laravel escribe DOS registros por edición y en este orden: primero el que genera
+        // EstudianteObserver::updated() (se dispara dentro de update()) y después el del controlador. Los observers de
+        // PHP no se ejecutan en una escritura desde TypeScript, así que se reproducen a mano.
+        await this.auditoria.registrar(trx, {
+          accion: 'estudiante.actualizado',
+          modelo: MODELO_ESTUDIANTE,
+          modeloId: id,
+          descripcion: descripcionObserverActualizado(despues.apellidos!, despues.nombres!, camposCambiadosComoLaravel(antes, despues)),
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        });
         await this.auditoria.registrar(trx, {
           accion: 'estudiante.editado',
-          modelo: 'App\\Models\\Estudiante',
+          modelo: MODELO_ESTUDIANTE,
           modeloId: id,
           descripcion: descripcionEdicionEstudiante(id, cambios),
           ip: meta.ip,

@@ -41,12 +41,13 @@ describe('API · editar estudiante (e2e, MySQL real)', () => {
     return r[0];
   };
 
-  const auditoria = async (modeloId: number) => {
+  /** Registros de auditoría del estudiante, en orden de escritura. `accion` filtra por tipo. */
+  const auditoria = async (modeloId: number, accion?: string) => {
     const [r] = await fx.pool.query<RowDataPacket[]>(
       "select * from activity_logs where modelo = 'App\\\\Models\\\\Estudiante' and modelo_id = ? order by id",
       [modeloId],
     );
-    return r;
+    return accion ? r.filter((l) => l.accion === accion) : r;
   };
 
   beforeAll(async () => {
@@ -81,7 +82,7 @@ describe('API · editar estudiante (e2e, MySQL real)', () => {
       expect(res.body).toMatchObject({ id: a1, estado: 'inactivo', nombres: 'Ana', apellidos: 'Perez', cedula: CEDULA_A1 });
       expect((await fila(a1)).estado).toBe('inactivo');
 
-      const [log, ...resto] = await auditoria(a1);
+      const [log, ...resto] = await auditoria(a1, 'estudiante.editado');
       expect(resto).toHaveLength(0);
       expect(log).toMatchObject({
         tenant_id: colegioA.id,
@@ -95,11 +96,35 @@ describe('API · editar estudiante (e2e, MySQL real)', () => {
       expect(log.created_at).toBeTruthy();
     });
 
+    it('escribe los DOS registros que genera Laravel (el del observer primero) con su formato', async () => {
+      const id = await fx.crearEstudiante(colegioA.id, 'Marta', 'Diaz', 30, '002');
+      await patch(id, { estado: 'inactivo', nombres: 'Martina' }, adminA.bearer).expect(200);
+
+      const logs = await auditoria(id);
+      expect(logs.map((l) => l.accion)).toEqual(['estudiante.actualizado', 'estudiante.editado']);
+      // EstudianteObserver::updated(): valores NUEVOS de apellidos/nombres y las columnas cambiadas + updated_at
+      expect(logs[0].descripcion).toBe('Estudiante actualizado: Diaz, Martina | Campos: nombres, estado, updated_at');
+      expect(logs[1].descripcion).toBe(`Estudiante #${id}: nombres: Marta → Martina | estado: activo → inactivo`);
+      for (const l of logs) {
+        expect(l).toMatchObject({ tenant_id: colegioA.id, user_id: adminA.userId, modelo_id: id });
+        // Se arma con join para no depender de escribir barras invertidas a mano (Estudiante::class de PHP).
+        expect(l.modelo).toBe(['App', 'Models', 'Estudiante'].join('\\'));
+      }
+    });
+
+    it('el registro del observer lista solo la columna que cambió más updated_at', async () => {
+      const id = await fx.crearEstudiante(colegioA.id, 'Solo', 'Estado', 31);
+      await patch(id, { estado: 'egresado' }, adminA.bearer).expect(200);
+      expect((await auditoria(id, 'estudiante.actualizado'))[0].descripcion).toBe(
+        'Estudiante actualizado: Estado, Solo | Campos: estado, updated_at',
+      );
+    });
+
     it('varios campos: orden fijo de la descripción, "—" para nulos y fecha como la escribe Laravel', async () => {
       const id = await fx.crearEstudiante(colegioA.id, 'Marta', 'Diaz', 10); // sin cédula ni fecha de nacimiento
       await patch(id, { estado: 'egresado', nombres: 'Martina', cedula: '00100000099', fechaNacimiento: '2012-05-01' }, adminA.bearer).expect(200);
 
-      const [log] = await auditoria(id);
+      const [log] = await auditoria(id, 'estudiante.editado');
       expect(log.descripcion).toBe(
         `Estudiante #${id}: cedula: — → 00100000099 | nombres: Marta → Martina | fecha_nacimiento: — → 2012-05-01 00:00:00 | estado: activo → egresado`,
       );
@@ -110,7 +135,7 @@ describe('API · editar estudiante (e2e, MySQL real)', () => {
       await patch(id, { cedula: null }, adminA.bearer).expect(200);
 
       expect((await fila(id)).cedula).toBeNull();
-      expect((await auditoria(id))[0].descripcion).toBe(`Estudiante #${id}: cedula: 00100000077 → —`);
+      expect((await auditoria(id, 'estudiante.editado'))[0].descripcion).toBe(`Estudiante #${id}: cedula: 00100000077 → —`);
     });
 
     it('si no cambia ningún campo responde 200 y NO escribe ni audita (igual que Laravel)', async () => {
@@ -240,7 +265,8 @@ describe('API · editar estudiante (e2e, MySQL real)', () => {
       const f = await fila(id);
       expect(f.nombres).toBe('NombreUno');
       expect(f.apellidos).toBe('ApellidoDos'); // ninguna edición pisó a la otra
-      expect(await auditoria(id)).toHaveLength(2);
+      expect(await auditoria(id, 'estudiante.editado')).toHaveLength(2);
+      expect(await auditoria(id, 'estudiante.actualizado')).toHaveLength(2); // y el del observer, uno por edición
     });
 
     it('dos ediciones simultáneas del MISMO campo dejan una cadena de auditoría coherente (sin "antes" repetido)', async () => {
@@ -250,7 +276,7 @@ describe('API · editar estudiante (e2e, MySQL real)', () => {
         patch(id, { estado: 'egresado' }, adminA.bearer).expect(200),
       ]);
 
-      const [primero, segundo] = (await auditoria(id)).map((l) => l.descripcion as string);
+      const [primero, segundo] = (await auditoria(id, 'estudiante.editado')).map((l) => l.descripcion as string);
       const final = (await fila(id)).estado as string;
 
       // Sin bloqueo, ambos registros dirían "activo → ..." y uno perdería su "antes" real.

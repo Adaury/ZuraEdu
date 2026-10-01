@@ -92,6 +92,29 @@ Usar `olvidarMejorEsfuerzo` DESPUÉS de confirmar la transacción: la escritura 
 `EstudianteController` **no toca ninguna caché** (0 llamadas), así que crear/editar/borrar estudiantes desde TypeScript queda
 en paridad exacta con PHP en este punto.
 
+## Asistencia del docente (inventario previo a migrarla — 2026-10-01)
+
+Endpoints: `PortalDocenteController::guardarAsistencia` (lote, `POST /portal/docente/asignacion/{asignacion}/asistencia`) y
+`asistenciaRapidaGuardar` (uno a uno, `POST /portal/docente/asistencia-rapida/guardar`). Un `upsert` por
+`(matricula_id, asignacion_id, fecha)`, y además:
+
+| Efecto | Dónde | Notas para reproducirlo en TypeScript |
+|---|---|---|
+| Aviso de ausencia al representante | `notificarAusencia()` si el estado es `ausente` | Notificación in-app (`Notificacion::enviar`, respeta preferencias y cola `notifications`) **y WhatsApp** (`WhatsAppService::sendAbsence`) por cada representante. |
+| Alerta de asistencia crítica | `verificarAlertasAsistencia()` (solo en el lote) | Con ≥5 registros y 70 % ≤ asistencia < 75 %: `AlertaSistema::firstOrCreate` + notificación a los representantes. Cuenta como presente `presente`, `tarde` y `excusa`. |
+| Evento Reverb | `AsistenciaRegistrada` (`ShouldBroadcastNow`, canal privado `docente.{user_id}`) | Solo en el lote, dentro de `try/catch` que lo traga. |
+| Auditoría | **ninguna** | `ActivityLog` solo existe al justificar (`justificarAsistencia`). Cambiar presente→ausente no deja rastro. |
+| Cachés | ninguna | — |
+
+Hallazgo corregido en Laravel (no es una diferencia deliberada): los `matricula_id` venían del navegador y **no se comprobaba que
+pertenecieran al grupo de la asignación**; un docente podía marcar a cualquier estudiante del colegio y disparar el aviso
+por WhatsApp a su representante. Ahora ambos endpoints lo verifican contra la BD (`AsistenciaDocenteGrupoTest`).
+**La versión TypeScript debe hacer la misma comprobación** (relación real matrícula→grupo→asignación→docente, no solo el ID).
+
+**Por qué no se migra todavía**: reproducir los avisos exige WhatsApp, notificaciones con cola y Reverb desde TypeScript, y
+nada de eso existe aún en la API (solo Redis). Migrar solo el `upsert` dejaría a los padres sin aviso de ausencia, que es
+una regresión visible. Orden sugerido: (1) cola/notificaciones en TS, (2) Reverb, (3) esta escritura.
+
 ## Diferencias conocidas y deliberadas (estudiantes)
 
 | Tema | Laravel | TypeScript | Motivo |

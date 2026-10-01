@@ -221,6 +221,19 @@ class PortalDocenteController extends Controller
             'estados.*'            => 'required|in:presente,ausente,tarde,excusa,retiro',
         ]);
 
+        // Las matrículas llegan del navegador: se comprueba contra la BD que TODAS pertenezcan al
+        // grupo de esta asignación (antes un docente podía marcar —y disparar el aviso de ausencia
+        // por WhatsApp al representante de— cualquier matrícula del colegio). Se rechaza el lote
+        // completo antes de escribir nada.
+        $idsPedidos = array_map('intval', array_keys($request->estados));
+        $idsDelGrupo = Matricula::where('grupo_id', $asignacion->grupo_id)
+            ->whereIn('id', $idsPedidos)->pluck('id')->all();
+        if (count(array_diff($idsPedidos, $idsDelGrupo)) > 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'estados' => 'Hay estudiantes que no pertenecen al grupo de esta asignación.',
+            ]);
+        }
+
         $schoolYear = SchoolYear::actual();
 
         foreach ($request->estados as $matriculaId => $estado) {
@@ -4885,6 +4898,13 @@ class PortalDocenteController extends Controller
 
         if ($asignacion->docente_id !== $docente->id) {
             return response()->json(['error' => 'Acceso denegado'], 403);
+        }
+
+        // La matrícula llega del navegador: debe ser realmente del grupo de la asignación.
+        $perteneceAlGrupo = Matricula::where('id', $request->matricula_id)
+            ->where('grupo_id', $asignacion->grupo_id)->exists();
+        if (! $perteneceAlGrupo) {
+            return response()->json(['error' => 'El estudiante no pertenece al grupo de esta asignación'], 422);
         }
 
         $asistencia = Asistencia::updateOrCreate(

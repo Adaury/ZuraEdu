@@ -233,3 +233,28 @@ así que el índice nuevo también le serviría (requiere una migración nueva d
 5. **Autenticación de la web** (hoy la web solo muestra el estado de la API).
 6. **Siguiente módulo de lectura** — propuesta: portales de solo lectura (padre/estudiante).
 7. **Proxy de enrutamiento** (Nginx) para mandar cada ruta a Laravel o a TypeScript durante la transición.
+
+## Medición de lecturas de Laravel (2026-10-01) — qué migrar y qué no
+
+Perfilado en proceso (PHP 8.3 con OPcache, `DB_DATABASE=sge_bench`, 4.950 estudiantes, 49,5 k notas, 49,5 k pagos, 742 k
+asistencias, `CACHE_STORE=array` = siempre en frío), segunda petición de cada ruta:
+
+| Grupo | Rutas | Tiempo | Consultas |
+|---|---|---|---|
+| Admin (18 de 21) | estudiantes, boletines, calificaciones, asistencia, carnet, gamificación, horarios, becas, nómina, disciplina… | 27–172 ms | 10–21 |
+| Portal estudiante | dashboard, boletín, asistencia, horario, comunicados, observaciones | 14–54 ms | 9–31 |
+| Portal padre | dashboard, hijo, asistencia, horario, observaciones | 16–56 ms | 16–37 |
+| Portal docente | dashboard | 146 ms | 12 |
+| **Más lentas** | `admin/dashboard` 501 ms · `admin/pagos` 483 ms · `admin/integraciones/sigerd/validar` 559 ms | | |
+
+- `admin/dashboard`: 413 ms son SQL (agregados sobre notas), pero en uso real va **cacheado 180–300 s**; el 501 ms es solo la
+  primera carga.
+- `admin/pagos`: 3 agregados sobre 49,5 k pagos (188 + 132 + 88 ms). Probé un índice cubriente
+  `(matricula_id, estado, monto, fecha_pago)` y **no mejora** (184 → 190 ms): el coste está en el semi-join con `matriculas`.
+  Reescribirlo en TypeScript no lo aceleraría, porque el tiempo es de MySQL.
+- `sigerd/validar`: 93 ms de SQL y ~470 ms de PHP (validaciones fila a fila).
+
+**Conclusión:** ninguna ruta de lectura es lenta por culpa de PHP. Las tres lentas están dominadas por SQL (no mejora
+con otro lenguaje) o por una validación puntual. **No hay lectura que justifique migrar por rendimiento.** Si se migra
+una lectura, que sea por otra razón (p. ej. para que la web nueva consuma un contrato OpenAPI), no por velocidad.
+Volver a medir si un colegio supera ~50.000 estudiantes o con concurrencia real (esta medición es de una sola petición).

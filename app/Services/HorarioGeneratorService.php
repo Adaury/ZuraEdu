@@ -138,11 +138,11 @@ class HorarioGeneratorService
         ?int   $existingHorarioId = null
     ): array {
         // ── 0. Inicializar modo debug y límite de iteraciones ─────────────────
-        $this->maxIter   = (int) env('HORARIO_MAX_ITER', 150_000);
-        $this->debugMode = (bool) env('HORARIO_DEBUG', false);
+        $this->maxIter   = (int) config('horarios.max_iter', 150_000);
+        $this->debugMode = (bool) config('horarios.debug', false);
         $this->debugLog  = [];
 
-        $this->maxTiempoSegundos = (float) env('HORARIO_MAX_TIME', 30);
+        $this->maxTiempoSegundos = (float) config('horarios.max_time', 30);
         $this->deadline          = microtime(true) + $this->maxTiempoSegundos;
 
         $this->debug('=== INICIO GENERACIÓN ===', [

@@ -18,6 +18,10 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    // Nombre de la plataforma (marca ZuraEdu) para páginas públicas sin tenant, p. ej. galería.
+    // Antes se leía con env() directo en la vista, que con config:cache devuelve null.
+    'product_name' => env('APP_PRODUCT_NAME', env('APP_NAME', 'SGE')),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

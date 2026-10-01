@@ -15,9 +15,11 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     {
         parent::boot();
 
-        $adminEmail = env('HORIZON_ALLOWED_EMAILS');
+        // config() y no env(): con `config:cache` (deploy.sh corre `artisan optimize`) env()
+        // fuera de config/ devuelve null y los avisos de Horizon nunca se enrutaban.
+        $adminEmail = array_values(config('horizon.allowed_emails', []))[0] ?? null;
         if ($adminEmail) {
-            Horizon::routeMailNotificationsTo(explode(',', $adminEmail)[0]);
+            Horizon::routeMailNotificationsTo(trim($adminEmail));
         }
     }
 

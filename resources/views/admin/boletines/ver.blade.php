@@ -452,7 +452,7 @@
                 <div class="minerd-school-name">
                     {{ ($boletinConfig && $boletinConfig->nombre_institucion)
                         ? $boletinConfig->nombre_institucion
-                        : config('app.school_name', env('SCHOOL_NAME', 'Politécnico Salesiano')) }}
+                        : config('tenant.nombre', config('services.school.name')) }}
                 </div>
                 @if($boletinConfig && $boletinConfig->nivel_educativo)
                     <div class="minerd-school-sub">{{ $boletinConfig->nivel_educativo }}</div>
@@ -1063,7 +1063,7 @@
     {{-- ── FOOTER ───────────────────────────────────────────────────────── --}}
     <div class="boletin-footer">
         Generado el {{ now()->format('d/m/Y \a \l\a\s H:i') }}
-        &nbsp;·&nbsp; {{ env('SCHOOL_NAME', 'Politécnico Salesiano Arquides Calderón') }}
+        &nbsp;·&nbsp; {{ $boletinConfig?->nombre_institucion ?: config('tenant.nombre', config('services.school.name')) }}
         @if($boletinConfig && $boletinConfig->pie_pagina)
             &nbsp;·&nbsp; {{ $boletinConfig->pie_pagina }}
         @endif

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galería — {{ $nombre ?? env('APP_PRODUCT_NAME', config('app.name')) }}</title>
+    <title>Galería — {{ $nombre ?? config('app.product_name') }}</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link href="/vendor/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet">
     <style>
@@ -126,7 +126,7 @@
             @else
                 <div class="nav-logo-icon" style="background:{{ $colorPrimario ?? '#1e3a8a' }};"><i class="bi bi-mortarboard-fill"></i></div>
             @endif
-            <span class="nav-logo-name">{{ $nombre ?? env('APP_PRODUCT_NAME', 'SGE') }}</span>
+            <span class="nav-logo-name">{{ $nombre ?? config('app.product_name') }}</span>
         </a>
         <a href="{{ route('sitio.show') }}" class="nav-back">
             <i class="bi bi-arrow-left"></i>Volver al inicio
@@ -201,7 +201,7 @@
 
 {{-- FOOTER --}}
 <div class="footer-mini">
-    <p>© {{ date('Y') }} {{ $nombre ?? env('APP_PRODUCT_NAME', config('app.name')) }} &mdash; <a href="/">Volver al inicio</a></p>
+    <p>© {{ date('Y') }} {{ $nombre ?? config('app.product_name') }} &mdash; <a href="/">Volver al inicio</a></p>
 </div>
 
 <script>
@@ -223,7 +223,7 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 
-@include('partials.sitio_chat_widget', ['nombre' => $nombre ?? env('APP_PRODUCT_NAME', 'SGE')])
+@include('partials.sitio_chat_widget', ['nombre' => $nombre ?? config('app.product_name')])
 
 </body>
 </html>

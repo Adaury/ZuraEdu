@@ -88,7 +88,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:{{ $tamanoFuente }}
 <body>
 
 @php
-$inst         = $boletinConfig?->nombre_institucion ?: env('SCHOOL_NAME','Centro Educativo');
+$inst         = $boletinConfig?->nombre_institucion ?: config('tenant.nombre', config('services.school.name', 'Centro Educativo'));
 $codigoCe     = $boletinConfig?->codigo ?: '—';
 $nivel        = $boletinConfig?->nivel_educativo ?: 'Nivel Secundario';
 $directorFull = $boletinConfig ? $boletinConfig->nombre_director_completo : 'Director(a)';

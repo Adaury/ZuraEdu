@@ -16,7 +16,7 @@ class ZuraPlanificacionAI
         // la define sin default), así que si GEMINI_API_KEY no está en .env, config() devuelve null
         // -- no el fallback -- y asignarlo directo revienta con TypeError (propiedad tipada string)
         // antes de llegar al chequeo empty($this->apiKey) de llamarGemini(). Se normaliza a ''.
-        $this->apiKey = config('services.gemini.key', env('GEMINI_API_KEY', '')) ?? '';
+        $this->apiKey = config('services.gemini.key') ?? '';
     }
 
     // ── Generar contenido para un RA ────────────────────────────────────────

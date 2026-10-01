@@ -169,3 +169,42 @@ jobs:
           TEST_REVERB_APP_KEY: ci-key
           TEST_REVERB_APP_SECRET: ci-secret
         run: npm run test:e2e -w @zuraedu/api
+
+      # ── 3) Web: prueba de humo del flujo completo (Laravel para el login + API TypeScript + web, contra MySQL real) ──────────
+      - name: Preparar datos de la prueba de humo de la web
+        working-directory: ts
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/sge_e2e
+        run: |
+          HASH=$(php -r 'echo password_hash("SmokeWeb-2026", PASSWORD_BCRYPT);')
+          SMOKE_PASSWORD_HASH="$HASH" node apps/web/test/preparar-smoke.mjs >> "$GITHUB_ENV"
+
+      - name: Compilar la API y la web
+        working-directory: ts
+        run: |
+          npm run build -w @zuraedu/api
+          npm run build -w @zuraedu/web
+
+      - name: Prueba de humo de la web (login, listado, edición, CSRF, aislamiento, cierre de sesión)
+        working-directory: ts
+        env:
+          SMOKE_PASSWORD: SmokeWeb-2026
+        run: |
+          LOGS="$GITHUB_WORKSPACE/logs-humo"; mkdir -p "$LOGS"
+          # Laravel emite y revoca los tokens (login). Sin config:cache, con la base y la caché del job.
+          (cd "$GITHUB_WORKSPACE/public" && nohup php -S 127.0.0.1:8000 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php > "$LOGS/laravel.log" 2>&1 &)
+          # API: sin límite de peticiones ni caché de autenticación para que el cierre de sesión se note al instante.
+          (cd apps/api && RATE_LIMIT_PER_MINUTE=0 AUTH_CACHE_TTL_SECONDS=0 NODE_ENV=production DATABASE_URL=mysql://root:root@127.0.0.1:3306/sge_e2e API_PORT=3100 nohup node dist/main.js > "$LOGS/api.log" 2>&1 &)
+          (cd apps/web && API_URL=http://127.0.0.1:3100 LARAVEL_URL=http://127.0.0.1:8000 COOKIE_SECURE=false NODE_ENV=production nohup npx next start -p 3101 > "$LOGS/web.log" 2>&1 &)
+          for i in $(seq 1 60); do
+            a=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $SMOKE_HOST" http://127.0.0.1:3101/login)
+            b=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3100/health)
+            [ "$a" = 200 ] && [ "$b" = 200 ] && break
+            sleep 1
+          done
+          WEB_URL=http://127.0.0.1:3101 API_URL=http://127.0.0.1:3100 node apps/web/test/smoke.mjs
+
+      - name: Registros de los servicios (solo si algo falló)
+        if: failure()
+        run: |
+          for f in "$GITHUB_WORKSPACE"/logs-humo/*.log; do echo "===== $f"; tail -n 60 "$f" 2>/dev/null || true; done

@@ -1,15 +1,32 @@
+import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
+import { config } from '@/lib/config';
+import './estilos.css';
 
 export const metadata = {
   title: 'ZuraEdu',
-  description: 'Sistema de gestión escolar — esqueleto TypeScript',
+  description: 'Sistema de gestión escolar',
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const conSesion = (await cookies()).has(config.cookieSesion);
+
   return (
     <html lang="es">
-      <body style={{ fontFamily: 'system-ui, sans-serif', margin: 0, padding: '2rem', background: '#f8fafc', color: '#0f172a' }}>
-        {children}
+      <body>
+        <header className="barra">
+          <a className="marca" href={conSesion ? '/estudiantes' : '/login'}>
+            ZuraEdu
+          </a>
+          {conSesion && (
+            <form method="post" action="/sesion/salir">
+              <button type="submit" className="boton secundario">
+                Cerrar sesión
+              </button>
+            </form>
+          )}
+        </header>
+        <main className="contenido">{children}</main>
       </body>
     </html>
   );

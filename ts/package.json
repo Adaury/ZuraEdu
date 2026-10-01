@@ -17,7 +17,7 @@
     "dev:web": "npm run dev -w @zuraedu/web",
     "db:types": "npm run db:types -w @zuraedu/api",
     "typecheck": "npm run build:shared && npm run typecheck -w @zuraedu/api && npm run typecheck -w @zuraedu/web",
-    "test": "npm run build:shared && npm run test -w @zuraedu/api"
+    "test": "npm run build:shared && npm run test -w @zuraedu/api && npm run test -w @zuraedu/web"
   },
   "devDependencies": {
     "typescript": "~5.9.3"

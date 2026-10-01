@@ -13,7 +13,7 @@ los **mismos usuarios, roles y tokens**. Se migra un módulo a la vez y Laravel 
 ts/
 ├── packages/shared      Tipos y constantes del dominio (roles, permisos, estados de asistencia, DTOs)
 ├── apps/api             NestJS 11 + Kysely (MySQL) — API REST
-└── apps/web             Next.js 16 (App Router) — esqueleto que consume la API
+└── apps/web             Next.js 16 (App Router) — login, listado y edición de estudiantes (ver apps/web/README.md)
 ```
 
 ## Puesta en marcha
@@ -234,7 +234,7 @@ así que el índice nuevo también le serviría (requiere una migración nueva d
    (hoy ninguna lo necesita: estudiantes no toca cachés), (b) emitir eventos en tiempo real (Reverb) y (c) mover ahí la
    caché de autenticación si hay más de una instancia de la API.
 4. **Conteo con filtros** — MEDIDO, sin cambios (2026-10-01, `sge_bench`, 4.950 estudiantes): sin filtros 1,6 ms (index-only); con `estado` 20 ms; búsqueda por texto 16 ms; el hint del índice de listado no mejora el caso de `estado` (18 ms) porque esa columna no está en el índice. A esta escala no justifica un índice nuevo; volver a medir si un colegio supera ~50.000 estudiantes.
-5. **Autenticación de la web** (hoy la web solo muestra el estado de la API).
+5. **Web**: ya hay una rebanada funcional (login contra Laravel, listado con búsqueda y edición; [`apps/web/README.md`](apps/web/README.md)). Faltan crear/borrar, foto, matrículas, recuperar contraseña y CSP.
 6. **Siguiente módulo de lectura** — propuesta: portales de solo lectura (padre/estudiante).
 7. **Proxy de enrutamiento** (Nginx) para mandar cada ruta a Laravel o a TypeScript durante la transición.
 

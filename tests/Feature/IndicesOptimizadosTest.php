@@ -36,6 +36,23 @@ class IndicesOptimizadosTest extends TestCase
         }
     }
 
+    public function test_estudiantes_tiene_el_indice_del_listado_paginado_con_el_orden_correcto(): void
+    {
+        // Cubre filtro (tenant + borrado lógico) Y orden del listado: sin él MySQL hace filesort en cada página.
+        $indice = collect(Schema::getIndexes('estudiantes'))->firstWhere('name', 'est_tenant_listado_idx');
+
+        $this->assertNotNull($indice, 'Falta est_tenant_listado_idx en estudiantes');
+        $this->assertSame(['tenant_id', 'deleted_at', 'apellidos', 'nombres'], $indice['columns']);
+        $this->assertFalse($indice['unique']);
+    }
+
+    public function test_los_indices_unicos_de_estudiantes_que_protegen_la_integridad_no_se_tocan(): void
+    {
+        foreach (['est_tenant_cedula_unique', 'est_tenant_matricula_unique'] as $unico) {
+            $this->assertTrue(Schema::hasIndex('estudiantes', $unico), "{$unico} debe conservarse");
+        }
+    }
+
     public function test_los_indices_que_cubren_siguen_existiendo(): void
     {
         // Los que sirven como prefijo/cobertura y las claves únicas de negocio no se tocan.

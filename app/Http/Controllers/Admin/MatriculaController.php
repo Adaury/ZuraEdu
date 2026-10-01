@@ -161,6 +161,13 @@ class MatriculaController extends Controller
         $matricula = DB::transaction(function () use ($data) {
             $grupo = Grupo::where('id', $data['grupo_id'])->lockForUpdate()->firstOrFail();
 
+            // El grupo llega del navegador y es independiente del año: debe ser del año escolar de la matrícula.
+            if ((int) $grupo->school_year_id !== (int) $data['school_year_id']) {
+                throw ValidationException::withMessages([
+                    'grupo_id' => 'El grupo no pertenece al año escolar indicado.',
+                ]);
+            }
+
             $this->verificarCupoDisponible($grupo);
 
             $data['numero_orden'] = Matricula::where('grupo_id', $data['grupo_id'])->count() + 1;
@@ -317,6 +324,14 @@ class MatriculaController extends Controller
             // Bloquea el grupo para serializar frente a otras matrículas (individuales
             // o masivas) concurrentes al mismo grupo mientras dura este lote.
             $grupo = Grupo::where('id', $data['grupo_id'])->lockForUpdate()->firstOrFail();
+
+            // Las matrículas se crean en el año ACTIVO: el grupo debe ser de ese año.
+            if ((int) $grupo->school_year_id !== (int) $schoolYear->id) {
+                throw ValidationException::withMessages([
+                    'grupo_id' => 'El grupo no pertenece al año escolar activo.',
+                ]);
+            }
+
             $ocupados = Matricula::where('grupo_id', $data['grupo_id'])->where('estado', 'activa')->count();
 
             foreach ($data['estudiante_ids'] as $estId) {
@@ -429,6 +444,14 @@ class MatriculaController extends Controller
         ]);
 
         $grupoAnterior = $matricula->grupo_id;
+
+        // Cambiar de grupo no puede sacar la matrícula de su año escolar (el grupo llega del navegador).
+        $grupoNuevo = Grupo::findOrFail($data['grupo_id']);
+        if ((int) $grupoNuevo->school_year_id !== (int) $matricula->school_year_id) {
+            throw ValidationException::withMessages([
+                'grupo_id' => 'El grupo no pertenece al año escolar de la matrícula.',
+            ]);
+        }
 
         $matricula->update([
             'grupo_id'      => $data['grupo_id'],

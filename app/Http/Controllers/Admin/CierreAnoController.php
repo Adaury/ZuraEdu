@@ -348,11 +348,13 @@ class CierreAnoController extends Controller
         $yaMatriculados = Matricula::where('school_year_id', $anoNuevo->id)
             ->pluck('estudiante_id')->toArray();
 
+        $plan = app(\App\Services\CierreAno\TrasladoAutomaticoService::class)->planificar($anoBase, $anoNuevo);
+
         return view('admin.cierre_ano.trasladar', compact(
             'anoNuevo', 'anoBase',
             'promovidos', 'noPromovidos',
             'gruposNuevos', 'gruposPorGrado',
-            'siguienteGradoMap', 'yaMatriculados'
+            'siguienteGradoMap', 'yaMatriculados', 'plan'
         ));
     }
 
@@ -416,6 +418,41 @@ class CierreAnoController extends Controller
         if ($omitidos > 0) $msg .= " ({$omitidos} ya matriculados, omitidos.)";
 
         return redirect()->route('admin.cierre-ano.index')->with('success', $msg);
+    }
+
+    // ── Traslado automático (promovidos avanzan, no promovidos repiten) ───────
+    public function trasladarAutomatico(Request $request)
+    {
+        $this->verificarAcceso();
+
+        $request->validate([
+            'ano_base_id'  => 'required|integer|exists:school_years,id',
+            'ano_nuevo_id' => 'required|integer|exists:school_years,id|different:ano_base_id',
+        ]);
+
+        // `exists` y findOrFail pasan por el scope de tenant: no se puede apuntar a un año de otro colegio.
+        $base  = SchoolYear::findOrFail($request->ano_base_id);
+        $nuevo = SchoolYear::findOrFail($request->ano_nuevo_id);
+
+        if ($base->activo) {
+            return back()->with('error', 'El año de origen sigue activo: ejecuta primero el cierre de año.');
+        }
+
+        $plan = app(\App\Services\CierreAno\TrasladoAutomaticoService::class)->ejecutar($base, $nuevo);
+
+        $partes = ["{$plan['avanzan']} pasan al siguiente curso", "{$plan['repiten']} repiten el mismo curso"];
+        if ($plan['egresan'])         $partes[] = "{$plan['egresan']} egresan (último grado)";
+        if ($plan['ya_matriculados']) $partes[] = "{$plan['ya_matriculados']} ya estaban matriculados (omitidos)";
+        $msg = "Traslado a {$nuevo->nombre}: " . implode(' · ', $partes) . '.';
+
+        $avisos = [];
+        if ($plan['pendientes'])       $avisos[] = "{$plan['pendientes']} estudiante(s) sin decisión de promoción no se movieron.";
+        if ($plan['exceden_cupo'])     $avisos[] = "{$plan['exceden_cupo']} quedaron en grupos que superan la capacidad.";
+        if ($plan['sin_grupo'])        $avisos[] = count($plan['sin_grupo']) . ' sin grupo destino en el año nuevo.';
+
+        $redir = redirect()->route('admin.cierre-ano.index')->with('success', $msg);
+
+        return $avisos ? $redir->with('warning', implode(' ', $avisos)) : $redir;
     }
 
     // ── Acta de Promoción PDF por grupo ───────────────────────────────────

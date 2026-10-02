@@ -19,6 +19,7 @@ Route::prefix('cierre-ano')->name('cierre-ano.')
     // Wizard de traslado de estudiantes al nuevo año
     Route::get('/trasladar',  [CierreAnoController::class, 'trasladar'])->name('trasladar');
     Route::post('/trasladar', [CierreAnoController::class, 'ejecutarTraslado'])->name('ejecutar-traslado');
+    Route::post('/trasladar-automatico', [CierreAnoController::class, 'trasladarAutomatico'])->name('trasladar-automatico');
 
     // Acta de Promoción PDF por grupo
     Route::get('/{grupo}/acta-pdf', [CierreAnoController::class, 'actaPdf'])->name('acta-pdf');

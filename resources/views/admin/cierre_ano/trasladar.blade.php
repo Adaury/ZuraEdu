@@ -107,6 +107,44 @@
     ['label' => 'Traslado de Alumnos'],
 ]" />
 
+{{-- Traslado automático: promovidos avanzan, no promovidos repiten --}}
+<div class="section-card" style="border-color:#bfdbfe;">
+    <div class="section-header" style="background:#eff6ff;">
+        <i class="bi bi-magic text-primary"></i>
+        <strong style="font-size:.9rem;">Traslado automático</strong>
+        <span class="text-muted" style="font-size:.78rem;">Un solo clic: calcula el grupo de cada estudiante según su promoción.</span>
+    </div>
+    <div class="p-3">
+        <div class="row g-2 text-center mb-3">
+            <div class="col-6 col-md"><div class="fw-bold fs-4 text-success">{{ $plan['avanzan'] }}</div><div class="text-muted" style="font-size:.75rem;">pasan al siguiente curso</div></div>
+            <div class="col-6 col-md"><div class="fw-bold fs-4 text-warning">{{ $plan['repiten'] }}</div><div class="text-muted" style="font-size:.75rem;">repiten el mismo curso</div></div>
+            <div class="col-6 col-md"><div class="fw-bold fs-4 text-primary">{{ $plan['egresan'] }}</div><div class="text-muted" style="font-size:.75rem;">egresan (último grado)</div></div>
+            <div class="col-6 col-md"><div class="fw-bold fs-4 text-secondary">{{ $plan['ya_matriculados'] }}</div><div class="text-muted" style="font-size:.75rem;">ya matriculados</div></div>
+            <div class="col-12 col-md"><div class="fw-bold fs-4 {{ $plan['pendientes'] ? 'text-danger' : 'text-secondary' }}">{{ $plan['pendientes'] }}</div><div class="text-muted" style="font-size:.75rem;">sin decisión (no se mueven)</div></div>
+        </div>
+        @if($plan['exceden_cupo'] || $plan['sin_grupo'])
+        <div class="alert alert-warning py-2" style="font-size:.8rem;">
+            @if($plan['exceden_cupo'])<div>{{ $plan['exceden_cupo'] }} estudiante(s) quedarían en grupos que superan su capacidad.</div>@endif
+            @if($plan['sin_grupo'])<div>{{ count($plan['sin_grupo']) }} estudiante(s) no tienen grupo destino en {{ $anoNuevo->nombre }}.</div>@endif
+        </div>
+        @endif
+        @if(count($plan['traslados']))
+        <form method="POST" action="{{ route('admin.cierre-ano.trasladar-automatico') }}"
+              onsubmit="return confirm('Se matricularán {{ count($plan['traslados']) }} estudiante(s) en {{ $anoNuevo->nombre }}: {{ $plan['avanzan'] }} avanzan y {{ $plan['repiten'] }} repiten. ¿Continuar?')">
+            @csrf
+            <input type="hidden" name="ano_base_id"  value="{{ $anoBase->id }}">
+            <input type="hidden" name="ano_nuevo_id" value="{{ $anoNuevo->id }}">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-lightning-charge-fill me-1"></i>Trasladar automáticamente a {{ count($plan['traslados']) }} estudiante(s)</button>
+        </form>
+        @else
+        <div class="text-muted" style="font-size:.82rem;">No hay estudiantes pendientes de trasladar.</div>
+        @endif
+        <div class="text-muted mt-2" style="font-size:.74rem;">
+            Si prefieres decidir el grupo de cada estudiante, usa la lista de abajo (traslado manual).
+        </div>
+    </div>
+</div>
+
 {{-- Header --}}
 <div class="transfer-header">
     <div class="d-flex align-items-center gap-3 flex-wrap">

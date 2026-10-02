@@ -80,9 +80,21 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Caché de dependencias de Composer
+        uses: actions/cache@v6
+        with:
+          path: vendor
+          key: composer-carga-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-carga-${{ runner.os }}-
+
       - name: Dependencias y assets
         run: |
-          composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+          # GitHub a veces responde 504 al bajar un paquete: se reintenta en vez de fallar toda la prueba por eso.
+          for i in 1 2 3 4; do
+            composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev && break
+            echo "composer falló (intento $i); reintentando…"; sleep 15
+            [ "$i" = 4 ] && exit 1
+          done
           npm ci
           npm run build
 

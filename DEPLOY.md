@@ -309,6 +309,27 @@ location /app {
 
 ---
 
+### IP real del cliente y proxies de confianza (`TRUSTED_PROXIES`)
+
+`app/Http/Middleware/TrustProxies.php` ya **no** confía en cualquiera (`'*'`). Antes, un cliente mandaba `X-Forwarded-For: 1.2.3.4` y Laravel tomaba esa IP: se esquivaba el
+límite de intentos de login por IP y se falsificaba la IP de la auditoría (`ActivityLog`, `CalificacionAudit`, carnet). Se comprobó contra Nginx + FastCGI reales.
+
+- **Despliegue de este documento (Nginx + PHP-FPM):** no hay que hacer nada. Nginx entrega la IP real del cliente en `REMOTE_ADDR`, y la única llamada que debe usar
+  `X-Forwarded-For` es la de la web nueva (Next.js), que llega desde el mismo servidor (loopback, el valor por defecto de `TRUSTED_PROXIES`).
+- **Balanceador o CDN delante de Nginx (Cloudflare, ALB…):** define `TRUSTED_PROXIES=<rangos del balanceador>` y configura el módulo `realip` de Nginx. Si no, Laravel verá
+  la IP del balanceador para todos los usuarios y el límite por IP los juntará.
+- **Comprobar que funciona** (desde una máquina que NO sea el servidor; el límite de la API de login es 10 por minuto por IP):
+
+  ```bash
+  for i in $(seq 1 12); do
+    curl -s -o /dev/null -w "%{http_code} " -X POST https://tudominio/api/v1/auth/login       -H "Content-Type: application/json" -H "X-Forwarded-For: 10.99.0.$i"       -d '{"email":"nadie@example.com","password":"x"}'
+  done; echo
+  ```
+
+  **Correcto:** `401 401 401 401 401 401 401 401 401 401 429 429` (la IP real es una sola, así que se limita pese a las IP falsas).
+  **Incorrecto:** doce `401` (la aplicación se está creyendo la IP falsa). Se probó contra Nginx + FastCGI reales con y sin la corrección.
+- **No pongas `*`** en `TRUSTED_PROXIES`: vuelve a aceptar cualquier IP falsificada.
+
 ## 8. PHP-FPM y OPcache
 
 OPcache no viene activado por defecto en muchas instalaciones de PHP y no

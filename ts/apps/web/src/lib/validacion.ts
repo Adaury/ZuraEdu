@@ -153,8 +153,14 @@ export function leerCookie(cabecera: string | null, nombre: string): string | nu
   return null;
 }
 
-/** IP del cliente: la primera de `X-Forwarded-For` (la pone Nginx). Sin proxy no hay forma de conocerla y no se inventa. */
+/**
+ * IP del cliente según `X-Forwarded-For`: la ÚLTIMA entrada, que es la que añadió el proxy de confianza (Nginx). La primera la puede
+ * escribir el propio cliente (`X-Forwarded-For: 1.2.3.4`), así que usarla permitía esquivar el límite de login por IP y falsificar la
+ * auditoría. Nginx además sobrescribe la cabecera con `$remote_addr`, de modo que normalmente trae una sola. Sin proxy no hay forma de
+ * conocerla y no se inventa.
+ */
 export function ipDe(xForwardedFor: string | null): string | null {
-  const primera = xForwardedFor?.split(',')[0]?.trim();
-  return primera && /^[0-9a-fA-F:.]{3,45}$/.test(primera) ? primera : null;
+  const partes = xForwardedFor?.split(',') ?? [];
+  const ultima = partes[partes.length - 1]?.trim();
+  return ultima && /^[0-9a-fA-F:.]{3,45}$/.test(ultima) ? ultima : null;
 }

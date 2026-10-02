@@ -36,7 +36,8 @@ navegador ──► Next.js (esta app) ──► Laravel      POST /api/v1/auth/
 - Cabeceras: `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: same-origin`, sin `X-Powered-By`.
 - **El `Host` se reenvía a la API con `node:http`, no con `fetch`:** el `fetch` de Node ignora esa cabecera y la API decide el
   colegio por ella. Se reenvía también `X-Forwarded-For`: Laravel limita el login a 10 por minuto **por IP** y, sin la IP real del
-  usuario, todos compartirían el cupo del servidor web.
+  usuario, todos compartirían el cupo del servidor web. La web toma la **última** entrada de la cabecera (la que añade el proxy de confianza), nunca la primera, que la
+  puede escribir el cliente; Nginx además la sobrescribe con `$remote_addr`.
 
 ## Configuración (solo servidor; ninguna variable llega al navegador)
 

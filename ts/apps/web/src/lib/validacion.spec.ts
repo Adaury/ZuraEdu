@@ -160,9 +160,16 @@ describe('cookies', () => {
 });
 
 describe('ipDe', () => {
-  it('toma la primera IP de X-Forwarded-For', () => {
-    expect(ipDe('203.0.113.7, 10.0.0.1')).toBe('203.0.113.7');
+  it('toma la ÚLTIMA IP de X-Forwarded-For: la añade el proxy de confianza; la primera la puede escribir el cliente', () => {
+    expect(ipDe('203.0.113.7')).toBe('203.0.113.7');
+    expect(ipDe('1.2.3.4, 203.0.113.7')).toBe('203.0.113.7'); // 1.2.3.4 es una IP falsa mandada por el cliente
+    expect(ipDe('1.2.3.4, 5.6.7.8 ,  203.0.113.7  ')).toBe('203.0.113.7');
     expect(ipDe('2001:db8::1')).toBe('2001:db8::1');
+  });
+
+  it('si la última entrada no es una IP, no se cae a otra: devuelve null', () => {
+    expect(ipDe('203.0.113.7, <script>')).toBeNull();
+    expect(ipDe('203.0.113.7,')).toBeNull();
   });
 
   it.each([null, '', 'no-es-ip', '<script>', '1.2.3.4; drop', 'x'.repeat(60)])('descarta %p', (v) => {

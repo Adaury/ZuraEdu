@@ -33,15 +33,17 @@ Tres archivos, **probados de punta a punta con Nginx 1.22** (TLS, redirección a
   - Web: 600/min (ráfaga 200; una página trae decenas de archivos estáticos).
   - **Inicio de sesión** (`/nuevo/sesion/entrar`): 20/min (ráfaga 10). Medido: 30 intentos seguidos → 22 × `429`; el resto de la web y Laravel no se ven afectados.
 - **El `Host` se conserva** (`proxy_set_header Host $host`): la API decide el colegio por él y responde `403` si un token se usa en el dominio de otro colegio.
-- **`X-Forwarded-For` y `X-Forwarded-Proto`:** Laravel limita el login a 10/min **por IP** (y confía en esa cabecera: `TrustProxies` con `'*'`); la web la reenvía
-  para que cuente la IP real del usuario y no la del servidor web.
+- **IP real del cliente:** Nginx **sobrescribe** `X-Forwarded-For` con `$remote_addr` (no la añade a lo que mande el cliente). Laravel limita el login a 10/min **por IP**
+  y la web le reenvía la IP del usuario en esa cabecera; Laravel solo la respeta si la llamada viene de un proxy de confianza (`TRUSTED_PROXIES`, por defecto solo
+  loopback: la web Next llega desde el mismo servidor). Ver «Un ataque que se demostró y se corrigió» más abajo.
 
 ## Requisitos para que los límites no se puedan esquivar
 
 1. La API y la web escuchan **solo en `127.0.0.1`**: la API por `API_HOST` (por defecto), la web porque el script `start` lleva `-H 127.0.0.1` (**`next start` escucha por defecto en `0.0.0.0` y `::`:**
    se comprobó con `netstat`; arrancarlo a mano sin `-H` abre el puerto). Con `0.0.0.0` cualquiera que alcance el puerto se salta Nginx. Cierra también `3100` y `3101` en el firewall.
-2. **Laravel confía en `X-Forwarded-For` de cualquiera** (`app/Http/Middleware/TrustProxies.php`: `$proxies = '*'`). Si alguien llega a PHP sin pasar por
-   Nginx puede falsificar su IP y esquivar el límite de 10/min. Cierra el acceso directo a PHP-FPM y deja que solo Nginx lo alcance.
+2. **`TRUSTED_PROXIES` (Laravel).** Por defecto solo loopback, que es lo correcto con este despliegue. Si pones un balanceador o una CDN delante de Nginx, añade **sus**
+   rangos a `TRUSTED_PROXIES` y configura el módulo `realip` de Nginx; si no, Laravel verá la IP del balanceador para todos los usuarios y el límite por IP los juntará.
+   **No pongas `*`:** vuelve a aceptar cualquier IP falsificada.
 3. Con varias instancias de la API, configura Redis (`REDIS_HOST`…) para que el límite por usuario se comparta.
 
 ## Qué se probó y qué no
@@ -65,3 +67,21 @@ servidor de producción. Revisa que los `include` queden antes del `location /` 
 4. `WEB_URL=https://127.0.0.1:8443 SMOKE_BASE=/nuevo SMOKE_INSECURE=1 node apps/web/test/smoke.mjs`.
 
 En Git Bash de Windows, `WEB_BASE_PATH=/nuevo` se convierte en `C:/Program Files/Git/nuevo`; define `MSYS_NO_PATHCONV=1` (la web **rechaza** un prefijo inválido en vez de usarlo).
+
+## Un ataque que se demostró y se corrigió (IP falsificada con `X-Forwarded-For`)
+
+Con `TrustProxies` en `'*'` (Laravel confiaba en cualquiera) se reprodujo contra este mismo Nginx + FastCGI, desde una IP de red local:
+
+| Petición | Laravel veía como IP del cliente |
+|---|---|
+| sin cabecera | `192.168.0.8` (la real) |
+| con `X-Forwarded-For: 1.2.3.4` | **`1.2.3.4`** (falsificada) |
+
+Consecuencias: (1) el límite de 10 intentos de login por minuto **por IP** se esquivaba rotando una IP falsa en cada intento (11 logins fallidos por la web: ninguno
+limitado); (2) la IP que guardan `ActivityLog`, `CalificacionAudit` y el carnet se podía falsificar. **Cerrar el acceso directo a PHP-FPM no lo evitaba**: con FastCGI,
+Nginx pasa a PHP todas las cabeceras del cliente.
+
+Corrección (tres capas, todas probadas): `TrustProxies` solo confía en `TRUSTED_PROXIES` (loopback por defecto); Nginx **sobrescribe** `X-Forwarded-For` con `$remote_addr`
+(con «añadir» llegaba `falsa, real` y la web tomaba la primera); y la web toma la **última** entrada. Resultado medido con el mismo ataque: desde la IP de red con la cabecera
+falsa Laravel mantiene `192.168.0.8`, y los 11 logins con IP falsa rotando se limitan en el 11.º intento, igual que sin cabecera.
+

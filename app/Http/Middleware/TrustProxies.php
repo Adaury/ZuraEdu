@@ -8,11 +8,20 @@ use Illuminate\Http\Request;
 class TrustProxies extends Middleware
 {
     /**
-     * The trusted proxies for this application.
+     * Antes era `'*'` (confiar en cualquiera): un cliente podía mandar `X-Forwarded-For: <IP falsa>` y Laravel la tomaba como suya,
+     * esquivando el límite de login por IP y falsificando la IP de la auditoría. Ahora la lista sale de `config/proxies.php`
+     * (`TRUSTED_PROXIES`, por defecto solo loopback). Ver ese archivo para balanceadores y CDN.
+     *
+     * Se lee en `proxies()` y no en la propiedad porque `env()` fuera de `config/` devuelve null con `config:cache`.
      *
      * @var array<int, string>|string|null
      */
-    protected $proxies = '*';
+    protected $proxies = null;
+
+    protected function proxies()
+    {
+        return config('proxies.trusted', ['127.0.0.1', '::1']);
+    }
 
     /**
      * The headers that should be used to detect proxies.

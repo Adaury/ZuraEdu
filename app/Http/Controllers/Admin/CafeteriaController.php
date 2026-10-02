@@ -241,7 +241,7 @@ class CafeteriaController extends Controller
     {
         $historial = VentaCafeteria::with(['producto', 'creadoPor'])
             ->where('estudiante_id', $estudiante->id)
-            ->latest()
+            ->orderByDesc('id')   // por id: created_at tiene resolución de segundos y empata
             ->paginate(30);
 
         $saldo       = VentaCafeteria::saldoEstudiante($estudiante->id);

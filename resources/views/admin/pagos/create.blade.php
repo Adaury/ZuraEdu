@@ -23,6 +23,8 @@
 <div class="form-card">
     <form method="POST" action="{{ route('admin.pagos.store') }}">
         @csrf
+        {{-- Código de envío único: si el formulario se envía dos veces (doble clic, reintento del navegador), el servidor solo registra el primero. --}}
+        <input type="hidden" name="token_envio" value="{{ \Illuminate\Support\Str::uuid() }}">
 
         <div class="mb-3">
             <label class="form-label-custom">Estudiante / Matrícula</label>

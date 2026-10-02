@@ -150,6 +150,55 @@ class MatriculaGrupoAnioTest extends TestCase
         $this->assertLessThanOrEqual(1, Matricula::where('estudiante_id', $est->id)->count(), 'no debe haber duplicado');
     }
 
+    // ── matrícula masiva ────────────────────────────────────────────────────
+
+    /** Hallado con 4 lotes simultáneos: la numeración saltaba (21, 23, 25...) y llegaba a 30 con solo 28 matrículas. */
+    public function test_matricula_masiva_numera_la_lista_sin_huecos(): void
+    {
+        $e = $this->escenario();
+        $ids = Estudiante::factory()->count(3)->create()->pluck('id')->all();
+
+        $this->actingAs($e['admin'])->post(route('admin.matriculas.masiva'), [
+            'grupo_id' => $e['grupoActivo']->id, 'estudiante_ids' => $ids, 'fecha_matricula' => '2026-09-01',
+        ])->assertSessionHas('success');
+
+        $this->assertSame([1, 2, 3], Matricula::where('grupo_id', $e['grupoActivo']->id)->orderBy('numero_orden')->pluck('numero_orden')->all());
+
+        // Un segundo lote continúa la numeración sin huecos.
+        $mas = Estudiante::factory()->count(2)->create()->pluck('id')->all();
+        $this->actingAs($e['admin'])->post(route('admin.matriculas.masiva'), [
+            'grupo_id' => $e['grupoActivo']->id, 'estudiante_ids' => $mas, 'fecha_matricula' => '2026-09-01',
+        ]);
+        $this->assertSame([1, 2, 3, 4, 5], Matricula::where('grupo_id', $e['grupoActivo']->id)->orderBy('numero_orden')->pluck('numero_orden')->all());
+    }
+
+    /** El mismo estudiante enviado a OTRO grupo a la vez (no comparte bloqueo): antes un 500 para todo el lote. */
+    public function test_matricula_masiva_cuenta_como_omitido_al_estudiante_que_otro_envio_matriculo_a_la_vez(): void
+    {
+        $e = $this->escenario();
+        $a = Estudiante::factory()->create();
+        $b = Estudiante::factory()->create();
+
+        $hecho = false;
+        Matricula::creating(function (Matricula $m) use (&$hecho, $a) {
+            if (! $hecho && (int) $m->estudiante_id === $a->id) {
+                $hecho = true;
+                \DB::table('matriculas')->insert([
+                    'tenant_id' => app('tenant')->id, 'school_year_id' => $m->school_year_id, 'estudiante_id' => $a->id, 'grupo_id' => $m->grupo_id,
+                    'fecha_matricula' => '2026-09-01', 'numero_orden' => 99, 'estado' => 'activa', 'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+        });
+
+        $r = $this->actingAs($e['admin'])->post(route('admin.matriculas.masiva'), [
+            'grupo_id' => $e['grupoActivo']->id, 'estudiante_ids' => [$a->id, $b->id], 'fecha_matricula' => '2026-09-01',
+        ]);
+
+        $r->assertSessionHas('success', fn ($m) => str_contains($m, '1 matrícula(s) registrada(s)') && str_contains($m, '1 omitida(s)'));
+        $this->assertSame(1, Matricula::where('estudiante_id', $a->id)->count(), 'una sola matrícula para el estudiante repetido');
+        $this->assertSame(1, Matricula::where('estudiante_id', $b->id)->count(), 'el resto del lote sí se matriculó');
+    }
+
     public function test_reenviar_a_un_estudiante_ya_matriculado_da_validacion(): void
     {
         $e = $this->escenario();

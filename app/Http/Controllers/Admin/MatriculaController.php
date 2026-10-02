@@ -359,16 +359,25 @@ class MatriculaController extends Controller
 
                 if ($ocupados + $creados >= $grupo->capacidad) { $sinCupo++; continue; }
 
-                $numeroOrden = Matricula::where('grupo_id', $data['grupo_id'])->count() + $creados + 1;
+                // count() se evalúa en vivo DENTRO de la transacción y ya incluye las matrículas creadas antes en este mismo lote:
+                // antes se le sumaba además $creados y la numeración saltaba (21, 23, 25, 27...), llegando a números mayores que la capacidad.
+                $numeroOrden = Matricula::where('grupo_id', $data['grupo_id'])->count() + 1;
 
-                $matricula = Matricula::create([
-                    'school_year_id'  => $schoolYear->id,
-                    'estudiante_id'   => $estId,
-                    'grupo_id'        => $data['grupo_id'],
-                    'fecha_matricula' => $data['fecha_matricula'],
-                    'numero_orden'    => $numeroOrden,
-                    'estado'          => 'activa',
-                ]);
+                try {
+                    $matricula = Matricula::create([
+                        'school_year_id'  => $schoolYear->id,
+                        'estudiante_id'   => $estId,
+                        'grupo_id'        => $data['grupo_id'],
+                        'fecha_matricula' => $data['fecha_matricula'],
+                        'numero_orden'    => $numeroOrden,
+                        'estado'          => 'activa',
+                    ]);
+                } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+                    // Otro envío hacia OTRO grupo (no comparte bloqueo de grupo) matriculó a este estudiante entre el chequeo de arriba y
+                    // este INSERT: la unicidad (tenant, año, estudiante) lo frena. Se cuenta como omitido, no como error 500 del lote.
+                    $omitidos++;
+                    continue;
+                }
 
                 // Marcar inscripción como asignada si existe
                 Inscripcion::where('school_year_id', $schoolYear->id)

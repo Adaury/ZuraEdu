@@ -40,7 +40,7 @@ class CafeteriaApiController extends Controller
             ->where('tipo', 'venta')->sum('monto');
 
         $historial = VentaCafeteria::where('estudiante_id', $estudiante->id)
-            ->latest()
+            ->orderByDesc('id')   // por id: created_at tiene resolución de segundos y empata
             ->limit(50)
             ->get()
             ->map(fn($v) => [

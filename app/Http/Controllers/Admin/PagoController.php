@@ -257,11 +257,31 @@ class PagoController extends Controller
             'referencia'        => 'nullable|string|max:100',
             'numero_comprobante_fiscal' => 'nullable|string|max:20',
             'notas'             => 'nullable|string|max:500',
+            'token_envio'       => 'nullable|uuid',
         ]);
+
+        // Un doble clic enviaba el formulario dos veces y creaba dos pagos idénticos (con estado 'pagado', ingreso duplicado). El token
+        // lo genera el formulario y Cache::add es atómico: solo el primer envío lo toma. Se consume DESPUÉS de validar (un error de
+        // validación no quema el token: el usuario corrige y reenvía) y se libera si el INSERT falla. Sin token (otros clientes) todo igual que antes.
+        $token = $data['token_envio'] ?? null;
+        unset($data['token_envio']);
+        $clave = $token ? 't' . tenant_id() . ':pago-envio:' . $token : null;
+
+        if ($clave && ! \Illuminate\Support\Facades\Cache::add($clave, 1, 600)) {
+            return redirect()->route('admin.pagos.index')
+                             ->with('warning', 'Este pago ya se había registrado: se ignoró el envío repetido del formulario.');
+        }
 
         $data['registrado_por'] = auth()->id();
 
-        Pago::create($data);
+        try {
+            Pago::create($data);
+        } catch (\Throwable $e) {
+            if ($clave) {
+                \Illuminate\Support\Facades\Cache::forget($clave);
+            }
+            throw $e;
+        }
 
         return redirect()->route('admin.pagos.index')
                          ->with('success', 'Pago registrado correctamente.');

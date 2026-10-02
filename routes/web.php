@@ -117,6 +117,10 @@ Route::middleware(['auth', 'activo'])->group(function () {
     Route::delete('/perfil/foto',      [\App\Http\Controllers\ProfileController::class, 'deletePhoto'])->name('perfil.foto.delete');
     Route::post('/perfil/password',    [\App\Http\Controllers\ProfileController::class, 'changePassword'])->name('perfil.password');
     Route::post('/perfil/notificaciones', [\App\Http\Controllers\ProfileController::class, 'notificacionesUpdate'])->name('perfil.notificaciones');
+
+    // Calendario escolar → agregar a Google Calendar / descargar .ics (cualquier rol; el controlador verifica que el evento le corresponda)
+    Route::get('/calendario/evento/{evento}/ics',    [\App\Http\Controllers\CalendarioIcsController::class, 'ics'])->whereNumber('evento')->name('calendario.evento.ics');
+    Route::get('/calendario/evento/{evento}/google', [\App\Http\Controllers\CalendarioIcsController::class, 'google'])->whereNumber('evento')->name('calendario.evento.google');
 });
 
 Route::get('/change-password',  [AuthController::class, 'showChangePassword'])->name('password.change')->middleware('auth');

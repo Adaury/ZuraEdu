@@ -2041,8 +2041,7 @@ class PortalPadreController extends Controller
         $schoolYear = SchoolYear::actual();
 
         $cal = \App\Models\CalendarioAcademico::when($schoolYear, fn($q) => $q->delAnio($schoolYear->id))
-            ->where('activo', true)
-            ->where(fn($q) => $q->whereIn('aplica_a', $apliCa))
+            ->visiblesParaUsuario((int) auth()->id(), $apliCa)
             ->get()
             ->map(fn($e) => [
                 'id'     => 'cal_' . $e->id,
@@ -2053,6 +2052,8 @@ class PortalPadreController extends Controller
                 'color'  => $e->color ?? '#6b7280',
                 'desc'   => $e->descripcion,
                 'fuente' => 'calendario',
+                'google_url' => route('calendario.evento.google', $e->id),
+                'ics_url'    => route('calendario.evento.ics', $e->id),
             ]);
 
         $evs = \App\Models\Evento::activos()->get()->map(fn($e) => [

@@ -1,0 +1,94 @@
+<?php
+
+namespace App\Services\Calendario;
+
+use App\Jobs\NotificarEventoCalendarioJob;
+use App\Models\CalendarioAcademico;
+use App\Models\CalendarioDestinatario;
+use App\Models\User;
+use Illuminate\Support\Collection;
+
+/**
+ * Decide A QUIÉN se avisa de un evento del calendario y lo encola (mensajería interna + notificación + correo con .ics).
+ * Todo sale de `User`, que ya está aislado por tenant (BelongsToTenant): un ID de otro colegio recibido del navegador
+ * simplemente no se encuentra, así que nunca se avisa ni se da acceso a alguien de otro tenant.
+ */
+class CalendarioNotificador
+{
+    /** Grupos que el administrador puede marcar → roles de Spatie. 'personal' = todo el que no sea ninguno de los otros tres. */
+    public const GRUPOS = [
+        'padres'      => 'Padres / representantes',
+        'docentes'    => 'Docentes',
+        'estudiantes' => 'Estudiantes',
+        'personal'    => 'Personal administrativo y directivo',
+    ];
+
+    private const ROLES_GRUPO = [
+        'padres'      => ['Representante'],
+        'docentes'    => ['Docente'],
+        'estudiantes' => ['Estudiante'],
+    ];
+
+    /**
+     * @param  array<int,string>  $grupos    claves de self::GRUPOS
+     * @param  array<int,int|string>  $userIds  personas elegidas una a una
+     * @return Collection<int,User>
+     */
+    public function resolver(array $grupos, array $userIds, ?int $excluirUserId = null): Collection
+    {
+        $grupos  = array_values(array_intersect($grupos, array_keys(self::GRUPOS)));
+        $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds))));
+
+        $base = fn () => User::query()->where('activo', true)
+            ->when($excluirUserId, fn ($q) => $q->where('users.id', '!=', $excluirUserId));
+
+        $porId = collect();
+
+        foreach ($grupos as $g) {
+            if ($g === 'personal') {
+                $usuarios = $base()
+                    ->whereHas('roles')
+                    ->whereDoesntHave('roles', fn ($r) => $r->whereIn('name', ['Representante', 'Docente', 'Estudiante', 'SuperAdmin']))
+                    ->get();
+            } else {
+                $usuarios = $base()->role(self::ROLES_GRUPO[$g])->get();
+            }
+            $porId = $porId->union($usuarios->keyBy('id'));
+        }
+
+        if ($userIds) {
+            $porId = $porId->union($base()->whereIn('users.id', $userIds)->get()->keyBy('id'));
+        }
+
+        return $porId->values();
+    }
+
+    /**
+     * Registra los destinatarios y encola el envío. Devuelve cuántas personas se avisarán.
+     * $reenviar = true (al editar un evento) vuelve a avisar también a quienes ya habían recibido el aviso.
+     */
+    public function notificar(CalendarioAcademico $evento, array $grupos, array $userIds, bool $reenviar = false, bool $actualizacion = false): int
+    {
+        $usuarios = $this->resolver($grupos, $userIds, $evento->creado_por);
+        if ($usuarios->isEmpty()) {
+            return 0;
+        }
+
+        $pendientes = [];
+        foreach ($usuarios as $u) {
+            $fila = CalendarioDestinatario::firstOrCreate(['calendario_id' => $evento->id, 'user_id' => $u->id]);
+            if ($reenviar && $fila->notificado_at) {
+                $fila->update(['notificado_at' => null, 'correo_enviado_at' => null]);
+            }
+            if (! $fila->notificado_at) {
+                $pendientes[] = $u->id;
+            }
+        }
+
+        foreach (array_chunk($pendientes, 50) as $lote) {
+            NotificarEventoCalendarioJob::dispatch($evento->id, $lote, $actualizacion)->onQueue('notifications');
+        }
+
+        return count($pendientes);
+    }
+}

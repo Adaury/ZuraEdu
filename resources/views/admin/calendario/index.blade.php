@@ -135,6 +135,10 @@
                         </div>
                         @if(Auth::user()->hasAnyRole(['Administrador','Director','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']))
                         <div class="d-flex gap-1 flex-shrink-0">
+                            <a href="{{ route('calendario.evento.google', $evento) }}" target="_blank" rel="noopener"
+                               class="btn btn-sm btn-outline-primary" style="font-size:.7rem;padding:.2rem .5rem;" title="Agregar a Google Calendar">
+                                <i class="bi bi-google"></i>
+                            </a>
                             <a href="{{ route('admin.calendario.edit', $evento) }}"
                                class="btn btn-sm btn-outline-secondary" style="font-size:.7rem;padding:.2rem .5rem;">
                                 <i class="bi bi-pencil"></i>
@@ -218,6 +222,9 @@ document.addEventListener('DOMContentLoaded', function () {
             if (props.tipo) body += `<div class="mb-1"><span class="badge" style="background:${e.backgroundColor}22;color:${e.backgroundColor};font-size:.68rem;">${props.tipo}</span></div>`;
             if (e.start) body += `<div class="text-muted mb-1"><i class="bi bi-calendar3 me-1"></i>${e.start.toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'})}</div>`;
             if (props.descripcion) body += `<div class="mt-2 text-muted">${props.descripcion}</div>`;
+            if (props.google_url) body += `<div class="mt-3 d-flex gap-2 flex-wrap">
+                <a class="btn btn-sm btn-primary" target="_blank" rel="noopener" href="${props.google_url}"><i class="bi bi-google me-1"></i>Agregar a Google Calendar</a>
+                <a class="btn btn-sm btn-outline-secondary" href="${props.ics_url}"><i class="bi bi-download me-1"></i>.ics</a></div>`;
             document.getElementById('eventoModalBody').innerHTML = body;
 
             if (CAN_EDIT && props.id) {

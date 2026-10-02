@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\CalendarioAcademico;
 use App\Models\Periodo;
 use App\Models\SchoolYear;
+use App\Models\User;
+use App\Services\Calendario\CalendarioNotificador;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -66,6 +68,8 @@ class CalendarioController extends Controller
                     'id'          => $e->id,
                     'tipo'        => \App\Models\CalendarioAcademico::tiposLabels()[$e->tipo] ?? $e->tipo,
                     'descripcion' => $e->descripcion,
+                    'google_url'  => route('calendario.evento.google', $e),
+                    'ics_url'     => route('calendario.evento.ics', $e),
                 ],
             ]);
 
@@ -78,7 +82,10 @@ class CalendarioController extends Controller
         $periodos   = $this->getPeriodos($schoolYear);
         $tipos      = CalendarioAcademico::tiposLabels();
 
-        return view('admin.calendario.create', compact('schoolYear', 'periodos', 'tipos'));
+        return view('admin.calendario.create', array_merge(
+            compact('schoolYear', 'periodos', 'tipos'),
+            $this->datosNotificacion()
+        ));
     }
 
     public function store(Request $request)
@@ -93,6 +100,11 @@ class CalendarioController extends Controller
             'color'        => 'nullable|regex:/^#[0-9A-Fa-f]{6}$/',
             'aplica_a'     => 'required|in:todos,docentes,estudiantes,coordinadores,administrativos',
             'periodo_id'   => 'nullable|exists:periodos,id',
+            'notificar'            => 'nullable|boolean',
+            'notificar_grupos'     => 'nullable|array',
+            'notificar_grupos.*'   => 'in:' . implode(',', array_keys(CalendarioNotificador::GRUPOS)),
+            'notificar_usuarios'   => 'nullable|array|max:500',
+            'notificar_usuarios.*' => 'integer|exists:users,id',
         ]);
 
         $schoolYear = SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
@@ -100,10 +112,12 @@ class CalendarioController extends Controller
         $data['creado_por']     = Auth::id();
         $data['activo']         = true;
 
-        CalendarioAcademico::create($data);
+        $aviso  = $this->sacarAviso($data);
+        $evento = CalendarioAcademico::create($data);
 
-        return redirect()->route('admin.calendario.index')
-            ->with('success', 'Evento agregado al calendario.');
+        $msg = 'Evento agregado al calendario.' . $this->avisar($evento, $aviso, false);
+
+        return redirect()->route('admin.calendario.index')->with('success', $msg);
     }
 
     public function edit(CalendarioAcademico $evento)
@@ -112,7 +126,11 @@ class CalendarioController extends Controller
         $periodos   = $this->getPeriodos($schoolYear);
         $tipos = CalendarioAcademico::tiposLabels();
 
-        return view('admin.calendario.edit', compact('evento', 'schoolYear', 'periodos', 'tipos'));
+        return view('admin.calendario.edit', array_merge(
+            compact('evento', 'schoolYear', 'periodos', 'tipos'),
+            $this->datosNotificacion(),
+            ['yaAvisados' => $evento->destinatarios()->pluck('user_id')->all()]
+        ));
     }
 
     public function update(Request $request, CalendarioAcademico $evento)
@@ -128,12 +146,63 @@ class CalendarioController extends Controller
             'aplica_a'     => 'required|in:todos,docentes,estudiantes,coordinadores,administrativos',
             'periodo_id'   => 'nullable|exists:periodos,id',
             'activo'       => 'boolean',
+            'notificar'            => 'nullable|boolean',
+            'notificar_grupos'     => 'nullable|array',
+            'notificar_grupos.*'   => 'in:' . implode(',', array_keys(CalendarioNotificador::GRUPOS)),
+            'notificar_usuarios'   => 'nullable|array|max:500',
+            'notificar_usuarios.*' => 'integer|exists:users,id',
         ]);
 
+        $aviso = $this->sacarAviso($data);
         $evento->update($data);
+        // Sube SEQUENCE del .ics: quien ya lo agregó a su Google Calendar lo ve actualizado al volver a abrirlo.
+        $evento->increment('ics_sequence');
 
-        return redirect()->route('admin.calendario.index')
-            ->with('success', 'Evento actualizado.');
+        $msg = 'Evento actualizado.' . $this->avisar($evento, $aviso, true);
+
+        return redirect()->route('admin.calendario.index')->with('success', $msg);
+    }
+
+    // ── Aviso a padres / docentes / personal ─────────────────────────────────
+
+    /** Lo que muestra el formulario: grupos marcables y las personas (docentes y personal) elegibles una a una. */
+    private function datosNotificacion(): array
+    {
+        $personas = User::where('activo', true)
+            ->whereHas('roles')
+            ->whereDoesntHave('roles', fn ($r) => $r->whereIn('name', ['Representante', 'Estudiante', 'SuperAdmin']))
+            ->where('id', '!=', Auth::id())
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        return ['gruposAviso' => CalendarioNotificador::GRUPOS, 'personasAviso' => $personas];
+    }
+
+    /** Saca del array validado los campos de aviso (no son columnas de la tabla). */
+    private function sacarAviso(array &$data): array
+    {
+        $aviso = [
+            'notificar' => (bool) ($data['notificar'] ?? false),
+            'grupos'    => $data['notificar_grupos'] ?? [],
+            'usuarios'  => $data['notificar_usuarios'] ?? [],
+        ];
+        unset($data['notificar'], $data['notificar_grupos'], $data['notificar_usuarios']);
+
+        return $aviso;
+    }
+
+    /** Encola el aviso y devuelve la frase para el mensaje de confirmación. */
+    private function avisar(CalendarioAcademico $evento, array $aviso, bool $actualizacion): string
+    {
+        if (! $aviso['notificar'] || (! $aviso['grupos'] && ! $aviso['usuarios'])) {
+            return '';
+        }
+
+        $n = app(CalendarioNotificador::class)->notificar($evento, $aviso['grupos'], $aviso['usuarios'], $actualizacion, $actualizacion);
+
+        return $n > 0
+            ? " Se avisará a {$n} persona(s) por mensajería, notificación y correo."
+            : ' No había a quién avisar con esa selección.';
     }
 
     public function destroy(CalendarioAcademico $evento)

@@ -75,3 +75,55 @@
     <textarea name="descripcion" class="form-control form-control-sm" rows="3"
               placeholder="Detalles adicionales del evento...">{{ old('descripcion', $evento->descripcion ?? '') }}</textarea>
 </div>
+
+{{-- ── Avisar a padres, docentes y personal ─────────────────────────────── --}}
+@php
+    $gruposMarcados   = (array) old('notificar_grupos', []);
+    $usuariosMarcados = array_map('intval', (array) old('notificar_usuarios', []));
+    $yaAvisados       = $yaAvisados ?? [];
+    $esEdicion        = isset($evento) && $evento->exists;
+@endphp
+<div class="border rounded-3 p-3 mb-3" style="background:#f8fafc;">
+    <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" name="notificar" id="chkNotificar" value="1"
+               {{ old('notificar') ? 'checked' : '' }}
+               onchange="document.getElementById('bloqueAviso').style.display = this.checked ? 'block' : 'none'">
+        <label class="form-check-label fw-semibold" for="chkNotificar" style="font-size:.85rem;">
+            {{ $esEdicion ? 'Avisar de esta actualización' : 'Avisar a las personas que elija' }}
+        </label>
+        <div class="text-muted" style="font-size:.78rem;">
+            Les llega a su bandeja de <strong>Mensajes</strong>, como notificación y por <strong>correo electrónico</strong> con el botón
+            «Agregar a Google Calendar» (cada persona decide si lo agrega).
+        </div>
+    </div>
+
+    <div id="bloqueAviso" style="display:{{ old('notificar') ? 'block' : 'none' }};">
+        <div class="mb-3">
+            <div class="fw-semibold mb-1" style="font-size:.82rem;">Grupos completos</div>
+            @foreach($gruposAviso as $clave => $etiqueta)
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" name="notificar_grupos[]" id="g_{{ $clave }}" value="{{ $clave }}"
+                       {{ in_array($clave, $gruposMarcados, true) ? 'checked' : '' }}>
+                <label class="form-check-label" for="g_{{ $clave }}" style="font-size:.82rem;">{{ $etiqueta }}</label>
+            </div>
+            @endforeach
+        </div>
+
+        <div class="mb-1">
+            <label class="fw-semibold mb-1" for="selPersonas" style="font-size:.82rem;">Docentes o personal en particular (opcional)</label>
+            <select name="notificar_usuarios[]" id="selPersonas" class="form-select form-select-sm" multiple size="8">
+                @foreach($personasAviso as $p)
+                <option value="{{ $p->id }}" {{ in_array($p->id, $usuariosMarcados, true) ? 'selected' : '' }}>
+                    {{ $p->name }}{{ in_array($p->id, $yaAvisados, true) ? ' — ya avisado' : '' }}
+                </option>
+                @endforeach
+            </select>
+            <div class="text-muted" style="font-size:.76rem;">Mantén Ctrl (o Cmd) para elegir varias personas.</div>
+        </div>
+        @if($esEdicion)
+        <div class="text-muted mt-2" style="font-size:.76rem;">
+            Al editar, se vuelve a avisar también a quienes ya habían recibido el aviso, indicando que el evento cambió.
+        </div>
+        @endif
+    </div>
+</div>

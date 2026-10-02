@@ -199,6 +199,13 @@ function selectDay(ds, d) {
                     <div class="cal-event-name">${e.titulo}${e.url ? ' <i class="bi bi-box-arrow-up-right" style="font-size:.65rem;color:#94a3b8;"></i>' : ''}</div>
                     ${e.desc ? `<div class="cal-event-desc">${e.desc}</div>` : ''}
                     <div class="cal-event-tipo">${tipoLabel(e.tipo)}</div>
+                    ${e.google_url ? `<div style="margin-top:.35rem;display:flex;gap:.4rem;flex-wrap:wrap;">
+                        <a href="${e.google_url}" target="_blank" rel="noopener" onclick="event.stopPropagation()"
+                           style="font-size:.72rem;font-weight:600;color:#1d4ed8;text-decoration:none;border:1px solid #bfdbfe;border-radius:6px;padding:.15rem .5rem;">
+                           <i class="bi bi-google"></i> Agregar a Google Calendar</a>
+                        <a href="${e.ics_url}" onclick="event.stopPropagation()"
+                           style="font-size:.72rem;color:#475569;text-decoration:none;border:1px solid #e2e8f0;border-radius:6px;padding:.15rem .5rem;">
+                           <i class="bi bi-download"></i> .ics</a></div>` : ''}
                 </div>
             </div>
         `).join('');

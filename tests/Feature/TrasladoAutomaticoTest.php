@@ -224,6 +224,70 @@ class TrasladoAutomaticoTest extends TestCase
         $this->assertSame(0, Matricula::where('school_year_id', $anioPropio->id)->count());
     }
 
+    // ── traslado MANUAL: mismas garantías que el automático ─────────────────
+
+    private function manual(array $traslados, ?User $u = null)
+    {
+        return $this->actingAs($u ?? $this->admin())->post(route('admin.cierre-ano.ejecutar-traslado'), [
+            'ano_nuevo_id' => $this->nuevo->id, 'traslados' => $traslados,
+        ]);
+    }
+
+    public function test_manual_continua_la_numeracion_de_lista_en_vez_de_volver_a_1(): void
+    {
+        $destino = $this->grupo($this->nuevo, 2, 'A');
+        $this->matricular($this->nuevo, 2, 'A', 'activa', 5);   // ya hay alguien con el 5
+        $a = $this->matricular($this->base, 1, 'A', 'promovida');
+        $b = $this->matricular($this->base, 1, 'A', 'promovida', 2);
+
+        $this->manual([
+            ['estudiante_id' => $a->estudiante_id, 'grupo_id' => $destino->id],
+            ['estudiante_id' => $b->estudiante_id, 'grupo_id' => $destino->id],
+        ])->assertRedirect(route('admin.cierre-ano.index'));
+
+        $ordenes = Matricula::where('school_year_id', $this->nuevo->id)->where('grupo_id', $destino->id)->orderBy('numero_orden')->pluck('numero_orden')->all();
+        $this->assertSame([5, 6, 7], $ordenes);
+    }
+
+    public function test_manual_no_acepta_un_grupo_que_no_es_del_ano_nuevo(): void
+    {
+        $m = $this->matricular($this->base, 1, 'A', 'promovida');
+        $grupoDelAnoViejo = $this->grupo($this->base, 2, 'A');
+
+        $this->manual([['estudiante_id' => $m->estudiante_id, 'grupo_id' => $grupoDelAnoViejo->id]])->assertSessionHas('warning');
+
+        $this->assertSame(0, Matricula::where('school_year_id', $this->nuevo->id)->count());
+        $this->assertSame(1, Matricula::where('estudiante_id', $m->estudiante_id)->count(), 'no se creó ninguna matrícula nueva');
+    }
+
+    public function test_manual_respeta_la_decision_pero_avisa_si_supera_la_capacidad(): void
+    {
+        $destino = $this->grupo($this->nuevo, 2, 'A');
+        $destino->update(['capacidad' => 1]);
+        $a = $this->matricular($this->base, 1, 'A', 'promovida');
+        $b = $this->matricular($this->base, 1, 'A', 'promovida', 2);
+
+        $this->manual([
+            ['estudiante_id' => $a->estudiante_id, 'grupo_id' => $destino->id],
+            ['estudiante_id' => $b->estudiante_id, 'grupo_id' => $destino->id],
+        ])->assertSessionHas('warning');
+
+        $this->assertSame(2, Matricula::where('school_year_id', $this->nuevo->id)->where('grupo_id', $destino->id)->count());
+    }
+
+    public function test_manual_enviado_dos_veces_no_choca_ni_duplica(): void
+    {
+        $destino = $this->grupo($this->nuevo, 2, 'A');
+        $a = $this->matricular($this->base, 1, 'A', 'promovida');
+        $admin = $this->admin();
+        $payload = [['estudiante_id' => $a->estudiante_id, 'grupo_id' => $destino->id]];
+
+        $this->manual($payload, $admin)->assertRedirect();
+        $this->manual($payload, $admin)->assertRedirect()->assertSessionHas('success');
+
+        $this->assertSame(1, Matricula::where('school_year_id', $this->nuevo->id)->count());
+    }
+
     public function test_la_pantalla_de_traslado_muestra_la_vista_previa(): void
     {
         $this->matricular($this->base, 1, 'A', 'promovida');

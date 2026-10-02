@@ -372,33 +372,48 @@ class CierreAnoController extends Controller
 
         $anoNuevo = SchoolYear::findOrFail($request->ano_nuevo_id);
 
-        $yaMatriculados = Matricula::where('school_year_id', $anoNuevo->id)
-            ->pluck('estudiante_id')->toArray();
-
-        $creados = $omitidos = 0;
+        $creados = $omitidos = $gruposInvalidos = $excedenCupo = 0;
         $hoy = now()->toDateString();
 
-        DB::transaction(function () use ($request, $anoNuevo, $yaMatriculados, $hoy, &$creados, &$omitidos) {
-            $ordenPorGrupo = [];
+        DB::transaction(function () use ($request, $anoNuevo, $hoy, &$creados, &$omitidos, &$gruposInvalidos, &$excedenCupo) {
+            // Bloquea los grupos destino (en orden consistente, evita deadlocks entre traslados concurrentes) para serializar
+            // el cálculo de numero_orden y el cupo, mismo patrón que MatriculaController::store().
+            $grupoIdsDestino = collect($request->traslados)->pluck('grupo_id')->map(fn ($i) => (int) $i)->unique()->sort()->values();
+            $grupos = Grupo::whereIn('id', $grupoIdsDestino)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
 
-            // Bloquea todos los grupos destino (en orden consistente, evita deadlocks
-            // entre traslados concurrentes) para serializar el cálculo de numero_orden,
-            // mismo patrón que MatriculaController::store().
-            $grupoIdsDestino = collect($request->traslados)->pluck('grupo_id')->unique()->sort()->values();
-            if ($grupoIdsDestino->isNotEmpty()) {
-                Grupo::whereIn('id', $grupoIdsDestino)->lockForUpdate()->get();
+            // Ya matriculados, leídos DESPUÉS del bloqueo: un segundo envío simultáneo ya los ve y no choca con la unicidad.
+            $yaMatriculados = Matricula::where('school_year_id', $anoNuevo->id)->pluck('estudiante_id')->flip();
+
+            // Estado real de cada grupo destino: cuántos hay (cupo) y último número de lista (la numeración continúa, no vuelve a 1).
+            $actual = Matricula::where('school_year_id', $anoNuevo->id)->whereIn('grupo_id', $grupoIdsDestino)
+                ->selectRaw('grupo_id, count(*) n, coalesce(max(numero_orden), 0) maximo')->groupBy('grupo_id')->get()->keyBy('grupo_id');
+            $cuenta = $orden = [];
+            foreach ($grupos as $g) {
+                $cuenta[$g->id] = (int) ($actual[$g->id]->n ?? 0);
+                $orden[$g->id]  = (int) ($actual[$g->id]->maximo ?? 0);
             }
 
             foreach ($request->traslados as $item) {
-                $estId  = (int) $item['estudiante_id'];
+                $estId   = (int) $item['estudiante_id'];
                 $grupoId = (int) $item['grupo_id'];
+                $grupo   = $grupos->get($grupoId);
 
-                if (in_array($estId, $yaMatriculados)) {
+                // El grupo debe existir en este colegio, ser del año NUEVO y estar activo: no se confía en el ID del navegador.
+                if (! $grupo || (int) $grupo->school_year_id !== (int) $anoNuevo->id || ! $grupo->activo) {
+                    $gruposInvalidos++;
+                    continue;
+                }
+
+                if ($yaMatriculados->has($estId)) {
                     $omitidos++;
                     continue;
                 }
 
-                $ordenPorGrupo[$grupoId] = ($ordenPorGrupo[$grupoId] ?? 0) + 1;
+                if ($cuenta[$grupoId] >= (int) $grupo->capacidad) {
+                    $excedenCupo++;   // el director decidió el grupo: se respeta, pero se avisa
+                }
+                $cuenta[$grupoId]++;
+                $orden[$grupoId]++;
 
                 Matricula::create([
                     'school_year_id'  => $anoNuevo->id,
@@ -406,10 +421,10 @@ class CierreAnoController extends Controller
                     'grupo_id'        => $grupoId,
                     'fecha_matricula' => $hoy,
                     'estado'          => 'activa',
-                    'numero_orden'    => $ordenPorGrupo[$grupoId],
+                    'numero_orden'    => $orden[$grupoId],
                 ]);
 
-                $yaMatriculados[] = $estId;
+                $yaMatriculados->put($estId, true);
                 $creados++;
             }
         });
@@ -417,7 +432,13 @@ class CierreAnoController extends Controller
         $msg = "{$creados} estudiante(s) trasladado(s) al año {$anoNuevo->nombre}.";
         if ($omitidos > 0) $msg .= " ({$omitidos} ya matriculados, omitidos.)";
 
-        return redirect()->route('admin.cierre-ano.index')->with('success', $msg);
+        $avisos = [];
+        if ($gruposInvalidos) $avisos[] = "{$gruposInvalidos} traslado(s) omitidos: el grupo no es del año {$anoNuevo->nombre} o no está activo.";
+        if ($excedenCupo)     $avisos[] = "{$excedenCupo} estudiante(s) quedaron en grupos que superan su capacidad.";
+
+        $redir = redirect()->route('admin.cierre-ano.index')->with('success', $msg);
+
+        return $avisos ? $redir->with('warning', implode(' ', $avisos)) : $redir;
     }
 
     // ── Traslado automático (promovidos avanzan, no promovidos repiten) ───────

@@ -25,5 +25,6 @@ return [
         'icono-blanco' => 'brand/zuraedu-icono-blanco.svg',
         // PNG para correos y PDF (no todos los clientes aceptan SVG)
         'png'          => 'brand/zuraedu-logo-300.png',
+        'png-blanco'    => 'brand/zuraedu-logo-blanco-300.png',
     ],
 ];

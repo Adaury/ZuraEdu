@@ -142,4 +142,24 @@ Pruebas automáticas (`tests/Feature/MarcaZuraEduEstaticoTest.php` y `MarcaZuraE
 - **App móvil**: los íconos nuevos se ven al compilar una versión nueva (EAS); las instalaciones actuales conservan el anterior.
 - **Correos**: el logo es un PNG por URL absoluta, así que `APP_URL` debe ser público y correcto. Algunos clientes de correo piden «mostrar imágenes».
 - **Decisión legal**: se aplicó «Todos los derechos reservados por ZuraEdu» también a las páginas públicas de cada colegio, junto al pie del propio colegio. Si el colegio debe conservar la titularidad del contenido de su sitio, conviene revisarlo con quien lleve lo legal y, en ese caso, cambiar el texto en `config/brand.php` (`derechos`).
-- Las 5 plantillas sin pie (carnets, diploma, certificado de proyecto) podrían llevar la marca dentro de su propio diseño si se desea.
+- Quedan 2 plantillas sin pie de marca por ser diseños de página completa (diploma y certificado de proyecto); los 3 PDF de carnets llevan el logo dentro de su diseño (sección 9).
+
+## 9. Segunda ronda: carnets y pantallas de acceso (2026-10-02)
+
+**Pantallas de acceso.** El login mostraba el logo del Politécnico Salesiano Arquides Calderón: era el valor `hp_logo_path` del tenant 1 (demo) en
+`config_institucional`, que las pantallas de acceso usan como logo del colegio. Se vació ese valor (el archivo sigue en `storage/app/public/branding/`;
+para restaurarlo basta volver a subirlo desde Admin → Sistema) y, en las 4 pantallas de acceso, cuando el colegio no tiene logo se muestra la
+**insignia de ZuraEdu** en vez de siglas («SGE» por defecto). También desaparece del sitio público de ese tenant, que usa el mismo valor.
+
+**Carnets.** Se les puso el logo blanco de ZuraEdu, y al verificarlos con el motor real de PDF aparecieron defectos que ya existían:
+
+| Defecto previo | Efecto | Corrección |
+|---|---|---|
+| Diseño con `display:flex` y degradados (dompdf no los soporta) | texto blanco sobre fondo blanco: el carnet salía casi vacío | tablas y colores sólidos |
+| Papel de 226.77 × 141.73 pt **con** `landscape` (80 × 50 mm, y dompdf además intercambia ancho y alto con un arreglo) | papel vertical más chico que el carnet: 2.ª página | CR80 real 242.65 × 153.02 pt, sin `landscape` |
+| QR pedido a `quickchart.io` y `enable_remote=false` | **cuadro en blanco en lugar del QR** en el carnet impreso | QR generado en el servidor (`CarnetQrService::qrDataUri`, librería `chillerlan/php-qrcode`) |
+| Hoja por grupo con `flex` | tarjetas apiladas en una columna y encabezado invisible | cuadrícula de 3 por fila |
+
+Un solo parcial (`admin/carnet/_cara.blade.php`) dibuja la cara del carnet para el PDF individual y el masivo. Pruebas: `CarnetPdfMarcaTest`.
+Las pantallas web «Mi carnet» (estudiante, docente, padre) siguen pidiendo el QR a quickchart.io desde el navegador; no se tocaron.
+

@@ -119,7 +119,7 @@ class CarnetController extends Controller
         $qrContent = CarnetQrService::qrContent($carnet);
 
         $pdf = Pdf::loadView('admin.carnet.pdf_carnet', compact('carnet', 'qrContent'))
-            ->setPaper([0, 0, 226.77, 141.73], 'landscape'); // CR80 (85.6 × 53.98mm)
+            ->setPaper([0, 0, 242.65, 153.02]); // CR80 horizontal (85.6 × 53.98 mm). Con un arreglo NO se pasa 'landscape': dompdf intercambia ancho y alto. Antes 226.77×141.73 + landscape = papel vertical de 50×80 mm
 
         return $pdf->stream("carnet-{$carnet->numero_carnet}.pdf");
     }
@@ -136,7 +136,7 @@ class CarnetController extends Controller
             ->get();
 
         $pdf = Pdf::loadView('admin.carnet.pdf_grupo', compact('carnets'))
-            ->setPaper('letter');
+            ->setPaper([0, 0, 242.65, 153.02]);   // una tarjeta CR80 horizontal por página
 
         return $pdf->stream('carnets-grupo.pdf');
     }

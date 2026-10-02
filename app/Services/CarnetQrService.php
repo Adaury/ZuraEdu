@@ -117,4 +117,21 @@ class CarnetQrService
     {
         return url("/checkin/scan/{$carnet->qr_token}");
     }
+
+    /**
+     * QR como imagen incrustada (data URI PNG) para los PDF. Se genera aquí, sin servicios externos: dompdf tiene enable_remote=false,
+     * así que un QR pedido a una URL externa salía EN BLANCO en el carnet impreso.
+     */
+    public static function qrDataUri(string $contenido): string
+    {
+        $opciones = new \chillerlan\QRCode\QROptions([
+            'outputType'   => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG,
+            'outputBase64' => true,
+            'scale'        => 6,
+            'quietzoneSize' => 1,
+            'eccLevel'     => \chillerlan\QRCode\Common\EccLevel::M,
+        ]);
+
+        return (new \chillerlan\QRCode\QRCode($opciones))->render($contenido);
+    }
 }

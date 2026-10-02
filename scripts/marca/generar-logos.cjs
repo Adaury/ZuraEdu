@@ -135,6 +135,7 @@ async function main() {
   await png('public/brand/zuraedu-logo.png', logo, 1200);
   await png('public/brand/zuraedu-logo-blanco.png', logoBlanco, 1200);
   await png('public/brand/zuraedu-logo-300.png', logo, 300);          // pequeño para PDF y correos
+  await png('public/brand/zuraedu-logo-blanco-300.png', logoBlanco, 300);   // para PDF sobre fondo oscuro (carnets)
   await png('public/brand/zuraedu-icono-512.png', icono, 512);
   await png('public/brand/zuraedu-icono-192.png', icono, 192);        // PWA
   await png('public/brand/apple-touch-icon.png', icono, 180);

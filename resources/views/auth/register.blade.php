@@ -427,7 +427,8 @@
                     @if($logoCentroUrl)
                         <img src="{{ $logoCentroUrl }}" alt="{{ $nombreCentro }}">
                     @else
-                        {{ strtoupper(substr($ls['system_abbr'] ?? $nombreCentro, 0, 4)) }}
+                        {{-- Sin logo propio del colegio: insignia de ZuraEdu en vez de siglas --}}
+                        <img src="{{ asset('brand/zuraedu-icono.svg') }}" alt="ZuraEdu" style="background:transparent;">
                     @endif
                 </div>
 

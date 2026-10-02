@@ -160,12 +160,17 @@ class WebhookStripeController extends Controller
             return;
         }
 
-        $pago->update([
-            'estado'      => 'pagado',
+        // Atómico: dos entregas del mismo evento, o el webhook + la redirección de éxito, llegan casi a la vez; solo una confirma y avisa.
+        $cambio = $pago->confirmarPago([
             'fecha_pago'  => now()->toDateString(),
             'metodo_pago' => 'stripe',
             'referencia'  => $sessionId,
         ]);
+
+        if (! $cambio) {
+            Log::info("Stripe webhook: pago #{$pagoId} ya confirmado por otra vía simultánea — idempotente");
+            return;
+        }
 
         Log::info("Stripe webhook: pago #{$pagoId} marcado como pagado", ['session' => $sessionId]);
 

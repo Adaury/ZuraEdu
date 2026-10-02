@@ -185,6 +185,40 @@ class PagoGenerarCuotasTest extends TestCase
         );
     }
 
+    /** Hallado con 10 ejecuciones simultáneas: 192 cuotas en vez de 20 (cargos duplicados a las familias). */
+    public function test_si_ya_hay_una_generacion_igual_en_curso_no_crea_nada_y_avisa(): void
+    {
+        $e = $this->crearMatricula();
+        $payload = ['concepto' => 'Mensualidad Febrero', 'monto' => 5000, 'fecha_vencimiento' => '2026-02-28'];
+
+        // Otra petición idéntica tiene el candado (misma clave que usa el controlador).
+        $clave = 't' . tenant_id() . ':generar-cuotas:' . md5(implode('|', [$payload['concepto'], $payload['fecha_vencimiento'], 'todos', $e['schoolYear']->id]));
+        $candado = \Illuminate\Support\Facades\Cache::lock($clave, 60);
+        $this->assertTrue($candado->get());
+        config(['pagos.espera_candado_cuotas' => 1]);
+
+        $this->actingAs($this->admin())->post(route('admin.pagos.generar-cuotas'), $payload)
+            ->assertRedirect()->assertSessionHas('error');
+
+        $this->assertSame(0, Pago::where('concepto', 'Mensualidad Febrero')->count(), 'sin candado no se genera nada (evita duplicados)');
+
+        // Cuando la otra termina y suelta el candado, la generación funciona y queda UNA cuota por estudiante.
+        $candado->release();
+        $this->actingAs($this->admin())->post(route('admin.pagos.generar-cuotas'), $payload)->assertSessionHas('success');
+        $this->assertSame(1, Pago::where('matricula_id', $e['matricula']->id)->where('concepto', 'Mensualidad Febrero')->count());
+    }
+
+    public function test_el_candado_se_suelta_al_terminar_para_poder_generar_otro_concepto(): void
+    {
+        $e = $this->crearMatricula();
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->post(route('admin.pagos.generar-cuotas'), ['concepto' => 'Uno', 'monto' => 100, 'fecha_vencimiento' => '2026-01-31']);
+        $this->actingAs($admin)->post(route('admin.pagos.generar-cuotas'), ['concepto' => 'Dos', 'monto' => 100, 'fecha_vencimiento' => '2026-01-31']);
+
+        $this->assertSame(2, Pago::where('matricula_id', $e['matricula']->id)->count());
+    }
+
     public function test_concepto_distinto_si_genera_una_cuota_nueva(): void
     {
         $e = $this->crearMatricula();

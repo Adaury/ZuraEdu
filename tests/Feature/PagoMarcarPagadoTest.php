@@ -74,6 +74,44 @@ class PagoMarcarPagadoTest extends TestCase
         Event::assertDispatchedTimes(PagoConfirmado::class, 1);
     }
 
+    /** Hallado con 20 "Pagar" simultáneos: 20 avisos de pago confirmado (20 WhatsApp + 20 notificaciones a la familia). */
+    public function test_confirmarPago_es_atomico_una_copia_desactualizada_no_confirma_de_nuevo(): void
+    {
+        $pago = $this->crearPago();
+        $a = Pago::find($pago->id);
+        $b = Pago::find($pago->id);   // las dos creen que sigue 'pendiente', como dos peticiones simultáneas
+
+        $this->assertTrue($a->confirmarPago(['metodo_pago' => 'efectivo', 'referencia' => 'PRIMERA', 'fecha_pago' => today()]));
+        $this->assertFalse($b->confirmarPago(['metodo_pago' => 'stripe', 'referencia' => 'SEGUNDA', 'fecha_pago' => today()]));
+
+        $fresco = $pago->fresh();
+        $this->assertSame('pagado', $fresco->estado);
+        $this->assertSame('PRIMERA', $fresco->referencia, 'la segunda confirmación no pisa los datos de la primera');
+        $this->assertSame('efectivo', $fresco->metodo_pago);
+    }
+
+    public function test_si_otra_peticion_confirma_entre_el_chequeo_y_el_update_no_se_avisa_dos_veces(): void
+    {
+        Event::fake([PagoConfirmado::class]);
+        $pago = $this->crearPago();
+
+        // Simula la carrera: justo después de cargar el pago (y antes del UPDATE) "otra petición" lo confirma.
+        $hecho = false;
+        Pago::retrieved(function (Pago $p) use (&$hecho) {
+            if (! $hecho) {
+                $hecho = true;
+                \DB::table('pagos')->where('id', $p->id)->update(['estado' => 'pagado', 'metodo_pago' => 'efectivo', 'referencia' => 'OTRA']);
+            }
+        });
+
+        $this->actingAs($this->admin())
+            ->patch(route('admin.pagos.pagar', $pago), ['metodo_pago' => 'tarjeta', 'referencia' => 'ESTA'])
+            ->assertOk()->assertJsonPath('message', 'El pago ya estaba registrado.');
+
+        Event::assertNotDispatched(PagoConfirmado::class);   // sin el arreglo: se disparaba un segundo aviso
+        $this->assertSame('OTRA', $pago->fresh()->referencia, 'esta petición no pisa lo que confirmó la otra');
+    }
+
     public function test_reintentar_marcar_pagado_no_duplica_pagoconfirmado(): void
     {
         Event::fake([PagoConfirmado::class]);

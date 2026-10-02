@@ -47,19 +47,21 @@ class PagoStripeController extends Controller
         }
 
         if (($session['payment_status'] ?? '') === 'paid') {
-            $pago->update([
-                'estado'      => 'pagado',
+            // Atómico: el webhook de Stripe y esta redirección llegan casi a la vez; solo una confirma y dispara el aviso.
+            $cambio = $pago->confirmarPago([
                 'fecha_pago'  => now()->toDateString(),
                 'metodo_pago' => 'stripe',
                 'referencia'  => $sessionId,
             ]);
 
-            Log::info("PagoStripe: pago #{$pago->id} marcado como pagado vía success URL", [
-                'session' => $sessionId,
-                'origen'  => $origen,
-            ]);
+            if ($cambio) {
+                Log::info("PagoStripe: pago #{$pago->id} marcado como pagado vía success URL", [
+                    'session' => $sessionId,
+                    'origen'  => $origen,
+                ]);
 
-            \App\Events\PagoConfirmado::dispatch($pago);
+                \App\Events\PagoConfirmado::dispatch($pago);
+            }
 
             return $this->redirigirPortal($origen, null, '¡Pago realizado con éxito! Tu recibo está disponible.');
         }

@@ -338,13 +338,17 @@ class PagoController extends Controller
             return response()->json(['ok' => true, 'message' => 'El pago ya estaba registrado.']);
         }
 
-        $pago->update([
-            'estado'         => 'pagado',
+        // Atómico: el chequeo de arriba es solo un atajo; si dos "Pagar" llegan a la vez, solo uno cambia la fila y avisa.
+        $cambio = $pago->confirmarPago([
             'fecha_pago'     => today(),
             'metodo_pago'    => $data['metodo_pago'],
             'referencia'     => $data['referencia'] ?? null,
             'registrado_por' => auth()->id(),
         ]);
+
+        if (! $cambio) {
+            return response()->json(['ok' => true, 'message' => 'El pago ya estaba registrado.']);
+        }
 
         \App\Events\PagoConfirmado::dispatch($pago);
 
@@ -457,6 +461,24 @@ class PagoController extends Controller
             'fecha_vencimiento.before_or_equal' => 'La fecha de vencimiento no puede ser posterior al fin del año escolar activo (' . ($syActual?->fecha_fin->format('d/m/Y')) . '). Verifica que el año escolar activo sea el correcto.',
         ]);
 
+        // Serializa la generación: dos ejecuciones simultáneas (doble clic, dos personas) leían ambas "no existe" y creaban la cuota
+        // dos veces para cada estudiante (10 ejecuciones a la vez = 192 cuotas en vez de 20: cargos duplicados a las familias).
+        // Con el candado, la segunda espera, encuentra las cuotas ya creadas y no crea ninguna.
+        $clave = 't' . tenant_id() . ':generar-cuotas:' . md5(implode('|', [$data['concepto'], $data['fecha_vencimiento'], $data['grupo_id'] ?? 'todos', $syActual?->id]));
+
+        try {
+            $creados = \Illuminate\Support\Facades\Cache::lock($clave, 120)->block((int) config('pagos.espera_candado_cuotas', 30), fn () => $this->crearCuotasMasivas($data, $syActual));
+        } catch (\Illuminate\Contracts\Cache\LockTimeoutException) {
+            return back()->with('error', 'Ya hay una generación de cuotas igual en curso. Espera unos segundos y revisa la lista antes de repetirla.');
+        }
+
+        return redirect()->route('admin.pagos.index')
+                         ->with('success', "{$creados} cuota(s) generada(s) correctamente.");
+    }
+
+    /** Crea las cuotas que faltan (concepto + vencimiento por matrícula), aplicando la beca activa. Debe llamarse con el candado tomado. */
+    private function crearCuotasMasivas(array $data, ?SchoolYear $syActual): int
+    {
         $q = Matricula::where('school_year_id', $syActual?->id)
                       ->where('estado', 'activa');
 
@@ -510,8 +532,7 @@ class PagoController extends Controller
             }
         }
 
-        return redirect()->route('admin.pagos.index')
-                         ->with('success', "{$creados} cuota(s) generada(s) correctamente.");
+        return $creados;
     }
 
     // ── Configuración de pagos ────────────────────────────────────────────

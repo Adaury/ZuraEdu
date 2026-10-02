@@ -48,6 +48,35 @@ class Pago extends Model
 
     /* ── Scopes ──────────────────────────────────────────────────────── */
 
+    /**
+     * Pasa el pago a 'pagado' UNA sola vez, de forma atómica, y devuelve true solo a quien realmente hizo el cambio.
+     *
+     * Antes cada sitio hacía "si ya está pagado, salir; si no, actualizar y disparar PagoConfirmado": dos confirmaciones
+     * simultáneas (doble clic en "Pagar", el webhook de Stripe y su redirección, el aviso y el retorno de CardNet, o un reintento)
+     * leían ambas 'pendiente' y las dos disparaban el aviso — con 20 "Pagar" a la vez, 20 WhatsApp y 20 notificaciones a la familia.
+     * Un UPDATE ... WHERE estado <> 'pagado' lo decide la base de datos: solo una fila cambia, solo uno recibe true.
+     * Quien reciba false no debe disparar PagoConfirmado ni hacer nada más.
+     *
+     * @param  array<string,mixed>  $atributos  campos a guardar (metodo_pago, referencia, fecha_pago, notas, registrado_por...)
+     */
+    public function confirmarPago(array $atributos): bool
+    {
+        $atributos = array_merge($atributos, ['estado' => 'pagado']);
+
+        $filas = $this->newQueryWithoutScopes()
+            ->whereKey($this->getKey())
+            ->where('estado', '!=', 'pagado')
+            ->update($atributos + ['updated_at' => now()]);
+
+        if ($filas === 1) {
+            $this->forceFill($atributos)->syncOriginal();
+
+            return true;
+        }
+
+        return false;
+    }
+
     public function scopePendientes($q)    { return $q->where('estado', 'pendiente'); }
     public function scopePagados($q)       { return $q->where('estado', 'pagado'); }
     public function scopeVencidos($q)      { return $q->where('estado', 'vencido'); }

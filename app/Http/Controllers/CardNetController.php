@@ -93,13 +93,18 @@ class CardNetController extends Controller
             return;
         }
 
-        $pago->update([
-            'estado'           => 'pagado',
+        // Atómico: CardNet avisa por DOS vías casi a la vez (notify del servidor y retorno del navegador); solo una confirma y avisa.
+        $cambio = $pago->confirmarPago([
             'fecha_pago'       => now(),
             'metodo_pago'      => 'cardnet',
             'referencia'       => $result['auth_code'],
             'notas'            => "CardNet | OrderId: {$result['order_id']} | Auth: {$result['auth_code']} | Tx: {$result['transaction_id']}",
         ]);
+
+        if (! $cambio) {
+            Log::info('CardNet IPN: pago ya confirmado por otra vía simultánea', ['pago_id' => $pagoId]);
+            return;
+        }
 
         Log::info('CardNet IPN: pago actualizado a pagado', [
             'pago_id'  => $pagoId,

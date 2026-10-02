@@ -260,5 +260,6 @@ tbody tr:nth-child(even) td { background:#f8faff; }
     <span>Total estudiantes: {{ $matriculas->count() }}</span>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

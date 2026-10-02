@@ -41,6 +41,7 @@
         }
         .contact-btn { border-radius: 12px; padding: .65rem 1.25rem; font-weight: 600; }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
 <div class="card p-5">
@@ -107,5 +108,6 @@
         ZuraEdu SaaS · Error de acceso por estado de cuenta
     </p>
 </div>
+<x-marca.pie tono="oscuro" />
 </body>
 </html>

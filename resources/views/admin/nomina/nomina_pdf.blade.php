@@ -148,5 +148,6 @@ $pagados = $empleados->filter(fn($e) => $e->pagos->first()?->pagado)->count();
     <span>{{ now()->format('d/m/Y H:i') }}</span>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

@@ -278,5 +278,6 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9.5pt; color:#1a1a2
     Generado {{ now()->format('d/m/Y H:i') }} · Este documento requiere sello oficial para ser válido.
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

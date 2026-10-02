@@ -61,5 +61,6 @@
     {{ $inst }} &nbsp;·&nbsp; Observaciones — {{ $estudiante->nombre_completo }} &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
     &nbsp;·&nbsp; Total: {{ $observaciones->count() }} observación(es)
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

@@ -257,5 +257,6 @@ $descensos = $topDescensos->filter(fn($f) => $f['diff'] !== null && $f['diff'] <
     Documento generado automáticamente · {{ config('app.name') }} · {{ now()->format('d/m/Y H:i') }}
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

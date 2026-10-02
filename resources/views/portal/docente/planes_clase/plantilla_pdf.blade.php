@@ -134,5 +134,6 @@ body { font-family: DejaVu Sans, sans-serif; font-size: 9.5px; color: #1e293b; }
     <span>{{ $inst }} — Plantilla de Plan de Clase</span>
     <span>{{ now()->format('d/m/Y') }}</span>
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

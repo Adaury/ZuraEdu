@@ -109,7 +109,7 @@
 {{-- Cabecera Institucional --}}
 <div class="prt-card" style="margin-bottom:.75rem;">
     <div style="background:#1a365d;color:#fff;padding:.75rem 1rem;border-radius:8px 8px 0 0;text-align:center;">
-        <div style="font-weight:800;font-size:.9rem;letter-spacing:.04em;">POLITÉCNICO SALESIANO ARQUIDES CALDERÓN</div>
+        <div style="font-weight:800;font-size:.9rem;letter-spacing:.04em;">{{ mb_strtoupper(config('tenant.nombre', config('app.name'))) }}</div>
         <div style="font-size:.72rem;font-style:italic;">"Formando Honrados Ciudadanos y Buenos Cristianos"</div>
         <div style="font-weight:700;font-size:.8rem;margin-top:.3rem;text-transform:uppercase;">
             @if($planificacion->tipo === 'ra')

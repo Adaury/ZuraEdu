@@ -133,5 +133,6 @@ tbody td.left { text-align: left; }
     <span>{{ $inst }} — Reporte de Suplencias</span>
     <span>{{ now()->format('d/m/Y H:i') }}</span>
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

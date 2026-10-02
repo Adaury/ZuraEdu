@@ -412,6 +412,7 @@
             .panel-right .form-card { max-width: 100%; }
         }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
 
@@ -487,8 +488,8 @@
             @endif
 
             <p class="panel-left-footer">
-                &copy; {{ date('Y') }} {{ $ls['system_abbr'] ?? $nombreCentro }}
-                @if(!empty($ls['system_sub'])) &middot; {{ $ls['system_sub'] }} @endif
+                <x-marca.logo variante="blanco" :alto="20" style="display:block;margin:0 auto 6px;opacity:.9;" />
+                {{ \App\Support\Marca::copyright() }}
             </p>
         </div>{{-- /.panel-left --}}
 

@@ -218,5 +218,6 @@ $ordenTipos = ['tardanza','falta_leve','falta_grave','suspension'];
     <div class="footer-r">{{ now()->format('d/m/Y H:i') }}</div>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

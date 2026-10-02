@@ -143,5 +143,6 @@ td { font-size:8pt; padding:3.5px 7px; border-bottom:1px solid #e5e7eb; vertical
     <span>Confidencial — uso interno</span>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

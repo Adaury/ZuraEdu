@@ -80,5 +80,6 @@
     <span class="ley-item"><span class="dot e"></span>E = Excusa</span>
 </div>
 <div class="footer">{{ config('app.name') }} &mdash; {{ now()->format('d/m/Y H:i') }}</div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

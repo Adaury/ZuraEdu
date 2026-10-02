@@ -83,5 +83,6 @@
     {{ $inst }} &nbsp;·&nbsp; {{ now()->format('d/m/Y H:i') }}
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

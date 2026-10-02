@@ -93,5 +93,6 @@ tbody tr:nth-child(even) { background:#f8faff; }
     <div class="footer-l">{{ $inst }} — Observaciones Estudiantiles</div>
     <div class="footer-r">{{ now()->format('d/m/Y H:i') }}</div>
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

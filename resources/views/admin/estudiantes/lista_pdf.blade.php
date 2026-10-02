@@ -73,5 +73,6 @@
     {{ $inst }} &nbsp;·&nbsp; Directorio de Estudiantes &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
     &nbsp;·&nbsp; Total: {{ $estudiantes->count() }} estudiante(s)
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

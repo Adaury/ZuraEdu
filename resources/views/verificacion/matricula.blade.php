@@ -97,6 +97,7 @@ input[type=text]:focus{border-color:#1d4ed8;background:#fff;box-shadow:0 0 0 4px
 .cert-header p{font-size:.75rem;color:#64748b;}
 .cert-footer{display:none;text-align:center;padding:.75rem 0;border-top:1px solid #e5e7eb;margin-top:1rem;font-size:.7rem;color:#94a3b8;}
 </style>
+@include('partials.marca.head')
 </head>
 <body>
 @php
@@ -300,5 +301,6 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 @endif
 
+<x-marca.pie tono="oscuro" />
 </body>
 </html>

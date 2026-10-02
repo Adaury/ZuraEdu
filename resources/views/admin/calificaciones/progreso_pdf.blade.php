@@ -81,5 +81,6 @@
     {{ $inst }} &nbsp;·&nbsp; Progreso P1–P4 — {{ $grupo->nombre_completo }} &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
     &nbsp;·&nbsp; Aprobado ≥ 65
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

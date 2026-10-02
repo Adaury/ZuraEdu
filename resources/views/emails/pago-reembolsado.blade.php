@@ -68,12 +68,10 @@
       <p style="margin:0 0 4px;font-size:.8rem;color:#6b7280;">
         ¿Necesitas ayuda? Escríbenos a <a href="mailto:soporte@zuraedu.com" style="color:#2563eb;">soporte@zuraedu.com</a>
       </p>
-      <p style="margin:0;font-size:.76rem;color:#9ca3af;">
-        &copy; {{ date('Y') }} ZuraEdu — Plataforma de Gestión Escolar
-      </p>
     </td>
   </tr>
 
+@include('partials.marca.pie-correo')
 </table>
 </td></tr>
 </table>

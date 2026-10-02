@@ -69,5 +69,6 @@
     {{ $inst }} &nbsp;·&nbsp; Recursos — {{ $asignacion->asignatura?->nombre ?? '' }} &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
     &nbsp;·&nbsp; Total: {{ $recursos->count() }} recurso(s)
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

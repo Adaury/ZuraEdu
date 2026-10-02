@@ -60,6 +60,7 @@
     </td>
   </tr>
 
+@include('partials.marca.pie-correo')
 </table>
 </td></tr>
 </table>

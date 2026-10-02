@@ -144,5 +144,6 @@ body { font-family: DejaVu Sans, sans-serif; font-size: 10.5px; color: #1e293b; 
 
 </div>
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

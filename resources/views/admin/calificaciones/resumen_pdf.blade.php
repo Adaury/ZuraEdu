@@ -57,5 +57,6 @@
 </table>
 
 <div class="footer">{{ $inst }} — {{ now()->format('d/m/Y') }}</div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

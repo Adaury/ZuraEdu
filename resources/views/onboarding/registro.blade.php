@@ -185,6 +185,7 @@
         .row2 { grid-template-columns: 1fr; }
     }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
 <div class="wrap">
@@ -383,5 +384,6 @@ document.getElementById('regForm').addEventListener('submit', function() {
     txt.textContent   = 'Creando tu institución...';
 });
 </script>
+<x-marca.pie tono="oscuro" />
 </body>
 </html>

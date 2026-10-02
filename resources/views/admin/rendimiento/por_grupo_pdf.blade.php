@@ -89,5 +89,6 @@
 @endif
 
 <div class="footer">{{ $inst }} &nbsp;·&nbsp; Rendimiento — {{ $detalle->grupo?->nombre_completo }} &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}</div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

@@ -21,6 +21,7 @@ body {
     max-width: 380px; width: 100%;
 }
 </style>
+@include('partials.marca.head')
 </head>
 <body>
 <div class="card">
@@ -41,5 +42,6 @@ body {
     </a>
     @endif
 </div>
+<x-marca.pie tono="claro" />
 </body>
 </html>

@@ -115,5 +115,6 @@
 <div style="margin-top:20pt;font-size:7pt;text-align:right;color:#555;">
     Generado: {{ now()->format('d/m/Y H:i') }} | {{ config('tenant.nombre', config('app.name')) }} · SGE
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

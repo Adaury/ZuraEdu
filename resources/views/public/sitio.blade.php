@@ -113,6 +113,7 @@
     .ads-derecha { right: 1rem; }
     @media (max-width: 1399px) { .ads-lateral { display: none; } }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
 
@@ -193,5 +194,6 @@
 
 @include('partials.sitio_chat_widget', ['nombre' => $config['nombre']])
 
+<x-marca.pie tono="claro" />
 </body>
 </html>

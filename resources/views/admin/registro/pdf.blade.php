@@ -456,5 +456,6 @@ body { font-family: DejaVu Sans, sans-serif; font-size:7pt; color:#1a202c; backg
     </table>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

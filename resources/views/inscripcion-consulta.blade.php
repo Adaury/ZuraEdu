@@ -68,6 +68,7 @@
 
     @media (max-width: 500px) { .search-row { flex-direction: column; } .info-grid { grid-template-columns: 1fr; } .result-body { padding: 1.25rem; } }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
 <nav class="nav">
@@ -219,5 +220,6 @@
 
     </div>
 </main>
+<x-marca.pie tono="claro" />
 </body>
 </html>

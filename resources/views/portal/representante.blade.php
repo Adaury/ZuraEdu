@@ -202,6 +202,7 @@
             .portal-body  { padding: 1rem; }
         }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
 
@@ -210,7 +211,7 @@
     <div class="logo-box">SGE</div>
     <div>
         <div class="title">Portal del Representante</div>
-        <div class="sub">Politécnico Salesiano Arquides Calderón</div>
+        <div class="sub">{{ config('tenant.nombre', config('app.name')) }}</div>
     </div>
     <span class="portal-badge d-none d-sm-inline">
         <i class="bi bi-shield-lock me-1"></i>Enlace seguro
@@ -767,8 +768,9 @@
 <footer class="portal-footer">
     <i class="bi bi-shield-lock me-1"></i>
     Este enlace es personal y de uso exclusivo del representante. No compartir.
-    &nbsp;·&nbsp;
-    &copy; {{ date('Y') }} <strong>{{ config('tenant.nombre', config('app.name')) }}</strong> — Sistema de Gestión Escolar
+    <br>
+    <span style="display:inline-block;margin-top:6px;background:#fff;padding:3px 9px;border-radius:8px;"><x-marca.logo :alto="18" /></span><br>
+    {{ \App\Support\Marca::copyright() }}
 </footer>
 
 <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>

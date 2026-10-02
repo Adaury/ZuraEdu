@@ -1185,5 +1185,6 @@ body {
     @endif
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

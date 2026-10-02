@@ -169,5 +169,6 @@ table.main tbody td { padding:5px 7px; border-bottom:1px solid #e2e8f0; vertical
     {{ $nombreInst }} &mdash; Reporte generado automáticamente por el sistema &mdash; {{ now()->format('d/m/Y H:i') }}
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

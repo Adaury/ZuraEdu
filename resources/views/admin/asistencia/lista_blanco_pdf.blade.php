@@ -101,5 +101,6 @@ tbody td.name { text-align: left; padding-left: 5px; font-weight: 600; min-width
     <div class="firma-box">Coordinador/a Académico</div>
     <div class="firma-box">Generado: {{ now()->format('d/m/Y') }}</div>
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

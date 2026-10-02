@@ -105,5 +105,6 @@ body { font-family: DejaVu Sans, sans-serif; font-size: 10px; color: #1e293b; }
     <span>{{ $inst }} — Comunicado Oficial</span>
     <span>Generado: {{ now()->format('d/m/Y H:i') }}</span>
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

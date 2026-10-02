@@ -152,5 +152,6 @@
     <div class="sig">Coordinador(a)</div>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

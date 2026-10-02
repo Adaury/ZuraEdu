@@ -68,5 +68,6 @@
     {{ $inst }} &nbsp;·&nbsp; Asistencia — {{ $asignacion->asignatura?->nombre }} &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
     &nbsp;·&nbsp; Las filas en rosa indican asistencia &lt; 75%
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

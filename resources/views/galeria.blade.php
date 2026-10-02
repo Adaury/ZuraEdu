@@ -114,6 +114,7 @@
         .photo-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .65rem; }
     }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
 
@@ -225,5 +226,6 @@ document.addEventListener('keydown', function(e) {
 
 @include('partials.sitio_chat_widget', ['nombre' => $nombre ?? config('app.product_name')])
 
+<x-marca.pie />
 </body>
 </html>

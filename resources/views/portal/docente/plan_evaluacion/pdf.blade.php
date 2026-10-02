@@ -148,5 +148,6 @@
 @endif
 @endforeach
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

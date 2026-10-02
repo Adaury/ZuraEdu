@@ -157,5 +157,6 @@ body { font-family: DejaVu Sans, sans-serif; font-size:9px; color:#1e293b; }
     <div class="footer-l">{{ $inst }} — Rendimiento por Área</div>
     <div class="footer-r">{{ now()->format('d/m/Y H:i') }}</div>
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

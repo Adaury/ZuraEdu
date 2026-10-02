@@ -79,5 +79,6 @@ tbody td.asig-name { text-align: left; padding-left: 5px; font-weight: 600; back
     <span>{{ $inst }} — Malla Curricular</span>
     <span>{{ now()->format('d/m/Y H:i') }}</span>
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

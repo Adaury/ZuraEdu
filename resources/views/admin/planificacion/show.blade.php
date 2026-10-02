@@ -82,7 +82,7 @@
     <div class="card-body p-0">
         <div style="background:#1a365d;color:#fff;padding:.85rem 1.2rem;border-radius:8px 8px 0 0;">
             <div class="text-center">
-                <div style="font-weight:800;font-size:1rem;letter-spacing:.05em;">POLITÉCNICO SALESIANO ARQUIDES CALDERÓN</div>
+                <div style="font-weight:800;font-size:1rem;letter-spacing:.05em;">{{ mb_strtoupper(config('tenant.nombre', config('app.name'))) }}</div>
                 <div style="font-size:.8rem;font-style:italic;">"Formando Honrados Ciudadanos y Buenos Cristianos"</div>
                 <div style="margin-top:.4rem;font-weight:700;font-size:.9rem;text-transform:uppercase;">
                     @if($planificacion->tipo === 'ra')

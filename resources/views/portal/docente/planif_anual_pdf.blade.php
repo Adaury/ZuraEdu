@@ -175,5 +175,6 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:8pt; color:#1a1a2e;
     <span>{{ $si }} · Planificación Anual por Unidades · SGE · {{ now()->format('d/m/Y H:i') }}</span>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

@@ -352,6 +352,7 @@
             }
         }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
 
@@ -396,10 +397,8 @@
             </div>{{-- /.panel-left-content --}}
 
             <p class="panel-left-footer">
-                &copy; {{ date('Y') }} {{ $ls['system_abbr'] ?? $nombreCentro }}
-                @if(!empty($ls['system_abbr']) && $ls['system_abbr'] !== $nombreCentro)
-                    &middot; {{ Illuminate\Support\Str::limit($nombreCentro, 50) }}
-                @endif
+                <x-marca.logo variante="blanco" :alto="20" style="display:block;margin:0 auto 6px;opacity:.9;" />
+                {{ \App\Support\Marca::copyright() }}
             </p>
         </div>{{-- /.panel-left --}}
 

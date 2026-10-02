@@ -70,6 +70,7 @@
             color: #94a3b8;
         }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
     <div class="card">
@@ -86,5 +87,6 @@
             Las páginas visitadas recientemente pueden estar disponibles sin conexión.
         </div>
     </div>
+<x-marca.pie tono="claro" />
 </body>
 </html>

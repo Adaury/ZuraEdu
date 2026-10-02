@@ -231,5 +231,6 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
     @if($pago->pagado) PAGADO @else PENDIENTE @endif
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

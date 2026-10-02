@@ -130,5 +130,6 @@ tbody tr:last-child td { border-bottom:none; }
     <span>Reporte generado el {{ now()->format('d/m/Y \a \l\a\s H:i') }}</span>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

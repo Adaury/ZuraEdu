@@ -42,6 +42,7 @@
         .btn-outline:hover { background: #F1F5F9; }
         .ref { margin-top: .75rem; font-size: .78rem; color: #94A3B8; }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
     <div class="card">
@@ -74,5 +75,6 @@
             </div>
         @endif
     </div>
+<x-marca.pie tono="claro" />
 </body>
 </html>

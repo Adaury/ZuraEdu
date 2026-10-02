@@ -54,5 +54,6 @@ tr.alt td { background-color: #f0f4ff; }
     Total docentes: <strong>{{ count($docenteRows) }}</strong> &nbsp;·&nbsp;
     SIGERD — Sistema de Gestión Educativa &nbsp;·&nbsp; {{ date('d/m/Y H:i') }}
 </p>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

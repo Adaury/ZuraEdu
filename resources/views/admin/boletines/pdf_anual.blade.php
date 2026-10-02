@@ -397,5 +397,6 @@ $verifyCode = strtoupper(substr(md5($matricula->id . ($periodos->last()?->id ?? 
     &nbsp;·&nbsp; Generado: {{ now()->format('d/m/Y') }} &nbsp;·&nbsp; Código verificación: <strong>{{ $verifyCode }}</strong>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

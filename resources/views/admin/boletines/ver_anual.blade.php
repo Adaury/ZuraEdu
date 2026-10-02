@@ -84,6 +84,7 @@ table.tbl tbody tr:nth-child(even) td.col-mat { background:#f1f5f9; }
 [data-theme="dark"] table.tbl .col-mat { background:#1e293b; color:#e2e8f0; }
 [data-theme="dark"] table.tbl tbody tr:nth-child(even) td { background:#182234; }
 </style>
+@include('partials.marca.head')
 </head>
 <body>
 <div class="wrap">
@@ -337,5 +338,6 @@ document.querySelectorAll('.hdr-input').forEach(function (el) {
     });
 });
 </script>
+<x-marca.pie tono="claro" />
 </body>
 </html>

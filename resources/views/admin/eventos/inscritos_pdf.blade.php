@@ -291,5 +291,6 @@ $pctAsistencia    = $totalInscritos > 0 ? round($totalAsistieron / $totalInscrit
     <span>Asistencia: {{ $pctAsistencia }}% ({{ $totalAsistieron }}/{{ $totalInscritos }})</span>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

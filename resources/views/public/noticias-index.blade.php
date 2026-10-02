@@ -40,6 +40,7 @@
     .paginacion .page-item.disabled .page-link { color: var(--g500); }
     .empty-state { text-align: center; padding: 4rem 1.5rem; color: var(--g500); }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
 
@@ -94,5 +95,6 @@
 
 @include('partials.sitio_chat_widget', ['nombre' => $nombre])
 
+<x-marca.pie tono="claro" />
 </body>
 </html>

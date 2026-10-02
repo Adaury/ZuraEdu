@@ -101,5 +101,6 @@
     <span>Página 1</span>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

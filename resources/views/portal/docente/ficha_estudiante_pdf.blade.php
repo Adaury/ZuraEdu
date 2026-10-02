@@ -490,5 +490,6 @@ tr:nth-child(even) td { background:#f8fafc; }
     </div>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

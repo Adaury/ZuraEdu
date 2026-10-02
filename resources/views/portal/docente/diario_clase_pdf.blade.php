@@ -91,5 +91,6 @@ body { font-family:DejaVu Sans,sans-serif;font-size:10pt;color:#1e293b;backgroun
     <span>Generado el {{ now()->translatedFormat('d \d\e F \d\e Y, H:i') }}</span>
     <span>{{ $entradas->count() }} entrada{{ $entradas->count() !== 1 ? 's' : '' }}</span>
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

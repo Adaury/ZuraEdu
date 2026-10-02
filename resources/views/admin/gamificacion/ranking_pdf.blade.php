@@ -139,5 +139,6 @@
     <span>ZuraEdu — Sistema de Gestión Escolar</span>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

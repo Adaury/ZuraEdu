@@ -98,5 +98,6 @@ $diasLabel = ['lunes'=>'Lun','martes'=>'Mar','miercoles'=>'Mié','jueves'=>'Jue'
     <span>{{ $inst }} — Horario Maestro</span>
     <span>{{ now()->format('d/m/Y H:i') }}</span>
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

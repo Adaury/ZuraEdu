@@ -138,5 +138,6 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
 </div>
 <div style="font-size:7.5pt;color:#6b7280;padding:0 .5rem;">{{ $pago->concepto }} · {{ $pago->fecha_pago?->format('d/m/Y') ?? now()->format('d/m/Y') }}</div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

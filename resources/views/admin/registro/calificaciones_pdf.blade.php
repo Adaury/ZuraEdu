@@ -343,5 +343,6 @@ body { font-family: DejaVu Sans, sans-serif; font-size:7.5pt; color:#1a202c; bac
     </table>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

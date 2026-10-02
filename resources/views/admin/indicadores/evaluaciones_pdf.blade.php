@@ -106,5 +106,6 @@ tbody td.name { text-align: left; }
     <span>{{ $inst }} — Evaluación de Indicadores: {{ $asignacion->asignatura?->nombre }} | {{ $periodo->nombre }}</span>
     <span>{{ now()->format('d/m/Y H:i') }}</span>
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

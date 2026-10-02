@@ -275,5 +275,6 @@ tbody td.center { text-align: center; }
     <span>{{ now()->format('d/m/Y H:i') }}</span>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

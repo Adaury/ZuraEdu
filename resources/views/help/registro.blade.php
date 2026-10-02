@@ -287,6 +287,7 @@
             .toc-nav { padding: .5rem 1rem; }
         }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
 
@@ -672,7 +673,7 @@
         {{-- Footer de la guía --}}
         <div class="mt-3 pt-3 border-top d-flex align-items-center gap-2" style="font-size:.78rem;color:#9ca3af;">
             <i class="bi bi-info-circle"></i>
-            Guía actualizada para el año escolar 2025-2026. Sistema SGE — Politécnico Salesiano Arquides Calderón.
+            Guía actualizada para el año escolar 2025-2026. ZuraEdu — {{ config('tenant.nombre', config('app.name')) }}.
         </div>
     </div>
 
@@ -694,5 +695,6 @@ document.querySelectorAll('.toc-nav a[href^="#"]').forEach(function(a) {
 });
 </script>
 
+<x-marca.pie tono="claro" />
 </body>
 </html>

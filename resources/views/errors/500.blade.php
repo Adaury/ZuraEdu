@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Error del servidor — SGE</title>
+    <title>Error del servidor — ZuraEdu</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -40,6 +40,7 @@
         .btn-secondary { background: #f1f5f9; color: #374151; border: 1px solid #e5e7eb; }
         .note { font-size: .78rem; color: #9ca3af; margin-top: 1.5rem; }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
     <div class="card">
@@ -70,5 +71,6 @@
         </div>
         <p class="note">Si el problema persiste, contacta al administrador del sistema.</p>
     </div>
+<x-marca.pie tono="claro" />
 </body>
 </html>

@@ -88,5 +88,6 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
     plataforma, no a los pagos de colegiatura de los estudiantes del centro.
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

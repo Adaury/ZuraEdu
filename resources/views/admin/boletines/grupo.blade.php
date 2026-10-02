@@ -280,7 +280,7 @@
             </div>
             <div class="bc-header-center">
                 <div class="bc-inst-name">
-                    {{ $boletinConfig?->nombre_institucion ?? config('app.school_name', 'Politécnico Salesiano') }}
+                    {{ $boletinConfig?->nombre_institucion ?? config('tenant.nombre', config('app.name')) }}
                 </div>
                 <div class="bc-inst-sub">
                     {{ $boletinConfig?->nivel_educativo ?? 'Nivel Secundario' }} · Rep. Dominicana

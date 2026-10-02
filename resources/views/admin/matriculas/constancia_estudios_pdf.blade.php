@@ -150,5 +150,6 @@ Año Escolar <strong>{{ $sy?->nombre ?? '' }}</strong>.
     <span>{{ $si }} — Constancia de Estudios</span>
     <span>Generado: {{ now()->format('d/m/Y H:i') }}</span>
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

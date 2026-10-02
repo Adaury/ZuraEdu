@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="ZuraEdu — Sistema académico completo con aula virtual. Notas, competencias, horarios y portal para padres en una sola plataforma.">
     <title>ZuraEdu — Sistema educativo inteligente</title>
-    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    @include('partials.marca.head')
+    <meta property="og:image" content="{{ asset('brand/og-image.png') }}">
+    <meta property="og:site_name" content="ZuraEdu">
 
     {{-- Google Fonts --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -216,10 +218,7 @@
 
         {{-- Logo --}}
         <a href="{{ route('landing') }}" class="flex items-center gap-2.5 shrink-0">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-800 to-blue-500 flex items-center justify-center shadow-md">
-                <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5"/></svg>
-            </div>
-            <span class="text-lg font-black tracking-tight text-slate-900">ZuraEdu</span>
+            <x-marca.logo variante="color" :alto="36" />
         </a>
 
         {{-- Links desktop --}}
@@ -822,10 +821,7 @@
             {{-- Brand --}}
             <div class="sm:col-span-2 lg:col-span-1">
                 <a href="{{ route('landing') }}" class="flex items-center gap-2.5 mb-4">
-                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-800 to-blue-500 flex items-center justify-center">
-                        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5"/></svg>
-                    </div>
-                    <span class="text-lg font-black text-white">ZuraEdu</span>
+                    <x-marca.logo variante="blanco" :alto="36" />
                 </a>
                 <p class="text-sm text-slate-500 leading-relaxed mb-5">Plataforma SaaS educativa todo-en-uno para instituciones modernas.</p>
             </div>
@@ -868,7 +864,7 @@
 
         {{-- Bottom --}}
         <div class="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p class="text-xs text-slate-600">© {{ date('Y') }} ZuraEdu. Todos los derechos reservados.</p>
+            <p class="text-xs text-slate-600">{{ \App\Support\Marca::copyright() }}</p>
             <div class="flex gap-5">
                 <a href="#" class="text-xs text-slate-600 hover:text-slate-400 transition-colors">Términos de uso</a>
                 <a href="#" class="text-xs text-slate-600 hover:text-slate-400 transition-colors">Privacidad</a>

@@ -71,6 +71,7 @@ table.acta tbody tr:nth-child(even) td.col-nombre { background:#f1f5f9; }
 [data-theme="dark"] table.acta .col-nombre { background:#1e293b; color:#e2e8f0; }
 [data-theme="dark"] table.acta tbody tr:nth-child(even) td:not(.col-nombre) { background:#182234; }
 </style>
+@include('partials.marca.head')
 </head>
 <body>
 <div class="wrap">
@@ -352,5 +353,6 @@ document.querySelectorAll('.hdr-input').forEach(function (el) {
     });
 });
 </script>
+<x-marca.pie tono="claro" />
 </body>
 </html>

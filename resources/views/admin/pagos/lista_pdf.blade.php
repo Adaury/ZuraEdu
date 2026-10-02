@@ -85,5 +85,6 @@
 <div class="footer">
     {{ $inst }} &nbsp;·&nbsp; Registro de Pagos &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

@@ -189,5 +189,6 @@ tr:nth-child(even) td { background:#f5f3ff; }
     <span>Confidencial — uso interno</span>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

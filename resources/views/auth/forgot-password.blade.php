@@ -157,6 +157,7 @@
             .panel-right .form-card { max-width: 100%; }
         }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
 
@@ -197,7 +198,10 @@
                     </div>
                 </div>
             </div>
-            <p class="panel-left-footer">&copy; {{ date('Y') }} {{ $nombreCentro }} &middot; República Dominicana</p>
+            <p class="panel-left-footer">
+                <x-marca.logo variante="blanco" :alto="20" style="display:block;margin:0 auto 6px;opacity:.9;" />
+                {{ \App\Support\Marca::copyright() }}
+            </p>
         </div>
 
         {{-- ── Panel derecho ── --}}

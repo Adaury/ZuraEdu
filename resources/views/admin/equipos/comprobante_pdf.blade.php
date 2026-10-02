@@ -278,5 +278,6 @@
         Generado el {{ now()->format('d/m/Y \a \l\a\s H:i') }}
     </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

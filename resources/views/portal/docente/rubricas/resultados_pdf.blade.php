@@ -278,5 +278,6 @@ table.main tbody td.center { text-align:center; }
     {{ $nombreInst }} &mdash; Reporte de Rúbrica generado automáticamente &mdash; {{ now()->format('d/m/Y H:i') }}
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

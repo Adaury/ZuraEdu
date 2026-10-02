@@ -114,5 +114,6 @@ tbody tr:nth-child(even) td { background:#f0f4ff; }
     <span>{{ $si }} · Lista oficial {{ $sy?->nombre }}</span>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

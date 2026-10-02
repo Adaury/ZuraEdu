@@ -11,7 +11,7 @@
             document.documentElement.setAttribute('data-theme', t);
         })();
     </script>
-    <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
+    @include('partials.marca.head')
 
     <link href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
@@ -299,7 +299,7 @@
 {{-- ── Sidebar ─────────────────────────────────────────────── --}}
 <aside class="sa-sidebar" id="saSidebar">
     <div class="sa-logo">
-        <div class="sa-logo-icon">ZE</div>
+        <img src="{{ asset('brand/zuraedu-icono.svg') }}" alt="ZuraEdu" class="sa-logo-icon" style="background:none;box-shadow:none;padding:0;">
         <div class="sa-logo-text">
             <strong>ZuraEdu</strong>
             <span>Plataforma</span>
@@ -428,6 +428,7 @@
     {{-- Contenido --}}
     <div class="sa-content">
         @yield('content')
+        <x-marca.pie tono="oscuro" />
     </div>
 
 </div>

@@ -87,6 +87,7 @@ body {
     display: flex; align-items: center; gap: .75rem; text-align: left;
 }
 </style>
+@include('partials.marca.head')
 </head>
 <body>
 
@@ -171,5 +172,6 @@ function updateTimer() {
 setInterval(updateTimer, 1000);
 updateTimer();
 </script>
+<x-marca.pie tono="claro" />
 </body>
 </html>

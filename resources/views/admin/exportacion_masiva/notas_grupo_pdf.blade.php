@@ -93,5 +93,6 @@
 <div class="footer">
     {{ $inst }} &nbsp;·&nbsp; {{ $grupo->grado?->nombre }} {{ $grupo->seccion?->nombre }} &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

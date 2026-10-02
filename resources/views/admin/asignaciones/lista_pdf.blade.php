@@ -69,5 +69,6 @@
 <div class="footer">
     {{ $inst }} &nbsp;·&nbsp; Lista de Asignaciones &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

@@ -80,5 +80,6 @@ tbody td { padding:.3rem .5rem; border-bottom:1px solid #e5e7eb; vertical-align:
 </table>
 
 <div class="footer">Documento generado automáticamente — {{ config('app.name') }}</div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

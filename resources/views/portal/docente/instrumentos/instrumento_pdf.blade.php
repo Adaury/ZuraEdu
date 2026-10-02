@@ -151,5 +151,6 @@ tbody td.nota-cell { font-weight: 700; }
     <span>{{ $inst }} — Instrumento: {{ $instrumento->titulo }}</span>
     <span>{{ now()->format('d/m/Y H:i') }}</span>
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

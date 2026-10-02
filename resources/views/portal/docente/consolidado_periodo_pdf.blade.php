@@ -203,5 +203,6 @@ body { font-family: 'DejaVu Sans', sans-serif; font-size: 8.5pt; color: #1e293b;
     Documento generado automáticamente · {{ config('app.name') }} · {{ now()->format('d/m/Y H:i') }}
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

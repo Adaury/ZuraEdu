@@ -78,5 +78,6 @@
     {{ $inst }} &nbsp;·&nbsp; Observaciones — {{ $asignacion->asignatura?->nombre ?? '' }} &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
     &nbsp;·&nbsp; Total: {{ $observaciones->count() }} registro(s)
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

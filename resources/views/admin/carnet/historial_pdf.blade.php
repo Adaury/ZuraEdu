@@ -77,5 +77,6 @@
 
 <div class="footer">Generado el {{ now()->format('d/m/Y H:i') }} — ZuraEdu Carnet+</div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

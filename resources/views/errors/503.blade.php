@@ -11,6 +11,7 @@
         .card { border-radius: 20px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,.08); max-width: 480px; width: 100%; }
         .icon-wrap { width: 72px; height: 72px; border-radius: 50%; background: #fee2e2; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
 <div class="card p-5 text-center mx-3">
@@ -43,5 +44,6 @@
         Error 503 · Servicio no disponible
     </p>
 </div>
+<x-marca.pie tono="claro" />
 </body>
 </html>

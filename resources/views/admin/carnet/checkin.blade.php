@@ -197,6 +197,7 @@
     }
     .pulse-success { animation: pulse-green .8s ease 2; }
 </style>
+@include('partials.marca.head')
 </head>
 <body>
 
@@ -426,5 +427,6 @@ function renderLog() {
     `).join('');
 }
 </script>
+<x-marca.pie tono="oscuro" />
 </body>
 </html>

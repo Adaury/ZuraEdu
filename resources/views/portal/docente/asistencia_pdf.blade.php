@@ -96,5 +96,6 @@
     {{ $inst }} &nbsp;·&nbsp; Asistencia — {{ $asignacion->asignatura?->nombre ?? '' }} &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
     &nbsp;·&nbsp; {{ $matriculas->count() }} estudiante(s) · {{ $fechas->count() }} sesión(es)
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

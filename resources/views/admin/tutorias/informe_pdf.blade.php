@@ -237,5 +237,6 @@
     {{ $inst }} &nbsp;·&nbsp; Informe de Tutoría — {{ $tutoria->grupo->nombre_completo ?? '' }} &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

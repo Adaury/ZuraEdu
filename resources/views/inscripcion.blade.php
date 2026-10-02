@@ -111,6 +111,7 @@
     }
     @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
 
@@ -433,5 +434,6 @@ function formPM() {
 
 @include('partials.support_chat_widget', ['chatBienvenida' => '¡Hola! 👋 ¿Tienes dudas sobre el proceso de inscripción? Estamos aquí para ayudarte.'])
 
+<x-marca.pie />
 </body>
 </html>

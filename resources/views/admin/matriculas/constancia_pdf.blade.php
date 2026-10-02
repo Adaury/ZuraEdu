@@ -175,5 +175,6 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:10pt; color:#1a1a2e
     &nbsp;·&nbsp; Este documento tiene validez oficial con el sello del centro.
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

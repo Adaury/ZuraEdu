@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Recordatorio SGE</title>
+<title>Recordatorio ZuraEdu</title>
 <style>
     body { font-family: Arial, Helvetica, sans-serif; background: #f4f6f8; margin: 0; padding: 0; }
     .wrapper { max-width: 600px; margin: 32px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,.08); }
@@ -58,8 +58,9 @@
         </p>
     </div>
     <div class="footer">
-        Este mensaje fue enviado automáticamente por el SGE. Por favor no responda a este correo.<br>
-        &copy; {{ date('Y') }} {{ config('app.name') }}
+        Este mensaje fue enviado automáticamente por ZuraEdu. Por favor no responda a este correo.<br>
+        <img src="{{ \App\Support\Marca::logoUrl('png') }}" alt="{{ \App\Support\Marca::nombre() }}" width="104" style="width:104px;height:auto;border:0;margin-top:10px;"><br>
+        {{ \App\Support\Marca::copyright() }}
     </div>
 </div>
 </body>

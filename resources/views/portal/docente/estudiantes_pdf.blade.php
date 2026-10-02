@@ -66,5 +66,6 @@
     {{ $inst }} &nbsp;·&nbsp; Nómina — {{ $asignacion->asignatura?->nombre ?? '' }} &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
     &nbsp;·&nbsp; Total: {{ $matriculas->count() }} estudiante(s) &nbsp;·&nbsp; Aprobado ≥ 65
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

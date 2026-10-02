@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Página no encontrada — SGE</title>
+    <title>Página no encontrada — ZuraEdu</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -39,6 +39,7 @@
         .btn-primary { background: #1e3a8a; color: #fff; }
         .btn-secondary { background: #f1f5f9; color: #374151; border: 1px solid #e5e7eb; }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
     <div class="card">
@@ -68,5 +69,6 @@
             @endauth
         </div>
     </div>
+<x-marca.pie tono="claro" />
 </body>
 </html>

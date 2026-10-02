@@ -117,7 +117,8 @@
 @endif
 
 <div class="footer">
-    Generado el {{ \Carbon\Carbon::now()->format('d/m/Y H:i') }} &mdash; SGE · {{ config('tenant.nombre', config('app.name')) }} &mdash; AprendeTicPaulino
+    Generado el {{ \Carbon\Carbon::now()->format('d/m/Y H:i') }} &mdash; ZuraEdu · {{ config('tenant.nombre', config('app.name')) }}
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

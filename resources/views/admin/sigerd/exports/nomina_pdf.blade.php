@@ -48,5 +48,6 @@ tr.alt td { background-color: #f0f4ff; }
     </tbody>
 </table>
 <p class="footer">Total registros: {{ $matriculas->count() }}</p>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

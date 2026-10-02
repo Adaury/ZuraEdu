@@ -154,5 +154,6 @@ tbody td.name { text-align: left; font-weight: 600; }
     <span>Documento oficial — generado el {{ now()->format('d/m/Y H:i:s') }}</span>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

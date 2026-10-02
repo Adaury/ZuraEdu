@@ -162,5 +162,6 @@ tr:nth-child(even) td { background: #f8fafc; }
     Generado por ZuraEdu SGE · {{ now()->format('d/m/Y H:i') }} · Documento confidencial de uso interno
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

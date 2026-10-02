@@ -229,5 +229,6 @@ tbody tr:nth-child(even) td { background:#f8faff; }
     <span>Generado: {{ now()->format('d/m/Y H:i') }}</span>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

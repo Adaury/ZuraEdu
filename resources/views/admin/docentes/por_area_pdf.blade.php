@@ -96,5 +96,6 @@
 <div class="footer">
     {{ $inst }} &nbsp;·&nbsp; Docentes Área {{ $areaLabel }} &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

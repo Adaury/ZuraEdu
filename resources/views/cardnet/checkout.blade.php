@@ -42,6 +42,7 @@
         }
         .lock { font-size: .9rem; }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
     <div class="card">
@@ -65,5 +66,6 @@
             document.getElementById('cardnetForm').submit();
         }, 800);
     </script>
+<x-marca.pie tono="claro" />
 </body>
 </html>

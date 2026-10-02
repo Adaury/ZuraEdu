@@ -62,5 +62,6 @@
 <div class="footer">
     {{ $inst }} &nbsp;·&nbsp; Directorio de Representantes &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

@@ -71,5 +71,6 @@
     {{ $inst }} &nbsp;·&nbsp; Notas — {{ $grupo->nombre_completo }} &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
     &nbsp;·&nbsp; Aprobado ≥ 65
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

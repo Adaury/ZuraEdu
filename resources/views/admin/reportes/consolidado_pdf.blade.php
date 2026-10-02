@@ -138,5 +138,6 @@ tbody td.ord  { color: #94a3b8; font-size: 7.5px; }
     <span>Documento generado automáticamente — {{ now()->format('d/m/Y H:i:s') }}</span>
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

@@ -98,6 +98,7 @@
   .panel  { display:none; } .panel.active { display:block; }
   @media(max-width:640px){ .help-topbar{padding:.75rem 1rem;flex-wrap:wrap;} .grid2{grid-template-columns:1fr;} }
 </style>
+@include('partials.marca.head')
 </head>
 <body>
 
@@ -480,5 +481,6 @@ function enviar(role){
 updateNav('doc');
 updateNav('adm');
 </script>
+<x-marca.pie />
 </body>
 </html>

@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $__env->yieldContent('page-title') ?: $__env->yieldContent('title', 'Portal') }} — SGE</title>
-    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    <title>{{ $__env->yieldContent('page-title') ?: $__env->yieldContent('title', 'Portal') }} — ZuraEdu</title>
+    @include('partials.marca.head', ['sinPwa' => true])
 
     <link href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
@@ -743,7 +743,8 @@ $sysLogo = \App\Helpers\Setting::get('system_logo');
         @if($sysLogo)
             <img src="{{ Storage::url($sysLogo) }}" alt="{{ $sysAbbr }}" style="width:100%;height:100%;object-fit:contain;border-radius:9px;">
         @else
-            {{ $sysAbbr }}
+            {{-- Sin logo propio del colegio: insignia de ZuraEdu en vez de las siglas --}}
+            <img src="{{ asset('brand/zuraedu-icono.svg') }}" alt="ZuraEdu" style="width:100%;height:100%;object-fit:contain;border-radius:9px;">
         @endif
     </a>
     <div>
@@ -829,6 +830,9 @@ $sysLogo = \App\Helpers\Setting::get('system_logo');
         @endif
 
         @yield('content')
+
+        {{-- Pie de la plataforma (queda sobre la barra inferior del móvil gracias al padding de .prt-main) --}}
+        <x-marca.pie />
     </main>
 </div>
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sesión expirada — SGE</title>
+    <title>Sesión expirada — ZuraEdu</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -40,6 +40,7 @@
         }
         .countdown { font-size: .78rem; color: #9ca3af; margin-top: .75rem; }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
     <div class="card">
@@ -72,5 +73,6 @@
             }
         }, 1000);
     </script>
+<x-marca.pie tono="claro" />
 </body>
 </html>

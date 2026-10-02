@@ -105,5 +105,6 @@ $rojos    = $grupos->filter(fn($g) => $g->semaforo === 'danger'  || ($g->promedi
     <span>{{ $inst }} — Semáforo de Rendimiento</span>
     <span>{{ now()->format('d/m/Y H:i') }}</span>
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

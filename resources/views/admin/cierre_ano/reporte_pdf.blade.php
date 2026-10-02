@@ -307,5 +307,6 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:8.5pt; color:#1a1a2
     Año Escolar {{ $schoolYear?->nombre ?? '—' }}
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

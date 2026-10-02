@@ -38,6 +38,7 @@
     .status-info { background: #fefce8; border: 1px solid #fef08a; border-radius: 10px; padding: .85rem 1rem; font-size: .82rem; color: #78350f; display: flex; align-items: flex-start; gap: .5rem; margin-bottom: 1.5rem; }
     @media (max-width: 500px) { .data-grid { grid-template-columns: 1fr; } .card-body { padding: 1.5rem 1.25rem; } .code-value { font-size: 1.5rem; } }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
 <nav class="nav">
@@ -135,5 +136,6 @@ function copyCodigo() {
     });
 }
 </script>
+<x-marca.pie tono="claro" />
 </body>
 </html>

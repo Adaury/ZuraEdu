@@ -71,5 +71,6 @@ tr.alt td { background-color: #f0f4ff; }
     Promedio asistencia: <strong>{{ count($filasPdf) > 0 ? number_format(collect($filasPdf)->avg('pct'), 1) : 0 }}%</strong> &nbsp;·&nbsp;
     SIGERD — Sistema de Gestión Educativa
 </p>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

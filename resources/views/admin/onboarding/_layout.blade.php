@@ -185,6 +185,7 @@ body {
     .quick-actions { grid-template-columns: 1fr; }
 }
 </style>
+@include('partials.marca.head')
 </head>
 <body>
 
@@ -245,5 +246,6 @@ body {
 </div>
 
 @stack('scripts')
+<x-marca.pie />
 </body>
 </html>

@@ -186,5 +186,6 @@ tbody td.rank-medal { font-weight: 800; }
     <span>{{ $inst }} — Sistema SGE | Cuadro de Honor {{ now()->format('Y') }}</span>
     <span>{{ now()->format('d/m/Y H:i') }}</span>
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

@@ -18,7 +18,7 @@
     @if($faviconPath)
     <link rel="icon" href="{{ asset('storage/' . $faviconPath) }}" type="image/x-icon">
     @else
-    <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
+    @include('partials.marca.head')
     @endif
 
     <!-- Progress bar de navegación -->
@@ -2168,7 +2168,8 @@ if (auth()->check()) {
                      alt="{{ $systemSettings['system_abbr'] }}"
                      style="width:38px;height:38px;border-radius:8px;object-fit:contain;background:#fff;padding:2px;">
             @else
-                <div class="logo-badge">{{ $systemSettings['system_abbr'] ?? 'SGE' }}</div>
+                {{-- El colegio aún no subió su logo: se muestra la insignia de ZuraEdu en vez de las siglas «SGE» --}}
+                <img src="{{ asset('brand/zuraedu-icono.svg') }}" alt="ZuraEdu" style="width:38px;height:38px;border-radius:9px;flex-shrink:0;">
             @endif
             <div class="logo-text">
                 <div class="system-name">{{ $systemSettings['system_name'] ?? 'Zura' }}</div>
@@ -3523,6 +3524,12 @@ if (auth()->check()) {
             </form>
         </div>
 
+        {{-- Plataforma: ZuraEdu respalda al colegio (el logo del colegio sigue arriba) --}}
+        <a href="{{ url('/') }}" class="sidebar-marca" title="ZuraEdu — {{ \App\Support\Marca::lema() }}" style="display:flex;align-items:center;justify-content:center;padding:8px 12px 12px;opacity:.7;">
+            <x-marca.logo variante="blanco" :alto="20" />
+        </a>
+        <style>.sidebar-collapsed .sidebar-marca { display:none !important; }</style>
+
     </aside>
 
     <!-- Overlay for mobile -->
@@ -3758,18 +3765,9 @@ if (auth()->check()) {
         @yield('content')
 
         {{-- ── FOOTER ─────────────────────────────────────────────── --}}
-        <footer style="
-            margin-top: 3rem;
-            padding: 1rem 0 .5rem;
-            border-top: 1px solid #e5e7eb;
-            text-align: center;
-        ">
-            <p style="font-size:.78rem;color:#9ca3af;margin:0;">
-                &copy; {{ date('Y') }}
-                <strong style="color:var(--primary);">AprendeTicPaulino</strong>
-                &mdash; Todos los derechos reservados.
-            </p>
-        </footer>
+        <div style="margin-top:3rem;border-top:1px solid #e5e7eb;">
+            <x-marca.pie />
+        </div>
     </main>
 
     <!-- Bootstrap 5 JS — local -->

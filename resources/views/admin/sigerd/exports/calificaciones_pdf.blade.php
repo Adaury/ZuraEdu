@@ -69,5 +69,6 @@ tr.alt td { background-color: #f0f4ff; }
 @endforeach
 
 <p class="footer">SIGERD — Sistema de Gestión Educativa &nbsp;·&nbsp; {{ date('d/m/Y H:i') }}</p>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

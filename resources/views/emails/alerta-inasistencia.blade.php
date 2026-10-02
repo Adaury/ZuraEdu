@@ -55,11 +55,12 @@
   <tr>
     <td style="background:#f8fafc;border-radius:0 0 16px 16px;padding:20px 36px;text-align:center;border-top:1px solid #e2e8f0;">
       <p style="margin:0;font-size:.76rem;color:#9ca3af;">
-        &copy; {{ date('Y') }} {{ $institucion }} — Alerta generada automáticamente por el Sistema SGE
+        {{ $institucion }} — Alerta generada automáticamente por ZuraEdu
       </p>
     </td>
   </tr>
 
+@include('partials.marca.pie-correo')
 </table>
 </td></tr>
 </table>

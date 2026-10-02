@@ -67,5 +67,6 @@
 <div class="footer">
     {{ $inst }} &nbsp;·&nbsp; Resumen Mensual de Pagos &nbsp;·&nbsp; {{ $sy?->nombre ?? date('Y') }} &nbsp;·&nbsp; {{ now()->format('d/m/Y') }}
 </div>
+@include('partials.marca.pie-pdf')
 </body>
 </html>

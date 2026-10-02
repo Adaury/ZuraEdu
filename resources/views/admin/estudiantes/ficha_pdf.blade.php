@@ -207,5 +207,6 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
     Ficha generada por SGE · {{ config('tenant.nombre', config('app.name')) }} · {{ now()->format('d/m/Y H:i') }} · {{ $si }}
 </div>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

@@ -32,6 +32,7 @@
     .contenido p { margin-bottom: 1rem; }
     .contenido a { color: var(--primary); }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
 
@@ -67,5 +68,6 @@
 
 @include('partials.sitio_chat_widget', ['nombre' => $nombre])
 
+<x-marca.pie tono="claro" />
 </body>
 </html>

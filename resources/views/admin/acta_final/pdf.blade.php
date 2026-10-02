@@ -195,5 +195,6 @@ body { font-family:'DejaVu Sans', Arial, sans-serif; font-size:7.5pt; color:#111
     </tr>
 </table>
 
+@include('partials.marca.pie-pdf')
 </body>
 </html>

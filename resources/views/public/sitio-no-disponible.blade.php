@@ -36,6 +36,7 @@
     h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: .5rem; }
     p { color: #64748b; font-size: .9rem; line-height: 1.6; }
     </style>
+@include('partials.marca.head')
 </head>
 <body>
 <div class="card">
@@ -49,5 +50,6 @@
     <h1>{{ $tenant->nombre_institucion }}</h1>
     <p><i class="bi bi-info-circle me-1"></i>Esta institución aún no tiene su portal público activado.</p>
 </div>
+<x-marca.pie tono="claro" />
 </body>
 </html>

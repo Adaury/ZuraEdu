@@ -184,31 +184,24 @@ class CafeteriaController extends Controller
             'monto'         => 'required|numeric|min:0.01',
         ]);
 
-        $saldoAnterior = VentaCafeteria::saldoEstudiante((int) $data['estudiante_id']);
-
-        if ($saldoAnterior < (float) $data['monto']) {
-            return back()->withInput()
-                ->with('error', 'Saldo insuficiente. Saldo actual: ' . number_format($saldoAnterior, 2));
-        }
-
         // Si viene producto_id, usar su nombre como descripción si no se puso una
         if (empty($data['descripcion']) && !empty($data['producto_id'])) {
             $producto = ProductoCafeteria::find($data['producto_id']);
             $data['descripcion'] = $producto?->nombre;
         }
 
-        VentaCafeteria::create([
-            'estudiante_id'  => $data['estudiante_id'],
-            'producto_id'    => $data['producto_id'] ?? null,
-            'descripcion'    => $data['descripcion'],
-            'tipo'           => 'venta',
-            'monto'          => $data['monto'],
-            'saldo_anterior' => $saldoAnterior,
-            'saldo_nuevo'    => $saldoAnterior - $data['monto'],
-            'created_by_id'  => auth()->id(),
-        ]);
+        // Atómico: comprueba el saldo y descuenta bajo el bloqueo del estudiante (ventas simultáneas no se aprueban todas).
+        $venta = VentaCafeteria::registrarMovimiento(
+            (int) $data['estudiante_id'], 'venta', (float) $data['monto'], $data['descripcion'] ?? null,
+            isset($data['producto_id']) ? (int) $data['producto_id'] : null, auth()->id()
+        );
 
-        return back()->with('success', 'Venta registrada. Nuevo saldo: ' . number_format($saldoAnterior - $data['monto'], 2));
+        if (! $venta) {
+            return back()->withInput()
+                ->with('error', 'Saldo insuficiente. Saldo actual: ' . number_format(VentaCafeteria::saldoEstudiante((int) $data['estudiante_id']), 2));
+        }
+
+        return back()->with('success', 'Venta registrada. Nuevo saldo: ' . number_format((float) $venta->saldo_nuevo, 2));
     }
 
     public function registrarRecarga(Request $request)
@@ -219,21 +212,12 @@ class CafeteriaController extends Controller
             'descripcion'   => 'nullable|string|max:200',
         ]);
 
-        $saldoAnterior = VentaCafeteria::saldoEstudiante((int) $data['estudiante_id']);
-        $saldoNuevo    = $saldoAnterior + (float) $data['monto'];
+        // Atómico: las recargas simultáneas se serializan por estudiante y el saldo visible es la suma real (antes quedaba en el de la última).
+        $recarga = VentaCafeteria::registrarMovimiento(
+            (int) $data['estudiante_id'], 'recarga', (float) $data['monto'], $data['descripcion'] ?? 'Recarga de saldo', null, auth()->id()
+        );
 
-        VentaCafeteria::create([
-            'estudiante_id'  => $data['estudiante_id'],
-            'producto_id'    => null,
-            'descripcion'    => $data['descripcion'] ?? 'Recarga de saldo',
-            'tipo'           => 'recarga',
-            'monto'          => $data['monto'],
-            'saldo_anterior' => $saldoAnterior,
-            'saldo_nuevo'    => $saldoNuevo,
-            'created_by_id'  => auth()->id(),
-        ]);
-
-        return back()->with('success', 'Recarga aplicada. Nuevo saldo: ' . number_format($saldoNuevo, 2));
+        return back()->with('success', 'Recarga aplicada. Nuevo saldo: ' . number_format((float) $recarga->saldo_nuevo, 2));
     }
 
     public function registrarAjuste(Request $request)
@@ -244,22 +228,11 @@ class CafeteriaController extends Controller
             'descripcion'   => 'required|string|max:200',
         ]);
 
-        $saldoAnterior = VentaCafeteria::saldoEstudiante((int) $data['estudiante_id']);
-        $monto         = (float) $data['monto'];
-        $saldoNuevo    = $saldoAnterior + $monto;
+        $ajuste = VentaCafeteria::registrarMovimiento(
+            (int) $data['estudiante_id'], 'ajuste', (float) $data['monto'], $data['descripcion'], null, auth()->id()
+        );
 
-        VentaCafeteria::create([
-            'estudiante_id'  => $data['estudiante_id'],
-            'producto_id'    => null,
-            'descripcion'    => $data['descripcion'],
-            'tipo'           => 'ajuste',
-            'monto'          => abs($monto),
-            'saldo_anterior' => $saldoAnterior,
-            'saldo_nuevo'    => $saldoNuevo,
-            'created_by_id'  => auth()->id(),
-        ]);
-
-        return back()->with('success', 'Ajuste registrado. Nuevo saldo: RD$' . number_format($saldoNuevo, 2));
+        return back()->with('success', 'Ajuste registrado. Nuevo saldo: RD$' . number_format((float) $ajuste->saldo_nuevo, 2));
     }
 
     // ── Balance por estudiante ─────────────────────────────────────────────

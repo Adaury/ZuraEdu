@@ -8,6 +8,7 @@ use App\Models\CalendarioDestinatario;
 use App\Models\Grupo;
 use App\Models\Matricula;
 use App\Models\Representante;
+use App\Models\SchoolYear;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
@@ -38,8 +39,11 @@ class CalendarioNotificador
      * @param  array<int,int|string>  $padresDeGrupos  IDs de grupos (aulas): se avisa a los representantes de sus estudiantes
      * @return Collection<int,User>
      */
-    public function resolver(array $grupos, array $userIds, ?int $excluirUserId = null, array $padresDeGrupos = []): Collection
+    public function resolver(array $grupos, array $userIds, ?int $excluirUserId = null, array $padresDeGrupos = [], array $padresDeGrados = []): Collection
     {
+        // "Padres de un grado completo" = padres de todos los grupos activos de ese grado en el año escolar activo.
+        $padresDeGrupos = array_merge($padresDeGrupos, $this->gruposDeGrados($padresDeGrados));
+
         $grupos  = array_values(array_intersect($grupos, array_keys(self::GRUPOS)));
         $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds))));
 
@@ -70,6 +74,24 @@ class CalendarioNotificador
         }
 
         return $porId->values();
+    }
+
+    /**
+     * IDs de los grupos activos del año escolar activo que pertenecen a esos grados. Grupo y SchoolYear pasan por el scope de
+     * tenant: un ID de grado de otro colegio no produce ningún grupo.
+     *
+     * @param  array<int,int|string>  $gradoIds
+     * @return array<int,int>
+     */
+    public function gruposDeGrados(array $gradoIds): array
+    {
+        $gradoIds = array_values(array_unique(array_filter(array_map('intval', $gradoIds))));
+        $anio     = $gradoIds ? SchoolYear::actual() : null;
+        if (! $anio) {
+            return [];
+        }
+
+        return Grupo::where('school_year_id', $anio->id)->where('activo', true)->whereIn('grado_id', $gradoIds)->pluck('id')->all();
     }
 
     /**
@@ -105,9 +127,9 @@ class CalendarioNotificador
      * Registra los destinatarios y encola el envío. Devuelve cuántas personas se avisarán.
      * $reenviar = true (al editar un evento) vuelve a avisar también a quienes ya habían recibido el aviso.
      */
-    public function notificar(CalendarioAcademico $evento, array $grupos, array $userIds, bool $reenviar = false, bool $actualizacion = false, array $padresDeGrupos = []): int
+    public function notificar(CalendarioAcademico $evento, array $grupos, array $userIds, bool $reenviar = false, bool $actualizacion = false, array $padresDeGrupos = [], array $padresDeGrados = []): int
     {
-        $usuarios = $this->resolver($grupos, $userIds, $evento->creado_por, $padresDeGrupos);
+        $usuarios = $this->resolver($grupos, $userIds, $evento->creado_por, $padresDeGrupos, $padresDeGrados);
         if ($usuarios->isEmpty()) {
             return 0;
         }

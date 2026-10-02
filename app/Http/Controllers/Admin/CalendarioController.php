@@ -107,6 +107,8 @@ class CalendarioController extends Controller
             'notificar_usuarios.*' => 'integer|exists:users,id',
             'notificar_padres_grupos'   => 'nullable|array|max:200',
             'notificar_padres_grupos.*' => 'integer|exists:grupos,id',
+            'notificar_padres_grados'   => 'nullable|array|max:50',
+            'notificar_padres_grados.*' => 'integer|exists:grados,id',
         ]);
 
         $schoolYear = SchoolYear::actual() ?? abort(404, 'No hay año escolar activo.');
@@ -155,6 +157,8 @@ class CalendarioController extends Controller
             'notificar_usuarios.*' => 'integer|exists:users,id',
             'notificar_padres_grupos'   => 'nullable|array|max:200',
             'notificar_padres_grupos.*' => 'integer|exists:grupos,id',
+            'notificar_padres_grados'   => 'nullable|array|max:50',
+            'notificar_padres_grados.*' => 'integer|exists:grados,id',
         ]);
 
         $aviso = $this->sacarAviso($data);
@@ -185,7 +189,9 @@ class CalendarioController extends Controller
                 ->sortBy(fn ($g) => [$g->grado?->orden, $g->seccion?->orden])->values()
             : collect();
 
-        return ['gruposAviso' => CalendarioNotificador::GRUPOS, 'personasAviso' => $personas, 'aulasAviso' => $aulas];
+        $grados = \App\Models\Grado::where('activo', true)->orderBy('orden')->get(['id', 'nombre']);
+
+        return ['gruposAviso' => CalendarioNotificador::GRUPOS, 'personasAviso' => $personas, 'aulasAviso' => $aulas, 'gradosAviso' => $grados];
     }
 
     /** Saca del array validado los campos de aviso (no son columnas de la tabla). */
@@ -196,8 +202,9 @@ class CalendarioController extends Controller
             'grupos'    => $data['notificar_grupos'] ?? [],
             'usuarios'  => $data['notificar_usuarios'] ?? [],
             'padres_de_grupos' => $data['notificar_padres_grupos'] ?? [],
+            'padres_de_grados' => $data['notificar_padres_grados'] ?? [],
         ];
-        unset($data['notificar'], $data['notificar_grupos'], $data['notificar_usuarios'], $data['notificar_padres_grupos']);
+        unset($data['notificar'], $data['notificar_grupos'], $data['notificar_usuarios'], $data['notificar_padres_grupos'], $data['notificar_padres_grados']);
 
         return $aviso;
     }
@@ -205,12 +212,12 @@ class CalendarioController extends Controller
     /** Encola el aviso y devuelve la frase para el mensaje de confirmación. */
     private function avisar(CalendarioAcademico $evento, array $aviso, bool $actualizacion): string
     {
-        if (! $aviso['notificar'] || (! $aviso['grupos'] && ! $aviso['usuarios'] && ! $aviso['padres_de_grupos'])) {
+        if (! $aviso['notificar'] || (! $aviso['grupos'] && ! $aviso['usuarios'] && ! $aviso['padres_de_grupos'] && ! $aviso['padres_de_grados'])) {
             return '';
         }
 
         $n = app(CalendarioNotificador::class)->notificar(
-            $evento, $aviso['grupos'], $aviso['usuarios'], $actualizacion, $actualizacion, $aviso['padres_de_grupos']
+            $evento, $aviso['grupos'], $aviso['usuarios'], $actualizacion, $actualizacion, $aviso['padres_de_grupos'], $aviso['padres_de_grados']
         );
 
         return $n > 0

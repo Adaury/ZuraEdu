@@ -110,6 +110,18 @@
         </div>
 
         <div class="mb-3">
+            <label class="fw-semibold mb-1" for="selGrados" style="font-size:.82rem;">Padres de grados completos (opcional)</label>
+            <select name="notificar_padres_grados[]" id="selGrados" class="form-select form-select-sm" multiple size="{{ min(max($gradosAviso->count(), 3), 7) }}">
+                @foreach($gradosAviso as $gr)
+                <option value="{{ $gr->id }}" {{ in_array($gr->id, array_map('intval', (array) old('notificar_padres_grados', [])), true) ? 'selected' : '' }}>
+                    {{ $gr->nombre }} (todas las secciones)
+                </option>
+                @endforeach
+            </select>
+            <div class="text-muted" style="font-size:.76rem;">Equivale a marcar todos los grupos de ese grado en el año activo.</div>
+        </div>
+
+        <div class="mb-3">
             <label class="fw-semibold mb-1" for="selAulas" style="font-size:.82rem;">Padres de grupos específicos (opcional)</label>
             <select name="notificar_padres_grupos[]" id="selAulas" class="form-select form-select-sm" multiple size="6">
                 @foreach($aulasAviso as $g)

@@ -32,6 +32,9 @@ class Kernel extends ConsoleKernel
                  ->everyFiveMinutes()
                  ->withoutOverlapping();
 
+        // ── Odoo: enviar contactos/facturas de los centros con la integración activa ──
+        $schedule->command('odoo:sincronizar')->hourly()->withoutOverlapping(30);
+
         // ── Métricas de Horizon (gráficas del dashboard) ─────────────────────
         $schedule->command('horizon:snapshot')->everyFiveMinutes();
 

@@ -659,6 +659,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'activo', 'admin.acc
     require __DIR__ . '/admin/exportacion_masiva.php';
     require __DIR__ . '/admin/kpis.php';
     require __DIR__ . '/admin/cierre_ano.php';
+    require __DIR__ . '/admin/odoo.php';
     require __DIR__ . '/admin/importaciones.php';
     require __DIR__ . '/admin/pre_matriculas.php';
     require __DIR__ . '/admin/galeria.php';

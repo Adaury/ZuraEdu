@@ -3113,6 +3113,13 @@ if (auth()->check()) {
                         <i class="bi bi-gear"></i>Config. Pagos
                     </a>
                 </li>
+                @can('solo-administrador')
+                <li class="nav-item">
+                    <a href="{{ route('admin.odoo.index') }}" class="{{ request()->routeIs('admin.odoo.*') ? 'active' : '' }}">
+                        <i class="bi bi-plug"></i>Integración Odoo
+                    </a>
+                </li>
+                @endcan
             </ul>
             @endif
 

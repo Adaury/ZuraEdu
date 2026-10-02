@@ -1607,6 +1607,42 @@ export interface Observaciones {
   updated_at: string | null;
 }
 
+export interface OdooConexiones {
+  activo: Generated<number>;
+  api_key: string;
+  base_datos: string;
+  created_at: string | null;
+  diario_id: number | null;
+  id: Generated<number>;
+  publicar_facturas: Generated<number>;
+  sync_contactos: Generated<number>;
+  sync_facturas: Generated<number>;
+  tenant_id: number;
+  uid_odoo: number | null;
+  ultima_sync_at: string | null;
+  ultimo_error: string | null;
+  ultimo_test_at: string | null;
+  ultimo_test_ok: number | null;
+  updated_at: string | null;
+  url: string;
+  usuario: string;
+  version_odoo: string | null;
+}
+
+export interface OdooVinculos {
+  created_at: string | null;
+  entidad_id: number;
+  entidad_tipo: string;
+  huella: string | null;
+  id: Generated<number>;
+  odoo_id: number;
+  odoo_modelo: string;
+  sincronizado_at: string | null;
+  tenant_id: number;
+  ultimo_error: string | null;
+  updated_at: string | null;
+}
+
 export interface OpcionesPregunta {
   created_at: string | null;
   id: Generated<number>;
@@ -2902,6 +2938,8 @@ export interface DB {
   nomina_empleados: NominaEmpleados;
   notificaciones: Notificaciones;
   observaciones: Observaciones;
+  odoo_conexiones: OdooConexiones;
+  odoo_vinculos: OdooVinculos;
   opciones_pregunta: OpcionesPregunta;
   pagina_secciones: PaginaSecciones;
   pagos: Pagos;

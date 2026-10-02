@@ -16,7 +16,7 @@
 
 | Componente | Versión mínima |
 |---|---|
-| PHP | 8.1+ (extensiones: pdo_mysql, redis, pcntl, posix, gd, zip) |
+| PHP | **8.3+** (Laravel 13 lo exige: con 8.1/8.2 `composer install` falla; extensiones: pdo_mysql, redis, pcntl, posix, gd, zip). Comprueba con `php -v` ANTES de desplegar |
 | MySQL | 8.0+ |
 | Redis | 6.0+ |
 | Node.js | 18+ (solo si compilas assets en el servidor) |

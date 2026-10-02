@@ -18,7 +18,7 @@ El resumen (tabla + CPU + estado de PHP-FPM + MySQL + errores) queda en el *Summ
 ## Cómo leer los resultados
 - **OK/s** de la escalera: la capacidad. Cuando sube poco al duplicar usuarios, ya se saturó; ahí crece la latencia (p95) en vez del rendimiento.
 - **Rechazadas / timeouts / 5xx > 0**: el servidor no dio abasto. **Redir. (sesión) > 0**: las sesiones fabricadas no valieron (no es culpa del servidor).
-- **max children reached > 0** (PHP-FPM): se agotaron los procesos PHP; subir `fpm_hijos` (si hay CPU y RAM) o recortar el costo por página.
+- **Saturación**: con `pm=static` y socket unix, «max children reached» y «listen queue» de PHP-FPM siempre marcan 0 (no sirven). La señal real es **CPU al 100 %** y la **latencia que crece en proporción a los usuarios** mientras OK/s no sube.
 - **Servidor p50/p95** es lo que midió Nginx (`request_time`); el p50/p95 del generador incluye además la espera para conectar.
 
 ## Límites

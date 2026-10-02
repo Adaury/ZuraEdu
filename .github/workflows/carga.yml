@@ -116,8 +116,15 @@ jobs:
       - name: Migrar y sembrar datos de demostración
         run: |
           php artisan migrate --force
-          php artisan db:seed --force
+          # Los seeders de demostración se niegan a correr con APP_ENV=production (AsignacionesDemoSeeder borra todas las asignaciones);
+          # se siembra en modo local y luego se SIRVE en producción. Sin asignaciones no hay calificaciones ni asistencias.
+          APP_ENV=local php artisan db:seed --force
           php artisan storage:link || true
+          # Si la siembra quedó incompleta, medir páginas casi vacías daría cifras demasiado optimistas: se corta aquí.
+          M() { mysql -h127.0.0.1 -uroot -proot -N -e "$1" sge_carga 2>/dev/null; }
+          echo "estudiantes=$(M 'select count(*) from estudiantes') calificaciones=$(M 'select count(*) from calificaciones_academicas') asistencias=$(M 'select count(*) from asistencias') pagos=$(M 'select count(*) from pagos')"
+          [ "$(M 'select count(*) from calificaciones_academicas')" -gt 1000 ] || { echo "Siembra incompleta: sin calificaciones"; exit 1; }
+          [ "$(M 'select count(*) from asistencias')" -gt 1000 ] || { echo "Siembra incompleta: sin asistencias"; exit 1; }
 
       - name: Fabricar usuarios y sesiones (una por persona)
         run: |
@@ -267,7 +274,7 @@ jobs:
             echo '```'
             curl -s http://127.0.0.1/fpm-status | grep -E "pool|process manager|start since|accepted conn|listen queue|max listen queue|total processes|max active processes|max children reached|slow requests" || true
             echo '```'
-            echo "_«max children reached» > 0 = en algún momento se agotaron los procesos PHP; «max listen queue» = cuántas peticiones llegaron a esperar en cola._"
+            echo "_Con \`pm=static\` y socket unix, «max children reached» y «listen queue» no sirven para detectar saturación (siempre marcan 0). La señal real es la CPU al 100 % y la latencia que crece en proporción a los usuarios (ley de Little)._"
             echo ""
             echo "### MySQL"
             echo '```'

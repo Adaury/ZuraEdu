@@ -101,9 +101,9 @@
                     <i class="bi bi-qr-code me-1"></i>Código QR de acceso
                 </div>
                 <img
-                    src="https://quickchart.io/qr?text={{ urlencode($qrUrl) }}&size=200&ecLevel=M&margin=2"
+                    src="{{ \App\Services\CarnetQrService::qrDataUri($qrUrl) }}"
                     alt="QR Carnet"
-                    style="width:180px;height:180px;border-radius:12px;"
+                    style="width:180px;height:180px;border-radius:12px;image-rendering:pixelated;"
                     onerror="this.parentElement.innerHTML='<p class=\'text-muted small\'>QR no disponible</p>'"
                 >
                 <div class="mt-3 text-muted" style="font-size:.72rem;">

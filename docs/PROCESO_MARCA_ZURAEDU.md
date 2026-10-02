@@ -161,5 +161,5 @@ para restaurarlo basta volver a subirlo desde Admin → Sistema) y, en las 4 pan
 | Hoja por grupo con `flex` | tarjetas apiladas en una columna y encabezado invisible | cuadrícula de 3 por fila |
 
 Un solo parcial (`admin/carnet/_cara.blade.php`) dibuja la cara del carnet para el PDF individual y el masivo. Pruebas: `CarnetPdfMarcaTest`.
-Las pantallas web «Mi carnet» (estudiante, docente, padre) siguen pidiendo el QR a quickchart.io desde el navegador; no se tocaron.
+Las pantallas web «Mi carnet» (estudiante, docente, padre) también generan el QR en el servidor: ya no queda ninguna dependencia de quickchart.io.
 

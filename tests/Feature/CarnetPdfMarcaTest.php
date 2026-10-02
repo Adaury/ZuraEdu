@@ -106,4 +106,13 @@ class CarnetPdfMarcaTest extends TestCase
             $this->assertStringContainsString('brand/zuraedu-icono.svg', $t, "$v: insignia de ZuraEdu como respaldo");
         }
     }
+
+    public function test_las_pantallas_mi_carnet_generan_el_qr_localmente(): void
+    {
+        foreach (['portal/docente/mi_carnet', 'portal/estudiante/mi_carnet', 'portal/padre/hijo_carnet'] as $v) {
+            $t = file_get_contents(resource_path("views/{$v}.blade.php"));
+            $this->assertStringNotContainsString('quickchart', $t, "$v: el QR no debe depender de un servicio externo");
+            $this->assertStringContainsString('CarnetQrService::qrDataUri', $t, $v);
+        }
+    }
 }

@@ -490,6 +490,15 @@ script en vez de correr los pasos a mano:
 ./deploy.sh --sin-assets   # sin recompilar assets (usa los ya compilados)
 ```
 
+> **Primer despliegue (Laravel 10 → 13): sigue [`docs/RUNBOOK_PRIMER_DEPLOY.md`](docs/RUNBOOK_PRIMER_DEPLOY.md)**, con la lista numerada de qué comprobar antes,
+> los comandos exactos y qué hacer si algo falla.
+>
+> - El script **recarga PHP-FPM** antes de salir de mantenimiento (con `opcache.validate_timestamps=0`, §8, si no se recarga el servidor sigue sirviendo el código
+>   viejo). Usa `sudo -n systemctl reload php8.3-fpm`: define `PHP_FPM_SERVICE=<servicio>` si se llama distinto y da permiso sin contraseña para ese comando; si no puede,
+>   **avisa** con el comando exacto y sigue.
+> - Si un paso falla después de poner la aplicación en mantenimiento, **la deja en mantenimiento a propósito** y explica en qué paso fue y qué hacer.
+> - `scripts/probar-deploy.sh` prueba `deploy.sh` y `rollback.sh` en un servidor simulado (y corre en el CI cuando se tocan).
+
 El checklist manual equivalente, por si se necesita correr paso a paso:
 
 ```bash

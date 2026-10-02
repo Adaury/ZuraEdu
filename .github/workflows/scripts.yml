@@ -1,0 +1,48 @@
+name: Scripts de despliegue
+
+# deploy.sh y rollback.sh son los scripts que se ejecutan en producción con la aplicación en mantenimiento y NUNCA se pueden probar "de verdad"
+# sin riesgo. Esta prueba los ejecuta contra un servidor SIMULADO (remoto git "bare", comandos falsos que registran las llamadas) y comprueba el
+# orden de los pasos y qué pasa cuando algo falla (backup, composer, migraciones, recarga de PHP-FPM, árbol sucio, confirmación de restaurar la BD).
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'deploy.sh'
+      - 'rollback.sh'
+      - 'scripts/**'
+      - '.github/workflows/scripts.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'deploy.sh'
+      - 'rollback.sh'
+      - 'scripts/**'
+      - '.github/workflows/scripts.yml'
+
+concurrency:
+  group: scripts-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: deploy.sh y rollback.sh en un servidor simulado
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Sintaxis de bash
+        run: |
+          bash -n deploy.sh
+          bash -n rollback.sh
+          bash -n scripts/probar-deploy.sh
+
+      - name: Los scripts son ejecutables y tienen finales de línea LF (con CRLF no arrancan en Linux)
+        run: |
+          for f in deploy.sh rollback.sh; do
+            test -x "$f" || { echo "$f no es ejecutable"; exit 1; }
+            ! grep -q $'\r' "$f" || { echo "$f tiene finales de línea CRLF"; exit 1; }
+          done
+
+      - name: Prueba de deploy.sh y rollback.sh
+        run: bash scripts/probar-deploy.sh

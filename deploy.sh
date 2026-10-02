@@ -16,7 +16,7 @@
 # Requiere: estar en la raíz del proyecto, con permisos ya configurados
 # sobre storage/ y bootstrap/cache/ (ver DEPLOY.md §8).
 #
-set -euo pipefail
+set -Eeuo pipefail
 
 PROYECTO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PROYECTO_DIR"
@@ -34,7 +34,35 @@ for arg in "$@"; do
     esac
 done
 
-log() { echo "[deploy $(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+PASO_ACTUAL="inicio"
+MANTENIMIENTO=false   # true entre `artisan down` y `artisan up`
+TAG_PUBLICADO=""      # se llena cuando el tag de rollback ya está en origin
+
+log() {
+    case "$*" in "["[0-9]*"/9]"*) PASO_ACTUAL="$*" ;; esac
+    echo "[deploy $(date '+%Y-%m-%d %H:%M:%S')] $*"
+}
+
+# Si cualquier paso falla (set -e), NO se sale en silencio: se dice en qué paso fue y qué hacer. La aplicación se deja en
+# mantenimiento A PROPÓSITO (no se publica código a medias: p. ej. con las migraciones a medio aplicar).
+al_fallar() {
+    local codigo=$?
+    trap - ERR
+    echo "" >&2
+    log "ERROR (código $codigo) en: $PASO_ACTUAL" >&2
+    if [ "$MANTENIMIENTO" = true ]; then
+        log "La aplicación SIGUE EN MANTENIMIENTO (a propósito)." >&2
+        log "Qué hacer: 1) lee el error de arriba y corrige la causa; 2) vuelve a ejecutar ./deploy.sh (las migraciones ya aplicadas no se repiten)." >&2
+        log "Ojo: si falló una MIGRACIÓN, MySQL no deshace los cambios de esquema a medias: antes de repetir revisa 'php artisan migrate:status'," >&2
+        log "     o restaura el backup de este deploy con ./rollback.sh <tag> --restaurar-bd=<archivo> (DEPLOY.md §14)." >&2
+        if [ -n "$TAG_PUBLICADO" ]; then
+            log "Para volver a la versión anterior: ./rollback.sh $TAG_PUBLICADO  (y luego: php artisan up)." >&2
+        fi
+        log "Solo si estás SEGURO de que la aplicación está en un estado consistente: php artisan up" >&2
+    fi
+    exit "$codigo"
+}
+trap al_fallar ERR
 
 if [ ! -f artisan ]; then
     echo "Error: este script debe ejecutarse desde la raíz del proyecto (no se encontró 'artisan')." >&2
@@ -54,17 +82,20 @@ log "Rama: $RAMA_ACTUAL — tag de rollback que se creará: $TAG"
 
 log "[1/9] Modo mantenimiento ON"
 php artisan down --retry=60
+MANTENIMIENTO=true
 
 log "[2/9] Backup de BD + archivos antes de desplegar"
 if ! php artisan sge:backup; then
     log "ERROR: el backup pre-deploy falló. Abortando ANTES de tocar código."
     php artisan up
+    MANTENIMIENTO=false
     exit 1
 fi
 
 log "[3/9] Creando y publicando tag de rollback: $TAG"
 git tag "$TAG"
 git push origin "$TAG"
+TAG_PUBLICADO="$TAG"
 
 log "[4/9] Actualizando código (git pull origin $RAMA_ACTUAL)"
 git pull origin "$RAMA_ACTUAL"
@@ -91,10 +122,21 @@ log "[8/9] Reconstruyendo caché"
 php artisan optimize:clear
 php artisan optimize
 
-log "[9/9] Reiniciando workers y saliendo de mantenimiento"
+log "[9/9] Recargando PHP-FPM, reiniciando workers y saliendo de mantenimiento"
+# Con opcache.validate_timestamps=0 (DEPLOY.md §8) PHP-FPM NO vuelve a leer los .php: sin recargarlo, la aplicación saldría de
+# mantenimiento ejecutando el código ANTERIOR sobre las dependencias y la base de datos ya nuevas. Se hace ANTES de `artisan up`.
+FPM_SERVICIO="${PHP_FPM_SERVICE:-php8.3-fpm}"
+if sudo -n systemctl reload "$FPM_SERVICIO" 2>/dev/null; then
+    log "PHP-FPM ($FPM_SERVICIO) recargado: OPcache ya sirve el código nuevo."
+else
+    log "AVISO: no se pudo recargar $FPM_SERVICIO (¿otro nombre de servicio, o sudo pide contraseña?)."
+    log "       Con opcache.validate_timestamps=0 el servidor SIGUE sirviendo el código anterior hasta que lo hagas."
+    log "       Ejecuta AHORA: sudo systemctl reload $FPM_SERVICIO   (y define PHP_FPM_SERVICE=<servicio> en el próximo deploy)."
+fi
 supervisorctl restart sge-horizon sge-reverb 2>/dev/null \
     || log "AVISO: no se pudo reiniciar supervisor automáticamente (¿nombres de proceso distintos? ver DEPLOY.md §6). Revisar manualmente."
 php artisan up
+MANTENIMIENTO=false
 
 if [ -n "${DEPLOY_HEALTH_URL:-}" ]; then
     log "Verificando $DEPLOY_HEALTH_URL ..."

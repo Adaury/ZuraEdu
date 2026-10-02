@@ -85,7 +85,17 @@ else
     log "[5/6] Restauración de BD omitida (no se pasó --restaurar-bd) — solo se revirtió el código."
 fi
 
-log "[6/6] Reiniciando workers y saliendo de mantenimiento"
+log "[6/6] Recargando PHP-FPM, reiniciando workers y saliendo de mantenimiento"
+# Con opcache.validate_timestamps=0 (DEPLOY.md §8) PHP-FPM NO vuelve a leer los .php: sin recargarlo, tras revertir el código el servidor
+# seguiría ejecutando el código NUEVO (el que se quiere deshacer). Se hace ANTES de `artisan up`.
+FPM_SERVICIO="${PHP_FPM_SERVICE:-php8.3-fpm}"
+if sudo -n systemctl reload "$FPM_SERVICIO" 2>/dev/null; then
+    log "PHP-FPM ($FPM_SERVICIO) recargado: OPcache ya sirve el código revertido."
+else
+    log "AVISO: no se pudo recargar $FPM_SERVICIO (¿otro nombre de servicio, o sudo pide contraseña?)."
+    log "       Con opcache.validate_timestamps=0 el servidor SIGUE sirviendo el código que querías revertir hasta que lo hagas."
+    log "       Ejecuta AHORA: sudo systemctl reload $FPM_SERVICIO   (y define PHP_FPM_SERVICE=<servicio> la próxima vez)."
+fi
 supervisorctl restart sge-horizon sge-reverb 2>/dev/null \
     || log "AVISO: no se pudo reiniciar supervisor automáticamente. Revisar manualmente."
 php artisan up

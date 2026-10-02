@@ -376,6 +376,7 @@ export interface CalendarioAcademico {
   fecha_fin: string | null;
   fecha_inicio: string;
   hora_inicio: string | null;
+  ics_sequence: Generated<number>;
   id: Generated<number>;
   periodo_id: number | null;
   school_year_id: number;
@@ -383,6 +384,17 @@ export interface CalendarioAcademico {
   tipo: Generated<"actividad" | "entrega_notas" | "examen" | "feriado" | "fin_periodo" | "inicio_periodo" | "otro" | "reunion" | "suspension">;
   titulo: string;
   updated_at: string | null;
+}
+
+export interface CalendarioDestinatarios {
+  calendario_id: number;
+  correo_enviado_at: string | null;
+  created_at: string | null;
+  id: Generated<number>;
+  notificado_at: string | null;
+  tenant_id: number | null;
+  updated_at: string | null;
+  user_id: number;
 }
 
 export interface CalificacionAudits {
@@ -2810,6 +2822,7 @@ export interface DB {
   cache: Cache;
   cache_locks: CacheLocks;
   calendario_academico: CalendarioAcademico;
+  calendario_destinatarios: CalendarioDestinatarios;
   calificacion_audits: CalificacionAudits;
   calificaciones: Calificaciones;
   calificaciones_academicas: CalificacionesAcademicas;

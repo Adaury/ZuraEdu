@@ -54,6 +54,8 @@ async def main():
     ap.add_argument('--host', default='carga.local')
     ap.add_argument('--timeout', type=float, default=60)
     ap.add_argument('--salida', required=True)
+    ap.add_argument('--solo-ruta', help='todos los usuarios piden SOLO esta ruta (p. ej. /portal/estudiante)')
+    ap.add_argument('--solo-rol', choices=[r for r, _ in MEZCLA], help='todos los usuarios son de este rol')
     ap.add_argument('--log-nginx')
     ap.add_argument('--md')
     a = ap.parse_args()
@@ -64,7 +66,7 @@ async def main():
     por_rol = collections.defaultdict(list)
     for s in sesiones:
         por_rol[s['rol']].append(s)
-    faltan = [r for r, _ in MEZCLA if not por_rol[r]]
+    faltan = [r for r, _ in MEZCLA if not por_rol[r] and (not a.solo_rol or r == a.solo_rol)]
     if faltan:
         sys.exit(f"Faltan sesiones de: {faltan}")
 
@@ -103,6 +105,8 @@ async def main():
         reg.append((time.monotonic() - t0, rol, ruta, clase, estado, (time.monotonic() - ini) * 1000))
 
     roles = [r for r, p in MEZCLA for _ in range(p)]      # 100 posiciones con la mezcla pedida
+    if a.solo_rol:
+        roles = [a.solo_rol] * 100
 
     async def usuario(i):
         rol = roles[i % 100] if i % 100 < len(roles) else roles[0]
@@ -111,7 +115,7 @@ async def main():
             await asyncio.sleep(a.rampa * i / a.usuarios)
         fin = a.rampa + a.seg
         while not parar and time.monotonic() - t0 < fin:
-            ruta = random.choice(RUTAS[rol]).replace('{h}', str(s.get('hijoId', 0)))
+            ruta = a.solo_ruta or random.choice(RUTAS[rol]).replace('{h}', str(s.get('hijoId', 0)))
             await una(s, ruta, rol)
             if a.modo == 'rafaga':
                 return

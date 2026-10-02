@@ -19,6 +19,11 @@ on:
       segundos:
         description: 'Duración del escenario realista (segundos)'
         default: '90'
+      escenarios:
+        description: "completo = base + escalera + realista + ráfaga (~12 min) · rapido = solo la base y las páginas del portal (~4 min, para comparar cambios)"
+        default: 'completo'
+        type: choice
+        options: [completo, rapido]
 
 permissions:
   contents: read
@@ -56,6 +61,7 @@ jobs:
       FPM_HIJOS: ${{ inputs.fpm_hijos }}
       USUARIOS: ${{ inputs.usuarios }}
       SEGUNDOS: ${{ inputs.segundos }}
+      ESCENARIOS: ${{ inputs.escenarios }}
 
     steps:
       - uses: actions/checkout@v7
@@ -254,16 +260,25 @@ jobs:
           python3 scripts/carga/carga.py --etiqueta calentamiento --modo cerrado --usuarios 8 --seg 10 --sesiones "$RUNNER_TEMP/sesiones.json" \
             --url http://127.0.0.1 --host carga.local --salida "$D/res_calentamiento.json" > /dev/null
 
-          # 1) Escalera de capacidad: usuarios que piden sin parar
-          for n in 8 16 32 64 128 256; do
-            correr "escalera-$n" --modo cerrado --usuarios $n --seg 15
-          done
+          # 0) Base: separa el costo del FRAMEWORK (arranque + sesión + autenticación + 1 consulta) del costo de cada página.
+          #    /notificaciones/conteo hace solo eso; las demás piden únicamente la página indicada, con 32 usuarios sin pausa.
+          correr "base-conteo-32"        --modo cerrado --usuarios 32 --seg 15 --solo-ruta /notificaciones/conteo --solo-rol estudiante
+          correr "panel-estudiante-32"   --modo cerrado --usuarios 32 --seg 15 --solo-ruta /portal/estudiante      --solo-rol estudiante
+          correr "panel-padre-32"        --modo cerrado --usuarios 32 --seg 15 --solo-ruta /portal/padre           --solo-rol padre
+          correr "panel-docente-32"      --modo cerrado --usuarios 32 --seg 15 --solo-ruta /portal/docente         --solo-rol docente
 
-          # 2) Usuarios realistas (pausa de 10 a 30 s entre páginas)
-          correr "realista-$USUARIOS" --modo usuarios --usuarios "$USUARIOS" --seg "$SEGUNDOS" --rampa 30 --pensar-min 10 --pensar-max 30
+          if [ "$ESCENARIOS" = "completo" ]; then
+            # 1) Escalera de capacidad: usuarios que piden sin parar (mezcla de páginas)
+            for n in 8 16 32 64 128 256; do
+              correr "escalera-$n" --modo cerrado --usuarios $n --seg 15
+            done
 
-          # 3) Ráfaga: todos piden a la vez
-          correr "rafaga-$USUARIOS" --modo rafaga --usuarios "$USUARIOS" --timeout 120
+            # 2) Usuarios realistas (pausa de 10 a 30 s entre páginas)
+            correr "realista-$USUARIOS" --modo usuarios --usuarios "$USUARIOS" --seg "$SEGUNDOS" --rampa 30 --pensar-min 10 --pensar-max 30
+
+            # 3) Ráfaga: todos piden a la vez
+            correr "rafaga-$USUARIOS" --modo rafaga --usuarios "$USUARIOS" --timeout 120
+          fi
 
           {
             echo ""

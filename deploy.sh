@@ -77,6 +77,13 @@ fi
 
 RAMA_ACTUAL="$(git rev-parse --abbrev-ref HEAD)"
 TAG="deploy-$(date '+%Y%m%d-%H%M%S')"
+# El nombre solo distingue segundos: dos despliegues en el mismo segundo (o un reintento muy rápido) chocarían en `git tag` con la
+# aplicación ya en mantenimiento. Si ya existe, se añade un sufijo (-2, -3…); `rollback.sh` y `git tag --list 'deploy-*'` siguen valiendo.
+_N=1
+while git rev-parse -q --verify "refs/tags/$TAG" >/dev/null 2>&1; do
+    _N=$((_N + 1))
+    TAG="deploy-$(date '+%Y%m%d-%H%M%S')-$_N"
+done
 
 log "Rama: $RAMA_ACTUAL — tag de rollback que se creará: $TAG"
 

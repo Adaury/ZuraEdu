@@ -16,7 +16,11 @@ trap 'rm -rf "$T"' EXIT
 fallos=0
 pruebas=0
 ok()  { pruebas=$((pruebas + 1)); echo "  ✓ $1"; }
-mal() { pruebas=$((pruebas + 1)); fallos=$((fallos + 1)); echo "  ✗ $1"; [ -n "${2:-}" ] && echo "      $2"; }
+mal() {
+    pruebas=$((pruebas + 1)); fallos=$((fallos + 1)); echo "  ✗ $1"; [ -n "${2:-}" ] && echo "      $2"
+    # Diagnóstico: la salida de la última ejecución del script (en el CI no se puede reproducir a mano).
+    if [ -s "${SALIDA:-/nonexistent}" ]; then echo "      --- salida del script (últimas líneas) ---"; tail -n 8 "$SALIDA" | sed 's/^/      | /'; fi
+}
 afirmar() { if eval "$2"; then ok "$1"; else mal "$1" "${3:-}"; fi; }
 
 # ── servidor simulado ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -58,6 +62,14 @@ exit 0
 STUB
     chmod +x "$T/stubs/$c"
 done
+cat > "$T/stubs/date" <<'STUB'
+#!/usr/bin/env bash
+# Con FIJAR_FECHA=1 el nombre del tag (AAAAMMDD-HHMMSS) es siempre el mismo: simula una máquina rápida (dos despliegues en el mismo segundo).
+if [ "${FIJAR_FECHA:-0}" = 1 ] && [[ "$*" == *%Y%m%d-%H%M%S* ]]; then echo 20260101-000000; exit 0; fi
+export PATH="${PATH#"$(dirname "$0")":}"
+exec date "$@"
+STUB
+chmod +x "$T/stubs/date"
 cat > "$T/stubs/sudo" <<'STUB'
 #!/usr/bin/env bash
 echo "sudo $*" >> "$DEPLOY_LOG"; [ "$1" = "-n" ] && shift; exec "$@"
@@ -137,6 +149,13 @@ afirmar "explica el riesgo del código viejo en OPcache" 'dijo "SIGUE sirviendo 
 echo "F) Otro nombre de servicio PHP-FPM"
 corrida PHP_FPM_SERVICE=php8.4-fpm -- --sin-assets
 afirmar "usa el servicio configurado" 'grep -q "systemctl reload php8.4-fpm" "$LOG" && ! grep -q "systemctl reload php8.3-fpm" "$LOG"'
+
+echo "F2) Dos despliegues en el MISMO segundo"
+corrida FIJAR_FECHA=1 -- --sin-assets
+primero="$CODIGO"
+corrida FIJAR_FECHA=1 -- --sin-assets
+afirmar "ambos terminan bien (el segundo no choca con el tag del primero)" '[ "$primero" = 0 ] && [ "$CODIGO" = 0 ]'
+afirmar "el segundo tag lleva un sufijo y los dos quedan publicados" '[ "$(git -C "$T/remoto.git" tag --list "deploy-20260101-000000*" | wc -l)" = 2 ] && git -C "$T/remoto.git" tag --list | grep -q "deploy-20260101-000000-2"'
 
 echo "G) Opciones"
 corrida X=1 -- --sin-assets --sin-migrar

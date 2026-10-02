@@ -1,0 +1,295 @@
+name: Prueba de carga (Linux)
+
+# MANUAL: se lanza desde la pestaña Actions ("Run workflow"). No corre solo, no toca producción ni ninguna base real:
+# monta Nginx + PHP-FPM + MySQL + Redis en un servidor Linux descartable, siembra los datos de demostración (360 estudiantes, calificaciones,
+# asistencias, pagos), fabrica una sesión por persona y mide tres cosas:
+#   1) capacidad (escalera de usuarios que piden sin parar), 2) usuarios realistas con pausas, 3) una ráfaga de golpe.
+# Límites a tener presentes (se repiten en el resumen): el runner público es chico (4 vCPU) y el generador de carga corre en la MISMA máquina que
+# el servidor, así que las cifras son un piso conservador del que daría un servidor dedicado.
+
+on:
+  workflow_dispatch:
+    inputs:
+      usuarios:
+        description: 'Usuarios virtuales del escenario realista y de la ráfaga'
+        default: '1500'
+      fpm_hijos:
+        description: 'Procesos de PHP-FPM (pm = static)'
+        default: '16'
+      segundos:
+        description: 'Duración del escenario realista (segundos)'
+        default: '90'
+
+permissions:
+  contents: read
+
+jobs:
+  carga:
+    name: Carga sobre Nginx + PHP-FPM
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: sge_carga
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      FPM_HIJOS: ${{ inputs.fpm_hijos }}
+      USUARIOS: ${{ inputs.usuarios }}
+      SEGUNDOS: ${{ inputs.segundos }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Instalar Nginx, PHP 8.3 (FPM) y herramientas
+        run: |
+          sudo systemctl stop apache2 2>/dev/null || true
+          sudo apt-get update -y
+          sudo apt-get install -y nginx php8.3-fpm php8.3-cli php8.3-mysql php8.3-mbstring php8.3-xml php8.3-curl php8.3-zip \
+                                  php8.3-gd php8.3-bcmath php8.3-intl sysstat
+          sudo update-alternatives --set php /usr/bin/php8.3 || true
+          php -v | head -1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Dependencias y assets
+        run: |
+          composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+          npm ci
+          npm run build
+
+      - name: Preparar .env de producción (sin .env.production de plantilla)
+        run: |
+          rm -f .env.production
+          cp .env.example .env
+          php artisan key:generate --force
+          # En un .env gana la PRIMERA definición de una clave (dotenv inmutable): se quitan las del ejemplo antes de añadir las nuestras.
+          grep -vE '^(APP_NAME|APP_ENV|APP_DEBUG|APP_URL|DB_[A-Z_]+|REDIS_[A-Z_]+|SESSION_[A-Z_]+|CACHE_[A-Z_]+|QUEUE_CONNECTION|BROADCAST_[A-Z_]+|MAIL_MAILER|LOG_CHANNEL)=' .env > .env.limpio
+          mv .env.limpio .env
+          {
+            echo ""
+            echo "APP_NAME=ZuraEdu"
+            echo "APP_ENV=production"
+            echo "APP_DEBUG=false"
+            echo "APP_URL=http://carga.local"
+            echo "DB_CONNECTION=mysql"
+            echo "DB_HOST=127.0.0.1"
+            echo "DB_PORT=3306"
+            echo "DB_DATABASE=sge_carga"
+            echo "DB_USERNAME=root"
+            echo "DB_PASSWORD=root"
+            echo "REDIS_CLIENT=predis"
+            echo "REDIS_HOST=127.0.0.1"
+            echo "REDIS_PORT=6379"
+            echo "SESSION_DRIVER=redis"
+            echo "CACHE_STORE=redis"
+            echo "CACHE_DRIVER=redis"
+            echo "QUEUE_CONNECTION=redis"
+            echo "BROADCAST_CONNECTION=null"
+            echo "BROADCAST_DRIVER=null"
+            echo "MAIL_MAILER=log"
+            echo "LOG_CHANNEL=stderr"
+            echo "SESSION_LIFETIME=480"
+          } >> .env
+      - name: Migrar y sembrar datos de demostración
+        run: |
+          php artisan migrate --force
+          php artisan db:seed --force
+          php artisan storage:link || true
+
+      - name: Fabricar usuarios y sesiones (una por persona)
+        run: |
+          php scripts/carga/preparar.php "$RUNNER_TEMP/sesiones.json" carga.local
+
+      - name: Optimizar como en producción (artisan optimize)
+        run: |
+          php artisan optimize
+          php artisan view:cache
+
+      - name: Configurar PHP-FPM y Nginx
+        run: |
+          sudo tee /etc/php/8.3/fpm/pool.d/www.conf >/dev/null <<EOF
+          [www]
+          user = runner
+          group = runner
+          listen = /run/php/php8.3-fpm.sock
+          listen.owner = runner
+          listen.group = runner
+          listen.backlog = 4096
+          pm = static
+          pm.max_children = ${FPM_HIJOS}
+          pm.max_requests = 0
+          pm.status_path = /fpm-status
+          catch_workers_output = yes
+          clear_env = no
+          EOF
+          sudo tee /etc/php/8.3/fpm/conf.d/99-carga.ini >/dev/null <<EOF
+          opcache.enable=1
+          opcache.validate_timestamps=0
+          opcache.memory_consumption=256
+          opcache.interned_strings_buffer=16
+          opcache.max_accelerated_files=20000
+          realpath_cache_size=4096K
+          realpath_cache_ttl=600
+          memory_limit=256M
+          EOF
+          mkdir -p "$RUNNER_TEMP/carga"
+          touch "$RUNNER_TEMP/carga/nginx_acceso.log" "$RUNNER_TEMP/carga/nginx_error.log"
+          chmod 666 "$RUNNER_TEMP/carga/nginx_acceso.log" "$RUNNER_TEMP/carga/nginx_error.log"
+          sudo tee /etc/nginx/nginx.conf >/dev/null <<EOF
+          user runner;
+          worker_processes auto;
+          worker_rlimit_nofile 65535;
+          pid /run/nginx.pid;
+          events { worker_connections 8192; multi_accept on; }
+          http {
+            include /etc/nginx/mime.types;
+            default_type application/octet-stream;
+            log_format carga '\$status \$request_time \$uri';
+            access_log $RUNNER_TEMP/carga/nginx_acceso.log carga;
+            error_log $RUNNER_TEMP/carga/nginx_error.log warn;
+            sendfile on;
+            server {
+              listen 80 backlog=4096 default_server;
+              server_name _;
+              root $GITHUB_WORKSPACE/public;
+              index index.php;
+              location / { try_files \$uri /index.php?\$query_string; }
+              location ~ \.php\$ {
+                include fastcgi_params;
+                fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+                fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
+                fastcgi_param DOCUMENT_ROOT \$realpath_root;
+                fastcgi_read_timeout 120s;
+                fastcgi_buffers 16 32k;
+              }
+              location = /fpm-status {
+                allow 127.0.0.1; deny all;
+                include fastcgi_params;
+                fastcgi_param SCRIPT_FILENAME /fpm-status;
+                fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+              }
+            }
+          }
+          EOF
+          sudo systemctl restart php8.3-fpm
+          sudo systemctl restart nginx
+          sleep 2
+          sudo nginx -t
+
+      - name: Comprobar que el servidor responde con una sesión real (si no, se corta aquí)
+        run: |
+          COOKIE=$(python3 -c "import json,os; s=[x for x in json.load(open(os.environ['RUNNER_TEMP']+'/sesiones.json')) if x['rol']=='estudiante'][0]; print(s['cookie'])")
+          for i in 1 2 3; do
+            curl -s -o /dev/null -w "portal estudiante: HTTP %{http_code} en %{time_total}s\n" -H "Host: carga.local" -H "Cookie: $COOKIE" http://127.0.0.1/portal/estudiante
+          done
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: carga.local" -H "Cookie: $COOKIE" http://127.0.0.1/portal/estudiante)
+          if [ "$CODE" != "200" ]; then
+            echo "El portal no devolvió 200 ($CODE): la prueba no tendría sentido."
+            tail -30 "$RUNNER_TEMP/carga/nginx_error.log" || true
+            sudo journalctl -u php8.3-fpm --no-pager -n 30 || true
+            exit 1
+          fi
+
+      - name: Pruebas de carga
+        run: |
+          ulimit -n 65535
+          D="$RUNNER_TEMP/carga"
+          MD="$D/resumen.md"
+          export LC_ALL=C
+
+          {
+            echo "## Prueba de carga en Linux (Nginx + PHP-FPM $(php -r 'echo PHP_VERSION;'))"
+            echo ""
+            echo "- Servidor: $(nproc) vCPU, $(free -m | awk '/Mem:/{print $2}') MB de RAM · PHP-FPM \`pm=static\` con **${FPM_HIJOS}** procesos · OPcache sin revisar archivos · \`artisan optimize\`"
+            echo "- Datos: $(mysql -h127.0.0.1 -uroot -proot -N -e 'select count(*) from sge_carga.estudiantes' 2>/dev/null) estudiantes, $(mysql -h127.0.0.1 -uroot -proot -N -e 'select count(*) from sge_carga.calificaciones_academicas' 2>/dev/null) calificaciones, $(mysql -h127.0.0.1 -uroot -proot -N -e 'select count(*) from sge_carga.asistencias' 2>/dev/null) asistencias"
+            echo "- **El generador de carga corre en la misma máquina que el servidor**: las cifras son un piso conservador (un servidor dedicado rendiría más)."
+            echo ""
+            echo "| Escenario | Usuarios | Peticiones | OK | OK/s | p50 ms | p95 ms | máx ms | Rechazadas | Timeouts | 5xx | Redir. (sesión) | Servidor p50/p95 |"
+            echo "|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+          } > "$MD"
+
+          correr() {
+            etq="$1"; shift
+            : > "$D/nginx_acceso.log" || truncate -s 0 "$D/nginx_acceso.log"
+            mpstat 2 > "$D/cpu_$etq.txt" &
+            MP=$!
+            python3 scripts/carga/carga.py --etiqueta "$etq" --sesiones "$RUNNER_TEMP/sesiones.json" --url http://127.0.0.1 --host carga.local \
+              --salida "$D/res_$etq.json" --log-nginx "$D/nginx_acceso.log" --md "$MD" "$@"
+            kill $MP 2>/dev/null || true
+            CPU=$(awk '$2=="all" && $NF ~ /^[0-9.]+$/ {s+=100-$NF; n++} END{ if(n) printf "%.0f", s/n; else print "?"}' "$D/cpu_$etq.txt")
+            echo "$etq: CPU media del servidor $CPU %" | tee -a "$D/cpu_resumen.txt"
+          }
+
+          # Calentamiento (no se informa): llena OPcache y la caché de rutas/vistas
+          python3 scripts/carga/carga.py --etiqueta calentamiento --modo cerrado --usuarios 8 --seg 10 --sesiones "$RUNNER_TEMP/sesiones.json" \
+            --url http://127.0.0.1 --host carga.local --salida "$D/res_calentamiento.json" > /dev/null
+
+          # 1) Escalera de capacidad: usuarios que piden sin parar
+          for n in 8 16 32 64 128 256; do
+            correr "escalera-$n" --modo cerrado --usuarios $n --seg 15
+          done
+
+          # 2) Usuarios realistas (pausa de 10 a 30 s entre páginas)
+          correr "realista-$USUARIOS" --modo usuarios --usuarios "$USUARIOS" --seg "$SEGUNDOS" --rampa 30 --pensar-min 10 --pensar-max 30
+
+          # 3) Ráfaga: todos piden a la vez
+          correr "rafaga-$USUARIOS" --modo rafaga --usuarios "$USUARIOS" --timeout 120
+
+          {
+            echo ""
+            echo "### CPU media del servidor por escenario"
+            sed 's/^/- /' "$D/cpu_resumen.txt"
+            echo ""
+            echo "### Estado acumulado de PHP-FPM al terminar"
+            echo '```'
+            curl -s http://127.0.0.1/fpm-status | grep -E "pool|process manager|start since|accepted conn|listen queue|max listen queue|total processes|max active processes|max children reached|slow requests" || true
+            echo '```'
+            echo "_«max children reached» > 0 = en algún momento se agotaron los procesos PHP; «max listen queue» = cuántas peticiones llegaron a esperar en cola._"
+            echo ""
+            echo "### MySQL"
+            echo '```'
+            mysql -h127.0.0.1 -uroot -proot -e "show global status where Variable_name in ('Max_used_connections','Threads_connected','Aborted_connects','Connection_errors_max_connections','Questions','Created_tmp_disk_tables','Innodb_row_lock_waits'); show variables like 'max_connections'; show variables like 'innodb_buffer_pool_size'" 2>/dev/null
+            echo '```'
+            echo ""
+            echo "### Errores del servidor"
+            echo "- Respuestas 5xx en el log de Nginx del último escenario: $(awk '$1 ~ /^5/' "$D/nginx_acceso.log" | wc -l)"
+            echo "- Errores en el log de Nginx: $(wc -l < "$D/nginx_error.log")"
+            echo "- Líneas de error de PHP/Laravel en el log de PHP-FPM: $(sudo journalctl -u php8.3-fpm --no-pager 2>/dev/null | grep -ciE 'error|exception|fatal')"
+          } >> "$MD"
+
+          cat "$MD" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: carga-resultados
+          path: |
+            ${{ runner.temp }}/carga/*.json
+            ${{ runner.temp }}/carga/resumen.md
+            ${{ runner.temp }}/carga/cpu_*.txt
+            ${{ runner.temp }}/carga/nginx_error.log
+          if-no-files-found: warn

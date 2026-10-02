@@ -169,6 +169,128 @@ class CalendarioNotificacionTest extends TestCase
         Queue::assertPushed(NotificarEventoCalendarioJob::class, 3); // 50 + 50 + 20
     }
 
+    // ── padres de grupos específicos ────────────────────────────────────────
+
+    private static int $nivelGrupo = 0;
+
+    private function aula(string $seccion): \App\Models\Grupo
+    {
+        $sy    = SchoolYear::firstOrCreate(['nombre' => '2026-2027'], ['fecha_inicio' => '2026-08-01', 'fecha_fin' => '2027-06-30', 'activo' => true]);
+        $grado = \App\Models\Grado::firstOrCreate(['nivel' => 1], ['nombre' => 'Grado 1', 'orden' => 1, 'ciclo' => 'primer_ciclo', 'activo' => true]);
+        $sec   = \App\Models\Seccion::firstOrCreate(['nombre' => $seccion], ['orden' => 1]);
+
+        return \App\Models\Grupo::create(['school_year_id' => $sy->id, 'grado_id' => $grado->id, 'seccion_id' => $sec->id, 'activo' => true]);
+    }
+
+    /** Matricula a un estudiante nuevo en el grupo y devuelve [estudiante, matrícula]. */
+    private function alumnoEn(\App\Models\Grupo $g, string $estado = 'activa'): \App\Models\Estudiante
+    {
+        $e = \App\Models\Estudiante::factory()->create();
+        \App\Models\Matricula::create([
+            'school_year_id' => $g->school_year_id, 'estudiante_id' => $e->id, 'grupo_id' => $g->id,
+            'fecha_matricula' => '2026-08-15', 'numero_orden' => ++self::$nivelGrupo, 'estado' => $estado,
+        ]);
+
+        return $e;
+    }
+
+    /** Crea un representante con su cuenta de usuario y lo vincula a los estudiantes. */
+    private function padreDe(\App\Models\Estudiante ...$hijos): User
+    {
+        $user = $this->usuario('Representante');
+        $rep  = \App\Models\Representante::factory()->create(['user_id' => $user->id]);
+        foreach ($hijos as $h) {
+            $rep->estudiantes()->attach($h->id);
+        }
+
+        return $user;
+    }
+
+    public function test_padres_de_un_grupo_solo_los_de_los_estudiantes_matriculados_ahi(): void
+    {
+        $this->colegio('A');
+        $admin = $this->usuario('Administrador');
+        $a = $this->aula('A');
+        $b = $this->aula('B');
+
+        $padreA   = $this->padreDe($this->alumnoEn($a));
+        $padreB   = $this->padreDe($this->alumnoEn($b));
+        $sinGrupo = $this->padreDe(\App\Models\Estudiante::factory()->create());   // hijo sin matrícula
+        $retirado = $this->padreDe($this->alumnoEn($a, 'retirada'));               // hijo ya no activo en ese grupo
+
+        $ids = (new CalendarioNotificador())->resolver([], [], $admin->id, [$a->id])->pluck('id')->all();
+
+        $this->assertSame([$padreA->id], $ids);
+        $this->assertNotContains($padreB->id, $ids);
+        $this->assertNotContains($sinGrupo->id, $ids);
+        $this->assertNotContains($retirado->id, $ids);
+    }
+
+    public function test_un_padre_con_dos_hijos_en_los_grupos_elegidos_se_avisa_una_sola_vez(): void
+    {
+        $this->colegio('A');
+        $admin = $this->usuario('Administrador');
+        $a = $this->aula('A');
+        $b = $this->aula('B');
+        $padre = $this->padreDe($this->alumnoEn($a), $this->alumnoEn($b));
+
+        $ids = (new CalendarioNotificador())->resolver([], [], $admin->id, [$a->id, $b->id])->pluck('id')->all();
+
+        $this->assertSame([$padre->id], $ids);
+    }
+
+    public function test_un_grupo_de_otro_colegio_no_avisa_a_nadie(): void
+    {
+        $this->colegio('A');
+        $admin = $this->usuario('Administrador');
+        $aulaPropia = $this->aula('A');
+        $this->padreDe($this->alumnoEn($aulaPropia));
+
+        $this->colegio('B');
+        $adminB = $this->usuario('Administrador');
+        $aulaB = $this->aula('A');
+        $padreB = $this->padreDe($this->alumnoEn($aulaB));
+
+        // Desde el colegio A se pide el grupo del colegio B: no se encuentra
+        app()->instance('tenant', \App\Models\Tenant::where('nombre_institucion', 'Colegio A')->first());
+        $this->assertSame([], (new CalendarioNotificador())->resolver([], [], $admin->id, [$aulaB->id])->all());
+        $this->assertNotContains($padreB->id, (new CalendarioNotificador())->resolver(['padres'], [], $admin->id, [$aulaB->id])->pluck('id')->all());
+    }
+
+    public function test_el_formulario_avisa_a_los_padres_del_grupo_elegido(): void
+    {
+        Queue::fake();
+        $this->colegio('A');
+        $admin = $this->usuario('Administrador');
+        $a = $this->aula('A');
+        $b = $this->aula('B');
+        $padreA = $this->padreDe($this->alumnoEn($a));
+        $this->padreDe($this->alumnoEn($b));
+
+        $this->actingAs($admin)->post(route('admin.calendario.store'), [
+            'titulo' => 'Reunión del grupo A', 'tipo' => 'reunion', 'fecha_inicio' => '2026-11-20', 'aplica_a' => 'todos',
+            'notificar' => 1, 'notificar_padres_grupos' => [$a->id],
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $e = CalendarioAcademico::where('titulo', 'Reunión del grupo A')->firstOrFail();
+        $this->assertSame([$padreA->id], $e->destinatarios()->pluck('user_id')->all());
+        Queue::assertPushed(NotificarEventoCalendarioJob::class);
+    }
+
+    public function test_el_formulario_rechaza_un_grupo_inexistente(): void
+    {
+        $this->colegio('A');
+        $admin = $this->usuario('Administrador');
+        SchoolYear::create(['nombre' => '2026-2027', 'fecha_inicio' => '2026-08-01', 'fecha_fin' => '2027-06-30', 'activo' => true]);
+
+        $this->actingAs($admin)->post(route('admin.calendario.store'), [
+            'titulo' => 'X', 'tipo' => 'otro', 'fecha_inicio' => '2026-11-20', 'aplica_a' => 'todos',
+            'notificar' => 1, 'notificar_padres_grupos' => [999999],
+        ])->assertSessionHasErrors('notificar_padres_grupos.0');
+
+        $this->assertSame(0, CalendarioAcademico::count());
+    }
+
     // ── envío ───────────────────────────────────────────────────────────────
 
     public function test_job_crea_mensaje_interno_y_envia_correo_con_ics_adjunto(): void

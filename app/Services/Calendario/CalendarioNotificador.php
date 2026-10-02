@@ -5,6 +5,9 @@ namespace App\Services\Calendario;
 use App\Jobs\NotificarEventoCalendarioJob;
 use App\Models\CalendarioAcademico;
 use App\Models\CalendarioDestinatario;
+use App\Models\Grupo;
+use App\Models\Matricula;
+use App\Models\Representante;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
@@ -32,9 +35,10 @@ class CalendarioNotificador
     /**
      * @param  array<int,string>  $grupos    claves de self::GRUPOS
      * @param  array<int,int|string>  $userIds  personas elegidas una a una
+     * @param  array<int,int|string>  $padresDeGrupos  IDs de grupos (aulas): se avisa a los representantes de sus estudiantes
      * @return Collection<int,User>
      */
-    public function resolver(array $grupos, array $userIds, ?int $excluirUserId = null): Collection
+    public function resolver(array $grupos, array $userIds, ?int $excluirUserId = null, array $padresDeGrupos = []): Collection
     {
         $grupos  = array_values(array_intersect($grupos, array_keys(self::GRUPOS)));
         $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds))));
@@ -60,16 +64,50 @@ class CalendarioNotificador
             $porId = $porId->union($base()->whereIn('users.id', $userIds)->get()->keyBy('id'));
         }
 
+        $idsPadres = $this->usuariosDePadresDeGrupos($padresDeGrupos);
+        if ($idsPadres) {
+            $porId = $porId->union($base()->whereIn('users.id', $idsPadres)->get()->keyBy('id'));
+        }
+
         return $porId->values();
+    }
+
+    /**
+     * Cuentas de usuario de los representantes de los estudiantes matriculados (activos) en esos grupos.
+     * La relación es la real (grupo → matrícula → estudiante → representante → usuario) y todo pasa por el scope de tenant:
+     * un ID de grupo de otro colegio no devuelve nada. Un representante con varios hijos en los grupos elegidos sale una sola vez.
+     *
+     * @param  array<int,int|string>  $grupoIds
+     * @return array<int,int>
+     */
+    public function usuariosDePadresDeGrupos(array $grupoIds): array
+    {
+        $grupoIds = array_values(array_unique(array_filter(array_map('intval', $grupoIds))));
+        if (! $grupoIds) {
+            return [];
+        }
+
+        $gruposValidos = Grupo::whereIn('id', $grupoIds)->pluck('id');
+        if ($gruposValidos->isEmpty()) {
+            return [];
+        }
+
+        $estudiantes = Matricula::whereIn('grupo_id', $gruposValidos)->where('estado', 'activa')->pluck('estudiante_id');
+        if ($estudiantes->isEmpty()) {
+            return [];
+        }
+
+        return Representante::whereHas('estudiantes', fn ($q) => $q->whereIn('estudiantes.id', $estudiantes))
+            ->pluck('user_id')->unique()->values()->all();
     }
 
     /**
      * Registra los destinatarios y encola el envío. Devuelve cuántas personas se avisarán.
      * $reenviar = true (al editar un evento) vuelve a avisar también a quienes ya habían recibido el aviso.
      */
-    public function notificar(CalendarioAcademico $evento, array $grupos, array $userIds, bool $reenviar = false, bool $actualizacion = false): int
+    public function notificar(CalendarioAcademico $evento, array $grupos, array $userIds, bool $reenviar = false, bool $actualizacion = false, array $padresDeGrupos = []): int
     {
-        $usuarios = $this->resolver($grupos, $userIds, $evento->creado_por);
+        $usuarios = $this->resolver($grupos, $userIds, $evento->creado_por, $padresDeGrupos);
         if ($usuarios->isEmpty()) {
             return 0;
         }

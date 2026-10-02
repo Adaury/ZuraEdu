@@ -109,6 +109,18 @@
             @endforeach
         </div>
 
+        <div class="mb-3">
+            <label class="fw-semibold mb-1" for="selAulas" style="font-size:.82rem;">Padres de grupos específicos (opcional)</label>
+            <select name="notificar_padres_grupos[]" id="selAulas" class="form-select form-select-sm" multiple size="6">
+                @foreach($aulasAviso as $g)
+                <option value="{{ $g->id }}" {{ in_array($g->id, array_map('intval', (array) old('notificar_padres_grupos', [])), true) ? 'selected' : '' }}>
+                    {{ $g->nombre_completo }}
+                </option>
+                @endforeach
+            </select>
+            <div class="text-muted" style="font-size:.76rem;">Se avisa a los representantes de los estudiantes matriculados en esos grupos (una sola vez por representante, aunque tenga varios hijos).</div>
+        </div>
+
         <div class="mb-1">
             <label class="fw-semibold mb-1" for="selPersonas" style="font-size:.82rem;">Docentes o personal en particular (opcional)</label>
             <select name="notificar_usuarios[]" id="selPersonas" class="form-select form-select-sm" multiple size="8">

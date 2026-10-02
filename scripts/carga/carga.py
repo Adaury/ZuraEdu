@@ -30,7 +30,8 @@ def pct(valores, p):
 
 def clasificar(estado, cuerpo_final):
     if 200 <= estado < 300:
-        return 'ok' if b'</html>' in cuerpo_final.lower() else 'incompleta'
+        # HTML completo (termina en </html>) o JSON completo (termina en } o ]): la petición llegó entera
+        return 'ok' if (b'</html>' in cuerpo_final.lower() or cuerpo_final.rstrip()[-1:] in (b'}', b']')) else 'incompleta'
     if 300 <= estado < 400:
         return 'redireccion'          # normalmente: la sesión no valió y mandó al login
     if estado == 429:

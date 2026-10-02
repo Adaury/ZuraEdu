@@ -65,23 +65,37 @@ class PortalEstudianteController extends Controller
             ? $this->getPeriodos($schoolYear)
             : collect();
 
+        // Asignaciones del grupo (para acceso a recursos y planificaciones). Se cargan UNA vez, con su asignatura y su docente, y se
+        // reutilizan en todos los bloques de abajo: antes cada bloque (calificaciones, notas académicas, observaciones, clases virtuales,
+        // horario) volvía a pedir las mismas asignaciones, asignaturas y docentes con `with('asignacion.asignatura'...)`, unas 12 consultas repetidas.
+        $asignaciones = $matricula
+            ? \App\Models\Asignacion::with(['asignatura', 'docente'])
+                ->where('grupo_id', $matricula->grupo_id)
+                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+                ->where('activo', true)
+                ->get()
+            : collect();
+        $mapaAsignaciones = $asignaciones->keyBy('id');
+
         // Calificaciones publicadas
         $calificaciones = collect();
         $calificacionesAcademicas = collect();
         $promedioGeneral = null;
 
         if ($matricula) {
-            $calificaciones = Calificacion::with(['asignacion.asignatura', 'periodo'])
+            $calificaciones = Calificacion::with('periodo')
                 ->where('matricula_id', $matricula->id)
                 ->where('publicado', true)
-                ->get()
-                ->groupBy('periodo_id');
+                ->get();
+            $this->adjuntarAsignaciones($calificaciones, $mapaAsignaciones);
+            $calificaciones = $calificaciones->groupBy('periodo_id');
 
-            $calificacionesAcademicas = CalificacionAcademica::with('asignacion.asignatura')
+            $calificacionesAcademicas = CalificacionAcademica::query()
                 ->where('matricula_id', $matricula->id)
                 ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
                 ->whereNotNull('nota_final')
                 ->get();
+            $this->adjuntarAsignaciones($calificacionesAcademicas, $mapaAsignaciones);
 
             // Promedio general
             $todasNotas = $calificaciones->flatten()->pluck('nota_final')
@@ -96,7 +110,7 @@ class PortalEstudianteController extends Controller
         $resumenAsistencia = $this->calcularResumenAsistencia($matricula);
 
         // Horario
-        [$gridHorario, $franjasHorario, $horarioActivo, $diasConfig] = $this->cargarHorario($matricula, $schoolYear);
+        [$gridHorario, $franjasHorario, $horarioActivo, $diasConfig] = $this->cargarHorario($matricula, $schoolYear, $mapaAsignaciones);
 
         // Comunicados (noticias) — cacheados 10 min
         $tid = tenant_id() ?? 0;
@@ -116,22 +130,14 @@ class PortalEstudianteController extends Controller
 
         // Observaciones del docente (no privadas)
         $observaciones = $matricula
-            ? Observacion::with(['docente', 'asignacion.asignatura'])
+            ? Observacion::with('docente')
                 ->delEstudiante($estudiante->id)
                 ->publicas()
                 ->orderByDesc('created_at')
                 ->limit(5)
                 ->get()
             : collect();
-
-        // Asignaciones del grupo (para acceso a recursos y planificaciones)
-        $asignaciones = $matricula
-            ? \App\Models\Asignacion::with(['asignatura', 'docente'])
-                ->where('grupo_id', $matricula->grupo_id)
-                ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
-                ->where('activo', true)
-                ->get()
-            : collect();
+        $this->adjuntarAsignaciones($observaciones, $mapaAsignaciones);
 
         // Próximos eventos del calendario académico
         $eventosCalendario = $schoolYear
@@ -146,7 +152,7 @@ class PortalEstudianteController extends Controller
         // ZuraClass — resumen para el estudiante
         $zuraClasesData = null;
         if ($matricula) {
-            $misClases = \App\Models\ClaseVirtual::with(['asignacion.asignatura', 'asignacion.docente'])
+            $misClases = \App\Models\ClaseVirtual::query()
                 ->whereHas('asignacion', fn($q) =>
                     $q->where('grupo_id', $matricula->grupo_id)
                       ->where('school_year_id', $matricula->school_year_id)
@@ -154,6 +160,7 @@ class PortalEstudianteController extends Controller
                 )
                 ->where('activo', true)
                 ->get();
+            $this->adjuntarAsignaciones($misClases, $mapaAsignaciones);
 
             // Bulk-load materiales pendientes de todas las clases — 1 sola query
             $claseIds = $misClases->pluck('id');
@@ -204,7 +211,6 @@ class PortalEstudianteController extends Controller
 
         $gamifData = null;
         if ($tieneGamificacion && $matricula) {
-            $totalPuntos    = PuntoEstudiante::where('matricula_id', $matricula->id)->sum('puntos');
             $insigniasCount = InsigniaEstudiante::where('matricula_id', $matricula->id)->count();
 
             $grupoMatriculas = Matricula::where('grupo_id', $matricula->grupo_id)
@@ -216,6 +222,9 @@ class PortalEstudianteController extends Controller
                 ->groupBy('matricula_id')
                 ->orderByDesc('total')
                 ->get();
+
+            // Mis puntos ya vienen en el ranking del grupo (mi matrícula está activa y en $grupoMatriculas): sin ellos, 0. Evita una consulta SUM aparte.
+            $totalPuntos = (int) ($rankingGrupo->firstWhere('matricula_id', $matricula->id)?->total ?? 0);
 
             $miPosicion = null;
             foreach ($rankingGrupo as $idx => $r) {
@@ -1399,7 +1408,26 @@ class PortalEstudianteController extends Controller
         ));
     }
 
-    private function cargarHorario($matricula, $schoolYear): array
+    /**
+     * Adjunta a cada modelo su relación `asignacion` (con asignatura y docente) tomándola de $mapa (id => Asignacion ya cargada),
+     * sin consultar la base: reemplaza a `with('asignacion.asignatura', ...)`, que volvía a pedir las MISMAS asignaciones, asignaturas y
+     * docentes en cada bloque de la página. Solo consulta (una vez, en bloque) las que no estén en el mapa, p. ej. una calificación de una
+     * asignación inactiva o de otro grupo; esas se agregan al mapa para los bloques siguientes. El resultado es igual al de la carga anticipada.
+     */
+    private function adjuntarAsignaciones(\Illuminate\Support\Collection $modelos, \Illuminate\Support\Collection &$mapa): void
+    {
+        $faltan = $modelos->pluck('asignacion_id')->filter()->unique()->reject(fn ($id) => $mapa->has($id));
+
+        if ($faltan->isNotEmpty()) {
+            $mapa = $mapa->union(\App\Models\Asignacion::with(['asignatura', 'docente'])->whereIn('id', $faltan->all())->get()->keyBy('id'));
+        }
+
+        foreach ($modelos as $m) {
+            $m->setRelation('asignacion', $m->asignacion_id ? $mapa->get($m->asignacion_id) : null);
+        }
+    }
+
+    private function cargarHorario($matricula, $schoolYear, ?\Illuminate\Support\Collection $mapaAsignaciones = null): array
     {
         $grid    = [];
         $franjas = collect();
@@ -1413,10 +1441,12 @@ class PortalEstudianteController extends Controller
                 ->first();
 
             if ($horario) {
-                $detalles = HorarioDetalle::with(['asignacion.asignatura', 'asignacion.docente', 'franja', 'aula'])
+                $detalles = HorarioDetalle::with(['franja', 'aula'])
                     ->where('horario_id', $horario->id)
                     ->whereHas('asignacion', fn($q) => $q->where('grupo_id', $matricula->grupo_id))
                     ->get();
+                $mapa = $mapaAsignaciones ?? collect();
+                $this->adjuntarAsignaciones($detalles, $mapa);
 
                 $franjas = FranjaHoraria::where('activa', true)->orderBy('numero')->get();
 

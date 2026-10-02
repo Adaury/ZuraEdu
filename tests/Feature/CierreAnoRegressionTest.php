@@ -159,6 +159,8 @@ class CierreAnoRegressionTest extends TestCase
         $promocion = Promocion::where('matricula_id', $e['matricula']->id)->first();
         $this->assertSame('pendiente', $promocion->estado);
         $this->assertNull($promocion->promedio_final);
+        // Sin notas no se convierte al estudiante en repetidor: la matrícula queda como estaba.
+        $this->assertSame('activa', $e['matricula']->fresh()->estado);
     }
 
     /** Cuando hay notas académicas y técnicas para la misma matrícula, la académica gana (no se mezclan). */

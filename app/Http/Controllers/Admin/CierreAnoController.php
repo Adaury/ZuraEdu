@@ -179,7 +179,7 @@ class CierreAnoController extends Controller
                 ->whereNotNull('nota_final')
                 ->get()->groupBy('matricula_id');
 
-            $procesados = $promovidos = $noPromovidos = 0;
+            $procesados = $promovidos = $noPromovidos = $pendientes = 0;
 
             foreach ($matriculas as $matricula) {
                 $promedio        = $this->calcularPromedioFinal($matricula->id, $calAcBulk, $calBulk);
@@ -196,6 +196,14 @@ class CierreAnoController extends Controller
                     ]
                 );
 
+                // Sin notas ('pendiente') no se decide nada: antes caía en 'no_promovida' (repetidor) por defecto.
+                // Se deja la matrícula como está y la Promoción queda 'pendiente' para decidirla a mano.
+                if ($estadoPromocion === 'pendiente') {
+                    $pendientes++;
+                    $procesados++;
+                    continue;
+                }
+
                 $nuevoEstado = $estadoPromocion === 'promovido' ? 'promovida' : 'no_promovida';
                 $matricula->update(['estado' => $nuevoEstado]);
 
@@ -208,7 +216,8 @@ class CierreAnoController extends Controller
             AlertaSistema::create([
                 'tipo'             => 'periodo_cierre',
                 'titulo'           => 'Cierre de Año Escolar Ejecutado',
-                'mensaje'          => "El año {$schoolYear->nombre} fue cerrado. {$promovidos} promovidos, {$noPromovidos} no promovidos.",
+                'mensaje'          => "El año {$schoolYear->nombre} fue cerrado. {$promovidos} promovidos, {$noPromovidos} no promovidos"
+                    . ($pendientes ? ", {$pendientes} sin notas (pendientes de decisión)." : '.'),
                 'nivel'            => 'info',
                 'destinatario_rol' => 'Administrador',
                 'school_year_id'   => $schoolYear->id,

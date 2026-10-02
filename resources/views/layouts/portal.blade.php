@@ -742,8 +742,10 @@ $sysLogo = \App\Helpers\Setting::get('system_logo');
     <a href="{{ route('admin.dashboard') }}" class="prt-logo" style="background:rgba(255,255,255,.18);font-size:.78rem;">
         @if($sysLogo)
             <img src="{{ Storage::url($sysLogo) }}" alt="{{ $sysAbbr }}" style="width:100%;height:100%;object-fit:contain;border-radius:9px;">
+        @elseif(\App\Helpers\Setting::get('system_abbr'))
+            {{ $sysAbbr }}
         @else
-            {{-- Sin logo propio del colegio: insignia de ZuraEdu en vez de las siglas --}}
+            {{-- Ni logo ni abreviatura propios: insignia de ZuraEdu en vez de las siglas «SGE» por defecto --}}
             <img src="{{ asset('brand/zuraedu-icono.svg') }}" alt="ZuraEdu" style="width:100%;height:100%;object-fit:contain;border-radius:9px;">
         @endif
     </a>

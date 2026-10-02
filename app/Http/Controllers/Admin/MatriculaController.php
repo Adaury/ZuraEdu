@@ -158,23 +158,39 @@ class MatriculaController extends Controller
         // Bloquea el grupo para serializar el cálculo de numero_orden entre
         // matrículas concurrentes al mismo grupo (evita duplicados bajo carga)
         // y para que el chequeo de cupo sea confiable bajo concurrencia real.
-        $matricula = DB::transaction(function () use ($data) {
-            $grupo = Grupo::where('id', $data['grupo_id'])->lockForUpdate()->firstOrFail();
+        $yaMatriculado = fn () => ValidationException::withMessages([
+            'estudiante_id' => 'Este estudiante ya está matriculado en este año escolar.',
+        ]);
 
-            // El grupo llega del navegador y es independiente del año: debe ser del año escolar de la matrícula.
-            if ((int) $grupo->school_year_id !== (int) $data['school_year_id']) {
-                throw ValidationException::withMessages([
-                    'grupo_id' => 'El grupo no pertenece al año escolar indicado.',
-                ]);
-            }
+        try {
+            $matricula = DB::transaction(function () use ($data, $yaMatriculado) {
+                $grupo = Grupo::where('id', $data['grupo_id'])->lockForUpdate()->firstOrFail();
 
-            $this->verificarCupoDisponible($grupo);
+                // El grupo llega del navegador y es independiente del año: debe ser del año escolar de la matrícula.
+                if ((int) $grupo->school_year_id !== (int) $data['school_year_id']) {
+                    throw ValidationException::withMessages([
+                        'grupo_id' => 'El grupo no pertenece al año escolar indicado.',
+                    ]);
+                }
 
-            $data['numero_orden'] = Matricula::where('grupo_id', $data['grupo_id'])->count() + 1;
-            $data['estado']       = 'activa';
+                // Se vuelve a comprobar YA con el grupo bloqueado: el chequeo de arriba se hizo antes del bloqueo y un doble clic
+                // (dos envíos simultáneos del mismo estudiante) lo pasaba dos veces.
+                if (Matricula::where('school_year_id', $data['school_year_id'])->where('estudiante_id', $data['estudiante_id'])->exists()) {
+                    throw $yaMatriculado();
+                }
 
-            return Matricula::create($data);
-        });
+                $this->verificarCupoDisponible($grupo);
+
+                $data['numero_orden'] = Matricula::where('grupo_id', $data['grupo_id'])->count() + 1;
+                $data['estado']       = 'activa';
+
+                return Matricula::create($data);
+            });
+        } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+            // El mismo estudiante enviado a DOS grupos distintos a la vez no comparte bloqueo de grupo: la unicidad de la base
+            // (tenant, año, estudiante) lo frena y aquí se convierte en el mismo mensaje de validación, no en un error 500.
+            throw $yaMatriculado();
+        }
 
         try {
             DashboardActualizado::dispatch(tenant_id() ?? 0, 'nueva_matricula', [

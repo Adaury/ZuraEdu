@@ -116,4 +116,49 @@ class MatriculaGrupoAnioTest extends TestCase
         $this->actingAs($e['admin'])->patch(route('admin.matriculas.cambiarGrupo', $m), ['grupo_id' => $otroActivo->id])->assertSessionHasNoErrors();
         $this->assertSame($otroActivo->id, $m->fresh()->grupo_id);
     }
+
+    // ── doble clic / envíos simultáneos del mismo estudiante ─────────────────
+
+    /** Una segunda matrícula idéntica ya confirmada por "otra petición" justo antes de que esta cree la suya. */
+    public function test_doble_clic_el_mismo_estudiante_da_validacion_y_no_un_500(): void
+    {
+        $e = $this->escenario();
+        $est = Estudiante::factory()->create();
+
+        // Simula la carrera: la otra petición confirma su INSERT después del chequeo previo y antes del create de esta.
+        $insertada = false;
+        Matricula::creating(function (Matricula $m) use (&$insertada) {
+            if (! $insertada) {
+                $insertada = true;
+                \DB::table('matriculas')->insert([
+                    'tenant_id' => app('tenant')->id, 'school_year_id' => $m->school_year_id, 'estudiante_id' => $m->estudiante_id,
+                    'grupo_id' => $m->grupo_id, 'fecha_matricula' => '2026-09-01', 'numero_orden' => 1, 'estado' => 'activa',
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+        });
+
+        $r = $this->actingAs($e['admin'])->post(route('admin.matriculas.store'), [
+            'school_year_id' => $e['anioActivo']->id, 'estudiante_id' => $est->id,
+            'grupo_id' => $e['grupoActivo']->id, 'fecha_matricula' => '2026-09-01',
+        ]);
+
+        $r->assertSessionHasErrors('estudiante_id');   // mensaje de validación, no HTTP 500 (sin el arreglo: UniqueConstraintViolationException)
+        // Nunca más de una. (Aquí puede ser 0: el test corre en UNA conexión y la app revierte su transacción llevándose también la
+        // fila simulada de "la otra petición"; en producción esa fila ya está confirmada en otra conexión. La prueba con
+        // peticiones simultáneas reales dio 1.)
+        $this->assertLessThanOrEqual(1, Matricula::where('estudiante_id', $est->id)->count(), 'no debe haber duplicado');
+    }
+
+    public function test_reenviar_a_un_estudiante_ya_matriculado_da_validacion(): void
+    {
+        $e = $this->escenario();
+        $est = Estudiante::factory()->create();
+        $datos = ['school_year_id' => $e['anioActivo']->id, 'estudiante_id' => $est->id, 'grupo_id' => $e['grupoActivo']->id, 'fecha_matricula' => '2026-09-01'];
+
+        $this->actingAs($e['admin'])->post(route('admin.matriculas.store'), $datos)->assertSessionHasNoErrors();
+        $this->actingAs($e['admin'])->post(route('admin.matriculas.store'), $datos)->assertSessionHasErrors('estudiante_id');
+
+        $this->assertSame(1, Matricula::where('estudiante_id', $est->id)->count());
+    }
 }

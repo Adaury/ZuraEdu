@@ -12,7 +12,11 @@ use App\Models\Grupo;
 use App\Models\Matricula;
 use App\Models\SchoolYear;
 use App\Models\Seccion;
+use App\Traits\VerificaCupoGrupo;
 use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use App\Http\Requests\Admin\StoreEstudianteRequest;
 use App\Http\Requests\Admin\UpdateEstudianteRequest;
 use Illuminate\Http\Request;
@@ -29,6 +33,7 @@ class EstudianteController extends Controller
 {
     use AsignaMateriasBasicas;
     use NormalizesFileEncoding;
+    use VerificaCupoGrupo;
 
     // ── Index ──────────────────────────────────────────────────────────────
     public function index(Request $request)
@@ -152,30 +157,105 @@ class EstudianteController extends Controller
         }
 
         $data = $request->validated();
+        unset($data['foto']);   // la foto se procesa DESPUÉS, ya con el alta confirmada (si algo falla no quedan archivos huérfanos)
 
-        if ($request->hasFile('foto')) {
-            $data['foto'] = $this->procesarFoto($request->file('foto'), 'fotos/estudiantes');
+        // Matricular automáticamente si viene grupo_id desde el wizard. El grupo llega del navegador: se resuelve con el scope de
+        // tenant y se comprueba que sea del año activo, que tenga cupo y se numera la lista, igual que MatriculaController::store.
+        $grupoId = $request->input('grupo_id');
+
+        // OJO: se lee FUERA de la transacción. En InnoDB (REPEATABLE READ) la "foto" de datos de la transacción se fija en la primera
+        // lectura normal; si esta consulta fuera la primera dentro de la transacción, el conteo de cupo y de numero_orden de más abajo
+        // leería una foto anterior al bloqueo del grupo y no vería las altas que otros ya confirmaron (cupo superado, listas repetidas).
+        // Así la PRIMERA lectura dentro de la transacción es el bloqueo del grupo, como en MatriculaController::store.
+        $schoolYear = $grupoId ? SchoolYear::activo()->first() : null;
+
+        try {
+            $estudiante = DB::transaction(function () use ($data, $grupoId, $schoolYear) {
+                $grupo = null;
+
+                if ($grupoId && $schoolYear) {
+                    // Bloquea el grupo: serializa altas simultáneas hacia el mismo grupo (cupo y numero_orden confiables).
+                    $grupo = Grupo::where('id', $grupoId)->lockForUpdate()->first();
+
+                    if (! $grupo) {
+                        throw ValidationException::withMessages(['grupo_id' => 'El grupo seleccionado no existe.']);
+                    }
+                    if ((int) $grupo->school_year_id !== (int) $schoolYear->id) {
+                        throw ValidationException::withMessages(['grupo_id' => 'El grupo no pertenece al año escolar activo.']);
+                    }
+                    $this->verificarCupoDisponible($grupo);
+                }
+
+                $estudiante = Estudiante::create($data);
+
+                if ($grupo) {
+                    Matricula::create([
+                        'school_year_id'  => $schoolYear->id,
+                        'estudiante_id'   => $estudiante->id,
+                        'grupo_id'        => $grupo->id,
+                        'fecha_matricula' => now()->toDateString(),
+                        'estado'          => 'activa',
+                        'numero_orden'    => Matricula::where('grupo_id', $grupo->id)->count() + 1,
+                    ]);
+                }
+
+                return $estudiante;
+            });
+        } catch (UniqueConstraintViolationException $e) {
+            // Dos altas simultáneas con el mismo número de matrícula o cédula pasan la validación `unique` a la vez; la unicidad de
+            // la base frena a la segunda y aquí se convierte en un mensaje de validación (antes: error 500).
+            $campo = str_contains($e->getMessage(), 'cedula') ? 'cedula' : 'numero_matricula';
+            throw ValidationException::withMessages([
+                $campo => $campo === 'cedula' ? 'Esta cédula ya está registrada.' : 'Este número de matrícula ya existe.',
+            ]);
         }
 
-        $estudiante = Estudiante::create($data);
-
-        // Matricular automáticamente si viene grupo_id desde el wizard
-        $grupoId = $request->input('grupo_id');
-        if ($grupoId) {
-            $schoolYear = SchoolYear::activo()->first();
-            if ($schoolYear) {
-                Matricula::create([
-                    'school_year_id'  => $schoolYear->id,
-                    'estudiante_id'   => $estudiante->id,
-                    'grupo_id'        => $grupoId,
-                    'fecha_matricula' => now()->toDateString(),
-                    'estado'          => 'activa',
-                ]);
-            }
+        if ($request->hasFile('foto')) {
+            $estudiante->update(['foto' => $this->procesarFoto($request->file('foto'), 'fotos/estudiantes')]);
         }
 
         return redirect()->route('admin.estudiantes.index')
                          ->with('success', 'Estudiante registrado correctamente.');
+    }
+
+    /**
+     * Matricula a un estudiante ya creado en un grupo del año activo, con las mismas garantías que MatriculaController::store:
+     * bloquea el grupo, comprueba año y cupo y asigna el siguiente número de lista. Devuelve null si quedó matriculado (o ya
+     * lo estaba) y el motivo en texto si no se pudo (sin cupo, grupo de otro año, grupo inexistente) para avisar al usuario.
+     * La PRIMERA lectura dentro de la transacción es el bloqueo del grupo (ver nota en store()).
+     */
+    private function matricularEnGrupo(Estudiante $estudiante, int|string $grupoId, SchoolYear $schoolYear): ?string
+    {
+        try {
+            DB::transaction(function () use ($estudiante, $grupoId, $schoolYear) {
+                $grupo = Grupo::where('id', $grupoId)->lockForUpdate()->first();
+
+                if (! $grupo) {
+                    throw ValidationException::withMessages(['grupo_id' => 'el grupo seleccionado no existe.']);
+                }
+                if ((int) $grupo->school_year_id !== (int) $schoolYear->id) {
+                    throw ValidationException::withMessages(['grupo_id' => 'el grupo no pertenece al año escolar activo.']);
+                }
+                if (Matricula::where('school_year_id', $schoolYear->id)->where('estudiante_id', $estudiante->id)->exists()) {
+                    return;   // ya matriculado este año: no es un error
+                }
+
+                $this->verificarCupoDisponible($grupo);
+
+                Matricula::create([
+                    'school_year_id'  => $schoolYear->id,
+                    'estudiante_id'   => $estudiante->id,
+                    'grupo_id'        => $grupo->id,
+                    'fecha_matricula' => now()->toDateString(),
+                    'estado'          => 'activa',
+                    'numero_orden'    => Matricula::where('grupo_id', $grupo->id)->count() + 1,
+                ]);
+            });
+        } catch (ValidationException $e) {
+            return (string) collect($e->errors())->flatten()->first();
+        }
+
+        return null;
     }
 
     // ── Show ───────────────────────────────────────────────────────────────
@@ -751,18 +831,8 @@ class EstudianteController extends Controller
                         'estado'           => in_array($estado, ['activo','inactivo','egresado','transferido']) ? $estado : 'activo',
                     ]);
 
-                    if ($grupoId && $schoolYear) {
-                        $yaMatriculado = Matricula::where('estudiante_id', $estudiante->id)
-                            ->where('school_year_id', $schoolYear->id)->exists();
-                        if (!$yaMatriculado) {
-                            Matricula::create([
-                                'school_year_id'  => $schoolYear->id,
-                                'estudiante_id'   => $estudiante->id,
-                                'grupo_id'        => $grupoId,
-                                'fecha_matricula' => now()->toDateString(),
-                                'estado'          => 'activa',
-                            ]);
-                        }
+                    if ($grupoId && $schoolYear && ($motivo = $this->matricularEnGrupo($estudiante, $grupoId, $schoolYear))) {
+                        $errores[] = "Hoja \"{$sheetInfo['nombre']}\" fila {$numFila}: {$nombres} {$apellidos} — creado sin matrícula: {$motivo}";
                     }
                     $importados++;
                 } catch (QueryException $e) {
@@ -948,19 +1018,9 @@ class EstudianteController extends Controller
                                          ? $estado : 'activo',
                 ]);
 
-                // Optional bulk matriculation
-                if ($grupoId && $schoolYear) {
-                    $alreadyEnrolled = Matricula::where('estudiante_id', $estudiante->id)
-                        ->where('school_year_id', $schoolYear->id)
-                        ->exists();
-                    if (!$alreadyEnrolled) {
-                        Matricula::create([
-                            'school_year_id' => $schoolYear->id,
-                            'estudiante_id'  => $estudiante->id,
-                            'grupo_id'       => $grupoId,
-                            'estado'         => 'activa',
-                        ]);
-                    }
+                // Optional bulk matriculation (con cupo, bloqueo del grupo y número de lista)
+                if ($grupoId && $schoolYear && ($motivo = $this->matricularEnGrupo($estudiante, $grupoId, $schoolYear))) {
+                    $errores[] = "Fila {$fila}: {$nombres} {$apellidos} — creado sin matrícula: {$motivo}";
                 }
 
                 $importados++;

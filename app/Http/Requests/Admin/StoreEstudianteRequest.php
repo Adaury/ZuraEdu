@@ -34,6 +34,7 @@ class StoreEstudianteRequest extends FormRequest
             'provincia'         => 'nullable|string|max:100',
             'foto'              => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'estado'            => 'required|in:activo,inactivo,egresado,transferido',
+            'grupo_id'          => 'nullable|integer|exists:grupos,id',
             'tutor_nombre'      => 'nullable|string|max:150',
             'tutor_parentesco'  => 'nullable|string|max:150',
             'tutor_telefono'    => 'nullable|string|max:20',

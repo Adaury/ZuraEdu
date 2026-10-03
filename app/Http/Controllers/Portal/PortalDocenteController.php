@@ -1123,6 +1123,9 @@ class PortalDocenteController extends Controller
             'valor'        => 'nullable|numeric|min:0|max:100',
         ]);
 
+        // padre→hijo contra la BD: la matrícula llega del navegador y debe ser de ESTE grupo (antes bastaba con que existiera)
+        abort_unless(Matricula::where('id', $request->matricula_id)->where('grupo_id', $asignacion->grupo_id)->exists(), 404);
+
         $schoolYear = SchoolYear::actual();
 
         // El lado Admin ya bloquea un período cerrado (guardarAcademica());
@@ -1204,6 +1207,9 @@ class PortalDocenteController extends Controller
         $docente = $this->getDocente();
         if ($asignacion->docente_id !== $docente->id) abort(403);
 
+        // Solo se aceptan matrículas de ESTE grupo: los ids de «notas[...]» llegan del navegador
+        $matriculasDelGrupo = Matricula::where('grupo_id', $asignacion->grupo_id)->pluck('id')->map(fn ($id) => (int) $id)->all();
+
         $asignacion->load(['asignatura.resultadosAprendizaje']);
         $schoolYear = SchoolYear::actual();
         $esTecnica  = $asignacion->area === 'tecnica';
@@ -1248,6 +1254,7 @@ class PortalDocenteController extends Controller
             $recuperacionesInput = $request->input('recuperaciones', []);
 
             foreach ($request->notas as $matriculaId => $vals) {
+                if (! in_array((int) $matriculaId, $matriculasDelGrupo, true)) continue;   // matrícula ajena al grupo
                 $data      = ['modificado_por' => auth()->id()];
                 $suma      = 0.0;
                 $hayNota   = false;
@@ -1369,6 +1376,7 @@ class PortalDocenteController extends Controller
             ->pluck('numero')->all();
 
         foreach ($request->notas as $matriculaId => $vals) {
+            if (! in_array((int) $matriculaId, $matriculasDelGrupo, true)) continue;   // matrícula ajena al grupo
             $periodos = ['p1', 'p2', 'p3', 'p4'];
             $recAcad  = [];   // {p1: [r1,r2,...], p2: [...], ...}
             $finales  = [];   // nota final de cada período
@@ -1687,99 +1695,27 @@ class PortalDocenteController extends Controller
         if ($asignacion->docente_id !== $docente->id) abort(403);
         if ($matricula->grupo_id !== $asignacion->grupo_id) abort(403);
 
-        $asignacion->load(['asignatura', 'grupo.grado', 'grupo.seccion']);
-        $matricula->load(['estudiante', 'grupo.grado', 'grupo.seccion']);
-
         $schoolYear = SchoolYear::actual();
-
-        $misAsignaciones = Asignacion::with('asignatura')
-            ->where('grupo_id', $asignacion->grupo_id)
-            ->where('docente_id', $docente->id)
-            ->where('activo', true)
-            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
-            ->get()
-            ->sortBy(fn($a) => $a->asignatura?->nombre);
-
-        $periodos = Periodo::when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
+        $periodos   = Periodo::when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
             ->orderBy('numero')
             ->get();
 
-        $califAcadMap = CalificacionAcademica::where('matricula_id', $matricula->id)
-            ->whereIn('asignacion_id', $misAsignaciones->pluck('id'))
-            ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
-            ->get()
-            ->keyBy('asignacion_id');
+        // Período del boletín: el pedido (?periodo=ID, solo si es de este año escolar), si no el activo, si no el primero
+        $periodo = ($pedido = (int) request('periodo')) ? $periodos->firstWhere('id', $pedido) : null;
+        $periodo ??= $periodos->firstWhere('activo', true) ?? $periodos->first();
+        abort_unless($periodo, 404, 'No hay períodos configurados para este año escolar.');
 
-        $periodoIds  = $periodos->pluck('id');
-        $califTecMap = Calificacion::where('matricula_id', $matricula->id)
-            ->whereIn('asignacion_id', $misAsignaciones->pluck('id'))
-            ->when($periodoIds->isNotEmpty(), fn($q) => $q->whereIn('periodo_id', $periodoIds))
-            ->get()
-            ->groupBy('asignacion_id');
-
-        $tablaNotas = [];
-        foreach ($misAsignaciones as $asi) {
-            $esTecnicaAsi = $asi->area === 'tecnica';
-            $periodosData = [];
-            $notasValidas = [];
-
-            if ($esTecnicaAsi) {
-                $calsPorPeriodo = $califTecMap->get($asi->id, collect())->keyBy('periodo_id');
-                foreach ($periodos as $p) {
-                    $notaPeriodo = $calsPorPeriodo->get($p->id)?->nota_final;
-                    $periodosData[$p->id] = $notaPeriodo;
-                    if ($notaPeriodo !== null) $notasValidas[] = $notaPeriodo;
-                }
-                $promedio  = count($notasValidas) ? round(array_sum($notasValidas) / count($notasValidas), 2) : null;
-                $situacion = $promedio !== null ? ($promedio >= 70 ? 'A' : 'R') : null;
-            } else {
-                $cal = $califAcadMap->get($asi->id);
-                foreach ($periodos as $p) {
-                    $n = $p->numero;
-                    $vals = [];
-                    for ($ci = 1; $ci <= 4; $ci++) {
-                        $cv = $cal?->{"avg_comp{$ci}_p{$n}"};
-                        if ($cv === null) {
-                            $pb = $cal?->{"comp{$ci}_p{$n}"};
-                            if ($pb !== null) {
-                                $rv = $cal?->{"comp{$ci}_r{$n}"};
-                                $pb = (float) $pb;
-                                $cv = ($rv !== null && $pb < 70)
-                                    ? round($pb + min((float)$rv, max(0.0, 100.0 - $pb)), 2)
-                                    : round($pb, 2);
-                            }
-                        }
-                        if ($cv !== null) $vals[] = (float) $cv;
-                    }
-                    $periodosData[$p->id] = $vals ? round(array_sum($vals) / count($vals), 2) : null;
-                }
-                $promedio  = $cal?->nota_extraordinaria ?? $cal?->nota_completiva ?? $cal?->nota_final;
-                $situacion = $cal?->situacion;
-            }
-
-            $tablaNotas[] = [
-                'asignatura' => $asi->asignatura?->nombre ?? '—',
-                'esTecnica'  => $esTecnicaAsi,
-                'periodos'   => $periodosData,
-                'promedio'   => $promedio,
-                'situacion'  => $situacion,
-            ];
-        }
-
-        $boletinConfig = $schoolYear ? \App\Models\BoletinConfig::getOrCreate($schoolYear->id) : null;
-
-        $data = compact('matricula', 'periodos', 'tablaNotas', 'schoolYear', 'boletinConfig');
-        $data['asistencias'] = collect();
-        $data['minerdData']  = $this->buildMinerdDataDocente($matricula, $schoolYear, $docente);
-        $data['ciclo']       = $matricula->grupo?->grado?->ciclo ?? null;
+        // Antes se armaba aquí un subconjunto de los datos (sin $periodo, promedio general, asistencia, promoción…) y la plantilla
+        // fallaba con «Undefined variable $periodo»: este PDF nunca llegó a generarse. Se usa el mismo constructor que administración,
+        // que ya aplica la vista de docente (solo SUS asignaturas y solo notas publicadas).
+        $data = app(\App\Http\Controllers\Admin\BoletinController::class)->buildBoletinDataPublic($matricula, $periodo);
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.boletines.pdf', $data)
             ->setPaper('letter', 'portrait');
 
         $apellidos = \Illuminate\Support\Str::slug($matricula->estudiante->apellidos ?? 'estudiante');
-        $filename  = "boletin_{$apellidos}.pdf";
 
-        return $pdf->download($filename);
+        return $pdf->download("boletin_{$apellidos}_{$periodo->numero}.pdf");
     }
 
     // ── Guardar observación del boletín ─────────────────────────────────

@@ -618,14 +618,14 @@ body {
 
 {{-- ── Barra de título ── --}}
 <div class="title-bar">
-    &#9670;&nbsp; Boletín de Calificaciones &nbsp;·&nbsp; {{ $periodo->nombre }} &nbsp;&#9670;
+    &bull;&nbsp; Boletín de Calificaciones &nbsp;·&nbsp; {{ $periodo->nombre }} &nbsp;&bull;
 </div>
 
 {{-- ══════════════════════════════════════════════════════════
      2. FICHA DEL ESTUDIANTE
 ══════════════════════════════════════════════════════════ --}}
 <div class="ficha-outer">
-    <div class="ficha-header">&#9998; Datos del Estudiante</div>
+    <div class="ficha-header">&bull; Datos del Estudiante</div>
     <table class="ficha-table" cellpadding="0" cellspacing="0">
         <tr>
             <td style="width:44%;">
@@ -687,7 +687,7 @@ body {
 {{-- ══════════════════════════════════════════════════════════
      3. TABLA DE CALIFICACIONES
 ══════════════════════════════════════════════════════════ --}}
-<div class="sec-title">&#9654; Calificaciones por Período</div>
+<div class="sec-title">&raquo; Calificaciones por Período</div>
 
 @if(empty($tablaNotas))
 <div style="border:1px solid #e5e7eb;padding:8px 10px;color:#9ca3af;font-size:8pt;font-style:italic;">
@@ -728,9 +728,9 @@ body {
             <td style="text-align:center;font-size:7.5pt;font-weight:800;">
                 @if($pg)
                     @if($pg['direccion']==='sube')
-                        <span style="color:#15803d;">↑{{ abs($pg['diff']) }}</span>
+                        <span style="color:#15803d;">+{{ abs($pg['diff']) }}</span>
                     @elseif($pg['direccion']==='baja')
-                        <span style="color:#dc2626;">↓{{ abs($pg['diff']) }}</span>
+                        <span style="color:#dc2626;">-{{ abs($pg['diff']) }}</span>
                     @else
                         <span style="color:#9ca3af;">—</span>
                     @endif
@@ -876,7 +876,7 @@ body {
 @endphp
 
 <div class="sec-title">
-    &#9654; Evaluación por Competencias Específicas (MINERD) — {{ $mEsPrimer ? 'Primer Ciclo' : 'Segundo Ciclo' }}
+    &raquo; Evaluación por Competencias Específicas (MINERD) — {{ $mEsPrimer ? 'Primer Ciclo' : 'Segundo Ciclo' }}
 </div>
 
 <table class="notas-table" cellpadding="0" cellspacing="0" style="margin-bottom:4px;">
@@ -948,14 +948,14 @@ body {
                 <span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:2px;font-weight:800;">2 — En proceso</span>&nbsp;
                 <span style="background:#dbeafe;color:#1e40af;padding:1px 5px;border-radius:2px;font-weight:800;">3 — Logrado</span>&nbsp;
                 <span style="background:#dcfce7;color:#15803d;padding:1px 5px;border-radius:2px;font-weight:800;">4 — Avanzado</span>&nbsp;
-                &nbsp;Aprobatorio: ≥ 2.5
+                &nbsp;Aprobatorio: mínimo 2.5
             @else
                 Escala numérica MINERD:&nbsp;
                 <span style="background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:2px;font-weight:800;">90–100 Excelente</span>&nbsp;
                 <span style="background:#dcfce7;color:#15803d;padding:1px 5px;border-radius:2px;font-weight:800;">75–89 Bueno</span>&nbsp;
                 <span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:2px;font-weight:800;">60–74 En Proceso</span>&nbsp;
                 <span style="background:#fee2e2;color:#991b1b;padding:1px 5px;border-radius:2px;font-weight:800;">&lt;60 Insuficiente</span>&nbsp;
-                &nbsp;Aprobatorio: ≥ 65
+                &nbsp;Aprobatorio: mínimo 65
             @endif
         </td>
     </tr>
@@ -966,7 +966,7 @@ body {
      4. ASISTENCIA
 ══════════════════════════════════════════════════════════ --}}
 @if(!$boletinConfig || $boletinConfig->mostrar_asistencia)
-<div class="sec-title">&#9654; Resumen de Asistencia</div>
+<div class="sec-title">&raquo; Resumen de Asistencia</div>
 
 <table class="asist-table" cellpadding="0" cellspacing="0">
     <thead>
@@ -1014,7 +1014,7 @@ body {
 {{-- ══════════════════════════════════════════════════════════
      5. OBSERVACIONES
 ══════════════════════════════════════════════════════════ --}}
-<div class="sec-title">&#9654; Observaciones</div>
+<div class="sec-title">&raquo; Observaciones</div>
 
 @php
     $hayObs1 = isset($boletinObservaciones) && $boletinObservaciones->isNotEmpty();
@@ -1059,7 +1059,7 @@ body {
 {{-- ══════════════════════════════════════════════════════════
      6. ESTADO ACADÉMICO FINAL
 ══════════════════════════════════════════════════════════ --}}
-<div class="sec-title">&#9654; Estado Académico Final</div>
+<div class="sec-title">&raquo; Estado Académico Final</div>
 
 @if(isset($promocion) && $promocion)
 @php
@@ -1111,7 +1111,7 @@ body {
 {{-- ══════════════════════════════════════════════════════════
      7. SECCIÓN DE FIRMAS
 ══════════════════════════════════════════════════════════ --}}
-<div class="firma-section-hdr">&#9998; Certificamos la veracidad de la información</div>
+<div class="firma-section-hdr">&bull; Certificamos la veracidad de la información</div>
 <div class="firma-outer">
     <table class="firma-table" cellpadding="0" cellspacing="0">
         <tr>

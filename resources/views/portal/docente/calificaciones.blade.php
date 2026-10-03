@@ -934,12 +934,15 @@ const CELDA_URL  = @json($celdaRoute);
 const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
 /* ── Indicador de estado ───────────────────────────── */
+let _statusTimer = null;
 function setStatus(type, msg) {
     const el = document.getElementById('ajax-status');
     if (!el) return;
+    // Sin esto, el temporizador de un «Guardado» anterior borraba un mensaje de error posterior
+    clearTimeout(_statusTimer);
     el.className = type;   // 'saving' | 'saved' | 'err'
     el.innerHTML = msg;
-    if (type === 'saved') setTimeout(() => { el.className = ''; el.innerHTML = ''; }, 2500);
+    if (type === 'saved') _statusTimer = setTimeout(() => { el.className = ''; el.innerHTML = ''; }, 2500);
 }
 
 /* ── Recalc local: actualiza faltante + PROM COMP ─── */
@@ -1037,15 +1040,31 @@ function recalcExtraordinario(inp) {
 }
 
 /* ── Guardar celda vía AJAX ────────────────────────── */
+// Valor que tenía la celda al entrar: si el guardado se rechaza (período cerrado, fuera de rango…) se restaura, para que la pantalla
+// no muestre una nota que la base de datos NO tiene.
+document.addEventListener('focusin', e => {
+    if (e.target.classList && e.target.classList.contains('acad-inp')) e.target.dataset.prev = e.target.value;
+});
+
+function revertirCelda(inp, mensaje) {
+    inp.classList.remove('saving');
+    inp.classList.add('inp-error');
+    setTimeout(() => inp.classList.remove('inp-error'), 3000);
+    if (inp.dataset.prev !== undefined) { inp.value = inp.dataset.prev; if (typeof recalcLocal === 'function') recalcLocal(inp); }
+    setStatus('err', '<i class="bi bi-exclamation-triangle-fill me-1"></i>' + mensaje);
+}
+
 async function guardarCelda(inp) {
     const mat   = inp.dataset.mat;
     const campo = inp.dataset.campo;
     const valor = inp.value.trim() !== '' ? parseFloat(inp.value) : null;
 
+    // Sin cambios: no hay nada que guardar
+    if (inp.dataset.prev !== undefined && inp.dataset.prev === inp.value) return;
+
     // Validar rango
     if (valor !== null && (valor < 0 || valor > 100)) {
-        inp.classList.add('inp-error');
-        setTimeout(() => inp.classList.remove('inp-error'), 2500);
+        revertirCelda(inp, 'La nota debe estar entre 0 y 100; se restauró el valor anterior.');
         return;
     }
 
@@ -1063,12 +1082,19 @@ async function guardarCelda(inp) {
             body: JSON.stringify({ matricula_id: mat, campo, valor }),
         });
 
+        // 403/422 son rechazos del servidor con motivo (período cerrado, valor inválido): se muestra y se restaura la celda
+        if (res.status === 403 || res.status === 422) {
+            const err = await res.json().catch(() => ({}));
+            revertirCelda(inp, (err.message || 'No se pudo guardar la nota') + ' Se restauró el valor anterior.');
+            return;
+        }
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const json = await res.json();
 
         if (json.ok) {
             inp.classList.remove('saving');
             inp.classList.add('saved');
+            inp.dataset.prev = inp.value;
             setTimeout(() => inp.classList.remove('saved'), 2000);
             actualizarDOM(mat, json.data);
             setStatus('saved', '<i class="bi bi-check-circle-fill me-1"></i>Guardado');
@@ -1076,10 +1102,11 @@ async function guardarCelda(inp) {
             throw new Error(json.message ?? 'Error');
         }
     } catch (e) {
+        // Fallo de red o error del servidor: el valor sigue en pantalla pero SIN guardar; se reintenta al volver a salir de la celda
         inp.classList.remove('saving');
         inp.classList.add('inp-error');
         setTimeout(() => inp.classList.remove('inp-error'), 3000);
-        setStatus('err', '<i class="bi bi-exclamation-triangle-fill me-1"></i>Error al guardar. Reintentando al salir de la celda.');
+        setStatus('err', '<i class="bi bi-exclamation-triangle-fill me-1"></i>Error de conexión: la nota NO se guardó. Se reintentará al salir de la celda.');
     }
 }
 

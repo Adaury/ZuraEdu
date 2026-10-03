@@ -157,6 +157,7 @@
            class="btn btn-sm" style="background:#1e3a6e;color:#fff;border-radius:8px;">
             <i class="bi bi-person-badge me-1"></i>Ficha PDF
         </a>
+        @can('gestionar-estudiantes')
         <a href="{{ route('admin.estudiantes.edit', $estudiante) }}"
            class="btn btn-sm" style="background:var(--primary);color:#fff;border-radius:8px;">
             <i class="bi bi-pencil me-1"></i>Editar
@@ -168,6 +169,7 @@
                 data-bs-target="#modalDelete">
             <i class="bi bi-trash me-1"></i>Eliminar
         </button>
+        @endcan
     </div>
 </div>
 

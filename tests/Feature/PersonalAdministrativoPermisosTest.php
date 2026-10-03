@@ -35,4 +35,23 @@ class PersonalAdministrativoPermisosTest extends TestCase
         $this->actingAs($this->usuario)->get(route('admin.matriculas.index'))->assertForbidden();
         $this->actingAs($this->usuario)->get(route('admin.inscripciones.index'))->assertForbidden();
     }
+
+    public function test_la_lista_no_ofrece_botones_de_crear_editar_ni_eliminar(): void
+    {
+        $e = \App\Models\Estudiante::factory()->create();
+        $html = $this->actingAs($this->usuario)->get(route('admin.estudiantes.index'))->assertOk()->getContent();
+        $this->assertStringNotContainsString(route('admin.estudiantes.create'), $html);
+        $this->assertStringNotContainsString(route('admin.estudiantes.edit', $e), $html);
+
+        $ficha = $this->actingAs($this->usuario)->get(route('admin.estudiantes.show', $e))->assertOk()->getContent();
+        $this->assertStringNotContainsString(route('admin.estudiantes.edit', $e), $ficha);
+    }
+
+    public function test_el_administrador_si_conserva_los_botones(): void
+    {
+        $admin = User::factory()->create(['activo' => true, 'tenant_id' => $this->usuario->tenant_id]);
+        $admin->assignRole('Administrador');
+        $html = $this->actingAs($admin)->get(route('admin.estudiantes.index'))->assertOk()->getContent();
+        $this->assertStringContainsString(route('admin.estudiantes.create'), $html);
+    }
 }

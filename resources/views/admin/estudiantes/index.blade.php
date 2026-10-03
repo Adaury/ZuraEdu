@@ -191,6 +191,7 @@
            style="background:#059669;color:#fff;" title="Exportar directorio de representantes">
             <i class="bi bi-people-fill me-1"></i>Rep. Excel
         </a>
+        @can('gestionar-estudiantes')
         <a href="{{ route('admin.estudiantes.wizard') }}" class="btn btn-sm px-3 py-2"
            style="background:var(--secondary);color:#fff;border-radius:8px;font-size:.85rem;font-weight:600;"
            title="Registro guiado paso a paso">
@@ -200,6 +201,7 @@
            style="background:var(--primary);color:#fff;border-radius:8px;font-size:.85rem;font-weight:600;">
             <i class="bi bi-plus-lg me-1"></i>Nuevo Estudiante
         </a>
+        @endcan
     </div>
 </div>
 
@@ -376,11 +378,14 @@
                        class="btn btn-primary btn-sm">
                         <i class="bi bi-people me-1"></i>Ver lista general
                     </a>
+                    @can('gestionar-estudiantes')
                     <a href="{{ route('admin.estudiantes.import', array_filter(['ciclo'=>$ciclo,'area'=>$area])) }}"
                        class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-upload me-1"></i>Importar estudiantes
                     </a>
+                    @endcan
                 @else
+                    @can('gestionar-estudiantes')
                     <a href="{{ route('admin.estudiantes.wizard') }}" class="btn btn-sm"
                        style="background:var(--secondary);color:#fff;">
                         <i class="bi bi-magic me-1"></i>Registro Wizard
@@ -391,6 +396,7 @@
                     <a href="{{ route('admin.estudiantes.import') }}" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-upload me-1"></i>Importar
                     </a>
+                    @endcan
                 @endif
             </div>
         </div>
@@ -487,6 +493,7 @@
                                    class="btn btn-action btn-outline-primary" title="Ver perfil">
                                     <i class="bi bi-eye"></i>
                                 </a>
+                                @can('gestionar-estudiantes')
                                 <a href="{{ route('admin.estudiantes.edit', $estudiante) }}"
                                    class="btn btn-action btn-outline-secondary" title="Editar">
                                     <i class="bi bi-pencil"></i>
@@ -502,6 +509,7 @@
                                         )">
                                     <i class="bi bi-trash"></i>
                                 </button>
+                                @endcan
                             </div>
                         </td>
                     </tr>

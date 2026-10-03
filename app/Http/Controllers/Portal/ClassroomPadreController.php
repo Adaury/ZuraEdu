@@ -15,7 +15,8 @@ class ClassroomPadreController extends Controller
     private function getMatriculaHijo(Estudiante $estudiante): Matricula
     {
         // Verificar que el padre tiene acceso a este estudiante
-        $repId = auth()->user()->representante?->id;
+        // User no tiene relación «representante»: antes esto era siempre null y TODO padre recibía 403.
+        $repId = \App\Models\Representante::where('user_id', auth()->id())->value('id');
         abort_unless(
             $repId && $estudiante->representantes()->where('representante_id', $repId)->exists(),
             403, 'No tiene acceso a este estudiante.'

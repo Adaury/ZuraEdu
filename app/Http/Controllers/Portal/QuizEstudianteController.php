@@ -51,7 +51,7 @@ class QuizEstudianteController extends Controller
         // Si hay intento activo, redirigir a él
         $intentoActivo = $quiz->intentoActivo($matricula->id);
         if ($intentoActivo) {
-            return redirect()->route('portal.estudiante.quiz.tomar', [$claseVirtual, $material, $intentoActivo]);
+            return redirect()->route('portal.estudiante.classroom.quiz.tomar', [$claseVirtual, $material, $intentoActivo]);
         }
 
         $intentosPrevios = ZcIntento::where('quiz_id', $quiz->id)
@@ -89,7 +89,7 @@ class QuizEstudianteController extends Controller
             'numero_intento' => $numeroIntento,
         ]);
 
-        return redirect()->route('portal.estudiante.quiz.tomar', [$claseVirtual, $material, $intento]);
+        return redirect()->route('portal.estudiante.classroom.quiz.tomar', [$claseVirtual, $material, $intento]);
     }
 
     // ── Pantalla de tomar el quiz ────────────────────────────────────────
@@ -156,6 +156,11 @@ class QuizEstudianteController extends Controller
         abort_unless($intento->estado === 'en_curso', 422);
 
         $quiz = $intento->quiz()->with('preguntas.opciones')->first();
+
+        // padre→hijo contra la BD: la nota se escribe en el material de la URL, así que ese material debe ser el del quiz del intento
+        // y estar en un aula de SU grupo (si no, un estudiante podría dirigir la nota de un quiz a otra actividad).
+        abort_unless($quiz && $quiz->material_id === $material->id && $material->clase_virtual_id === $claseVirtual->id, 404);
+        abort_unless($claseVirtual->asignacion->grupo_id === $matricula->grupo_id, 403);
 
         // Guardar respuestas del formulario (fallback si no usaron AJAX)
         foreach ($request->all() as $key => $valor) {
@@ -243,7 +248,7 @@ class QuizEstudianteController extends Controller
         }
 
         $claseVirtual = $intento->quiz->material->claseVirtual;
-        return redirect()->route('portal.estudiante.quiz.resultado', [
+        return redirect()->route('portal.estudiante.classroom.quiz.resultado', [
             $claseVirtual,
             $intento->quiz->material,
             $intento,

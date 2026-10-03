@@ -6,9 +6,15 @@ use App\Models\Calificacion;
 use App\Models\EntregaClassroom;
 use App\Models\MaterialClase;
 use App\Models\Matricula;
+use App\Models\Periodo;
 
 class ZuraClassGradeSync
 {
+    public static function periodoCerrado(int $periodoId): bool
+    {
+        return Periodo::where('id', $periodoId)->where('cerrado', true)->exists();
+    }
+
     /**
      * Sincroniza la calificación de una entrega al libro de notas (calificaciones).
      * Solo aplica cuando el material tiene periodo_id asignado.
@@ -18,6 +24,11 @@ class ZuraClassGradeSync
         $material = $entrega->material;
 
         if (!$material || !$material->periodo_id || !$material->puntos) {
+            return false;
+        }
+
+        // Un período cerrado no recibe notas nuevas (lo mismo que ya exigen Admin y el portal docente).
+        if (self::periodoCerrado($material->periodo_id)) {
             return false;
         }
 
@@ -37,7 +48,7 @@ class ZuraClassGradeSync
      */
     public function recalcularPromedioGrupo(MaterialClase $material): void
     {
-        if (!$material->periodo_id || !$material->puntos) {
+        if (!$material->periodo_id || !$material->puntos || self::periodoCerrado($material->periodo_id)) {
             return;
         }
 

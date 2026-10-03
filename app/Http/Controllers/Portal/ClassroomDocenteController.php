@@ -351,6 +351,8 @@ class ClassroomDocenteController extends Controller
         $docente = $this->getDocente();
         $claseVirtual->load(['asignacion.asignatura', 'asignacion.grupo']);
         $this->autorizarClase($claseVirtual, $docente);
+        // padre→hijo contra la BD: la entrega y el material deben ser de ESTA aula (no confiar en los ids de la URL)
+        abort_unless($material->clase_virtual_id === $claseVirtual->id && $entrega->material_id === $material->id, 404);
 
         $entrega->load(['matricula.estudiante', 'archivos', 'rubricCalificaciones.criterio']);
         $material->load(['rubric.criterios', 'archivos']);
@@ -370,6 +372,7 @@ class ClassroomDocenteController extends Controller
         $docente = $this->getDocente();
         $claseVirtual->load('asignacion');
         $this->autorizarClase($claseVirtual, $docente);
+        abort_unless(MaterialClase::where('id', $entrega->material_id)->where('clase_virtual_id', $claseVirtual->id)->exists(), 404);   // la entrega debe ser de ESTA aula
 
         $data = $request->validate([
             'calificacion'       => 'required|numeric|min:0|max:100',
@@ -414,8 +417,11 @@ class ClassroomDocenteController extends Controller
         ]);
 
         // Sincronizar con libro de notas
+        $notaNoSincronizada = false;
         if ($request->boolean('sincronizar_notas') && $estado === 'calificado') {
-            app(ZuraClassGradeSync::class)->sincronizar($entrega);
+            $sincronizada = app(ZuraClassGradeSync::class)->sincronizar($entrega);
+            $notaNoSincronizada = ! $sincronizada && $entrega->material?->periodo_id
+                && ZuraClassGradeSync::periodoCerrado($entrega->material->periodo_id);
         }
 
         // Notificar al estudiante
@@ -437,7 +443,8 @@ class ClassroomDocenteController extends Controller
 
         return back()->with('success', $estado === 'devuelto'
             ? 'Entrega devuelta al estudiante para corrección.'
-            : 'Entrega calificada correctamente.');
+            : 'Entrega calificada correctamente.')
+            ->with($notaNoSincronizada ? ['warning' => 'La nota quedó en el aula, pero NO pasó al libro de calificaciones: el período está cerrado.'] : []);
     }
 
     // ── devolverEntrega ───────────────────────────────────────────────────
@@ -446,6 +453,7 @@ class ClassroomDocenteController extends Controller
         $docente = $this->getDocente();
         $claseVirtual->load('asignacion');
         $this->autorizarClase($claseVirtual, $docente);
+        abort_unless(MaterialClase::where('id', $entrega->material_id)->where('clase_virtual_id', $claseVirtual->id)->exists(), 404);   // la entrega debe ser de ESTA aula
 
         $entrega->update([
             'estado'            => 'devuelto',
@@ -497,6 +505,7 @@ class ClassroomDocenteController extends Controller
         $docente = $this->getDocente();
         $claseVirtual->load('asignacion');
         $this->autorizarClase($claseVirtual, $docente);
+        abort_unless(MaterialClase::where('id', $archivo->material_id)->where('clase_virtual_id', $claseVirtual->id)->exists(), 404);   // el archivo debe ser de un material de ESTA aula
 
         Storage::disk('public')->delete($archivo->ruta);
         $archivo->delete();
@@ -590,6 +599,7 @@ class ClassroomDocenteController extends Controller
         $docente = $this->getDocente();
         $claseVirtual->load('asignacion');
         $this->autorizarClase($claseVirtual, $docente);
+        abort_unless($recurso->clase_virtual_id === $claseVirtual->id, 404);   // el recurso debe ser de ESTA aula
 
         if ($recurso->ruta_archivo) {
             Storage::disk('public')->delete($recurso->ruta_archivo);
@@ -620,6 +630,7 @@ class ClassroomDocenteController extends Controller
 
         $sync = app(ZuraClassGradeSync::class);
         $materiales = $claseVirtual->materiales()
+            ->with('claseVirtual')   // el servicio de sincronización la lee por cada material
             ->whereIn('tipo', ['tarea', 'evaluacion'])
             ->whereNotNull('periodo_id')
             ->get();
@@ -651,7 +662,11 @@ class ClassroomDocenteController extends Controller
             'meeting_started_at' => now(),
         ]);
 
-        broadcast(new ClassroomMeetingUpdated($claseVirtual->id, 'active', $meetingUrl));
+        try {
+            broadcast(new ClassroomMeetingUpdated($claseVirtual->id, 'active', $meetingUrl));
+        } catch (\Throwable $e) {
+            \Log::warning('Classroom meeting: no se pudo emitir en tiempo real', ['clase' => $claseVirtual->id, 'error' => $e->getMessage()]);
+        }
 
         return response()->json([
             'meeting_url' => $meetingUrl,
@@ -669,7 +684,11 @@ class ClassroomDocenteController extends Controller
             'meeting_status' => 'idle',
         ]);
 
-        broadcast(new ClassroomMeetingUpdated($claseVirtual->id, 'idle', null));
+        try {
+            broadcast(new ClassroomMeetingUpdated($claseVirtual->id, 'idle', null));
+        } catch (\Throwable $e) {
+            \Log::warning('Classroom meeting: no se pudo emitir en tiempo real', ['clase' => $claseVirtual->id, 'error' => $e->getMessage()]);
+        }
 
         return response()->json(['status' => 'idle']);
     }

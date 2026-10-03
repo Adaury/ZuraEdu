@@ -63,13 +63,18 @@ class ClassroomChatController extends Controller
 
         $msg->load('user');
 
-        MessageSent::dispatch(
-            $claseVirtual->id,
-            auth()->id(),
-            $msg->user->name,
-            $msg->mensaje,
-            $msg->created_at->format('H:i'),
-        );
+        // El mensaje ya está guardado: si el servidor de tiempo real (Reverb) está caído, el envío no debe fallar con 500.
+        try {
+            MessageSent::dispatch(
+                $claseVirtual->id,
+                auth()->id(),
+                $msg->user->name,
+                $msg->mensaje,
+                $msg->created_at->format('H:i'),
+            );
+        } catch (\Throwable $e) {
+            \Log::warning('Classroom chat: no se pudo emitir en tiempo real', ['clase' => $claseVirtual->id, 'error' => $e->getMessage()]);
+        }
 
         return response()->json([
             'id'         => $msg->id,

@@ -113,6 +113,7 @@ class QuizDocenteController extends Controller
         $docente = $this->getDocente();
         $claseVirtual->load('asignacion');
         $this->autorizarClase($claseVirtual, $docente);
+        abort_unless($material->clase_virtual_id === $claseVirtual->id, 404);
 
         $quiz = $material->quiz()->firstOrFail();
         $quiz->update([
@@ -159,6 +160,7 @@ class QuizDocenteController extends Controller
         $docente = $this->getDocente();
         $claseVirtual->load('asignacion');
         $this->autorizarClase($claseVirtual, $docente);
+        abort_unless($material->clase_virtual_id === $claseVirtual->id, 404);
 
         $material->quiz?->delete();
         return back()->with('success', 'Quiz eliminado.');
@@ -170,6 +172,7 @@ class QuizDocenteController extends Controller
         $docente = $this->getDocente();
         $claseVirtual->load(['asignacion.asignatura', 'asignacion.grupo']);
         $this->autorizarClase($claseVirtual, $docente);
+        abort_unless($material->clase_virtual_id === $claseVirtual->id, 404);
 
         $quiz = $material->quiz()->with('preguntas')->firstOrFail();
 

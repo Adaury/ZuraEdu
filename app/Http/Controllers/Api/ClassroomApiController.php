@@ -157,7 +157,7 @@ class ClassroomApiController extends Controller
             'fecha_limite' => $m->fecha_limite?->toIso8601String(),
             'puntos'       => $m->puntos,
             'publicado'    => $m->publicado,
-            'es_tarea'     => $m->esTarea(),
+            'es_tarea'     => $m->esTareaOEvaluacion(),
             'vencido'      => $m->estaVencido(),
             'archivos'     => $m->archivos->map(fn($a) => [
                 'nombre'=> $a->nombre_original,

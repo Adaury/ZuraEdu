@@ -294,6 +294,8 @@
 @endpush
 
 @section('content')
+<x-accesos-rapidos />
+
 
 {{-- ── Hero ─────────────────────────────────────────────────────────── --}}
 <div style="background:linear-gradient(135deg,#1e1b4b 0%,#2563eb 100%);border-radius:16px;padding:1.25rem 1.5rem;color:#fff;margin-bottom:1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;position:relative;overflow:hidden;">

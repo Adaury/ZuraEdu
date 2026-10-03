@@ -276,7 +276,7 @@
 </div>
 @endif
 
-<div x-data="wizard()" x-init="init()">
+<div x-data="wizard()">
 
 <form method="POST" action="{{ route('admin.estudiantes.store') }}"
       enctype="multipart/form-data" id="wizardForm" novalidate>

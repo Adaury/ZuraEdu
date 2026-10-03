@@ -162,7 +162,6 @@ class CentroAdministracionController extends Controller
             ['Configuración de Boletines', 'admin.boletines.config', 'bi-file-earmark-ruled', 'gestionar-configuracion', null, null],
             ['Configuración de Pagos', 'admin.pagos.config', 'bi-credit-card-2-front', 'solo-administrador', 'pagos', null],
             ['Pantalla de Login', 'admin.sistema.login-config', 'bi-box-arrow-in-right', 'solo-administrador', null, null],
-            ['Respaldos', 'admin.sistema.backup', 'bi-hdd', 'solo-administrador', null, 'backup'],
             ['Log de Actividad', 'admin.sistema.actividad', 'bi-clock-history', 'acceso-direccion', null, 'auditoria bitacora'],
         ],
         'Página Web Institucional' => [

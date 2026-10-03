@@ -4,8 +4,7 @@
 
 @section('content')
 <div class="max-w-3xl mx-auto space-y-6"
-     x-data="encuestaBuilder()"
-     x-init="init()">
+     x-data="encuestaBuilder()">
 
     {{-- Encabezado --}}
     <div class="flex items-center gap-3">

@@ -3,78 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\BackupRun;
-use App\Services\BackupService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class BackupController extends Controller
 {
-    public function index()
-    {
-        $backups = collect(Storage::disk('local')->files('backups'))
-            ->map(function ($file) {
-                return [
-                    'name'    => basename($file),
-                    'path'    => $file,
-                    'size'    => $this->formatBytes(Storage::disk('local')->size($file)),
-                    'date'    => \Carbon\Carbon::createFromTimestamp(
-                        Storage::disk('local')->lastModified($file)
-                    )->format('d/m/Y H:i'),
-                    'ts'      => Storage::disk('local')->lastModified($file),
-                ];
-            })
-            ->sortByDesc('ts')
-            ->values();
-
-        $ultimoExitoso = BackupRun::ultimoExitoso();
-
-        return view('admin.sistema.backup', compact('backups', 'ultimoExitoso'));
-    }
-
-    public function crear(BackupService $service)
-    {
-        $inicio     = now();
-        $bd         = $service->respaldarBaseDatos();
-        $finalizado = now();
-
-        if (! $bd['ok']) {
-            BackupRun::create([
-                'iniciado_en'       => $inicio,
-                'finalizado_en'     => $finalizado,
-                'duracion_segundos' => max(0, $finalizado->getTimestamp() - $inicio->getTimestamp()),
-                'estado'            => 'fallido',
-                'etapa_fallo'       => 'backup_bd',
-                'error_mensaje'     => $bd['error'],
-            ]);
-
-            return back()->with('error', 'Error al generar el backup: ' . $bd['error']);
-        }
-
-        BackupRun::create([
-            'iniciado_en'       => $inicio,
-            'finalizado_en'     => $finalizado,
-            'duracion_segundos' => max(0, $finalizado->getTimestamp() - $inicio->getTimestamp()),
-            'estado'            => 'exitoso',
-            'bd_archivo'        => $bd['filename'],
-            'bd_tamano_bytes'   => $bd['size'],
-        ]);
-
-        // Misma capa de durabilidad extra que el comando programado — una
-        // falla al subir al disco remoto no invalida el backup local ya creado.
-        // Sin disco remoto configurado no se llama al servicio (ver
-        // BackupSistema::subirYReportar, mismo criterio en ambos lugares).
-        $mensaje = "Backup creado: {$bd['filename']} (" . $this->formatBytes($bd['size']) . ')';
-        if (config('backup.disco', 'local') !== 'local') {
-            $remoto = $service->subirDestinoRemoto($bd['path'], $bd['filename']);
-            if (! $remoto['ok']) {
-                $mensaje .= '. Aviso: ' . $remoto['error'];
-            }
-        }
-
-        return back()->with('success', $mensaje);
-    }
-
+    /** Descarga un respaldo del servidor (solo superadministrador, ver rutas superadmin.respaldos.*). */
     public function descargar(Request $request)
     {
         $path = $this->resolverRutaBackup($request->file);
@@ -116,12 +49,5 @@ class BackupController extends Controller
         }
 
         return $candidate;
-    }
-
-    private function formatBytes(int $bytes): string
-    {
-        if ($bytes >= 1048576) return round($bytes / 1048576, 1) . ' MB';
-        if ($bytes >= 1024)    return round($bytes / 1024, 1) . ' KB';
-        return $bytes . ' B';
     }
 }

@@ -23,11 +23,13 @@ class BackupRun extends Model
         'archivos_archivo',
         'archivos_tamano_bytes',
         'eliminados_retencion',
+        'destinos',
     ];
 
     protected $casts = [
         'iniciado_en'   => 'datetime',
         'finalizado_en' => 'datetime',
+        'destinos'      => 'array',
     ];
 
     public static function ultimoExitoso(): ?self

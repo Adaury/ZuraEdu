@@ -121,25 +121,27 @@ class BackupS3Test extends TestCase
         $this->assertSame('exitoso', $run->estado, 'Una falla en la subida remota no debe marcar el backup como fallido.');
     }
 
-    public function test_el_boton_manual_del_panel_tambien_intenta_subir_al_disco_remoto(): void
+    public function test_el_boton_respaldar_ahora_ejecuta_el_proceso_completo_incluida_la_subida_remota(): void
     {
         config(['backup.disco' => 's3']);
-        $this->seed(\Database\Seeders\RolesSeeder::class);
-        $admin = User::factory()->create()->assignRole('Administrador');
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
+        $su = User::factory()->create()->assignRole('super_admin');   // respaldo global: solo superadministrador
 
         $sqlPath = $this->crearArchivoLocalDePrueba();
+        $zipPath = $this->crearArchivoLocalDePrueba('zip');
 
-        $this->mock(BackupService::class, function ($mock) use ($sqlPath) {
-            $mock->shouldReceive('respaldarBaseDatos')->once()->andReturn([
-                'ok' => true, 'path' => $sqlPath, 'filename' => 'backup_manual.sql', 'size' => 500, 'error' => null,
-            ]);
-            $mock->shouldReceive('subirDestinoRemoto')->once()->andReturn(['ok' => false, 'error' => 'No se pudo subir al disco remoto de prueba.']);
+        $this->mock(BackupService::class, function ($mock) use ($sqlPath, $zipPath) {
+            $mock->shouldReceive('respaldarBaseDatos')->once()->andReturn(['ok' => true, 'path' => $sqlPath, 'filename' => 'backup_manual.sql', 'size' => 500, 'error' => null]);
+            $mock->shouldReceive('respaldarArchivos')->once()->andReturn(['ok' => true, 'path' => $zipPath, 'filename' => 'files_manual.zip', 'size' => 300, 'error' => null]);
+            $mock->shouldReceive('aplicarRetencion')->once()->andReturn(0);
+            $mock->shouldReceive('subirDestinoRemoto')->twice()->andReturn(['ok' => true, 'error' => null]);
         });
 
-        $response = $this->actingAs($admin)->post(route('admin.sistema.backup.crear'));
+        $response = $this->actingAs($su)->post(route('superadmin.respaldos.ejecutar'));
 
         $response->assertRedirect();
         $response->assertSessionHas('success');
-        $this->assertStringContainsString('No se pudo subir', session('success'));
+        $this->assertStringContainsString('backup_manual.sql', session('success'));
+        $this->assertSame('exitoso', BackupRun::latest('id')->first()->estado);
     }
 }

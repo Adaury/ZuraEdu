@@ -26,8 +26,6 @@ class RouteSmokeTest extends TestCase
      *  se excluyen del smoke para no ensuciar el estado entre iteraciones. */
     private const EXCLUIR = [
         'admin.demo.limpiar',
-        'admin.sistema.backup.descargar',
-        'admin.sistema.backup.crear',
         'admin.horarios.generar',
         'admin.cierre-ano.ejecutar',
     ];

@@ -178,7 +178,7 @@
 @endif
 
 <form method="POST" action="{{ route('admin.cierre-ano.ejecutar-traslado') }}" id="formTraslado"
-      x-data="trasladoWizard()" x-init="init()">
+      x-data="trasladoWizard()">
     @csrf
     <input type="hidden" name="ano_nuevo_id" value="{{ $anoNuevo->id }}">
 

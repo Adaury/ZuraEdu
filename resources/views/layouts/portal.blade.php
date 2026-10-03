@@ -690,7 +690,7 @@
     @stack('styles')
 
     {{-- PWA --}}
-    <link rel="manifest" href="/pwa/manifest.json">
+    <link rel="manifest" href="/pwa/manifest.json" crossorigin="use-credentials">
     @php
         $__pwaColor = app()->bound('tenant') ? (app('tenant')->color_primario ?? '#1d4ed8') : '#1d4ed8';
         $__pwaTid   = tenant_id() ?? 0;
@@ -755,6 +755,8 @@ $sysLogo = \App\Helpers\Setting::get('system_logo');
     </div>
 
     <div class="prt-topbar-right">
+        {{-- Accesos rápidos del rol (icono + panel) --}}
+        @include('partials.accesos-rapidos-boton', ['variante' => 'oscuro'])
         {{-- Toggle dark mode --}}
         <button class="prt-dark-toggle" id="prtDarkToggle" title="Alternar modo oscuro/claro" type="button">
             <i class="bi bi-moon-stars-fill" id="prtDarkIcon"></i>

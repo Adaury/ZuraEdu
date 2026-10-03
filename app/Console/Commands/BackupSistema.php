@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\BackupConfiguracion;
 use App\Models\BackupRun;
+use App\Services\BackupDestinos;
 use App\Services\BackupService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -23,8 +25,10 @@ class BackupSistema extends Command
 
     public function handle(BackupService $service): int
     {
-        $inicio = now();
-        $etapa  = 'inicio';
+        $inicio   = now();
+        $etapa    = 'inicio';
+        $cfg      = BackupConfiguracion::actual();   // hora, retención, archivos y destinos elegidos en la pantalla del superadministrador
+        $destinos = [];
 
         Log::channel('backup')->info('BACKUP STARTED', ['fecha' => $inicio->toDateTimeString()]);
         $this->info('Iniciando backup...');
@@ -46,9 +50,10 @@ class BackupSistema extends Command
             $this->info("Backup de BD: {$bd['filename']} ({$this->formatBytes($bd['size'])})");
 
             $this->subirYReportar($service, $bd['path'], $bd['filename']);
+            $this->distribuirDestinos($cfg, $bd['path'], $bd['filename'], $destinos);
 
             $archivos = ['ok' => true, 'filename' => null, 'size' => null];
-            $incluirArchivos = ! $this->option('sin-archivos') && config('backup.incluir_archivos', true);
+            $incluirArchivos = ! $this->option('sin-archivos') && $cfg->incluir_archivos;
 
             if ($incluirArchivos) {
                 $etapa    = 'backup_archivos';
@@ -66,11 +71,16 @@ class BackupSistema extends Command
                 $this->info("Backup de archivos: {$archivos['filename']} ({$this->formatBytes($archivos['size'])})");
 
                 $this->subirYReportar($service, $archivos['path'], $archivos['filename']);
+                $this->distribuirDestinos($cfg, $archivos['path'], $archivos['filename'], $destinos);
             }
 
             $etapa      = 'retencion';
-            $dias       = (int) config('backup.retencion_dias', 7);
+            $dias       = (int) $cfg->retencion_dias;
             $eliminados = $service->aplicarRetencion($dias);
+
+            if (($destinosActivos = new BackupDestinos($cfg))->hayDestinosActivos()) {
+                $destinos['retencion'] = $destinosActivos->aplicarRetencion($dias);
+            }
 
             Log::channel('backup')->info('RETENTION SUCCESS', ['eliminados' => $eliminados, 'retencion_dias' => $dias]);
 
@@ -86,6 +96,7 @@ class BackupSistema extends Command
                 'archivos_archivo'      => $archivos['filename'],
                 'archivos_tamano_bytes' => $archivos['size'],
                 'eliminados_retencion'  => $eliminados,
+                'destinos'              => $destinos ?: null,
             ]);
 
             Log::channel('backup')->info('BACKUP COMPLETE', [
@@ -166,6 +177,32 @@ class BackupSistema extends Command
 
         Log::channel('backup')->error('BACKUP REMOTE UPLOAD FAILED', ['archivo' => $filename, 'error' => $remoto['error']]);
         $this->warn("  -> {$remoto['error']}");
+    }
+
+    /**
+     * Copia el archivo a la carpeta local de sincronización y/o a Google Drive, si están activos. Cada resultado queda en $destinos
+     * (se guarda en backup_runs.destinos y lo muestra la pantalla). Sin destinos activos no se hace nada.
+     *
+     * @param array<string, mixed> $destinos
+     */
+    private function distribuirDestinos(BackupConfiguracion $cfg, string $path, string $filename, array &$destinos): void
+    {
+        $servicio = new BackupDestinos($cfg);
+        if (! $servicio->hayDestinosActivos()) {
+            return;
+        }
+
+        foreach ($servicio->distribuir($path, $filename) as $destino => $r) {
+            $destinos[$destino][$filename] = $r;
+
+            if ($r['ok']) {
+                Log::channel('backup')->info('BACKUP DESTINATION SUCCESS', ['destino' => $destino, 'archivo' => $filename]);
+                $this->info("  -> {$destino}: copiado");
+            } else {
+                Log::channel('backup')->error('BACKUP DESTINATION FAILED', ['destino' => $destino, 'archivo' => $filename, 'error' => $r['error']]);
+                $this->warn("  -> {$destino}: {$r['error']}");
+            }
+        }
     }
 
     private function formatBytes(?int $bytes): string

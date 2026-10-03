@@ -2,6 +2,8 @@
 @section('page-title', 'Dashboard')
 
 @section('content')
+<x-accesos-rapidos />
+
 
 {{-- ── BANNER MODO DEMO ─────────────────────────────────────────────────── --}}
 @if(session('demo_mode') && session('demo_admin'))

@@ -317,6 +317,12 @@
             <i class="bi bi-plus-circle-fill"></i>Nueva Institución
         </a>
 
+        <div class="sa-section-title" style="margin-top:.25rem;">Sistema</div>
+        <a href="{{ route('superadmin.respaldos.index') }}"
+           class="{{ request()->routeIs('superadmin.respaldos*') ? 'active' : '' }}">
+            <i class="bi bi-cloud-arrow-up-fill"></i>Respaldos
+        </a>
+
         <div class="sa-section-title" style="margin-top:.25rem;">Filtros rápidos</div>
         <a href="{{ route('superadmin.tenants.index', ['estado' => 'activo']) }}">
             <i class="bi bi-check-circle-fill" style="color:#22c55e;opacity:1;"></i>Activas

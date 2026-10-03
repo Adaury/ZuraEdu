@@ -11,7 +11,6 @@
 @section('content')
 <div
     x-data="kpiDashboard()"
-    x-init="init()"
 >
 
 {{-- ── Cabecera ─────────────────────────────────────────────────────────── --}}

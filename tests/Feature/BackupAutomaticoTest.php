@@ -190,7 +190,8 @@ class BackupAutomaticoTest extends TestCase
     public function test_panel_admin_muestra_ultimo_backup_exitoso(): void
     {
         $this->seed(\Database\Seeders\RolesSeeder::class);
-        $admin = User::factory()->create()->assignRole('Administrador');
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
+        $admin = User::factory()->create()->assignRole('super_admin');   // respaldo global: solo superadministrador
 
         BackupRun::create([
             'iniciado_en'       => now()->subDay(),
@@ -201,7 +202,7 @@ class BackupAutomaticoTest extends TestCase
             'bd_tamano_bytes'   => 1000,
         ]);
 
-        $response = $this->actingAs($admin)->get(route('admin.sistema.backup'));
+        $response = $this->actingAs($admin)->get(route('superadmin.respaldos.index'));
 
         $response->assertOk();
         $response->assertSee('backup_ayer.sql');

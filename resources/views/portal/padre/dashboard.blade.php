@@ -32,6 +32,8 @@
 @endsection
 
 @section('content')
+<x-accesos-rapidos />
+
 
 {{-- ── Saludo ───────────────────────────────────────────────────────── --}}
 <div style="background:linear-gradient(135deg,#1e3a5f 0%,#0ea5e9 100%);border-radius:14px;padding:1.25rem 1.5rem;color:#fff;margin-bottom:1rem;display:flex;align-items:center;gap:1rem;position:relative;overflow:hidden;">

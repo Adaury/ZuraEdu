@@ -210,7 +210,7 @@
             </div>
             <div style="flex:1;min-width:120px;">
                 <div style="font-size:.82rem;font-weight:700;color:#1e293b;">{{ $est?->nombre_completo ?? '—' }}</div>
-                <div style="font-size:.7rem;color:#94a3b8;">{{ $aus->fecha->format('d/m/Y') }} &mdash; {{ $aus->asignacion?->asignatura?->nombre ?? '' }}</div>
+                <div style="font-size:.7rem;color:#94a3b8;">{{ $aus->fecha->format('d/m/Y') }} &mdash; {{ $asignacion->asignatura?->nombre ?? '' }}</div>
             </div>
             <span style="background:#fee2e2;color:#dc2626;font-size:.68rem;font-weight:700;padding:.15rem .5rem;border-radius:6px;">AUSENTE</span>
             <button @click="abierto = !abierto"

@@ -139,10 +139,7 @@
                     <i class="bi bi-check-circle-fill" style="color:#4ade80"></i> 2 activas
                 </span>
                 <span class="stat-pill" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);color:#fff">
-                    <i class="bi bi-clock" style="color:#fbbf24"></i> 1 próximamente
-                </span>
-                <span class="stat-pill" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);color:#fff">
-                    <i class="bi bi-grid-3x3-gap" style="color:#93c5fd"></i> 4 integraciones
+                    <i class="bi bi-grid-3x3-gap" style="color:#93c5fd"></i> 3 integraciones
                 </span>
             </div>
         </div>
@@ -204,31 +201,6 @@
                         Abrir <i class="bi bi-arrow-right"></i>
                     </a>
                     @endif
-                </div>
-            </div>
-        </div>
-
-        {{-- Office 365 --}}
-        <div class="col-md-6 p-slide-up p-delay-3">
-            <div class="int-card h-100">
-                <div class="card-accent" style="background:linear-gradient(90deg,#0078d4,#00bcf2)"></div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div class="int-icon" style="background:linear-gradient(135deg,#dbeafe,#bae6fd)">
-                            <i class="bi bi-microsoft" style="color:#0078d4"></i>
-                        </div>
-                        <span class="int-badge badge-prox">
-                            <i class="bi bi-hourglass-split"></i> Próximamente
-                        </span>
-                    </div>
-                    <h5 class="fw-bold mb-1">Office 365</h5>
-                    <p class="text-muted small mb-1">Microsoft Education</p>
-                    <p class="text-muted mb-4" style="font-size:.88rem">
-                        Integración con Microsoft Teams, OneDrive y aplicaciones educativas de Office 365.
-                    </p>
-                    <button class="int-btn int-btn-disabled" style="background:#e2e8f0;color:#94a3b8">
-                        Próximamente <i class="bi bi-lock"></i>
-                    </button>
                 </div>
             </div>
         </div>

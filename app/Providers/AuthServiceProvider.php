@@ -50,6 +50,10 @@ class AuthServiceProvider extends ServiceProvider
         // adicional"). Con Gate::define + can: en la ruta, super_admin sí recibe el bypass.
         Gate::define('solo-administrador', fn ($user) => $user->hasRole('Administrador'));
 
+        // Respaldos de la PLATAFORMA: el volcado contiene los datos de TODOS los colegios, así que solo el superadministrador
+        // puede verlos, descargarlos o borrarlos (antes bastaba con ser «Administrador» de cualquier colegio).
+        Gate::define('respaldos-globales', fn ($user) => $user->hasRole('super_admin'));
+
         Gate::define('acceso-direccion', fn ($user) => $user->hasAnyRole(['Administrador', 'Director']));
 
         Gate::define('acceso-direccion-coordinacion', function ($user) {

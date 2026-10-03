@@ -30,6 +30,12 @@ use App\Http\Controllers\PortalRepresentanteController;
 
 Route::get('/', [\App\Http\Controllers\PublicSiteController::class, 'raiz'])->name('landing');
 
+// Guías rápidas («flyers») por rol: públicas (explican el sistema en la bienvenida) y accesibles dentro de la plataforma
+Route::get('/guias', [\App\Http\Controllers\GuiaController::class, 'index'])->name('guias.index');
+Route::get('/guias/{slug}', [\App\Http\Controllers\GuiaController::class, 'show'])->where('slug', '[a-z]+')->name('guias.show');
+Route::get('/guias/{slug}/pdf', [\App\Http\Controllers\GuiaController::class, 'pdf'])->where('slug', '[a-z]+')->middleware('throttle:20,1')->name('guias.pdf');
+Route::get('/mi-guia', [\App\Http\Controllers\GuiaController::class, 'mia'])->middleware('auth')->name('guias.mia');
+
 // ── Health check — para balanceadores, uptime monitors y CI/CD ────────────
 Route::get('/health', function () {
     $checks = [];
@@ -802,6 +808,21 @@ Route::post('/cardnet/notify',          [\App\Http\Controllers\CardNetController
 // ══════════════════════════════════════════════════════════════════════════
 Route::prefix('superadmin')->name('superadmin.')->middleware(['auth', 'super_admin'])->group(function () {
     Route::get('/', [\App\Http\Controllers\SuperAdmin\TenantController::class, 'index'])->name('dashboard');
+
+    // Respaldos de la plataforma: hora elegida, carpeta local de sincronización y Google Drive
+    Route::prefix('respaldos')->name('respaldos.')->group(function () {
+        $c = \App\Http\Controllers\SuperAdmin\RespaldoController::class;
+        Route::get('/',                    [$c, 'index'])->name('index');
+        Route::post('/configuracion',      [$c, 'guardar'])->name('guardar');
+        Route::post('/ejecutar',           [$c, 'ejecutar'])->name('ejecutar');
+        Route::post('/carpeta/probar',     [$c, 'probarCarpeta'])->name('carpeta.probar');
+        Route::get('/drive/conectar',      [$c, 'driveConectar'])->name('drive.conectar');
+        Route::get('/drive/callback',      [$c, 'driveCallback'])->name('drive.callback');
+        Route::post('/drive/probar',       [$c, 'driveProbar'])->name('drive.probar');
+        Route::post('/drive/desconectar',  [$c, 'driveDesconectar'])->name('drive.desconectar');
+        Route::get('/descargar',           [\App\Http\Controllers\Admin\BackupController::class, 'descargar'])->name('descargar');
+        Route::post('/eliminar',           [\App\Http\Controllers\Admin\BackupController::class, 'eliminar'])->name('eliminar');
+    });
 
     // Gestión de tenants (instituciones)
     Route::prefix('tenants')->name('tenants.')->group(function () {

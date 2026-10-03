@@ -2126,7 +2126,7 @@
     </style>
 
     {{-- PWA --}}
-    <link rel="manifest" href="/pwa/manifest.json">
+    <link rel="manifest" href="/pwa/manifest.json" crossorigin="use-credentials">
     <meta name="theme-color" content="{{ $currentTenant->color_primario ?? '#1d4ed8' }}">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2208,6 +2208,7 @@ if (auth()->check()) {
 
         <!-- Navigation -->
         <nav class="sidebar-nav">
+            @php ob_start(); @endphp   {{-- el menú se filtra al final: ver App\Support\MenuFiltro --}}
 
             @php
                 $u = Auth::user();
@@ -2422,11 +2423,14 @@ if (auth()->check()) {
                         <i class="bi bi-card-list"></i>Matrículas
                     </a>
                 </li>
+                {{-- «Inscripciones» ya está en su propio grupo para estos roles: no se repite aquí --}}
+                @unless($isAdmin || $isDir || $isSecre)
                 <li class="nav-item">
                     <a href="{{ route('admin.inscripciones.index') }}" class="{{ request()->routeIs('admin.inscripciones*') ? 'active' : '' }}">
                         <i class="bi bi-clipboard-check"></i>Inscripciones
                     </a>
                 </li>
+                @endunless
             </ul>
             <div class="nav-section-title">Documentos</div>
             <ul class="list-unstyled mb-0">
@@ -2787,7 +2791,7 @@ if (auth()->check()) {
                         <i class="bi bi-file-earmark-text"></i>Boletines
                     </a>
                 </li>
-                @if(!$isDocente)
+                @if(!$isDocente && !$canConfig)   {{-- quien tiene Configuración ya la ve allí --}}
                 <li class="nav-item">
                     <a href="{{ route('admin.boletines.config') }}" class="{{ request()->routeIs('admin.boletines.config*') ? 'active' : '' }}" style="padding-left:2.1rem;font-size:.82rem;opacity:.85;">
                         <i class="bi bi-gear" style="font-size:.8rem;"></i>Config. Boletín
@@ -2822,7 +2826,7 @@ if (auth()->check()) {
                 @if($canAcad)
                 <li class="nav-item">
                     <a href="{{ route('admin.academico.index') }}" class="{{ request()->routeIs('admin.academico*') ? 'active' : '' }}">
-                        <i class="bi bi-calendar3-event"></i>Año Escolar
+                        <i class="bi bi-calendar3-event"></i>Cursos del año
                     </a>
                 </li>
                 <li class="nav-item">
@@ -3200,7 +3204,7 @@ if (auth()->check()) {
                 <li class="nav-item">
                     <a href="{{ route('admin.solicitudes-est.index') }}" class="{{ request()->routeIs('admin.solicitudes-est*') ? 'active' : '' }}"
                        style="display:flex;align-items:center;justify-content:space-between;">
-                        <span><i class="bi bi-mortarboard-fill"></i>Estudiantes</span>
+                        <span><i class="bi bi-mortarboard-fill"></i>Solicitudes de estudiantes</span>
                         @php
                         try {
                             $solEstPend = \Illuminate\Support\Facades\Cache::remember("t{$__tid}_sol_est_pend", 60,
@@ -3216,7 +3220,7 @@ if (auth()->check()) {
                 <li class="nav-item">
                     <a href="{{ route('admin.solicitudes-docente.index') }}" class="{{ request()->routeIs('admin.solicitudes-docente*') ? 'active' : '' }}"
                        style="display:flex;align-items:center;justify-content:space-between;">
-                        <span><i class="bi bi-person-badge-fill"></i>Docentes</span>
+                        <span><i class="bi bi-person-badge-fill"></i>Solicitudes de docentes</span>
                         @php
                         try {
                             $solDocPend = \Illuminate\Support\Facades\Cache::remember("t{$__tid}_sol_doc_pend", 60,
@@ -3354,7 +3358,7 @@ if (auth()->check()) {
                 </li>
                 <li class="nav-item">
                     <a href="{{ route('admin.school-years.index') }}" class="{{ request()->routeIs('admin.school-years*') ? 'active' : '' }}">
-                        <i class="bi bi-mortarboard"></i>Año Escolar
+                        <i class="bi bi-mortarboard"></i>Años escolares
                     </a>
                 </li>
                 @endif
@@ -3469,11 +3473,6 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.sistema.backup') }}" class="{{ request()->routeIs('admin.sistema.backup*') ? 'active' : '' }}">
-                        <i class="bi bi-archive"></i>Backup
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a href="{{ route('admin.sistema.actividad') }}" class="{{ request()->routeIs('admin.sistema.actividad') ? 'active' : '' }}">
                         <i class="bi bi-shield-check"></i>Log de Actividad
                     </a>
@@ -3534,6 +3533,7 @@ if (auth()->check()) {
                 </li>
             </ul>
 
+            @php echo \App\Support\MenuFiltro::filtrar(ob_get_clean()); @endphp
         </nav>
 
         <!-- User Footer -->
@@ -3611,6 +3611,9 @@ if (auth()->check()) {
                 </span>
             </button>
         </div>
+
+        {{-- Accesos rápidos del rol (icono + panel) --}}
+        @include('partials.accesos-rapidos-boton', ['variante' => 'claro'])
 
         <!-- Dark mode toggle -->
         <button class="dark-toggle" id="darkToggleBtn" title="Modo oscuro / claro">
@@ -3920,7 +3923,8 @@ if (auth()->check()) {
                 const list = title.nextElementSibling;
                 if (!list || list.tagName !== 'UL') return;
 
-                const key = 'sidebarSection:' + idx;
+                // Por nombre y no por posición: el filtro por rol cambia las posiciones y el estado abierto/cerrado se mezclaba entre secciones
+                const key = 'sidebarSection:' + title.textContent.trim();
                 const hasActive = !!list.querySelector('a.active, a[aria-current="page"]');
                 const stored = localStorage.getItem(key);
                 const open = stored !== null ? stored === '1' : hasActive;

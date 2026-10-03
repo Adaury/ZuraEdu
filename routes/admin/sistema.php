@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\SistemaController;
 use App\Http\Controllers\Admin\UsuarioController;
 use App\Http\Controllers\Admin\ComunicadoController;
@@ -149,13 +148,10 @@ Route::middleware('can:acceso-direccion-coordinacion')->group(function () {
     Route::post('sistema/landing',       [SistemaController::class, 'landingUpdate'])->name('sistema.landing.update');
 });
 
+// Los respaldos de la plataforma (volcado de TODOS los colegios) viven en el panel del superadministrador: superadmin.respaldos.*
+
 // ── Sistema (solo Administrador) ──────────────────────────────────────────
 Route::middleware('can:solo-administrador')->group(function () {
-    // Backup
-    Route::get('sistema/backup',           [BackupController::class, 'index'])->name('sistema.backup');
-    Route::post('sistema/backup/crear',    [BackupController::class, 'crear'])->name('sistema.backup.crear');
-    Route::get('sistema/backup/descargar', [BackupController::class, 'descargar'])->name('sistema.backup.descargar');
-    Route::post('sistema/backup/eliminar', [BackupController::class, 'eliminar'])->name('sistema.backup.eliminar');
 
     // Config institucional
     Route::get('sistema',                  [SistemaController::class, 'index'])->name('sistema.index');

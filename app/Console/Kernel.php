@@ -60,12 +60,23 @@ class Kernel extends ConsoleKernel
         $schedule->command('sigerd:validar')->weeklyOn(5, '09:00');
 
         // ── Backup automático diario de BD + archivos (ver docs/BACKUP_ZURAEDU.md) ──
+        // La hora, la frecuencia y los destinos los elige el superadministrador en su pantalla (tabla backup_configuracion); sin esa
+        // tabla todavía (p. ej. durante una migración) se usan los valores de config/backup.php.
         if (config('backup.enabled', true)) {
-            $schedule->command('sge:backup')
-                     ->dailyAt(config('backup.hora', '02:30'))
-                     ->withoutOverlapping()
-                     ->onOneServer();
+            try {
+                $bk = \App\Models\BackupConfiguracion::actual();
+            } catch (\Throwable) {
+                $bk = null;
+            }
+            $hora = $bk?->hora ?: config('backup.hora', '02:30');
+            $evento = $schedule->command('sge:backup')->timezone($bk?->zona_horaria ?: 'UTC');
+            ($bk && $bk->frecuencia === 'semanal') ? $evento->weeklyOn($bk->dia_semana, $hora) : $evento->dailyAt($hora);
+            $evento->when(fn () => $bk ? (bool) $bk->activo : true)->withoutOverlapping()->onOneServer();
         }
+
+        // Latido: la pantalla de respaldos avisa si el programador de tareas (cron) dejó de correr, que es lo que hace que el respaldo
+        // automático de verdad se ejecute.
+        $schedule->call(fn () => \Illuminate\Support\Facades\Cache::put('scheduler_latido', now()->getTimestamp(), 3600))->everyMinute()->name('scheduler-latido');
     }
 
     /**

@@ -76,23 +76,39 @@ class CheckTenantFeature
 
     public function handle(Request $request, Closure $next, string $feature)
     {
+        return match (self::motivoDeBloqueo($feature)) {
+            null     => $next($request),
+            'plan'   => $this->bloquear($request, $feature, autoservicio: false),
+            default  => $this->bloquear($request, $feature, autoservicio: true),
+        };
+    }
+
+    /** null si el módulo está disponible; 'plan' si el plan del colegio no lo incluye; 'config' si el colegio lo desactivó. */
+    private static function motivoDeBloqueo(string $feature): ?string
+    {
         $tenant = app()->bound('tenant') ? app('tenant') : null;
 
         // Sin tenant o super_admin → sin restricción
         if (! $tenant || auth()->user()?->hasRole('super_admin')) {
-            return $next($request);
+            return null;
         }
 
         if (! $tenant->can($feature)) {
-            return $this->bloquear($request, $feature, autoservicio: false);
+            return 'plan';
         }
 
         $modulo = self::MODULO_CONFIG[$feature] ?? null;
         if ($modulo !== null && ! ConfigInstitucional::moduloActivo($modulo)) {
-            return $this->bloquear($request, $feature, autoservicio: true);
+            return 'config';
         }
 
-        return $next($request);
+        return null;
+    }
+
+    /** ¿Está disponible el módulo para el usuario/colegio actual? (lo usa el menú para no mostrar enlaces que rebotarían) */
+    public static function disponible(string $feature): bool
+    {
+        return self::motivoDeBloqueo($feature) === null;
     }
 
     private function bloquear(Request $request, string $feature, bool $autoservicio)

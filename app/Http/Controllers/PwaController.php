@@ -74,9 +74,29 @@ class PwaController extends Controller
             ],
         ];
 
+        // Con sesión iniciada, la app instalada abre en la pantalla de inicio DEL ROL y sus atajos (mantener pulsado el icono) son los
+        // accesos rápidos de ese rol. Antes todos recibían los atajos de administración (un docente o un padre no podía abrirlos).
+        $usuario = auth()->user();
+        if ($usuario) {
+            if ($inicio = \App\Support\AccesosRapidos::inicio($usuario)) {
+                $manifest['start_url'] = $inicio;
+            }
+            $atajos = array_map(fn ($a) => [
+                'name'       => $a['etiqueta'],
+                'short_name' => mb_strimwidth($a['etiqueta'], 0, 12, ''),
+                'url'        => $a['path'],
+                'icons'      => [['src' => '/pwa/icon/96?tid=' . $tenantId, 'sizes' => '96x96', 'type' => 'image/png']],
+            ], \App\Support\AccesosRapidos::para($usuario, 4));
+            if ($atajos) {
+                $manifest['shortcuts'] = $atajos;
+            }
+        }
+
         return Response::make(json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), 200, [
             'Content-Type'  => 'application/manifest+json',
-            'Cache-Control' => 'public, max-age=3600',
+            // Específico de cada usuario: no se comparte en cachés intermedias
+            'Cache-Control' => $usuario ? 'private, max-age=300' : 'public, max-age=3600',
+            'Vary'          => 'Cookie',
         ]);
     }
 

@@ -223,8 +223,8 @@
 
         {{-- Links desktop --}}
         <ul class="hidden md:flex items-center gap-1">
-            @foreach([['#beneficios','Beneficios'],['#modulos','Módulos'],['#planes','Planes'],['#demo','Demo']] as [$href,$label])
-            <li><a href="{{ $href }}" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-all">{{ $label }}</a></li>
+            @foreach([['#beneficios','Beneficios'],['#modulos','Módulos'],['#roles','Para quién'],['#demo','Demo'],['#planes','Planes'],['#faq','Preguntas']] as [$href,$label])
+            <li class="{{ in_array($href, ['#roles', '#demo']) ? 'hidden lg:block' : '' }}"><a href="{{ $href }}" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-all">{{ $label }}</a></li>
             @endforeach
         </ul>
 
@@ -380,7 +380,9 @@
 ═══════════════════════════════════════════════ --}}
 <div class="bg-slate-900 border-y border-slate-800">
     <div class="max-w-4xl mx-auto px-4 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-        @foreach([['500+','Instituciones'],['25k+','Estudiantes'],['99%','Disponibilidad'],['24/7','Soporte']] as [$n,$d])
+        @php $nRoles = rescue(fn () => \Illuminate\Support\Facades\Cache::remember('landing_n_roles', 3600, fn () => \Spatie\Permission\Models\Role::where('name', '!=', 'super_admin')->count()), 20, false); @endphp
+        {{-- Solo datos que el sistema puede demostrar (antes: «500+ instituciones», «25k+ estudiantes», «99%», sin respaldo real) --}}
+        @foreach([[$nRoles, 'Perfiles de usuario'], ['4', 'Portales: dirección, docentes, estudiantes y familias'], ['100%', 'En la nube, sin instalar nada'], ['MINERD', 'Boletines y exportación SIGERD']] as [$n,$d])
         <div class="reveal">
             <div class="text-3xl font-black stat-num-landing mb-1">{{ $n }}</div>
             <div class="text-xs text-slate-500 uppercase tracking-widest font-semibold">{{ $d }}</div>
@@ -491,6 +493,75 @@
         </div>
     </div>
 </section>
+
+{{-- ═══════════════════════════════════════════════
+     3b. PARA CADA PERSONA (flyers por rol)
+═══════════════════════════════════════════════ --}}
+<section class="py-20 bg-white" id="roles">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+        <div class="text-center mb-12 reveal">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold uppercase tracking-widest mb-4">Para cada persona</span>
+            <h2 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-3">Una plataforma, cada quien con lo suyo</h2>
+            <p class="text-slate-500 text-base max-w-2xl mx-auto leading-relaxed">Cada persona ve solo lo que necesita. Elige tu rol y mira, en una hoja, qué puedes hacer y cómo empezar. Puedes imprimirla o descargarla en PDF.</p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            @foreach(\App\Support\GuiasRol::GUIAS as $slug => $g)
+            <article class="reveal group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all overflow-hidden flex flex-col">
+                <div class="px-5 pt-5 pb-4 text-white" style="background:{{ $g['color'] }};">
+                    <h3 class="font-bold text-lg leading-tight">{{ $g['nombre'] }}</h3>
+                    <p class="text-[11px] mt-1 text-white/80 leading-snug">{{ $g['perfiles'] }}</p>
+                </div>
+                <div class="px-5 py-4 flex-1">
+                    <p class="text-sm text-slate-600 italic leading-relaxed mb-3">«{{ $g['lema'] }}»</p>
+                    <ul class="space-y-1.5">
+                        @foreach(array_slice($g['hacer'], 0, 3) as $item)
+                        <li class="flex gap-2 text-xs text-slate-500 leading-snug"><span class="font-bold shrink-0" style="color:{{ $g['color'] }};">✓</span><span>{{ \Illuminate\Support\Str::limit($item, 70) }}</span></li>
+                        @endforeach
+                    </ul>
+                </div>
+                <div class="px-5 pb-5 flex gap-2">
+                    <a href="{{ route('guias.show', $slug) }}" class="flex-1 text-center px-3 py-2 rounded-xl text-xs font-semibold text-white shadow-sm" style="background:{{ $g['color'] }};">Ver guía</a>
+                    <a href="{{ route('guias.pdf', $slug) }}" class="px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50" title="Descargar PDF">PDF</a>
+                </div>
+            </article>
+            @endforeach
+        </div>
+
+        <p class="text-center mt-8"><a href="{{ route('guias.index') }}" class="text-sm font-semibold text-primary hover:underline">Ver todas las guías →</a></p>
+    </div>
+</section>
+
+
+{{-- ═══════════════════════════════════════════════
+     3c. CÓMO EMPEZAR
+═══════════════════════════════════════════════ --}}
+<section class="py-20 section-mesh-light" id="como-empezar">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6">
+        <div class="text-center mb-12 reveal">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-bold uppercase tracking-widest mb-4">Cómo empezar</span>
+            <h2 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-3">Listo para usar en tres pasos</h2>
+            <p class="text-slate-500 text-base max-w-xl mx-auto">Sin instalar nada. Funciona en el navegador y también se instala en el celular como una app.</p>
+        </div>
+        <div class="grid md:grid-cols-3 gap-6">
+            @foreach([
+                ['1', 'Crea tu escuela', 'Registra tu centro, elige tu plan (hay uno gratuito) y define el año escolar y los períodos.', '#2563eb'],
+                ['2', 'Carga a tu gente', 'Importa tus estudiantes desde Excel o regístralos con el asistente; asigna a cada docente sus cursos.', '#16a34a'],
+                ['3', 'Invita a las familias', 'Cada estudiante, docente y familia entra con su usuario y ve solo lo suyo: notas, tareas, asistencia y pagos.', '#f59e0b'],
+            ] as [$n, $titulo, $texto, $c])
+            <div class="reveal bg-white rounded-2xl border border-slate-200 shadow-sm p-6 text-center">
+                <div class="w-12 h-12 mx-auto rounded-full flex items-center justify-center text-white text-xl font-black shadow-md" style="background:{{ $c }};">{{ $n }}</div>
+                <h3 class="font-bold text-slate-900 mt-4 mb-2">{{ $titulo }}</h3>
+                <p class="text-sm text-slate-500 leading-relaxed">{{ $texto }}</p>
+            </div>
+            @endforeach
+        </div>
+        <div class="text-center mt-10">
+            <a href="{{ route('onboarding') }}" class="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-base font-semibold text-white bg-primary hover:bg-primary-dark shadow-lg shadow-blue-200 transition-all">Crear mi escuela gratis</a>
+        </div>
+    </div>
+</section>
+
 
 
 {{-- ═══════════════════════════════════════════════
@@ -760,6 +831,38 @@
     </div>
 </section>
 
+{{-- ═══════════════════════════════════════════════
+     5b. PREGUNTAS FRECUENTES
+═══════════════════════════════════════════════ --}}
+<section class="py-20 bg-white" id="faq">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6">
+        <div class="text-center mb-10 reveal">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-600 text-xs font-bold uppercase tracking-widest mb-4">Preguntas frecuentes</span>
+            <h2 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Lo que más nos preguntan</h2>
+        </div>
+        <div class="space-y-3 reveal">
+            @foreach([
+                ['¿Tengo que instalar algo?', 'No. ZuraEdu funciona en el navegador, desde computadora o celular. Si quieres, puedes agregarla a la pantalla de inicio del celular y se abre como una app.'],
+                ['¿Quién puede ver los datos de mi colegio?', 'Solo las personas autorizadas de tu colegio. Los datos de cada centro están separados de los demás, y cada familia ve únicamente a sus propios hijos.'],
+                ['¿Sirve para el MINERD?', 'Sí. Incluye boletines y reportes con el formato del MINERD y la exportación de datos para SIGERD, con una validación que avisa qué información falta.'],
+                ['¿Puedo traer a mis estudiantes actuales?', 'Sí. Puedes importarlos desde un archivo de Excel o registrarlos uno a uno con el asistente paso a paso.'],
+                ['¿Se respaldan mis datos?', 'La plataforma hace respaldos automáticos todos los días y conserva varias copias, para que un error o una falla no signifique perder información.'],
+                ['¿Cuánto cuesta? ¿Puedo probar primero?', 'Hay un plan gratuito, y el plan Pro tiene 30 días de prueba sin tarjeta. Mira la sección de planes para comparar.'],
+                ['¿Y si tengo dudas al usarlo?', 'Dentro de la plataforma tienes un Centro de Ayuda, una guía rápida para tu rol y un sistema de tickets de soporte.'],
+            ] as [$q, $a])
+            <details class="group bg-slate-50 rounded-xl border border-slate-200 open:bg-white open:shadow-sm transition">
+                <summary class="cursor-pointer list-none flex items-center justify-between gap-3 px-5 py-4 text-sm sm:text-base font-semibold text-slate-800">
+                    <span>{{ $q }}</span>
+                    <svg class="w-4 h-4 text-slate-400 shrink-0 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+                </summary>
+                <p class="px-5 pb-4 text-sm text-slate-600 leading-relaxed">{{ $a }}</p>
+            </details>
+            @endforeach
+        </div>
+    </div>
+</section>
+
+
 
 {{-- ═══════════════════════════════════════════════
      6. CTA FINAL
@@ -774,7 +877,7 @@
     <div class="max-w-3xl mx-auto px-4 sm:px-6 text-center relative z-10">
         <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-600/15 border border-emerald-500/25 text-emerald-300 text-xs font-semibold mb-6">
             <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z" clip-rule="evenodd"/></svg>
-            Únete a 500+ instituciones que ya confían en ZuraEdu
+            Configura tu centro hoy y empieza a usarlo esta semana
         </div>
 
         <h2 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight mb-5">
@@ -830,7 +933,7 @@
             <div>
                 <h4 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4">Producto</h4>
                 <ul class="space-y-2.5">
-                    @foreach([['#beneficios','Beneficios'],['#modulos','Módulos'],['#planes','Planes y precios'],['#demo','Vista previa']] as [$href,$label])
+                    @foreach([['#beneficios','Beneficios'],['#modulos','Módulos'],[route('guias.index'),'Guías por rol'],['#planes','Planes y precios'],['#demo','Vista previa']] as [$href,$label])
                     <li><a href="{{ $href }}" class="text-sm text-slate-400 hover:text-white transition-colors">{{ $label }}</a></li>
                     @endforeach
                 </ul>

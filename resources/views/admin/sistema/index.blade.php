@@ -182,9 +182,6 @@
                 <a href="{{ route('admin.sistema.actividad') }}" class="btn btn-outline-secondary btn-sm text-start">
                     <i class="bi bi-clock-history me-1"></i> Log de Actividad
                 </a>
-                <a href="{{ route('admin.sistema.backup') }}" class="btn btn-outline-secondary btn-sm text-start">
-                    <i class="bi bi-cloud-arrow-down-fill me-1"></i> Respaldo (Backup)
-                </a>
                 <a href="{{ route('admin.sistema.email-notif') }}" class="btn btn-outline-secondary btn-sm text-start">
                     <i class="bi bi-envelope-check me-1"></i> Notificaciones por Email
                 </a>

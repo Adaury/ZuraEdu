@@ -249,12 +249,36 @@ export interface AvisosEmergencia {
   updated_at: string | null;
 }
 
+export interface BackupConfiguracion {
+  activo: Generated<number>;
+  carpeta_local_activa: Generated<number>;
+  carpeta_local_ruta: string | null;
+  created_at: string | null;
+  dia_semana: Generated<number>;
+  drive_activo: Generated<number>;
+  drive_carpeta_id: string | null;
+  drive_carpeta_nombre: Generated<string>;
+  drive_client_id: string | null;
+  drive_client_secret: string | null;
+  drive_conectado_en: string | null;
+  drive_cuenta: string | null;
+  drive_refresh_token: string | null;
+  frecuencia: Generated<string>;
+  hora: Generated<string>;
+  id: Generated<number>;
+  incluir_archivos: Generated<number>;
+  retencion_dias: Generated<number>;
+  updated_at: string | null;
+  zona_horaria: Generated<string>;
+}
+
 export interface BackupRuns {
   archivos_archivo: string | null;
   archivos_tamano_bytes: number | null;
   bd_archivo: string | null;
   bd_tamano_bytes: number | null;
   created_at: string | null;
+  destinos: Json | null;
   duracion_segundos: number | null;
   eliminados_retencion: Generated<number>;
   error_mensaje: string | null;
@@ -2849,6 +2873,7 @@ export interface DB {
   asistencias: Asistencias;
   aulas: Aulas;
   avisos_emergencia: AvisosEmergencia;
+  backup_configuracion: BackupConfiguracion;
   backup_runs: BackupRuns;
   banco_preguntas: BancoPreguntas;
   becas: Becas;

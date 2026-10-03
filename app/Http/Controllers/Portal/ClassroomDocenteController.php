@@ -64,11 +64,11 @@ class ClassroomDocenteController extends Controller
     public function show(ClaseVirtual $claseVirtual)
     {
         $docente = $this->getDocente();
-        $claseVirtual->load(['asignacion.asignatura', 'asignacion.grupo']);
+        $claseVirtual->load(['asignacion.asignatura', 'asignacion.grupo.grado', 'asignacion.grupo.seccion']);
         $this->autorizarClase($claseVirtual, $docente);
 
         $materiales = $claseVirtual->materiales()
-            ->with(['archivos', 'entregas'])
+            ->with(['archivos', 'entregas', 'periodo', 'quiz'])   // la vista usa periodo y quiz por cada material
             ->get();
 
         // Vincula la relación en memoria para que tareasPendientes() use la colección cargada
@@ -517,7 +517,7 @@ class ClassroomDocenteController extends Controller
     public function personas(ClaseVirtual $claseVirtual)
     {
         $docente = $this->getDocente();
-        $claseVirtual->load(['asignacion.asignatura', 'asignacion.grupo', 'asignacion.docente']);
+        $claseVirtual->load(['asignacion.asignatura', 'asignacion.grupo.grado', 'asignacion.grupo.seccion', 'asignacion.docente']);
         $this->autorizarClase($claseVirtual, $docente);
 
         $matriculas = \App\Models\Matricula::with('estudiante.user')

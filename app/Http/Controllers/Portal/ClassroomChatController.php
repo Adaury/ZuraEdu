@@ -20,17 +20,33 @@ class ClassroomChatController extends Controller
     {
         $this->autorizar($claseVirtual);
 
+        // Misma forma que devuelve store() y que emiten los eventos en tiempo real, y SOLO lo que la pantalla necesita:
+        // antes se serializaba el User completo (email, cédula, teléfono…) de cada autor hacia todos los participantes del aula,
+        // y el historial llegaba sin `user_name` (los mensajes de otros salían como «undefined») y con la fecha ISO cruda.
+        $forma = fn (ClassroomMessage $m) => [
+            'id'        => $m->id,
+            'user_id'   => $m->user_id,
+            'user_name' => $m->user?->name ?? 'Usuario',
+            'mensaje'   => $m->mensaje,
+            'tipo'      => $m->tipo,
+            'fijado'    => (bool) $m->fijado,
+            'created_at' => $m->created_at->format('H:i'),
+            'es_propio' => $m->user_id === auth()->id(),
+        ];
+
         $fijados = ClassroomMessage::where('clase_virtual_id', $claseVirtual->id)
             ->where('fijado', true)
-            ->with('user')
+            ->with('user:id,name')
             ->latest()
-            ->get();
+            ->get()
+            ->map($forma);
 
         $mensajes = ClassroomMessage::where('clase_virtual_id', $claseVirtual->id)
             ->where('tipo', 'general')
-            ->with('user')
+            ->with('user:id,name')
             ->latest()
-            ->paginate(40);
+            ->paginate(40)
+            ->through($forma);
 
         return response()->json([
             'mensajes' => $mensajes,

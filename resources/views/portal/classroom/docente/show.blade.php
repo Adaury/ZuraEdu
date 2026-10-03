@@ -19,7 +19,7 @@ $asig  = $claseVirtual->asignacion;
         <div class="flex-grow-1">
             <h4 class="text-white fw-bold mb-0">{{ $claseVirtual->nombre }}</h4>
             <small class="text-white opacity-75">
-                {{ $asig->asignatura?->nombre }} &bull; {{ $asig->grupo?->nombre }}
+                {{ $asig->asignatura?->nombre }} &bull; {{ $asig->grupo?->nombre_completo }}
                 @if($claseVirtual->codigo_clase)
                 <span class="ms-2 px-2 py-0 rounded" style="background:rgba(255,255,255,.2);font-family:monospace;font-size:.8rem;">
                     {{ $claseVirtual->codigo_clase }}
@@ -301,7 +301,7 @@ $asig  = $claseVirtual->asignacion;
             <hr class="my-2">
             <div class="small text-muted">
                 <div class="mb-1"><i class="bi bi-person me-2"></i><strong>Docente:</strong> {{ $asig->docente?->user?->name }}</div>
-                <div class="mb-1"><i class="bi bi-people me-2"></i><strong>Grupo:</strong> {{ $asig->grupo?->nombre }}</div>
+                <div class="mb-1"><i class="bi bi-people me-2"></i><strong>Grupo:</strong> {{ $asig->grupo?->nombre_completo }}</div>
                 <div class="mb-1"><i class="bi bi-book me-2"></i><strong>Asignatura:</strong> {{ $asig->asignatura?->nombre }}</div>
                 @if($claseVirtual->codigo_clase)
                 <div class="mt-2 p-2 rounded-3 text-center" style="background:#F0F9FF;">
@@ -970,7 +970,7 @@ $asignacionesDoc = ($docente && $schoolYear)
                             <option value="">— Selecciona un grupo —</option>
                             @foreach($asignacionesDoc as $asig)
                             <option value="{{ $asig->id }}" {{ $asig->id === $claseVirtual->asignacion_id ? 'disabled' : '' }}>
-                                {{ $asig->asignatura?->nombre }} — {{ $asig->grupo?->nombre_completo ?? $asig->grupo?->nombre }}
+                                {{ $asig->asignatura?->nombre }} — {{ $asig->grupo?->nombre_completo ?? $asig->grupo?->nombre_completo }}
                                 {{ $asig->id === $claseVirtual->asignacion_id ? '(actual)' : '' }}
                             </option>
                             @endforeach

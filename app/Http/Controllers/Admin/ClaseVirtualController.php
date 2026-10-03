@@ -19,7 +19,8 @@ class ClaseVirtualController extends Controller
 
         $query = ClaseVirtual::with([
                 'asignacion.asignatura',
-                'asignacion.grupo',
+                'asignacion.grupo.grado',
+                'asignacion.grupo.seccion',
                 'asignacion.docente.user',
             ])
             ->withCount('materiales')
@@ -96,7 +97,8 @@ class ClaseVirtualController extends Controller
     {
         $claseVirtual->load([
             'asignacion.asignatura',
-            'asignacion.grupo',
+            'asignacion.grupo.grado',
+            'asignacion.grupo.seccion',
             'asignacion.docente',
         ]);
 

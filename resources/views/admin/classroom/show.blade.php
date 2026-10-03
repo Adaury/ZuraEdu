@@ -21,7 +21,7 @@ $tab   = $tab ?? 'materiales';
             <small class="text-white opacity-75">
                 {{ $asig->asignatura?->nombre }}
                 &bull; Prof. {{ $asig->docente?->user?->name }}
-                &bull; {{ $asig->grupo?->nombre }}
+                &bull; {{ $asig->grupo?->nombre_completo }}
             </small>
         </div>
         <div class="d-flex gap-2">

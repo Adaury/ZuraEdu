@@ -190,7 +190,7 @@ function agregarPregunta(tipo) {
 
     // Reemplazar REPLACE_ con índice
     clone.querySelectorAll('[name]').forEach(el => {
-        el.name = el.name.replace('REPLACE', `preguntas[${idx}]`);
+        el.name = el.name.replace(/^REPLACE_(\w+)$/, `preguntas[${idx}][$1]`);   // REPLACE_enunciado -> preguntas[0][enunciado]
     });
 
     document.getElementById('sinPreguntas').style.display = 'none';

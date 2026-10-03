@@ -17,7 +17,7 @@
         <option value="">Seleccionar asignación...</option>
         @foreach($asignaciones as $asig)
         <option value="{{ $asig->id }}" {{ old('asignacion_id')==$asig->id?'selected':'' }}>
-            {{ $asig->asignatura?->nombre }} — {{ $asig->grupo?->nombre }} ({{ $asig->docente?->user?->name }})
+            {{ $asig->asignatura?->nombre }} — {{ $asig->grupo?->nombre_completo }} ({{ $asig->docente?->user?->name }})
         </option>
         @endforeach
     </select>

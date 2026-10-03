@@ -117,7 +117,7 @@
     </td>
     <td class="py-3">
         <span class="badge rounded-pill" style="background:#EEF2FF;color:#4f46e5;font-size:.75rem;">
-            {{ $clase->asignacion?->grupo?->nombre ?? '—' }}
+            {{ $clase->asignacion?->grupo?->nombre_completo ?? '—' }}
         </span>
     </td>
     <td class="py-3 text-center">

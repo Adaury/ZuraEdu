@@ -84,7 +84,7 @@ class ClassroomEstudianteController extends Controller
         $this->autorizarClase($claseVirtual, $matricula);
 
         $materiales = $claseVirtual->materialesPublicados()
-            ->with(['archivos', 'comentarios.user', 'rubric.criterios', 'periodo'])
+            ->with(['archivos', 'comentarios.user', 'rubric.criterios', 'periodo', 'quiz'])
             ->get();
 
         $entregasMap = EntregaClassroom::where('matricula_id', $matricula->id)

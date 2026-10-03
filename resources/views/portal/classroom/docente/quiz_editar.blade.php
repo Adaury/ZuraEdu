@@ -198,7 +198,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const idx   = preguntaIndex++;
 
         clone.querySelectorAll('[name]').forEach(el => {
-            el.name = el.name.replace('REPLACE', `preguntas[${idx}]`);
+            el.name = el.name.replace(/^REPLACE_(\w+)$/, `preguntas[${idx}][$1]`);   // REPLACE_enunciado -> preguntas[0][enunciado]
         });
 
         const div = document.createElement('div');
@@ -236,7 +236,7 @@ function agregarPregunta(tipo) {
     const idx   = preguntaIndex++;
 
     clone.querySelectorAll('[name]').forEach(el => {
-        el.name = el.name.replace('REPLACE', `preguntas[${idx}]`);
+        el.name = el.name.replace(/^REPLACE_(\w+)$/, `preguntas[${idx}][$1]`);   // REPLACE_enunciado -> preguntas[0][enunciado]
     });
 
     document.getElementById('sinPreguntas').style.display = 'none';

@@ -25,7 +25,7 @@
             </div>
             <div>
                 <div class="fw-semibold">{{ $asig->docente->nombre_completo ?? ($asig->docente->nombres.' '.$asig->docente->apellidos) }}</div>
-                <small class="text-muted">{{ $asig->asignatura?->nombre }} &bull; {{ $asig->grupo?->nombre }}</small>
+                <small class="text-muted">{{ $asig->asignatura?->nombre }} &bull; {{ $asig->grupo?->nombre_completo }}</small>
             </div>
             <span class="badge ms-auto" style="background:{{ $color }}18;color:{{ $color }};">Docente</span>
         </div>

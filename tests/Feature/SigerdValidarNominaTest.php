@@ -33,7 +33,7 @@ class SigerdValidarNominaTest extends TestCase
         app()->instance('tenant', $tenant);
 
         $sy      = SchoolYear::create(['nombre' => '20' . random_int(26, 99) . '-A', 'fecha_inicio' => '2025-08-01', 'fecha_fin' => '2026-06-30', 'activo' => true]);
-        $grado   = Grado::create(['nombre' => 'Grado SV' . random_int(1, 99999), 'nivel' => random_int(1, 200), 'orden' => 1, 'ciclo' => 'primer_ciclo', 'activo' => true]);
+        $grado   = Grado::create(['nombre' => 'Grado SV' . random_int(1, 99999), 'nivel' => (Grado::withoutGlobalScopes()->max('nivel') ?? 0) + 1, 'orden' => 1, 'ciclo' => 'primer_ciclo', 'activo' => true]);
         $seccion = Seccion::firstOrCreate(['nombre' => 'A'], ['orden' => 1]);
         $grupo   = Grupo::create(['school_year_id' => $sy->id, 'grado_id' => $grado->id, 'seccion_id' => $seccion->id, 'activo' => true]);
 

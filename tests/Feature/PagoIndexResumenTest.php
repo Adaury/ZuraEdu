@@ -47,7 +47,7 @@ class PagoIndexResumenTest extends TestCase
 
     private function matricula(SchoolYear $sy): Matricula
     {
-        $grado   = Grado::create(['nombre' => 'Grado PR' . random_int(1, 99999), 'nivel' => random_int(1, 200), 'orden' => 1, 'ciclo' => 'primer_ciclo', 'activo' => true]);
+        $grado   = Grado::create(['nombre' => 'Grado PR' . random_int(1, 99999), 'nivel' => (Grado::withoutGlobalScopes()->max('nivel') ?? 0) + 1, 'orden' => 1, 'ciclo' => 'primer_ciclo', 'activo' => true]);
         $seccion = Seccion::firstOrCreate(['nombre' => 'A'], ['orden' => 1]);
         $grupo   = Grupo::create(['school_year_id' => $sy->id, 'grado_id' => $grado->id, 'seccion_id' => $seccion->id, 'activo' => true]);
 

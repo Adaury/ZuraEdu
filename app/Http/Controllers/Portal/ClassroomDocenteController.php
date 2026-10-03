@@ -332,8 +332,9 @@ class ClassroomDocenteController extends Controller
             ->where('grupo_id', $claseVirtual->asignacion->grupo_id)
             ->where('school_year_id', $claseVirtual->asignacion->school_year_id)
             ->where('estado', 'activa')
-            ->orderBy('id')
-            ->get();
+            ->get()
+            ->sortBy(fn ($m) => mb_strtolower(($m->estudiante->apellidos ?? '') . ' ' . ($m->estudiante->nombres ?? '')))
+            ->values();   // alfabético por apellido (antes lo daba la DataTable del layout)
 
         $entregas = EntregaClassroom::where('material_id', $material->id)
             ->with('matricula.estudiante')

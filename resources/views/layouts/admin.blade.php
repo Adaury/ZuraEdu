@@ -76,6 +76,35 @@
         div.dataTables_wrapper .dataTables_scrollHeadInner table { margin-bottom: 0 !important; }
         div.dataTables_wrapper .dataTables_scrollFoot     { overflow: hidden; }
 
+        /* ══ DataTables 2.x: nombres de clase nuevos ═══════════════════════
+           Las reglas de arriba son de DataTables 1.x (dataTables_wrapper, dataTables_scrollBody…), pero el JS cargado es la 2.x
+           (dt-container, dt-scroll-body…) y su hoja de estilos no se carga: el <thead> original que DT 2 deja dentro del cuerpo con scroll
+           quedaba VISIBLE y toda tabla grande mostraba la cabecera duplicada y desalineada. */
+        div.dt-container                         { position: relative; clear: both; }
+        div.dt-container div.dt-search           { display: inline-block; }
+        div.dt-container div.dt-search label     { display: none; }
+        div.dt-container div.dt-search input[type="search"] {
+            padding: .35rem .7rem; border: 1.5px solid #d1d5db; border-radius: 8px;
+            font-size: .83rem; color: #1e293b; background: #fff; outline: none; min-width: 180px;
+        }
+        div.dt-container div.dt-search input[type="search"]:focus { border-color: var(--primary, #2563eb); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+        div.dt-container div.dt-info             { font-size: .79rem; color: #9ca3af; padding: 0; }
+        div.dt-container div.dt-scroll-head      { overflow: hidden !important; }
+        div.dt-container div.dt-scroll-body      { overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
+        div.dt-container div.dt-scroll-headInner { box-sizing: border-box !important; }
+        div.dt-container div.dt-scroll-headInner table { margin-bottom: 0 !important; }
+        /* El thead original dentro del cuerpo con scroll solo sirve para medir columnas: colapsado (la cabecera visible es la clonada) */
+        div.dt-container div.dt-scroll-body > table > thead > tr > th,
+        div.dt-container div.dt-scroll-body > table > thead > tr > td {
+            height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important;
+            border-top-width: 0 !important; border-bottom-width: 0 !important;
+            line-height: 0 !important; font-size: 0 !important; overflow: hidden;
+        }
+        div.dt-container div.dt-scroll-body > table > thead > tr > th div.dt-scroll-sizing,
+        div.dt-container div.dt-scroll-body > table > thead > tr > td div.dt-scroll-sizing { height: 0; overflow: hidden; }
+        [data-theme="dark"] div.dt-container div.dt-search input[type="search"] { background: #1e293b !important; border-color: #334155 !important; color: #e2e8f0 !important; }
+        [data-theme="dark"] div.dt-container div.dt-info { color: #94a3b8 !important; }
+
         /* ══ Tabla ══════════════════════════════════════════════════════════ */
         table.dataTable { border-collapse: collapse !important; border-spacing: 0 !important; width: 100% !important; }
         table.dataTable.no-footer { border-bottom: 1px solid #dee2e6; }

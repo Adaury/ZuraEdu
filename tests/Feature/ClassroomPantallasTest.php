@@ -121,4 +121,54 @@ class ClassroomPantallasTest extends TestCase
             $this->assertStringContainsString('REPLACE_(\\w+)', $t, $v);
         }
     }
+
+    // ── Tabla de entregas del docente ───────────────────────────────────────
+
+    private function tarea(): MaterialClase
+    {
+        return MaterialClase::where('clase_virtual_id', $this->clase->id)->where('titulo', 'Tarea tres')->firstOrFail();
+    }
+
+    public function test_la_tabla_de_entregas_es_simple_ordenada_por_apellido_y_con_los_campos_correctos(): void
+    {
+        $grupoId = $this->clase->asignacion->grupo_id;
+        $syId = $this->clase->asignacion->school_year_id;
+        foreach ([['Zeta', 'Zoe'], ['Alfa', 'Ana']] as $i => [$ape, $nom]) {
+            $e = Estudiante::factory()->create(['apellidos' => $ape, 'nombres' => $nom]);
+            Matricula::create(['school_year_id' => $syId, 'estudiante_id' => $e->id, 'grupo_id' => $grupoId, 'fecha_matricula' => '2025-08-15', 'numero_orden' => 10 + $i, 'estado' => 'activa']);
+        }
+        $entrega = \App\Models\EntregaClassroom::create(['material_id' => $this->tarea()->id, 'matricula_id' => Matricula::where('estudiante_id', $this->estudiante->id)->value('id'), 'contenido' => 'x', 'estado' => 'entregado', 'fecha_entrega' => now(), 'intentos' => 1]);
+
+        $html = $this->actingAs($this->docente->user)->get(route('portal.docente.classroom.entregas', [$this->clase, $this->tarea()]))->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-no-dt', $html, 'sin DataTable: cada fila lleva su formulario y el scroll virtual la escondía en una caja de 340 px');
+        $this->assertStringContainsString('name="comentario_docente"', $html, 'el controlador espera comentario_docente');
+        $this->assertStringNotContainsString('name="comentario"', $html, 'antes el comentario viajaba con un nombre que el controlador ignoraba');
+        $this->assertStringContainsString('name="sincronizar_notas"', $html, 'la tarea tiene período y la entrega no está calificada: pasa al libro de notas, como en el detalle');
+        $this->assertStringContainsString(route('portal.docente.classroom.entrega_detalle', [$this->clase, $this->tarea(), $entrega]), $html, 'enlace al detalle de la entrega');
+        $this->assertLessThan(strpos($html, 'Zeta'), strpos($html, 'Alfa'), 'orden alfabético por apellido');
+    }
+
+    public function test_calificar_desde_la_tabla_guarda_nota_comentario_y_libro_de_notas(): void
+    {
+        $matriculaId = Matricula::where('estudiante_id', $this->estudiante->id)->value('id');
+        $entrega = \App\Models\EntregaClassroom::create(['material_id' => $this->tarea()->id, 'matricula_id' => $matriculaId, 'contenido' => 'x', 'estado' => 'entregado', 'fecha_entrega' => now(), 'intentos' => 1]);
+
+        // Exactamente los campos que envía el formulario de la tabla
+        $this->actingAs($this->docente->user)->patch(route('portal.docente.classroom.calificar_entrega', [$this->clase, $entrega]), [
+            'calificacion' => '8', 'comentario_docente' => 'Bien desde la tabla', 'sincronizar_notas' => '1',
+        ])->assertSessionDoesntHaveErrors();
+
+        $entrega->refresh();
+        $this->assertEquals(8, $entrega->calificacion);
+        $this->assertSame('Bien desde la tabla', $entrega->comentario_docente);
+        $this->assertEquals(80.0, (float) \App\Models\Calificacion::where('matricula_id', $matriculaId)->value('tareas'), '8 de 10 = 80 en el libro de notas');
+    }
+
+    public function test_el_layout_oculta_la_cabecera_original_de_datatables_2(): void
+    {
+        $css = file_get_contents(resource_path('views/layouts/admin.blade.php'));
+
+        $this->assertStringContainsString('div.dt-container div.dt-scroll-body > table > thead > tr > th', $css, 'DT 2 usa dt-scroll-*; el CSS de DT 1.x no aplicaba y toda tabla grande mostraba la cabecera duplicada');
+    }
 }

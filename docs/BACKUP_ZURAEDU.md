@@ -3,7 +3,76 @@
 Resuelve el **blocker #1 del Gate de Producción** ([[GATE_PRODUCCION_ZURAEDU]]):
 "Sin backup automático de base de datos y archivos". Antes de esto, el
 respaldo dependía 100% de que un administrador entrara al panel
-(`/admin/sistema/backup`) y presionara el botón manualmente.
+(`/superadmin/respaldos`, antes `/superadmin/respaldos`) y presionara el botón manualmente.
+
+## 0. Novedades (2026-10-03): hora elegida, carpeta local y Google Drive
+
+El respaldo ahora se configura **desde una pantalla** y no solo con variables de entorno. Vive en el panel del **superadministrador**:
+`/superadmin/respaldos` (menú «Sistema → Respaldos»).
+
+> **Seguridad.** El volcado contiene los datos de **todos los colegios**. Antes la pantalla la abría el rol «Administrador» de *cualquier*
+> colegio (`can:solo-administrador`), es decir, el administrador de un colegio podía descargar o borrar los datos de los demás. Ahora el
+> permiso es `respaldos-globales` (solo `super_admin`) y las rutas antiguas `admin/sistema/backup*` ya no existen.
+
+### Qué se puede elegir en la pantalla
+
+| Opción | Detalle |
+|---|---|
+| Activar / desactivar | Interruptor general (además de `BACKUP_ENABLED` del `.env`, que sigue siendo un freno de emergencia). |
+| Frecuencia | Todos los días, o una vez por semana (con el día). |
+| Hora y zona horaria | La hora que quieras en la zona que elijas (por defecto `America/Santo_Domingo`). Ya no hay que convertir a UTC. |
+| Retención | Cuántos días se conservan los respaldos (en el servidor, en la carpeta local y en Drive). |
+| Incluir archivos | Fotos, entregas, boletines y demás de `storage/app/public`. |
+| Carpeta local de sincronización | Una carpeta del equipo/servidor donde se copia cada respaldo. Se crea sola. |
+| Google Drive | Sube cada respaldo a una carpeta «ZuraEdu Respaldos» en tu Drive. |
+
+Los valores se guardan en la tabla `backup_configuracion` (una sola fila, sin `tenant_id`, igual que `backup_runs`). Mientras no se guarde
+nada desde la pantalla se usan los valores de `config/backup.php`. El programador (`app/Console/Kernel.php`) lee esa tabla en cada ejecución,
+así que un cambio de hora aplica sin reiniciar nada.
+
+### Carpeta local de sincronización
+
+* Debe ser una ruta **absoluta** (`D:\Respaldos\ZuraEdu`, `/var/respaldos/zuraedu`), sin `..`.
+* Se **rechazan** las carpetas públicas (`public/` y `storage/app/public`): un respaldo nunca debe poder descargarse por URL.
+* «Crear y probar la carpeta» la crea y comprueba que el servidor pueda escribir.
+* Para **sincronizar**: elige una carpeta que ya sincronice *Google Drive para escritorio*, Dropbox, OneDrive o un disco de red; cada respaldo
+  aparecerá allí. La retención solo borra archivos `backup_*.sql` y `files_*.zip`, nunca otros.
+
+### Google Drive (OAuth 2.0, una sola vez)
+
+1. En **console.cloud.google.com** crea un proyecto y habilita **Google Drive API**.
+2. *Pantalla de consentimiento de OAuth*: tipo **Externo**; agrega tu correo como usuario de prueba (y, si no quieres reconectar cada 7 días,
+   pulsa «Publicar aplicación»).
+3. *Credenciales → ID de cliente de OAuth → Aplicación web*. En **URI de redireccionamiento autorizados** pega exactamente el que muestra la
+   pantalla (termina en `/superadmin/respaldos/drive/callback`).
+4. Copia el **ID de cliente** y el **Secreto** en la pantalla, pulsa «Guardar configuración» y luego **«Conectar con Google»**.
+5. Pulsa «Probar» (sube y borra un archivo de prueba), activa «Subir cada respaldo a Google Drive» y guarda.
+
+Detalles de seguridad: se usa el alcance `drive.file` (ZuraEdu solo ve lo que ella misma sube, nunca el resto de tu Drive); el secreto y el
+token de actualización se guardan **cifrados** (`APP_KEY`) y nunca se imprimen en la página; la conexión se protege con un parámetro `state`
+contra CSRF. La subida es *reanudable por tramos* (8 MB) para soportar archivos grandes, y la retención también borra en Drive los
+respaldos viejos (solo los que siguen el patrón de nombre de ZuraEdu).
+
+> **Importante:** si cambias `APP_KEY` los datos cifrados dejan de poder leerse; habría que volver a conectar Drive.
+
+### Cada corrida registra el resultado por destino
+
+`backup_runs.destinos` guarda, por archivo y por destino (carpeta local, Drive), si se copió o el motivo del fallo. La pantalla lo muestra en
+«Últimos respaldos». **Un destino que falla no invalida el respaldo:** el archivo local ya es válido (`estado = exitoso`) y el fallo queda
+visible (y en `storage/logs/backup.log`).
+
+### Programador de tareas del servidor (imprescindible)
+
+El respaldo automático solo se ejecuta si el servidor llama **cada minuto** a `php artisan schedule:run` (cron en Linux; *Programador de
+tareas* en Windows). La pantalla lo comprueba con un «latido» y muestra **«Programador de tareas: sin señal»** en rojo si no llega.
+
+### Pruebas
+
+`tests/Feature/BackupRespaldosTest.php` (27 pruebas: pantalla y permisos, hora y zona, próxima ejecución, programador, carpeta local, Google Drive
+simulado con `Http::fake`, y el comando completo) y las pruebas de backup existentes adaptadas. **Google Drive real no se probó** en el
+entorno de desarrollo: hacen falta credenciales reales (paso «Google Drive» de arriba).
+
+---
 
 ## 1. Qué se respalda
 
@@ -100,7 +169,7 @@ configurable:
 Cada corrida (manual o automática) queda registrada en la tabla
 `backup_runs` (no es específica de un tenant — es a nivel de plataforma) con
 fecha de inicio/fin, duración, tamaños de archivo, y si falló, en qué etapa
-y con qué mensaje. El panel `/admin/sistema/backup` muestra "Último backup
+y con qué mensaje. El panel `/superadmin/respaldos` muestra "Último backup
 exitoso" tomando este registro.
 
 Verificación automática que ya hace el propio comando antes de marcar una
@@ -176,7 +245,7 @@ php artisan sge:backup --sin-archivos # solo BD, más rápido para pruebas
 ```
 
 Confirmar después: el archivo aparece en `storage/app/backups/`, la fila
-nueva en `backup_runs` tiene `estado = 'exitoso'`, y `/admin/sistema/backup`
+nueva en `backup_runs` tiene `estado = 'exitoso'`, y `/superadmin/respaldos`
 muestra la fecha como "Último backup exitoso".
 
 ## Configuración (`.env` / `config/backup.php`)
@@ -184,7 +253,7 @@ muestra la fecha como "Último backup exitoso".
 | Variable | Por defecto | Qué controla |
 |---|---|---|
 | `BACKUP_ENABLED` | `true` | Si el schedule registra la tarea diaria |
-| `BACKUP_HORA` | `02:30` | Hora diaria (UTC — ver sección 3) |
+| `BACKUP_HORA` | `02:30` | Hora por defecto; la pantalla de respaldos (sección 0) la reemplaza |
 | `BACKUP_RETENCION_DIAS` | `7` | Días que se conservan los backups |
 | `BACKUP_INCLUIR_ARCHIVOS` | `true` | Si también respalda `storage/app/public` |
 | `BACKUP_DISCO` | `local` | `local` = solo local; `s3` = además sube copia a S3 (ver sección 2) |

@@ -47,11 +47,11 @@ class MenuYAccesosRapidosTest extends TestCase
     public function test_el_filtro_oculta_lo_que_el_rol_no_puede_abrir_y_deja_lo_demas(): void
     {
         $u = $this->usuario('Personal Administrativo');
-        $html = '<ul><li class="nav-item"><a href="' . $this->href('admin.estudiantes.index') . '">Estudiantes</a></li>'
+        $html = '<ul><li class="nav-item"><a href="' . $this->href('admin.matriculas.index') . '">Estudiantes</a></li>'
               . '<li class="nav-item"><a href="' . $this->href('admin.reportes.index') . '">Reportes</a></li></ul>';
 
         $this->assertTrue(MenuFiltro::permite($this->href('admin.reportes.index'), $u), 'precondición: Reportes sí es de este rol');
-        $this->assertFalse(MenuFiltro::permite($this->href('admin.estudiantes.index'), $u), 'precondición: Estudiantes da 403 a este rol');
+        $this->assertFalse(MenuFiltro::permite($this->href('admin.matriculas.index'), $u), 'precondición: Estudiantes da 403 a este rol');
 
         $r = MenuFiltro::filtrar($html, $u);
 
@@ -62,7 +62,7 @@ class MenuYAccesosRapidosTest extends TestCase
     public function test_un_grupo_que_se_queda_sin_enlaces_desaparece_con_su_titulo(): void
     {
         $u = $this->usuario('Personal Administrativo');
-        $html = '<div class="nav-section-title">Gestión</div><ul class="list-unstyled"><li class="nav-item"><a href="' . $this->href('admin.estudiantes.index') . '">Estudiantes</a></li></ul>'
+        $html = '<div class="nav-section-title">Gestión</div><ul class="list-unstyled"><li class="nav-item"><a href="' . $this->href('admin.matriculas.index') . '">Estudiantes</a></li></ul>'
               . '<div class="nav-section-title">Supervisión</div><ul class="list-unstyled"><li class="nav-item"><a href="' . $this->href('admin.reportes.index') . '">Reportes</a></li></ul>';
 
         $r = MenuFiltro::filtrar($html, $u);
@@ -75,7 +75,7 @@ class MenuYAccesosRapidosTest extends TestCase
     public function test_un_submenu_vacio_quita_tambien_su_cabecera(): void
     {
         $u = $this->usuario('Personal Administrativo');
-        $html = '<ul><li class="nav-item"><a href="#" class="toggle">Académico</a><ul><li class="nav-item"><a href="' . $this->href('admin.estudiantes.index') . '">Estudiantes</a></li></ul></li>'
+        $html = '<ul><li class="nav-item"><a href="#" class="toggle">Académico</a><ul><li class="nav-item"><a href="' . $this->href('admin.matriculas.index') . '">Estudiantes</a></li></ul></li>'
               . '<li class="nav-item"><a href="' . $this->href('admin.reportes.index') . '">Reportes</a></li></ul>';
 
         $r = MenuFiltro::filtrar($html, $u);
@@ -126,7 +126,7 @@ class MenuYAccesosRapidosTest extends TestCase
         $html = $this->actingAs($u)->get(route('admin.reportes.index'))->assertOk()->getContent();
         $menu = substr($html, strpos($html, '<nav class="sidebar-nav">'), strpos($html, '</nav>') - strpos($html, '<nav class="sidebar-nav">'));
 
-        $this->assertStringNotContainsString('href="' . $this->href('admin.estudiantes.index') . '"', $menu);
+        $this->assertStringContainsString('href="' . $this->href('admin.estudiantes.index') . '"', $menu, 'solo lectura: puede ver estudiantes');
         $this->assertStringNotContainsString('href="' . $this->href('admin.matriculas.index') . '"', $menu);
         $this->assertStringContainsString('href="' . $this->href('admin.reportes.index') . '"', $menu);
     }

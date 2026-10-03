@@ -126,6 +126,7 @@ class RolesSeeder extends Seeder
         $personalAdm = Role::firstOrCreate(['name' => 'Personal Administrativo', 'guard_name' => 'web']);
         $personalAdm->syncPermissions([
             'ver-dashboard',
+            'ver-estudiantes',   // solo lectura: supervisa registros de estudiantes, no matricula ni edita
             'ver-calificaciones',
             'exportar-calificaciones',
             'ver-asistencia',

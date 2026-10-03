@@ -105,6 +105,18 @@ class CheckTenantFeature
         return null;
     }
 
+    /** Precarga (en 2 consultas) el estado de todos los módulos: el menú evalúa decenas de enlaces por página. */
+    public static function precargar(): void
+    {
+        $tenant = app()->bound('tenant') ? app('tenant') : null;
+        if (! $tenant) {
+            return;
+        }
+
+        $tenant->precargarFeatures(array_keys(self::LABELS));
+        ConfigInstitucional::precargarModulos(array_values(self::MODULO_CONFIG));
+    }
+
     /** ¿Está disponible el módulo para el usuario/colegio actual? (lo usa el menú para no mostrar enlaces que rebotarían) */
     public static function disponible(string $feature): bool
     {

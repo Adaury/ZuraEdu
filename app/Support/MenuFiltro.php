@@ -19,8 +19,18 @@ use Illuminate\Support\Facades\Gate;
  */
 class MenuFiltro
 {
-    /** @var array<string, bool> memo por petición */
-    private static array $memo = [];
+    /**
+     * Estado de la petición (memo de decisiones y «módulos ya precargados»). Vive en el contenedor y no en propiedades estáticas: el
+     * contenedor se recrea en cada petición/prueba, y un estado estático pasaría de un usuario o una prueba a la siguiente.
+     */
+    private static function estado(): \stdClass
+    {
+        if (! app()->bound('menu_filtro.estado')) {
+            app()->instance('menu_filtro.estado', (object) ['memo' => [], 'preparado' => false]);
+        }
+
+        return app('menu_filtro.estado');
+    }
 
     public static function filtrar(string $html, ?User $usuario = null): string
     {
@@ -40,7 +50,7 @@ class MenuFiltro
 
     public static function olvidar(): void
     {
-        self::$memo = [];
+        app()->forgetInstance('menu_filtro.estado');
     }
 
     private static function procesar(string $html, User $usuario): string
@@ -115,7 +125,21 @@ class MenuFiltro
         $ruta = parse_url($url, PHP_URL_PATH) ?: '/';
         $clave = $usuario->id . '|' . $ruta;
 
-        return self::$memo[$clave] ??= self::evaluar($url, $usuario);
+        $estado = self::estado();
+        if (isset($estado->memo[$clave])) {
+            return $estado->memo[$clave];
+        }
+
+        if (! $estado->preparado) {
+            $estado->preparado = true;
+            CheckTenantFeature::precargar();   // todos los módulos del plan en 2 consultas, no una por enlace
+        }
+
+        // Decisión cacheada 2 min por colegio, usuario, roles y ruta: en uso normal el menú no cuesta ninguna consulta
+        $huella = md5(implode(',', $usuario->getRoleNames()->sort()->all()));
+        $llave = 'menu_permite:' . (tenant_id() ?? 0) . ':' . $usuario->id . ':' . $huella . ':' . md5($ruta);
+
+        return $estado->memo[$clave] = (bool) \Illuminate\Support\Facades\Cache::remember($llave, 120, fn () => self::evaluar($url, $usuario));
     }
 
     private static function evaluar(string $url, User $usuario): bool

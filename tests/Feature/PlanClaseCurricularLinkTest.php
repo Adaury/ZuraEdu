@@ -240,7 +240,9 @@ class PlanClaseCurricularLinkTest extends TestCase
 
         // Con eager-loading correcto el conteo de queries es constante (no escala con 6 filas);
         // un N+1 real por fila hubiera producido >6 queries adicionales solo para esta tabla.
-        $this->assertLessThan(25, $queries, "Se esperaban pocas queries fijas, se ejecutaron {$queries} (posible N+1).");
+        // +3 sobre el límite anterior (25): el menú lateral filtrado por rol (MenuFiltro) precarga en frío los módulos del plan en 2 consultas
+        // FIJAS (en uso normal se cachean y cuestan 0). No crecen con las filas: un N+1 real por fila seguiría disparando este límite.
+        $this->assertLessThan(28, $queries, "Se esperaban pocas queries fijas, se ejecutaron {$queries} (posible N+1).");
     }
 
     // ============================================================

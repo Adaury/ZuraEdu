@@ -279,6 +279,8 @@ class ClassroomPlanificacionConexionTest extends TestCase
         $response->assertOk();
         // La conexión agrega solo 3 queries fijas (unidad hoy + 2 counts),
         // sin importar cuántos materiales/estudiantes tenga el aula.
-        $this->assertLessThan(40, $queryCount, "Se ejecutaron $queryCount queries — posible N+1 introducido por la conexión de planificación.");
+        // +3 sobre el límite anterior (40): el filtro del menú/accesos rápidos precarga en frío los módulos del plan en 2-3 consultas FIJAS
+        // (en uso normal se cachean). No dependen de los materiales ni los estudiantes del aula.
+        $this->assertLessThan(43, $queryCount, "Se ejecutaron $queryCount queries — posible N+1 introducido por la conexión de planificación.");
     }
 }

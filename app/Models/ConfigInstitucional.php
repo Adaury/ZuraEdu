@@ -36,6 +36,33 @@ class ConfigInstitucional extends Model
         });
     }
 
+    /**
+     * Precarga en UNA consulta varios interruptores de módulo (misma caché que get()). El valor por defecto es «activo», igual que en
+     * moduloActivo(): un módulo está activo mientras el centro no lo apague explícitamente.
+     *
+     * @param list<string> $modulos nombres de módulo (p. ej. 'pagos'), sin el prefijo/sufijo
+     */
+    public static function precargarModulos(array $modulos): void
+    {
+        $tid = tenant_id();
+        $claves = array_map(fn ($m) => "modulo_{$m}_activo", $modulos);
+        $faltan = array_values(array_filter($claves, fn ($c) => ! Cache::has("config_t{$tid}_{$c}")));
+        if (! $faltan) {
+            return;
+        }
+
+        $filas = static::whereIn('clave', $faltan)->get()->keyBy('clave');
+        foreach ($faltan as $c) {
+            $fila = $filas->get($c);
+            Cache::put("config_t{$tid}_{$c}", $fila ? match ($fila->tipo) {
+                'boolean' => (bool) $fila->valor,
+                'integer' => (int) $fila->valor,
+                'json'    => json_decode($fila->valor, true),
+                default   => $fila->valor,
+            } : true, 300);
+        }
+    }
+
     public static function set(string $clave, $valor): void
     {
         static::updateOrCreate(

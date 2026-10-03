@@ -77,6 +77,25 @@ class Tenant extends Model
         });
     }
 
+    /**
+     * Precarga en UNA consulta si cada módulo está activo (misma caché que can()). Sin esto, evaluar N módulos en frío cuesta N consultas;
+     * lo usa el filtro del menú, que revisa decenas de enlaces por página.
+     *
+     * @param list<string> $features
+     */
+    public function precargarFeatures(array $features): void
+    {
+        $faltan = array_values(array_filter($features, fn ($f) => ! Cache::has("tenant_{$this->id}_feature_{$f}")));
+        if (! $faltan) {
+            return;
+        }
+
+        $activas = $this->features()->where('activo', true)->whereIn('feature', $faltan)->pluck('feature')->all();
+        foreach ($faltan as $f) {
+            Cache::put("tenant_{$this->id}_feature_{$f}", in_array($f, $activas, true), 300);
+        }
+    }
+
     public function featureConfig(string $feature): ?array
     {
         $f = $this->features()->where('feature', $feature)->first();

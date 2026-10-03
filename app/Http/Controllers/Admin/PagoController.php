@@ -722,19 +722,31 @@ class PagoController extends Controller
             $sheet->setCellValue("C{$row}", $grp ? ($grp->grado->nombre ?? '') . ' ' . ($grp->seccion->nombre ?? '') : '');
             $sheet->setCellValue("D{$row}", $pago->concepto ?? '');
             $sheet->setCellValue("E{$row}", $pago->monto ?? 0);
-            $sheet->getStyle("E{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
             $sheet->setCellValue("F{$row}", $pago->fecha_vencimiento ? Carbon::parse($pago->fecha_vencimiento)->format('d/m/Y') : '');
             $sheet->setCellValue("G{$row}", $pago->fecha_pago ? Carbon::parse($pago->fecha_pago)->format('d/m/Y') : '');
             $sheet->setCellValue("H{$row}", ucfirst($pago->estado ?? ''));
             $sheet->setCellValue("I{$row}", $pago->numero_comprobante_fiscal ?? '');
             $sheet->setCellValue("J{$row}", $mon);
-
-            $bg = $colorEstado[$pago->estado] ?? 'ffffff';
-            $sheet->getStyle("A{$row}:J{$row}")->getFill()->setFillType(Fill::FILL_SOLID)
-                ->getStartColor()->setRGB($bg);
         }
 
-        foreach (range('A', 'J') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
+        // Formato aplicado UNA vez, no por fila: antes se creaban 2 estilos por cada pago (4.300 para 2.160 pagos) y PhpSpreadsheet compara cada
+        // estilo nuevo contra todos los anteriores: la exportación tardaba ~10 s. El color por estado va como formato condicional (3 estilos).
+        $ultima = max(3, count($pagos) + 2);
+        $sheet->getStyle("E3:E{$ultima}")->getNumberFormat()->setFormatCode('#,##0.00');
+        $condiciones = [];
+        foreach ($colorEstado as $estado => $rgb) {
+            $c = new \PhpOffice\PhpSpreadsheet\Style\Conditional();
+            $c->setConditionType(\PhpOffice\PhpSpreadsheet\Style\Conditional::CONDITION_EXPRESSION)->addCondition('LOWER($H3)="' . $estado . '"');
+            $c->getStyle()->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($rgb);
+            $c->getStyle()->getFill()->getEndColor()->setRGB($rgb);
+            $condiciones[] = $c;
+        }
+        $sheet->getStyle("A3:J{$ultima}")->setConditionalStyles($condiciones);
+
+        // Anchos fijos: setAutoSize(true) mide TODAS las celdas al guardar (con miles de filas es lo más lento de la exportación)
+        foreach (['A' => 6, 'B' => 34, 'C' => 16, 'D' => 28, 'E' => 13, 'F' => 13, 'G' => 13, 'H' => 12, 'I' => 20, 'J' => 9] as $col => $ancho) {
+            $sheet->getColumnDimension($col)->setWidth($ancho);
+        }
         $sheet->freezePane('A3');
 
         $writer = new Xlsx($ss);
@@ -747,6 +759,9 @@ class PagoController extends Controller
     }
 
     // ── PDF de lista general de pagos ────────────────────────────────────
+    /** Máximo de filas del PDF de la lista de pagos (ver listaPdf). */
+    public const MAX_FILAS_PDF = 800;
+
     public function listaPdf(Request $request)
     {
         // Instituciones con muchos meses/estudiantes pueden acumular miles de pagos;
@@ -766,6 +781,13 @@ class PagoController extends Controller
         if ($request->filled('estado'))   $q->where('estado', $request->estado);
         if ($request->filled('grupo_id')) $q->whereHas('matricula', fn($m) => $m->where('grupo_id', $request->grupo_id));
         if ($request->filled('mes'))      $q->whereMonth('fecha_vencimiento', $request->mes);
+
+        // Un PDF de miles de filas tarda ~1 min (con 2.160 pagos: 60 s, el límite de la mayoría de servidores web: error 504) y gasta mucha
+        // memoria. Pasado el tope se pide filtrar; el Excel no tiene este límite.
+        $total = (clone $q)->count();
+        if ($total > self::MAX_FILAS_PDF) {
+            return back()->with('error', 'La lista tiene ' . number_format($total, 0, ',', '.') . ' pagos: demasiados para un solo PDF (máximo ' . number_format(self::MAX_FILAS_PDF, 0, ',', '.') . '). Filtra por mes, estado o grupo, o usa la exportación a Excel.');
+        }
 
         $pagos  = $q->orderBy('fecha_vencimiento')->get();
         $inst   = ConfigInstitucional::get('nombre_institucion', config('app.name'));

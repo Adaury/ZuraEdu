@@ -167,7 +167,7 @@ class ClassroomPantallasTest extends TestCase
 
     public function test_el_layout_oculta_la_cabecera_original_de_datatables_2(): void
     {
-        $css = file_get_contents(resource_path('views/layouts/admin.blade.php'));
+        $css = file_get_contents(public_path('css/admin-base.css'));
 
         $this->assertStringContainsString('div.dt-container div.dt-scroll-body > table > thead > tr > th', $css, 'DT 2 usa dt-scroll-*; el CSS de DT 1.x no aplicaba y toda tabla grande mostraba la cabecera duplicada');
     }

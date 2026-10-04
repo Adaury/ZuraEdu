@@ -66,9 +66,13 @@ class EnviarWhatsApp extends TenantJob
             return ['ok' => false, 'error' => 'Faltan el Account SID, el Auth Token o el número de Twilio (o el número no es válido).', 'definitivo' => true];
         }
 
-        if (! preg_match('/^(AC|SK)[0-9a-f]{32}$/i', trim($sid))) {
-            return ['ok' => false, 'error' => 'El Account SID guardado no tiene el formato de Twilio (debe empezar con «AC» y medir 34 caracteres; el actual mide ' . strlen(trim($sid)) . '). Corrígelo en esta pantalla.', 'definitivo' => true];
+        if (! preg_match('/^AC[0-9a-f]{32}$/i', trim($sid))) {
+            return ['ok' => false, 'error' => 'El Account SID guardado no tiene el formato de Twilio (debe empezar con «AC» y medir 34 caracteres; el actual mide ' . strlen(trim($sid)) . '). Si pegaste una API Key (SK…), va en su propio campo y aquí sigue haciendo falta el Account SID (AC…).', 'definitivo' => true];
         }
+
+        // Con API Key: usuario = API Key SID (SK…), contraseña = API Secret (campo «Auth Token»); la URL SIEMPRE lleva el Account SID (AC…)
+        $apiKey = trim((string) Setting::get('whatsapp_twilio_api_key_sid'));
+        $usuario = $apiKey !== '' ? $apiKey : trim($sid);
 
         // Con plantilla aprobada (Content SID) se puede escribir a quien no nos ha escrito; sin ella solo vale dentro de las 24 h
         $plantilla = trim((string) Setting::get('whatsapp_twilio_content_sid'));
@@ -76,7 +80,7 @@ class EnviarWhatsApp extends TenantJob
             ? ['ContentSid' => $plantilla, 'ContentVariables' => json_encode(['1' => $this->message], JSON_UNESCAPED_UNICODE)]
             : ['Body' => $this->message];
 
-        $response = Http::withBasicAuth(trim($sid), trim($token))
+        $response = Http::withBasicAuth($usuario, trim($token))
             ->asForm()
             ->post("https://api.twilio.com/2010-04-01/Accounts/" . trim($sid) . "/Messages.json", [
                 'From' => "whatsapp:+{$from}",

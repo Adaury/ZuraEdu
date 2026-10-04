@@ -136,6 +136,16 @@
                     <small class="text-muted">Formato: +1XXXXXXXXXX</small>
                 </div>
                 <div class="col-md-7">
+                    <label class="form-label fw-600" style="font-size:.83rem;">API Key SID <span class="text-muted fw-normal">— opcional</span></label>
+                    <input type="text" name="whatsapp_twilio_api_key_sid" class="form-control font-monospace"
+                        value="{{ $settings['whatsapp_twilio_api_key_sid'] ?? '' }}"
+                        placeholder="SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                    <small class="text-muted">
+                        Solo si usas una <strong>API Key</strong> en lugar del Auth Token: pon aquí el SID de la clave (empieza con «SK»),
+                        en «Auth Token» su <strong>API Secret</strong>, y en «Account SID» el de tu cuenta (empieza con «AC»). Déjalo vacío si usas el Auth Token.
+                    </small>
+                </div>
+                <div class="col-md-7">
                     <label class="form-label fw-600" style="font-size:.83rem;">Plantilla (Content SID) <span class="text-muted fw-normal">— opcional</span></label>
                     <input type="text" name="whatsapp_twilio_content_sid" class="form-control font-monospace"
                         value="{{ $settings['whatsapp_twilio_content_sid'] ?? '' }}"

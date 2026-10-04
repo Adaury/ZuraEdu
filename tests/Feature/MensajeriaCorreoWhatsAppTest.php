@@ -322,4 +322,51 @@ class MensajeriaCorreoWhatsAppTest extends TestCase
         $this->actingAs($this->admin)->get($this->url('admin.sistema.whatsapp'))->assertOk()
             ->assertSee('Content SID', false)->assertSee('{{1}}', false);
     }
+
+    // ── API Key de Twilio (SK…) ──────────────────────────────────────────────
+
+    public function test_con_api_key_se_autentica_con_el_sk_pero_la_url_lleva_el_account_sid(): void
+    {
+        Http::fake(['api.twilio.com/*' => Http::response(['sid' => 'SM1'], 201)]);
+        $sk = 'SK' . str_repeat('d', 32);
+        $this->configurarTwilio(['whatsapp_twilio_api_key_sid' => $sk, 'whatsapp_auth_token' => 'secreto_de_la_clave']);
+
+        $r = (new EnviarWhatsApp('809-555-1234', 'Hola'))->enviar();
+
+        $this->assertTrue($r['ok']);
+        Http::assertSent(fn ($req) => str_contains($req->url(), '/Accounts/' . $this->sidValido() . '/Messages.json')
+            && $req->header('Authorization')[0] === 'Basic ' . base64_encode($sk . ':secreto_de_la_clave'));
+    }
+
+    public function test_sin_api_key_se_autentica_con_el_account_sid_y_el_auth_token(): void
+    {
+        Http::fake(['api.twilio.com/*' => Http::response(['sid' => 'SM1'], 201)]);
+        $this->configurarTwilio();
+
+        (new EnviarWhatsApp('809-555-1234', 'Hola'))->enviar();
+
+        Http::assertSent(fn ($req) => $req->header('Authorization')[0] === 'Basic ' . base64_encode($this->sidValido() . ':tok'));
+    }
+
+    public function test_pegar_la_api_key_en_el_campo_account_sid_se_rechaza_con_la_explicacion(): void
+    {
+        $this->guardarWa(['whatsapp_provider' => 'twilio', 'whatsapp_account_sid' => 'SK' . str_repeat('e', 32), 'whatsapp_auth_token' => 'x', 'whatsapp_from_number' => '+14155238886'])
+            ->assertSessionHas('error');
+
+        $this->assertStringContainsString('API Key SID', session('error'));
+    }
+
+    public function test_la_api_key_se_valida_se_guarda_y_no_se_borra_al_guardar_con_meta(): void
+    {
+        $sk = 'SK' . str_repeat('f', 32);
+        $base = ['whatsapp_provider' => 'twilio', 'whatsapp_account_sid' => $this->sidValido(), 'whatsapp_auth_token' => 'secreto', 'whatsapp_from_number' => '+14155238886'];
+
+        $this->guardarWa($base + ['whatsapp_twilio_api_key_sid' => 'malo'])->assertSessionHasErrors('whatsapp_twilio_api_key_sid');
+
+        $this->guardarWa($base + ['whatsapp_twilio_api_key_sid' => " {$sk} "])->assertSessionHas('success');
+        $this->assertSame($sk, Setting::get('whatsapp_twilio_api_key_sid'));
+
+        $this->guardarWa(['whatsapp_provider' => 'meta', 'whatsapp_auth_token' => 'tok', 'whatsapp_from_number' => '109876543210'])->assertSessionHas('success');
+        $this->assertSame($sk, Setting::get('whatsapp_twilio_api_key_sid'));
+    }
 }

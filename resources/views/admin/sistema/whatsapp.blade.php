@@ -135,6 +135,17 @@
                         placeholder="+14155238886">
                     <small class="text-muted">Formato: +1XXXXXXXXXX</small>
                 </div>
+                <div class="col-md-7">
+                    <label class="form-label fw-600" style="font-size:.83rem;">Plantilla (Content SID) <span class="text-muted fw-normal">— opcional</span></label>
+                    <input type="text" name="whatsapp_twilio_content_sid" class="form-control font-monospace"
+                        value="{{ $settings['whatsapp_twilio_content_sid'] ?? '' }}"
+                        placeholder="HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                    <small class="text-muted">
+                        WhatsApp solo permite texto libre a quien te escribió en las últimas 24 h. Para avisar a otros (representantes,
+                        pruebas) Twilio exige una <strong>plantilla aprobada</strong>: créala en Twilio → Messaging → Content Template Builder
+                        con <code>@{{1}}</code> como texto variable y pega aquí su SID (empieza con «HX»). El sistema enviará el mensaje en esa variable.
+                    </small>
+                </div>
             </div>
         </div>
 

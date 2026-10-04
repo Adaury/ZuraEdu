@@ -70,13 +70,18 @@ class EnviarWhatsApp extends TenantJob
             return ['ok' => false, 'error' => 'El Account SID guardado no tiene el formato de Twilio (debe empezar con «AC» y medir 34 caracteres; el actual mide ' . strlen(trim($sid)) . '). Corrígelo en esta pantalla.', 'definitivo' => true];
         }
 
+        // Con plantilla aprobada (Content SID) se puede escribir a quien no nos ha escrito; sin ella solo vale dentro de las 24 h
+        $plantilla = trim((string) Setting::get('whatsapp_twilio_content_sid'));
+        $cuerpo = $plantilla !== ''
+            ? ['ContentSid' => $plantilla, 'ContentVariables' => json_encode(['1' => $this->message], JSON_UNESCAPED_UNICODE)]
+            : ['Body' => $this->message];
+
         $response = Http::withBasicAuth(trim($sid), trim($token))
             ->asForm()
-            ->post("https://api.twilio.com/2010-04-01/Accounts/{$sid}/Messages.json", [
+            ->post("https://api.twilio.com/2010-04-01/Accounts/" . trim($sid) . "/Messages.json", [
                 'From' => "whatsapp:+{$from}",
                 'To'   => "whatsapp:+{$destino}",
-                'Body' => $this->message,
-            ]);
+            ] + $cuerpo);
 
         if ($response->successful()) {
             Log::info('WhatsApp Twilio enviado', ['to' => $destino]);
@@ -84,7 +89,12 @@ class EnviarWhatsApp extends TenantJob
         }
 
         Log::error('WhatsApp Twilio error', ['to' => $destino, 'status' => $response->status(), 'body' => $response->body()]);
-        return ['ok' => false, 'error' => 'Twilio respondió ' . $response->status() . ': ' . ($response->json('message') ?? substr($response->body(), 0, 160)), 'definitivo' => false];
+        $detalle = $response->json('message') ?? substr($response->body(), 0, 160);
+        $ayuda = str_contains($detalle, 'ContentSid') && $plantilla === ''
+            ? ' — WhatsApp no permite iniciar una conversación con texto libre: crea una plantilla en Twilio (Content Template Builder), pega su Content SID (HX…) en esta pantalla y vuelve a probar. Si usas el Sandbox, el destinatario debe haberse unido enviando el código de unión a ' . '+' . $from . '.'
+            : '';
+
+        return ['ok' => false, 'error' => 'Twilio respondió ' . $response->status() . ': ' . $detalle . $ayuda, 'definitivo' => false];
     }
 
     private function sendMeta(string $destino): array

@@ -255,4 +255,71 @@ class MensajeriaCorreoWhatsAppTest extends TestCase
         $this->assertStringContainsString('el actual mide 6', $r['error']);
         Http::assertNothingSent();
     }
+
+    // ── Plantillas de Twilio (Content SID) ───────────────────────────────────
+
+    private function configurarTwilio(array $extra = []): void
+    {
+        foreach (array_merge([
+            'whatsapp_provider' => 'twilio', 'whatsapp_account_sid' => $this->sidValido(),
+            'whatsapp_auth_token' => 'tok', 'whatsapp_from_number' => '+14155238886',
+        ], $extra) as $k => $v) {
+            Setting::set($k, $v);
+        }
+    }
+
+    public function test_con_plantilla_se_envia_el_content_sid_y_el_mensaje_como_variable(): void
+    {
+        Http::fake(['api.twilio.com/*' => Http::response(['sid' => 'SM1'], 201)]);
+        $this->configurarTwilio(['whatsapp_twilio_content_sid' => 'HX' . str_repeat('b', 32)]);
+
+        $r = (new EnviarWhatsApp('809-555-1234', 'Aviso de prueba'))->enviar();
+
+        $this->assertTrue($r['ok']);
+        Http::assertSent(fn ($req) => $req['ContentSid'] === 'HX' . str_repeat('b', 32)
+            && json_decode($req['ContentVariables'], true) === ['1' => 'Aviso de prueba']
+            && ! isset($req['Body']));
+    }
+
+    public function test_sin_plantilla_se_envia_texto_libre(): void
+    {
+        Http::fake(['api.twilio.com/*' => Http::response(['sid' => 'SM1'], 201)]);
+        $this->configurarTwilio();
+
+        (new EnviarWhatsApp('809-555-1234', 'Hola'))->enviar();
+
+        Http::assertSent(fn ($req) => $req['Body'] === 'Hola' && ! isset($req['ContentSid']));
+    }
+
+    public function test_el_error_contentsid_required_se_explica_con_la_solucion(): void
+    {
+        Http::fake(['api.twilio.com/*' => Http::response(['code' => 21656, 'message' => 'ContentSid Required'], 400)]);
+        $this->configurarTwilio();
+
+        $r = (new EnviarWhatsApp('809-555-1234', 'Hola'))->enviar();
+
+        $this->assertFalse($r['ok']);
+        $this->assertStringContainsString('Content Template Builder', $r['error']);
+        $this->assertStringContainsString('Content SID', $r['error']);
+    }
+
+    public function test_el_content_sid_se_valida_y_no_se_borra_al_guardar_con_meta(): void
+    {
+        $this->guardarWa(['whatsapp_provider' => 'twilio', 'whatsapp_account_sid' => $this->sidValido(), 'whatsapp_auth_token' => 'tok',
+            'whatsapp_from_number' => '+14155238886', 'whatsapp_twilio_content_sid' => 'malo'])->assertSessionHasErrors('whatsapp_twilio_content_sid');
+
+        $hx = 'HX' . str_repeat('c', 32);
+        $this->guardarWa(['whatsapp_provider' => 'twilio', 'whatsapp_account_sid' => $this->sidValido(), 'whatsapp_auth_token' => 'tok',
+            'whatsapp_from_number' => '+14155238886', 'whatsapp_twilio_content_sid' => $hx])->assertSessionHas('success');
+        $this->assertSame($hx, Setting::get('whatsapp_twilio_content_sid'));
+
+        $this->guardarWa(['whatsapp_provider' => 'meta', 'whatsapp_auth_token' => 'tok', 'whatsapp_from_number' => '109876543210'])->assertSessionHas('success');
+        $this->assertSame($hx, Setting::get('whatsapp_twilio_content_sid'), 'con Meta el campo no se envía y no se borra');
+    }
+
+    public function test_la_pantalla_muestra_el_campo_de_plantilla_sin_interpretar_las_llaves(): void
+    {
+        $this->actingAs($this->admin)->get($this->url('admin.sistema.whatsapp'))->assertOk()
+            ->assertSee('Content SID', false)->assertSee('{{1}}', false);
+    }
 }

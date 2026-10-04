@@ -955,6 +955,7 @@ class SistemaController extends Controller
             'whatsapp_account_sid'   => 'nullable|string|max:100',
             'whatsapp_auth_token'    => 'nullable|string|max:200',
             'whatsapp_from_number'   => 'nullable|string|max:30',
+            'whatsapp_twilio_content_sid' => ['nullable', 'string', 'regex:/^HX[0-9a-f]{32}$/i'],
             'whatsapp_notify_grades' => 'nullable|in:1',
             'whatsapp_notify_absence'=> 'nullable|in:1',
             'whatsapp_notify_alerts' => 'nullable|in:1',
@@ -989,6 +990,7 @@ class SistemaController extends Controller
             'module_whatsapp'         => $request->has('module_whatsapp') ? '1' : '0',
             'whatsapp_provider'       => $request->whatsapp_provider,
             // El Account SID solo existe en el formulario de Twilio: con Meta no se envía y no se debe borrar
+            'whatsapp_twilio_content_sid' => $request->has('whatsapp_twilio_content_sid') ? trim((string) $request->whatsapp_twilio_content_sid) : (string) \App\Helpers\Setting::get('whatsapp_twilio_content_sid', ''),
             'whatsapp_account_sid'    => $request->has('whatsapp_account_sid') ? ($request->whatsapp_account_sid ?? '') : (string) \App\Helpers\Setting::get('whatsapp_account_sid', ''),
             'whatsapp_auth_token'     => $request->whatsapp_auth_token ?? '',
             'whatsapp_from_number'    => $request->whatsapp_from_number ?? '',

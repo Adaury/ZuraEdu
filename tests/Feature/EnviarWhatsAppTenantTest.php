@@ -38,7 +38,7 @@ class EnviarWhatsAppTenantTest extends TestCase
             'whatsapp_provider'     => 'twilio',
             'whatsapp_account_sid'  => "SID_{$sufijo}",
             'whatsapp_auth_token'   => "TOKEN_{$sufijo}",
-            'whatsapp_from_number'  => "+1809000{$sufijo}",
+            'whatsapp_from_number'  => '+180900000' . (['A' => '01', 'B' => '02'][$sufijo]),   // A → +18090000001, B → +18090000002
         ]);
         app()->forgetInstance('tenant');
 
@@ -86,7 +86,7 @@ class EnviarWhatsAppTenantTest extends TestCase
 
         Http::assertSent(function ($request) {
             return str_contains($request->url(), 'SID_A/Messages.json')
-                && $request['From'] === 'whatsapp:+1809000A';
+                && $request['From'] === 'whatsapp:+18090000001';
         });
         Http::assertNotSent(fn ($request) => str_contains($request->url(), 'SID_B'));
     }

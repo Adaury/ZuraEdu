@@ -219,6 +219,27 @@
         <i class="bi bi-save me-1"></i>Guardar configuración
     </button>
 </form>
+
+{{-- ── PRUEBA DE ENVÍO ── --}}
+<div class="card-panel">
+    <div class="section-title"><i class="bi bi-send-check me-1"></i>Probar el envío</div>
+    <p class="text-muted small mb-3">
+        Guarda primero la configuración y luego envía un mensaje de prueba <strong>ahora mismo</strong>: si algo está mal
+        (credenciales, número de origen, número de destino) aquí verás el motivo exacto.
+        Los números locales de 10 dígitos (ej. 809-555-1234) se envían con el código de país 1 (República Dominicana).
+    </p>
+    <form method="POST" action="{{ route('admin.sistema.whatsapp.probar') }}" class="d-flex flex-wrap gap-2 align-items-center">
+        @csrf
+        <input type="text" name="telefono_prueba" class="form-control form-control-sm" style="max-width:240px;"
+               placeholder="Tu teléfono, ej. 809-555-1234" required maxlength="30" value="{{ old('telefono_prueba') }}">
+        <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-whatsapp me-1"></i>Enviar WhatsApp de prueba</button>
+    </form>
+    <div class="info-note mt-2" style="font-size:.78rem;color:#6b7280;">
+        <i class="bi bi-info-circle"></i>
+        Con Meta, el campo «número de origen» debe ser el <strong>Phone Number ID</strong> (solo dígitos) y los mensajes fuera de la
+        ventana de 24 h exigen plantillas aprobadas por Meta. Con Twilio, el número va con código de país (ej. +18095550100).
+    </div>
+</div>
 @endsection
 
 @push('scripts')

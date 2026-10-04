@@ -28,9 +28,11 @@ class Kernel extends ConsoleKernel
         $schedule->command('alertas:cumpleanos')->dailyAt('07:30');
 
         // ── Procesar cola de emails pendientes ────────────────────────────────
-        $schedule->command('queue:work --stop-when-empty --tries=3')
-                 ->everyFiveMinutes()
-                 ->withoutOverlapping();
+        // Todas las colas: antes solo «default», y los WhatsApp («whatsapp») y las notificaciones («notifications») se
+        // acumulaban sin enviarse. Con Horizon activo ambos conviven sin problema (cada trabajo lo toma uno solo).
+        $schedule->command('queue:work --queue=default,notifications,whatsapp,emails,classroom,sigerd --stop-when-empty --max-time=50 --tries=3')
+                 ->everyMinute()
+                 ->withoutOverlapping(10);
 
         // ── Odoo: enviar contactos/facturas de los centros con la integración activa ──
         $schedule->command('odoo:sincronizar')->hourly()->withoutOverlapping(30);

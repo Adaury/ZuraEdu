@@ -978,7 +978,51 @@ class SistemaController extends Controller
     public function emailNotifIndex()
     {
         $settings = \App\Helpers\Setting::all();
-        return view('admin.sistema.email_notif', compact('settings'));
+        // Datos NO secretos del transporte de correo (el servidor es de toda la plataforma, no del colegio)
+        $mailInfo = [
+            'mailer' => config('mail.default'),
+            'host'   => config('mail.mailers.' . config('mail.default') . '.host'),
+            'puerto' => config('mail.mailers.' . config('mail.default') . '.port'),
+            'from'   => config('mail.from.address'),
+            'cola'   => config('queue.default'),
+        ];
+        return view('admin.sistema.email_notif', compact('settings', 'mailInfo'));
+    }
+
+    /** Envía un correo de prueba, en el acto, al correo del propio usuario (nunca a una dirección escrita en el formulario). */
+    public function emailProbar(\Illuminate\Http\Request $request)
+    {
+        $destino = auth()->user()->email;
+
+        try {
+            \Illuminate\Support\Facades\Mail::raw(
+                "Este es un correo de prueba de " . (\App\Helpers\Setting::get('system_name') ?: config('app.name')) . ".\n\nSi lo estás leyendo, el envío de correos funciona.",
+                fn ($m) => $m->to($destino)->subject('Prueba de correo — ' . (\App\Helpers\Setting::get('system_name') ?: config('app.name')))
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Prueba de correo fallida', ['error' => $e->getMessage()]);
+            $msg = preg_replace('/\s+/', ' ', strip_tags($e->getMessage()));
+
+            return back()->with('error', 'No se pudo enviar el correo de prueba: ' . \Illuminate\Support\Str::limit($msg, 300)
+                . (str_contains($msg, 'Authentication') || str_contains($msg, '535') || str_contains($msg, '530')
+                    ? ' — El servidor de correo rechazó el usuario/contraseña (MAIL_USERNAME / MAIL_PASSWORD en el servidor; con Gmail hace falta una «contraseña de aplicación» de 16 caracteres).'
+                    : ''));
+        }
+
+        return back()->with('success', "Correo de prueba enviado a {$destino}. Revisa la bandeja (y el spam).");
+    }
+
+    /** Envía un WhatsApp de prueba en el acto, con el proveedor configurado, y muestra el motivo exacto si falla. */
+    public function whatsappProbar(\Illuminate\Http\Request $request)
+    {
+        $data = $request->validate(['telefono_prueba' => 'required|string|max:30']);
+
+        $job = new \App\Jobs\EnviarWhatsApp($data['telefono_prueba'], '✅ Prueba de WhatsApp de ' . (\App\Helpers\Setting::get('system_name') ?: config('app.name')) . '. Si lo recibes, la conexión funciona.');
+        $r = $job->enviar();
+
+        return $r['ok']
+            ? back()->with('success', 'WhatsApp de prueba enviado. Revisa el teléfono ' . $data['telefono_prueba'] . '.')
+            : back()->with('error', 'No se pudo enviar el WhatsApp de prueba: ' . $r['error']);
     }
 
     public function emailNotifUpdate(\Illuminate\Http\Request $request)

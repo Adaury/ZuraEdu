@@ -189,6 +189,8 @@ Route::middleware('can:solo-administrador')->group(function () {
     Route::post('sistema/whatsapp',       [SistemaController::class, 'whatsappUpdate'])->name('sistema.whatsapp.update');
     Route::get('sistema/email-notif',     [SistemaController::class, 'emailNotifIndex'])->name('sistema.email-notif');
     Route::post('sistema/email-notif',    [SistemaController::class, 'emailNotifUpdate'])->name('sistema.email-notif.update');
+    Route::post('sistema/email-notif/probar', [SistemaController::class, 'emailProbar'])->middleware('throttle:3,1')->name('sistema.email-notif.probar');
+    Route::post('sistema/whatsapp/probar',    [SistemaController::class, 'whatsappProbar'])->middleware('throttle:3,1')->name('sistema.whatsapp.probar');
 
     // Notificaciones in-app/push (matriz de categorías por institución)
     Route::get('sistema/notificaciones',  [SistemaController::class, 'notifMatrizIndex'])->name('sistema.notificaciones');

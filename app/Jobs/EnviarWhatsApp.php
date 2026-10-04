@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Helpers\Setting;
+use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -10,6 +11,9 @@ class EnviarWhatsApp extends TenantJob
 {
     public int $tries   = 3;
     public int $backoff = 60; // segundos entre reintentos
+
+    /** Motivo del último fallo (para la prueba de envío y los logs). */
+    public ?string $error = null;
 
     public function __construct(
         public readonly string $to,
@@ -23,81 +27,91 @@ class EnviarWhatsApp extends TenantJob
     {
         if (! Setting::moduleEnabled('whatsapp')) return;
 
-        $to = preg_replace('/\s+/', '', $this->to);
-        if (empty($to)) return;
+        $r = $this->enviar();
 
-        $ok = match (Setting::get('whatsapp_provider', 'twilio')) {
-            'twilio' => $this->sendTwilio($to),
-            'meta'   => $this->sendMeta($to),
-            default  => false,
-        };
-
-        if (! $ok) {
-            throw new \RuntimeException("WhatsApp: envío fallido a {$to}");
+        if (! $r['ok'] && ! $r['definitivo']) {
+            throw new \RuntimeException("WhatsApp: envío fallido a {$this->to} — {$r['error']}");
         }
     }
 
-    private function sendTwilio(string $to): bool
+    /**
+     * Envía ahora (sin cola). Devuelve ['ok' => bool, 'error' => ?string, 'definitivo' => bool];
+     * «definitivo» = no tiene sentido reintentar (número inválido o faltan credenciales).
+     */
+    public function enviar(): array
+    {
+        $proveedor = Setting::get('whatsapp_provider', 'twilio');
+        $destino   = WhatsAppService::normalizarTelefono($this->to, (string) Setting::get('whatsapp_codigo_pais', '1'));
+
+        if ($destino === null) {
+            Log::warning('WhatsApp: número de destino inválido — no se envía.', ['to' => $this->to]);
+            return ['ok' => false, 'error' => 'El número de destino no es válido (' . $this->to . ').', 'definitivo' => true];
+        }
+
+        return match ($proveedor) {
+            'twilio' => $this->sendTwilio($destino),
+            'meta'   => $this->sendMeta($destino),
+            default  => ['ok' => false, 'error' => 'Proveedor desconocido.', 'definitivo' => true],
+        };
+    }
+
+    private function sendTwilio(string $destino): array
     {
         $sid   = Setting::get('whatsapp_account_sid');
         $token = Setting::get('whatsapp_auth_token');
-        $from  = Setting::get('whatsapp_from_number');
+        $from  = WhatsAppService::normalizarTelefono((string) Setting::get('whatsapp_from_number'), (string) Setting::get('whatsapp_codigo_pais', '1'));
 
         if (! $sid || ! $token || ! $from) {
-            Log::warning('WhatsApp Twilio: credenciales no configuradas — job cancelado.');
-            $this->delete(); // no reintentar si faltan credenciales
-            return true;
+            Log::warning('WhatsApp Twilio: credenciales o número de origen no configurados (o inválidos) — no se envía.');
+            return ['ok' => false, 'error' => 'Faltan el Account SID, el Auth Token o el número de Twilio (o el número no es válido).', 'definitivo' => true];
         }
 
         $response = Http::withBasicAuth($sid, $token)
             ->asForm()
             ->post("https://api.twilio.com/2010-04-01/Accounts/{$sid}/Messages.json", [
-                'From' => "whatsapp:{$from}",
-                'To'   => "whatsapp:{$to}",
+                'From' => "whatsapp:+{$from}",
+                'To'   => "whatsapp:+{$destino}",
                 'Body' => $this->message,
             ]);
 
         if ($response->successful()) {
-            Log::info('WhatsApp Twilio enviado', ['to' => $to]);
-            return true;
+            Log::info('WhatsApp Twilio enviado', ['to' => $destino]);
+            return ['ok' => true, 'error' => null, 'definitivo' => false];
         }
 
-        Log::error('WhatsApp Twilio error', [
-            'to'     => $to,
-            'status' => $response->status(),
-            'body'   => $response->body(),
-        ]);
-        return false;
+        Log::error('WhatsApp Twilio error', ['to' => $destino, 'status' => $response->status(), 'body' => $response->body()]);
+        return ['ok' => false, 'error' => 'Twilio respondió ' . $response->status() . ': ' . ($response->json('message') ?? substr($response->body(), 0, 160)), 'definitivo' => false];
     }
 
-    private function sendMeta(string $to): bool
+    private function sendMeta(string $destino): array
     {
         $token = Setting::get('whatsapp_auth_token');
-        $from  = Setting::get('whatsapp_from_number');
+        $from  = trim((string) Setting::get('whatsapp_from_number'));
 
         if (! $token || ! $from) {
-            Log::warning('WhatsApp Meta: credenciales no configuradas — job cancelado.');
-            $this->delete();
-            return true;
+            Log::warning('WhatsApp Meta: token o Phone Number ID no configurados — no se envía.');
+            return ['ok' => false, 'error' => 'Faltan el token o el Phone Number ID de Meta.', 'definitivo' => true];
+        }
+        if (! ctype_digit($from)) {
+            Log::warning('WhatsApp Meta: el campo «número de origen» debe ser el Phone Number ID (solo dígitos), no un teléfono.');
+            return ['ok' => false, 'error' => 'En Meta, el «número de origen» debe ser el Phone Number ID (solo dígitos, lo da el panel de Meta), no el teléfono con formato.', 'definitivo' => true];
         }
 
         $response = Http::withToken($token)
             ->post("https://graph.facebook.com/v18.0/{$from}/messages", [
                 'messaging_product' => 'whatsapp',
-                'to'   => preg_replace('/[^0-9]/', '', $to),
+                'to'   => $destino,
                 'type' => 'text',
                 'text' => ['body' => $this->message],
             ]);
 
         if ($response->successful()) {
-            Log::info('WhatsApp Meta enviado', ['to' => $to]);
-            return true;
+            Log::info('WhatsApp Meta enviado', ['to' => $destino]);
+            return ['ok' => true, 'error' => null, 'definitivo' => false];
         }
 
-        Log::error('WhatsApp Meta error', [
-            'to'     => $to,
-            'status' => $response->status(),
-        ]);
-        return false;
+        $detalle = $response->json('error.message') ?? substr($response->body(), 0, 160);
+        Log::error('WhatsApp Meta error', ['to' => $destino, 'status' => $response->status(), 'detalle' => $detalle]);
+        return ['ok' => false, 'error' => 'Meta respondió ' . $response->status() . ': ' . $detalle, 'definitivo' => false];
     }
 }

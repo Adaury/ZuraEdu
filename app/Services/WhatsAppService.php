@@ -7,6 +7,23 @@ use Illuminate\Support\Facades\Log;
 
 class WhatsAppService
 {
+    /**
+     * Deja el teléfono en formato internacional SOLO con dígitos (sin «+»): «809-555-1234» → «18095551234».
+     * Un número de 10 dígitos se toma como local y se le antepone el código de país (por defecto 1, República Dominicana);
+     * «+1 (809) 555-1234», «0018095551234» y «1-809-555-1234» también quedan bien. Menos de 10 dígitos → null (inválido).
+     */
+    public static function normalizarTelefono(string $telefono, string $codigoPais = '1'): ?string
+    {
+        $d = preg_replace('/\D+/', '', $telefono);
+        $d = preg_replace('/^00/', '', $d);
+
+        if (strlen($d) === 10) {
+            $d = preg_replace('/\D+/', '', $codigoPais) . $d;
+        }
+
+        return strlen($d) >= 11 && strlen($d) <= 15 ? $d : null;
+    }
+
     public static function send(string $to, string $message): bool
     {
         if (! Setting::moduleEnabled('whatsapp')) return false;

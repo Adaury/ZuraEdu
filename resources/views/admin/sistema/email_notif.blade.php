@@ -195,6 +195,23 @@
 
 </form>
 
+{{-- ══ Estado y prueba del correo ══ --}}
+<div class="notif-card mt-2">
+    <div class="sec-title"><i class="bi bi-envelope-check"></i>Probar el envío de correos</div>
+    <p class="text-muted small mb-2">
+        Servidor: <strong>{{ $mailInfo['mailer'] }}</strong>@if($mailInfo['host']) · {{ $mailInfo['host'] }}:{{ $mailInfo['puerto'] }}@endif
+        · Remitente: <strong>{{ $mailInfo['from'] }}</strong> · Cola: <strong>{{ $mailInfo['cola'] }}</strong>
+    </p>
+    <p class="text-muted small mb-3">
+        Envía un correo de prueba <strong>ahora mismo</strong> a tu propio correo ({{ auth()->user()->email }}).
+        Si el servidor rechaza el usuario o la contraseña, verás el motivo aquí.
+    </p>
+    <form method="POST" action="{{ route('admin.sistema.email-notif.probar') }}">
+        @csrf
+        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-send me-1"></i>Enviar correo de prueba</button>
+    </form>
+</div>
+
 {{-- ══ Sección 2: Ejecución manual ══ --}}
 <div class="notif-card mt-2">
     <div class="sec-title"><i class="bi bi-play-circle-fill"></i>Ejecución Manual de Alertas</div>

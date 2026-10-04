@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Estudiante;
 use App\Models\ProductoCafeteria;
 use App\Models\VentaCafeteria;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 
 class CafeteriaController extends Controller
@@ -175,14 +177,50 @@ class CafeteriaController extends Controller
         ));
     }
 
+    /** Colegio de la petición (el que resuelve ResolveTenant); nunca un ID que mande el navegador. */
+    private function tenantId(): int
+    {
+        $tenant = tenant();
+        abort_unless($tenant, 403, 'No hay un colegio asociado a su sesión.');
+
+        return (int) $tenant->id;
+    }
+
+    /** Tope por operación: evita un error de columna (decimal 10,2) con un monto absurdo y un desliz de ceros en la ventanilla. */
+    private const MONTO_MAXIMO = 50000;
+
+    /** Regla «existe en MI colegio»: `exists:` a secas ve las filas de todos los colegios (y filtra si un ID existe). */
+    private function existeEnMiColegio(string $tabla): \Illuminate\Validation\Rules\Exists
+    {
+        return Rule::exists($tabla, 'id')->where('tenant_id', $this->tenantId())->whereNull('deleted_at');
+    }
+
+    /**
+     * Anti doble envío: cada formulario lleva un token único; si llega por segunda vez (doble clic, recargar la página,
+     * reintento del navegador) la operación NO se repite. Sin token (API o pruebas) no se aplica.
+     */
+    private function yaRegistrada(Request $request): bool
+    {
+        $token = (string) $request->input('token_operacion');
+        if ($token === '') {
+            return false;
+        }
+
+        return ! Cache::add('cafeteria_op:' . $this->tenantId() . ':' . auth()->id() . ':' . $token, 1, now()->addMinutes(30));
+    }
+
     public function registrarVenta(Request $request)
     {
         $data = $request->validate([
-            'estudiante_id' => 'required|exists:estudiantes,id',
-            'producto_id'   => 'nullable|exists:productos_cafeteria,id',
+            'estudiante_id' => ['required', $this->existeEnMiColegio('estudiantes')],
+            'producto_id'   => ['nullable', Rule::exists('productos_cafeteria', 'id')->where('tenant_id', $this->tenantId())],
             'descripcion'   => 'nullable|string|max:200',
-            'monto'         => 'required|numeric|min:0.01',
+            'monto'         => 'required|numeric|between:0.01,' . self::MONTO_MAXIMO,
         ]);
+
+        if ($this->yaRegistrada($request)) {
+            return back()->with('success', 'Esta venta ya estaba registrada: no se repitió.');
+        }
 
         // Si viene producto_id, usar su nombre como descripción si no se puso una
         if (empty($data['descripcion']) && !empty($data['producto_id'])) {
@@ -207,15 +245,25 @@ class CafeteriaController extends Controller
     public function registrarRecarga(Request $request)
     {
         $data = $request->validate([
-            'estudiante_id' => 'required|exists:estudiantes,id',
-            'monto'         => 'required|numeric|min:0.01',
+            'estudiante_id' => ['required', $this->existeEnMiColegio('estudiantes')],
+            'monto'         => 'required|numeric|between:0.01,' . self::MONTO_MAXIMO,
             'descripcion'   => 'nullable|string|max:200',
         ]);
+
+        if ($this->yaRegistrada($request)) {
+            return back()->with('success', 'Esta recarga ya estaba registrada: no se repitió.');
+        }
 
         // Atómico: las recargas simultáneas se serializan por estudiante y el saldo visible es la suma real (antes quedaba en el de la última).
         $recarga = VentaCafeteria::registrarMovimiento(
             (int) $data['estudiante_id'], 'recarga', (float) $data['monto'], $data['descripcion'] ?? 'Recarga de saldo', null, auth()->id()
         );
+
+        // Es dinero que entra: queda en el log de actividad además del propio movimiento (que guarda quién lo hizo)
+        $est = Estudiante::find($data['estudiante_id']);
+        ActivityLog::registrar('cafeteria_recarga', 'VentaCafeteria', $recarga->id,
+            sprintf('Recarga de RD$%s a %s (saldo %s → %s)', number_format((float) $recarga->monto, 2), $est?->nombre_completo ?? "#{$data['estudiante_id']}",
+                number_format((float) $recarga->saldo_anterior, 2), number_format((float) $recarga->saldo_nuevo, 2)));
 
         return back()->with('success', 'Recarga aplicada. Nuevo saldo: ' . number_format((float) $recarga->saldo_nuevo, 2));
     }
@@ -223,14 +271,27 @@ class CafeteriaController extends Controller
     public function registrarAjuste(Request $request)
     {
         $data = $request->validate([
-            'estudiante_id' => 'required|exists:estudiantes,id',
-            'monto'         => 'required|numeric',
+            'estudiante_id' => ['required', $this->existeEnMiColegio('estudiantes')],
+            'monto'         => ['required', 'numeric', 'between:-' . self::MONTO_MAXIMO . ',' . self::MONTO_MAXIMO, 'not_in:0'],
             'descripcion'   => 'required|string|max:200',
         ]);
+
+        if ($this->yaRegistrada($request)) {
+            return back()->with('success', 'Este ajuste ya estaba registrado: no se repitió.');
+        }
 
         $ajuste = VentaCafeteria::registrarMovimiento(
             (int) $data['estudiante_id'], 'ajuste', (float) $data['monto'], $data['descripcion'], null, auth()->id()
         );
+
+        if (! $ajuste) {
+            return back()->withInput()->with('error', 'El ajuste dejaría el saldo en negativo. Saldo actual: RD$' . number_format(VentaCafeteria::saldoEstudiante((int) $data['estudiante_id']), 2));
+        }
+
+        $est = Estudiante::find($data['estudiante_id']);
+        ActivityLog::registrar('cafeteria_ajuste', 'VentaCafeteria', $ajuste->id,
+            sprintf('Ajuste de saldo de %sRD$%s a %s (saldo %s → %s). Motivo: %s', (float) $data['monto'] < 0 ? '-' : '+', number_format(abs((float) $data['monto']), 2),
+                $est?->nombre_completo ?? "#{$data['estudiante_id']}", number_format((float) $ajuste->saldo_anterior, 2), number_format((float) $ajuste->saldo_nuevo, 2), $data['descripcion']));
 
         return back()->with('success', 'Ajuste registrado. Nuevo saldo: RD$' . number_format((float) $ajuste->saldo_nuevo, 2));
     }

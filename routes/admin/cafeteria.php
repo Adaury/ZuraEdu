@@ -20,9 +20,10 @@ Route::prefix('cafeteria')->name('cafeteria.')->middleware('can:ver-servicios')-
 
     // ── Ventas / Movimientos ───────────────────────────────────────────────
     Route::get('/ventas',                        [CafeteriaController::class, 'ventas'])->name('ventas');
-    Route::post('/ventas/registrar',             [CafeteriaController::class, 'registrarVenta'])->name('ventas.store');
-    Route::post('/recargas/registrar',           [CafeteriaController::class, 'registrarRecarga'])->name('recargas.store');
-    Route::post('/ajustes/registrar',            [CafeteriaController::class, 'registrarAjuste'])->name('ajustes.store');
+    // Mover dinero exige permiso propio (no basta con «ver-servicios»); los ajustes de saldo, uno más estricto
+    Route::post('/ventas/registrar',             [CafeteriaController::class, 'registrarVenta'])->middleware('can:operar-cafeteria')->name('ventas.store');
+    Route::post('/recargas/registrar',           [CafeteriaController::class, 'registrarRecarga'])->middleware('can:operar-cafeteria')->name('recargas.store');
+    Route::post('/ajustes/registrar',            [CafeteriaController::class, 'registrarAjuste'])->middleware('can:ajustar-saldo-cafeteria')->name('ajustes.store');
 
     // ── Balance por estudiante ─────────────────────────────────────────────
     Route::get('/balance/{estudiante}',          [CafeteriaController::class, 'balanceEstudiante'])->name('balance');

@@ -55,6 +55,9 @@ class RolesSeeder extends Seeder
             // Copia de los datos del propio colegio (ZIP de CSV)
             'exportar-respaldo-colegio',
             'exportar-datos-sensibles',   // salud, disciplina, trabajo social, nómina: solo Dirección
+            // Cafetería: mover dinero (recargas y ventas) y corregir saldos (ajustes) son permisos aparte de «ver-servicios»
+            'operar-cafeteria',
+            'ajustar-saldo-cafeteria',
         ];
 
         foreach ($permissions as $permission) {
@@ -287,6 +290,7 @@ class RolesSeeder extends Seeder
             'ver-estudiantes',
             'gestionar-matriculas',
             'ver-servicios',
+            'operar-cafeteria',   // cobra recargas en ventanilla; los ajustes de saldo son solo de Administración/Dirección
         ]);
 
         // Docente Académico — docente área académica (igual que Docente base)

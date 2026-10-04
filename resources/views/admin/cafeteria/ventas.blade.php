@@ -12,6 +12,7 @@
             <p class="text-sm text-slate-500 mt-0.5">Registro de movimientos de cafetería</p>
         </div>
         <div class="flex gap-2 flex-wrap">
+@can('operar-cafeteria')
             <button @click="modalVenta = true"
                     class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white
                            text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm">
@@ -21,6 +22,8 @@
                 </svg>
                 Registrar Venta
             </button>
+@endcan
+@can('operar-cafeteria')
             <button @click="modalRecarga = true"
                     class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white
                            text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm">
@@ -30,6 +33,7 @@
                 </svg>
                 Recargar Saldo
             </button>
+@endcan
         </div>
     </div>
 
@@ -260,6 +264,7 @@
         </div>
         <form method="POST" action="{{ route('admin.cafeteria.ventas.store') }}" class="px-6 py-5 space-y-4">
             @csrf
+            <input type="hidden" name="token_operacion" value="{{ \Illuminate\Support\Str::uuid() }}">
 
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">
@@ -348,6 +353,7 @@
         </div>
         <form method="POST" action="{{ route('admin.cafeteria.recargas.store') }}" class="px-6 py-5 space-y-4">
             @csrf
+            <input type="hidden" name="token_operacion" value="{{ \Illuminate\Support\Str::uuid() }}">
 
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">

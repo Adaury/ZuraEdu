@@ -97,6 +97,10 @@ class VentaCafeteria extends Model
                 return null;   // saldo insuficiente
             }
 
+            if ($tipo === 'ajuste' && round($anterior + $delta, 2) < 0) {
+                return null;   // un ajuste no puede dejar el saldo en negativo
+            }
+
             return static::create([
                 'estudiante_id'  => $estudianteId,
                 'producto_id'    => $productoId,

@@ -64,6 +64,7 @@
 
     {{-- Acciones rápidas --}}
     <div class="flex gap-3 mb-6">
+@can('operar-cafeteria')
         <button @click="modalVenta = true"
                 class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white
                        text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm">
@@ -73,6 +74,8 @@
             </svg>
             Registrar Venta
         </button>
+@endcan
+@can('operar-cafeteria')
         <button @click="modalRecarga = true"
                 class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white
                        text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm">
@@ -81,6 +84,7 @@
             </svg>
             Recargar Saldo
         </button>
+@endcan
     </div>
 
     {{-- Historial de movimientos --}}
@@ -169,6 +173,7 @@
         </div>
         <form method="POST" action="{{ route('admin.cafeteria.ventas.store') }}" class="px-6 py-5 space-y-4">
             @csrf
+            <input type="hidden" name="token_operacion" value="{{ \Illuminate\Support\Str::uuid() }}">
             <input type="hidden" name="estudiante_id" value="{{ $estudiante->id }}">
 
             <div class="bg-slate-50 rounded-lg p-3 text-sm text-slate-600">
@@ -249,6 +254,7 @@
         </div>
         <form method="POST" action="{{ route('admin.cafeteria.recargas.store') }}" class="px-6 py-5 space-y-4">
             @csrf
+            <input type="hidden" name="token_operacion" value="{{ \Illuminate\Support\Str::uuid() }}">
             <input type="hidden" name="estudiante_id" value="{{ $estudiante->id }}">
 
             <div class="bg-slate-50 rounded-lg p-3 text-sm text-slate-600">

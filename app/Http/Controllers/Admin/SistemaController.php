@@ -960,10 +960,22 @@ class SistemaController extends Controller
             'whatsapp_notify_alerts' => 'nullable|in:1',
         ]);
 
+        // El «número de origen» se valida según el proveedor: antes se guardaba cualquier cosa y el envío fallaba después
+        $from = trim((string) $request->whatsapp_from_number);
+        if ($from !== '') {
+            if ($request->whatsapp_provider === 'meta' && ! ctype_digit($from)) {
+                return back()->withInput()->with('error', 'Con Meta debes poner el Phone Number ID (solo dígitos, por ejemplo 109876543210). Lo encuentras en developers.facebook.com → tu app → WhatsApp → API Setup. No es el teléfono.');
+            }
+            if ($request->whatsapp_provider === 'twilio' && \App\Services\WhatsAppService::normalizarTelefono($from, (string) \App\Helpers\Setting::get('whatsapp_codigo_pais', '1')) === null) {
+                return back()->withInput()->with('error', 'El número de Twilio no es válido. Escríbelo con código de país, por ejemplo +18095550100.');
+            }
+        }
+
         \App\Helpers\Setting::setMany([
             'module_whatsapp'         => $request->has('module_whatsapp') ? '1' : '0',
             'whatsapp_provider'       => $request->whatsapp_provider,
-            'whatsapp_account_sid'    => $request->whatsapp_account_sid ?? '',
+            // El Account SID solo existe en el formulario de Twilio: con Meta no se envía y no se debe borrar
+            'whatsapp_account_sid'    => $request->has('whatsapp_account_sid') ? ($request->whatsapp_account_sid ?? '') : (string) \App\Helpers\Setting::get('whatsapp_account_sid', ''),
             'whatsapp_auth_token'     => $request->whatsapp_auth_token ?? '',
             'whatsapp_from_number'    => $request->whatsapp_from_number ?? '',
             'whatsapp_notify_grades'  => $request->has('whatsapp_notify_grades')  ? '1' : '0',

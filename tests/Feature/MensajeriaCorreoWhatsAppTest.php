@@ -176,4 +176,41 @@ class MensajeriaCorreoWhatsAppTest extends TestCase
 
         $this->assertNotSame(200, $this->actingAs($docente)->post($this->url('admin.sistema.whatsapp.probar'), ['telefono_prueba' => '809-555-1234'])->getStatusCode());
     }
+
+    // ── Guardado de la configuración de WhatsApp ─────────────────────────────
+
+    private function guardarWa(array $datos)
+    {
+        return $this->actingAs($this->admin)->post($this->url('admin.sistema.whatsapp.update'), array_merge(['whatsapp_provider' => 'meta'], $datos));
+    }
+
+    public function test_con_meta_no_se_guarda_un_telefono_como_phone_number_id(): void
+    {
+        $this->guardarWa(['whatsapp_provider' => 'meta', 'whatsapp_auth_token' => 'tok', 'whatsapp_from_number' => '1+829-477-8613'])
+            ->assertRedirect()->assertSessionHas('error');
+
+        $this->assertStringContainsString('Phone Number ID', session('error'));
+        $this->assertNotSame('1+829-477-8613', Setting::get('whatsapp_from_number'), 'no queda guardado un valor que luego fallaría');
+    }
+
+    public function test_con_meta_se_guarda_el_phone_number_id_y_se_conserva_el_sid_de_twilio(): void
+    {
+        Setting::set('whatsapp_account_sid', 'AC_GUARDADO');
+
+        $this->guardarWa(['whatsapp_provider' => 'meta', 'whatsapp_auth_token' => 'tok', 'whatsapp_from_number' => '109876543210'])
+            ->assertRedirect()->assertSessionHas('success');
+
+        $this->assertSame('109876543210', Setting::get('whatsapp_from_number'));
+        $this->assertSame('AC_GUARDADO', Setting::get('whatsapp_account_sid'), 'el SID de Twilio no se borra al guardar con Meta');
+    }
+
+    public function test_con_twilio_se_valida_el_numero_de_origen(): void
+    {
+        $this->guardarWa(['whatsapp_provider' => 'twilio', 'whatsapp_account_sid' => 'AC1', 'whatsapp_auth_token' => 'tok', 'whatsapp_from_number' => '123'])
+            ->assertSessionHas('error');
+
+        $this->guardarWa(['whatsapp_provider' => 'twilio', 'whatsapp_account_sid' => 'AC1', 'whatsapp_auth_token' => 'tok', 'whatsapp_from_number' => '+18095550100'])
+            ->assertSessionHas('success');
+        $this->assertSame('+18095550100', Setting::get('whatsapp_from_number'));
+    }
 }

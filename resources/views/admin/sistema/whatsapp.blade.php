@@ -157,7 +157,7 @@
                     <input type="text" name="whatsapp_from_number" class="form-control"
                         value="{{ $settings['whatsapp_from_number'] ?? '' }}"
                         placeholder="1234567890">
-                    <small class="text-muted">ID del número en Meta Business</small>
+                    <small class="text-muted">Solo dígitos. Está en developers.facebook.com → tu app → WhatsApp → <strong>API Setup</strong> (campo «Phone number ID»). No es el teléfono.</small>
                 </div>
             </div>
         </div>
@@ -244,8 +244,18 @@
 
 @push('scripts')
 <script>
+// Twilio y Meta comparten los nombres de campo (token y número de origen): el bloque oculto NO debe enviarse,
+// si no, sus valores viejos pisaban los que acabas de escribir en el bloque visible.
+function sincronizarProveedor() {
+    const meta = document.querySelector('input[name="whatsapp_provider"]:checked')?.value === 'meta';
+    document.querySelectorAll('#twilioFields input').forEach(i => { i.disabled = meta; });
+    document.querySelectorAll('#metaFields input').forEach(i => { i.disabled = !meta; });
+}
+sincronizarProveedor();
+
 document.querySelectorAll('input[name="whatsapp_provider"]').forEach(radio => {
     radio.addEventListener('change', function () {
+        sincronizarProveedor();
         document.getElementById('twilioFields').classList.toggle('d-none', this.value !== 'twilio');
         document.getElementById('metaFields').classList.toggle('d-none', this.value !== 'meta');
         document.querySelectorAll('.provider-option').forEach(el => el.classList.remove('selected'));

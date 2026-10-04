@@ -356,6 +356,18 @@ class MensajeriaCorreoWhatsAppTest extends TestCase
         $this->assertStringContainsString('API Key SID', session('error'));
     }
 
+    public function test_el_error_de_formato_de_la_plantilla_sale_en_espanol_y_explica_donde_encontrarla(): void
+    {
+        $base = ['whatsapp_provider' => 'twilio', 'whatsapp_account_sid' => $this->sidValido(), 'whatsapp_auth_token' => 'tok', 'whatsapp_from_number' => '+14155238886'];
+
+        $r = $this->guardarWa($base + ['whatsapp_twilio_content_sid' => 'MG' . str_repeat('a', 32)]);
+
+        $r->assertSessionHasErrors('whatsapp_twilio_content_sid');
+        $mensaje = session('errors')->first('whatsapp_twilio_content_sid');
+        $this->assertStringContainsString('Content Template Builder', $mensaje);
+        $this->assertStringNotContainsString('field format is invalid', $mensaje);
+    }
+
     public function test_la_api_key_se_valida_se_guarda_y_no_se_borra_al_guardar_con_meta(): void
     {
         $sk = 'SK' . str_repeat('f', 32);

@@ -960,6 +960,9 @@ class SistemaController extends Controller
             'whatsapp_notify_grades' => 'nullable|in:1',
             'whatsapp_notify_absence'=> 'nullable|in:1',
             'whatsapp_notify_alerts' => 'nullable|in:1',
+        ], [
+            'whatsapp_twilio_content_sid.regex' => 'La plantilla (Content SID) no tiene el formato de Twilio: empieza con «HX» seguido de 32 letras y números (34 caracteres en total, sin espacios). Cópialo de Twilio → Messaging → Content Template Builder, columna «Content SID». Si no tienes una plantilla aprobada todavía, deja este campo vacío.',
+            'whatsapp_twilio_api_key_sid.regex' => 'El API Key SID no tiene el formato de Twilio: empieza con «SK» seguido de 32 letras y números (34 caracteres). Si no usas API Key, deja este campo vacío.',
         ]);
 
         // Quitar espacios de los extremos (al copiar y pegar casi siempre se cuelan y Twilio responde «invalid username»)

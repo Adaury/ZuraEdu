@@ -248,13 +248,15 @@ class DashboardController extends Controller
         // más abajo, con los mismos números (cobrado/pendiente/vencido).
         $kpisHoy = null;
         if (!$isDocente && $rolDashboard === 'admin' && $schoolYear) {
-            $kpisHoy = [
+            // Con caché de 2 min por colegio y año: estos 5 indicadores hacían unas 12 consultas (una de ellas, el ranking de
+            // grupos, de ~85 ms) en CADA carga del dashboard. El módulo «KPIs» sigue calculándolos al instante para el botón Actualizar.
+            $kpisHoy = Cache::remember("t{$tid}_dashboard_kpis_hoy_{$syId}", 120, fn () => [
                 'asistencia_hoy'        => $this->kpiService->kpiAsistenciaHoy(),
                 'notas_pendientes'      => $this->kpiService->kpiNotasPendientes($syId),
                 'alertas_activas'       => $this->kpiService->kpiAlertasActivas($syId),
                 'situacion_estudiantes' => $this->kpiService->kpiSituacionEstudiantes($syId),
                 'grupos_ranking'        => $this->kpiService->kpiGruposRanking($syId),
-            ];
+            ]);
         }
 
         // Estadísticas de planificación y observaciones (solo admin/director/coordinador)

@@ -42,6 +42,17 @@ class SupportSession extends Model
         return $this->belongsTo(User::class, 'atendido_por');
     }
 
+    /**
+     * Mensajes listos para el chat (con el autor y la sesión ya cargados). `toChat()` los necesita: sin precargarlos
+     * cada mensaje lanzaba LazyLoadingViolationException (500) y el cliente nunca recibía las respuestas.
+     */
+    public function mensajesParaChat(): \Illuminate\Support\Collection
+    {
+        return $this->mensajes()->with('agente')->get()
+            ->each(fn (SupportMessage $m) => $m->setRelation('session', $this))
+            ->map->toChat();
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────
 
     public static function iniciar(int $tenantId, string $nombre, ?string $email, ?string $telefono): self

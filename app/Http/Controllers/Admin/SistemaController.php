@@ -96,6 +96,7 @@ class SistemaController extends Controller
             'session_timeout'    => 'nullable|integer|min:15|max:480',
             'max_login_attempts' => 'nullable|integer|min:3|max:20',
             'codigo_registro'    => 'nullable|string|max:50',
+            'soporte_telefono'   => 'nullable|string|max:40',
         ]);
 
         foreach ($data as $key => $value) {

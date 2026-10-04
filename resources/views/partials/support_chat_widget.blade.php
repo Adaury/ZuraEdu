@@ -154,11 +154,15 @@
             if (!res.ok) throw new Error(data.message ?? 'Error');
 
             _token = data.token;
+            _renderedMsgIds = new Set();
+            if (data.mensaje?.id) _renderedMsgIds.add(data.mensaje.id);
 
             document.getElementById('sc-form-inicio').style.display = 'none';
             document.getElementById('sc-form-msg').style.display = 'flex';
             appendBubble({ origen: 'visitor', mensaje: msg, hora: now(), user_name: nombre });
             subscribeEcho();
+            startPolling();
+            setTimeout(pollNewMessages, 1200);   // trae enseguida la respuesta automática
         } catch (e) {
             showError('No pudimos enviar tu mensaje. Inténtalo de nuevo.');
         } finally {
@@ -185,6 +189,11 @@
             if (res.status === 404) {
                 // Sesión cerrada/no encontrada
                 showClosedNotice();
+            } else if (res.ok) {
+                const enviado = await res.json();
+                if (enviado?.id) _renderedMsgIds.add(enviado.id);
+                startPolling();
+                setTimeout(pollNewMessages, 1200);
             }
         } catch {}
     };
@@ -229,29 +238,29 @@
 
     // ── Polling de fallback (cuando Reverb no está disponible) ────────────
     let _pollInterval  = null;
+    let _polling       = false;
     let _renderedMsgIds = new Set();
 
     function startPolling() {
         if (_pollInterval) return; // ya corriendo
-        _pollInterval = setInterval(pollNewMessages, 8000);
+        _pollInterval = setInterval(pollNewMessages, 5000);
     }
 
     async function pollNewMessages() {
         if (!_token) { clearInterval(_pollInterval); _pollInterval = null; return; }
-        // Si Echo está conectado y escuchando, no hace falta polling
-        if (_echoSub && window.Echo?.connector?.socket?.readyState === 1) return;
+        if (_polling) return;
+        _polling = true;
         try {
             const res  = await fetch(_URL_MSGS(_token), { headers: { 'Accept': 'application/json' } });
             if (!res.ok) return;
             const msgs = await res.json();
             msgs.forEach(m => {
-                if (!_renderedMsgIds.has(m.id)) {
-                    _renderedMsgIds.add(m.id);
-                    appendBubble(m, true);
-                    if (!_open) incrementBadge();
-                }
+                if (m.origen !== 'admin' || _renderedMsgIds.has(m.id)) return;
+                _renderedMsgIds.add(m.id);
+                appendBubble(m, true);
+                if (!_open) incrementBadge();
             });
-        } catch {}
+        } catch {} finally { _polling = false; }
     }
 
     // ── Suscribirse a respuestas del admin vía Echo/Reverb ────────────────
@@ -260,12 +269,7 @@
         try {
             _echoSub = window.Echo
                 .channel(`support.${_token}`)
-                .listen('.admin.reply', (data) => {
-                    const tempId = `echo_${Date.now()}`;
-                    _renderedMsgIds.add(tempId); // no bloquear el mismo mensaje del polling
-                    appendBubble({ origen: 'admin', mensaje: data.mensaje, hora: data.hora, user_name: data.admin_nombre });
-                    if (!_open) incrementBadge();
-                });
+                .listen('.admin.reply', () => pollNewMessages());
         } catch {}
     }
 

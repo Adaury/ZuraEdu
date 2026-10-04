@@ -6,6 +6,7 @@ use App\Events\SupportAdminReply;
 use App\Events\SupportMessageReceived;
 use App\Models\SupportMessage;
 use App\Models\SupportSession;
+use App\Services\SoporteAutoRespuesta;
 use Illuminate\Http\Request;
 
 class SupportChatController extends Controller
@@ -47,6 +48,13 @@ class SupportChatController extends Controller
             );
         } catch (\Throwable) {}
 
+        // Acuse de recibo automático: quien escribe nunca se queda sin respuesta
+        try {
+            app(SoporteAutoRespuesta::class)->alIniciar($session);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         return response()->json([
             'token'    => $session->token,
             'mensaje'  => $msg->toChat(),
@@ -82,6 +90,13 @@ class SupportChatController extends Controller
             );
         } catch (\Throwable) {}
 
+        // Si todavía no lo atiende una persona, se le ofrece el número de soporte (una sola vez)
+        try {
+            app(SoporteAutoRespuesta::class)->alMensajeDelVisitante($session);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         return response()->json($msg->toChat(), 201);
     }
 
@@ -92,9 +107,7 @@ class SupportChatController extends Controller
         $session = SupportSession::where('token', $token)->firstOrFail();
         $session->mensajes()->where('origen', 'admin')->update(['leido' => true]);
 
-        return response()->json(
-            $session->mensajes()->get()->map->toChat()
-        );
+        return response()->json($session->mensajesParaChat());
     }
 
     // ── Admin: listar sesiones ────────────────────────────────────────────
@@ -127,9 +140,7 @@ class SupportChatController extends Controller
 
         $session->mensajes()->where('origen', 'visitor')->update(['leido' => true]);
 
-        return response()->json(
-            $session->mensajes()->get()->map->toChat()
-        );
+        return response()->json($session->mensajesParaChat());
     }
 
     // ── Admin: responder ──────────────────────────────────────────────────

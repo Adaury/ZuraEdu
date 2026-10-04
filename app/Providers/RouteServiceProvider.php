@@ -28,6 +28,12 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Chat de soporte público: la consulta de mensajes se repite cada pocos segundos, así que el límite va por
+        // conversación (token) y no por IP — varios visitantes detrás de la misma red del colegio no se bloquean entre sí.
+        RateLimiter::for('soporte-mensajes', function (Request $request) {
+            return Limit::perMinute(30)->by('soporte:' . $request->route('token') . ':' . $request->ip());
+        });
+
         // Limitar generación de PDF/Excel: 20 por minuto por usuario
         RateLimiter::for('exports', function (Request $request) {
             return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());

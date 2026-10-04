@@ -141,6 +141,14 @@
                    value="{{ old('codigo_registro', $settings['codigo_registro'] ?? '') }}"
                    placeholder="Ej. CENTRO2026">
             <div class="info-note mt-1"><i class="bi bi-info-circle"></i>Los nuevos usuarios deben ingresar este código al registrarse. Cámbialo periódicamente.</div>
+        <div class="mt-3">
+            <label class="form-label-custom">Teléfono / WhatsApp de soporte</label>
+            <input type="text" name="soporte_telefono" class="form-control form-control-custom"
+                   maxlength="40" style="max-width:280px;"
+                   value="{{ old('soporte_telefono', $settings['soporte_telefono'] ?? '') }}"
+                   placeholder="Ej. 809-555-0100">
+            <div class="info-note mt-1"><i class="bi bi-info-circle"></i>El chat de soporte lo ofrece automáticamente a quien sigue escribiendo sin que lo haya atendido una persona. Si lo dejas vacío se usa el teléfono institucional.</div>
+        </div>
         </div>
 
         <div class="mt-3">

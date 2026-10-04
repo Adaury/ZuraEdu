@@ -776,10 +776,11 @@ Route::prefix('admin/tenant-chat')->name('admin.tenant-chat.')->middleware(['aut
 });
 
 // ── Chat de Soporte Público ───────────────────────────────────────────────
-Route::prefix('soporte/chat')->name('support.chat.')->middleware('throttle:10,1')->group(function () {
-    Route::post('/start',            [\App\Http\Controllers\SupportChatController::class, 'start'])->name('start');
+Route::prefix('soporte/chat')->name('support.chat.')->group(function () {
+    Route::post('/start',            [\App\Http\Controllers\SupportChatController::class, 'start'])->name('start')->middleware('throttle:10,1');
     Route::post('/{token}/mensaje',  [\App\Http\Controllers\SupportChatController::class, 'send'])->name('send')->middleware('throttle:20,1');
-    Route::get('/{token}/mensajes',  [\App\Http\Controllers\SupportChatController::class, 'messages'])->name('messages');
+    // El widget consulta los mensajes cada 5 s: límite propio (antes compartía el de 10/min del grupo y se bloqueaba con 429)
+    Route::get('/{token}/mensajes',  [\App\Http\Controllers\SupportChatController::class, 'messages'])->name('messages')->middleware('throttle:soporte-mensajes');
 });
 
 Route::prefix('admin/soporte')->name('admin.soporte.')->middleware(['auth', 'activo', 'admin.access'])->group(function () {

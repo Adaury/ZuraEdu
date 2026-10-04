@@ -52,6 +52,9 @@ class RolesSeeder extends Seeder
             'gestionar-biblioteca',
             // Servicios institucionales
             'ver-servicios',
+            // Copia de los datos del propio colegio (ZIP de CSV)
+            'exportar-respaldo-colegio',
+            'exportar-datos-sensibles',   // salud, disciplina, trabajo social, nómina: solo Dirección
         ];
 
         foreach ($permissions as $permission) {
@@ -60,7 +63,8 @@ class RolesSeeder extends Seeder
 
         // Administrador — all permissions
         $administrador = Role::firstOrCreate(['name' => 'Administrador', 'guard_name' => 'web']);
-        $administrador->syncPermissions($permissions);
+        // (todos menos los datos sensibles de la copia del colegio, que solo exporta la Dirección)
+        $administrador->syncPermissions(array_values(array_filter($permissions, fn ($p) => $p !== 'exportar-datos-sensibles')));
 
         // Director — all except gestionar-usuarios and gestionar-configuracion
         $director = Role::firstOrCreate(['name' => 'Director', 'guard_name' => 'web']);

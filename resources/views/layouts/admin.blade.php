@@ -980,6 +980,11 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('admin.respaldo-colegio.index') }}" class="{{ request()->routeIs('admin.respaldo-colegio*') ? 'active' : '' }}">
+                        <i class="bi bi-cloud-arrow-down"></i>Copia de mis datos
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="{{ route('admin.importaciones.index') }}" class="{{ request()->routeIs('admin.importaciones*') ? 'active' : '' }}">
                         <i class="bi bi-cloud-upload"></i>Importaciones
                     </a>

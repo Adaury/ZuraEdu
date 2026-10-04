@@ -19,6 +19,13 @@ Route::post('chat/send', [ChatController::class, 'send'])->name('chat.send')->mi
 // ── Búsqueda global ───────────────────────────────────────────────────────
 Route::get('search', [SearchController::class, 'search'])->name('search');
 
+// ── Copia de los datos del propio colegio (ZIP de CSV) ────────────────────
+Route::middleware('can:exportar-respaldo-colegio')->group(function () {
+    Route::get('respaldo-colegio', [\App\Http\Controllers\Admin\RespaldoColegioController::class, 'index'])->name('respaldo-colegio.index');
+    Route::post('respaldo-colegio/descargar', [\App\Http\Controllers\Admin\RespaldoColegioController::class, 'descargar'])
+        ->middleware('throttle:3,60')->name('respaldo-colegio.descargar');
+});
+
 // ── Centro de Administración (hub, roadmap: "tipo Moodle") ────────────────
 Route::get('configuracion', [\App\Http\Controllers\Admin\CentroAdministracionController::class, 'index'])
     ->name('centro-administracion');

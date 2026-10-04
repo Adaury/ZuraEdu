@@ -69,7 +69,9 @@ class AdminSidebarCollapseTest extends TestCase
 
         // Sin esta regla, la clase que el JS agrega a <html> no tendría
         // ningún efecto visual y el botón parecería no hacer nada.
-        $this->assertStringContainsString('html.sidebar-collapsed .sidebar', $html);
+        // El CSS vive en public/css/admin-layout.css (no incrustado): la página debe enlazarlo y el archivo traer la regla.
+        $this->assertStringContainsString('css/admin-layout.css', $html);
+        $this->assertStringContainsString('html.sidebar-collapsed .sidebar', file_get_contents(public_path('css/admin-layout.css')));
     }
 
     public function test_el_script_anti_parpadeo_de_sidebar_colapsado_esta_presente(): void

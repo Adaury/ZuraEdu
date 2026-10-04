@@ -12,8 +12,7 @@ body {
     background: #f1f5f9;
     min-height: 100dvh;
     display: flex; align-items: center; justify-content: center;
-    padding: 1.5rem;
-}
+    padding: 1.5rem; flex-direction: column; /* el pie de marca va DEBAJO del contenido (en fila quedaba al lado y desbordaba en móvil) */}
 .card {
     background: #fff; border-radius: 24px;
     box-shadow: 0 8px 40px rgba(15,23,42,.12);

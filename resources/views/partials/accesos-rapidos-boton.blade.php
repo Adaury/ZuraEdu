@@ -54,6 +54,15 @@
             @endforeach
         </div>
         <a href="{{ route('guias.mia') }}" class="ar-guia" role="menuitem"><i class="bi bi-book-half"></i> Guía rápida de tu rol (ver, imprimir o PDF)</a>
+        <button type="button" id="ar-instalar" class="ar-guia" role="menuitem" style="display:none;width:100%;text-align:left;background:none;border:0;cursor:pointer;"
+                onclick="window.zuraInstalarApp && window.zuraInstalarApp()"><i class="bi bi-download"></i> Instalar la app en este dispositivo</button>
+        <script>
+            (function () {
+                // Se muestra si la app no está instalada ya (en iPhone no hay aviso automático del navegador: esta es la vía manual)
+                var b = document.getElementById('ar-instalar');
+                if (b && !(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true)) b.style.display = 'block';
+            })();
+        </script>
     </div>
 </div>
 

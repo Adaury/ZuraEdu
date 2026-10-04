@@ -13,8 +13,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-        }
+            font-family: 'Segoe UI', system-ui, sans-serif; flex-direction: column; /* el pie de marca va DEBAJO del contenido (en fila quedaba al lado y desbordaba en móvil) */}
         .change-card {
             background: #fff;
             border-radius: 16px;

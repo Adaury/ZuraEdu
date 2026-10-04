@@ -10,8 +10,7 @@
             font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
             background: #f1f5f9;
             display: flex; align-items: center; justify-content: center;
-            min-height: 100vh; padding: 1.5rem;
-        }
+            min-height: 100vh; padding: 1.5rem; flex-direction: column; /* el pie de marca va DEBAJO del contenido (en fila quedaba al lado y desbordaba en móvil) */}
         .card {
             background: #fff; border-radius: 20px;
             border: 1px solid #e5e7eb;

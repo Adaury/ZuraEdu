@@ -1323,6 +1323,32 @@
         /* Ensure topbar dropdown appears above sidebar (z-index:1040) */
         .topbar-user .dropdown-menu { z-index: 1050 !important; }
 
+        /* ── Red de seguridad en móvil y tableta ─────────────────────────────────────────────
+           Tablas sin contenedor «table-responsive», filas de botones largas y gráficos anchos estiraban TODA la página (y la barra
+           superior fija con ella): 14 de las 112 pantallas del Administrador se desbordaban a 390 px. Ahora lo que no cabe se
+           desplaza dentro del contenido, y las filas de acciones pasan a la línea siguiente. */
+        @media (max-width: 991.98px) {
+            .main-content { max-width: 100vw; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .main-content .page-header,
+            .main-content .d-flex.justify-content-between,
+            .main-content .d-flex.gap-2,
+            .main-content .d-flex.gap-3,
+            .main-content .btn-toolbar { flex-wrap: wrap; }
+            /* Las vistas hechas con Tailwind usan «flex», no «d-flex»: mismas filas de acciones, mismo ajuste */
+            .main-content .flex.gap-2, .main-content .flex.gap-3, .main-content .flex.gap-4,
+            .main-content .flex.justify-between, .main-content .flex.flex-row { flex-wrap: wrap; }
+            .main-content img, .main-content canvas, .main-content video { max-width: 100%; }
+            .main-content .pagination { flex-wrap: wrap; justify-content: center; }
+            .main-content .page-header > *, .main-content .d-flex.justify-content-between > * { min-width: 0; }
+        }
+
+        @media (max-width: 575.98px) {
+            .main-content [style*="repeat(2,1fr)"], .main-content [style*="repeat(3,1fr)"], .main-content [style*="repeat(4,1fr)"],
+            .main-content [style*="repeat(2, 1fr)"], .main-content [style*="repeat(3, 1fr)"], .main-content [style*="repeat(4, 1fr)"] {
+                grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
+            }
+        }
+
         /* ── Responsive: contenido en móvil ──────────── */
         @media (max-width: 767.98px) {
             .main-content { padding: 1rem; }

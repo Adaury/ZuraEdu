@@ -79,54 +79,44 @@
     </div>
 </div>
 
-{{-- ── Tooltip iOS (Safari no soporta beforeinstallprompt) ─────────────── --}}
+{{-- ── Guía de instalación (iOS, y manual en otros navegadores). Safari en iPhone no tiene un «botón instalar» que una web pueda
+     pulsar: la única vía es Compartir → Añadir a pantalla de inicio, así que se explica paso a paso y con un botón de cierre claro. ── --}}
 <div id="pwa-ios-prompt"
      role="dialog"
      aria-modal="true"
-     aria-label="Cómo instalar en iOS"
-     style="
-        display:none;
-        position:fixed;
-        bottom:1.25rem;left:50%;
-        transform:translateX(-50%);
-        z-index:10000;
-        background:#1e293b;
-        color:#f8fafc;
-        border-radius:1rem;
-        padding:1rem 1.25rem;
-        max-width:calc(100vw - 2.5rem);
-        width:340px;
-        box-shadow:0 8px 32px rgba(0,0,0,.28);
-        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-        font-size:.875rem;
-        line-height:1.55;
-        animation:pwaSlideUp .28s cubic-bezier(.4,0,.2,1);
-     ">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;margin-bottom:.625rem;">
-        <strong style="font-size:.9375rem;">Instalar {{ $pwaName }}</strong>
-        <button id="pwa-ios-dismiss"
-                aria-label="Cerrar"
-                style="background:none;border:none;color:#94a3b8;font-size:1.25rem;line-height:1;cursor:pointer;padding:0;flex-shrink:0;">
-            &times;
-        </button>
+     aria-labelledby="pwa-guia-titulo"
+     style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:10001;
+            background:#fff;color:#1e293b;border-radius:1.25rem 1.25rem 0 0;
+            padding:1.1rem 1.1rem calc(1.1rem + env(safe-area-inset-bottom));
+            box-shadow:0 -10px 40px rgba(0,0,0,.28);max-height:88vh;overflow-y:auto;
+            font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.9375rem;line-height:1.5;">
+    <div style="max-width:460px;margin:0 auto;">
+        <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.9rem;">
+            <img src="/pwa/icon/96?tid={{ $pwaTid }}" width="52" height="52" alt="" style="border-radius:.8rem;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.18);">
+            <div style="flex:1;min-width:0;">
+                <strong id="pwa-guia-titulo" style="display:block;font-size:1.05rem;">Instala {{ $pwaName }}</strong>
+                <span style="font-size:.82rem;color:#64748b;">Ábrela como una app, a pantalla completa</span>
+            </div>
+            <button id="pwa-ios-dismiss" aria-label="Cerrar" type="button"
+                    style="background:#f1f5f9;border:none;border-radius:50%;width:34px;height:34px;font-size:1.25rem;line-height:1;color:#475569;cursor:pointer;flex-shrink:0;">&times;</button>
+        </div>
+
+        <ol id="pwa-guia-pasos" style="list-style:none;margin:0 0 1rem;padding:0;display:flex;flex-direction:column;gap:.55rem;"></ol>
+
+        <p id="pwa-guia-nota" style="margin:0 0 1rem;font-size:.8rem;color:#64748b;"></p>
+
+        <div style="display:flex;gap:.6rem;">
+            <button id="pwa-ios-ok" type="button"
+                    style="flex:1;background:{{ $pwaColor }};color:#fff;border:none;border-radius:.75rem;padding:.8rem 1rem;font-size:.95rem;font-weight:700;cursor:pointer;">Entendido</button>
+            <button id="pwa-ios-luego" type="button"
+                    style="background:#f1f5f9;color:#475569;border:none;border-radius:.75rem;padding:.8rem 1rem;font-size:.9rem;font-weight:600;cursor:pointer;">Más tarde</button>
+        </div>
     </div>
-    <ol style="margin:0;padding-left:1.125rem;color:#cbd5e1;">
-        <li>Toca el botón <strong style="color:#f8fafc;">Compartir</strong>
-            <span style="font-size:1rem;">&#10514;</span> en Safari</li>
-        <li>Selecciona <strong style="color:#f8fafc;">Añadir a pantalla de inicio</strong></li>
-        <li>Toca <strong style="color:#f8fafc;">Añadir</strong> para confirmar</li>
-    </ol>
-    {{-- Triángulo apuntando abajo --}}
-    <div style="
-        position:absolute;
-        bottom:-8px;left:50%;
-        transform:translateX(-50%);
-        width:0;height:0;
-        border-left:9px solid transparent;
-        border-right:9px solid transparent;
-        border-top:9px solid #1e293b;
-    "></div>
 </div>
+
+<div id="pwa-ios-flecha" aria-hidden="true"
+     style="display:none;position:fixed;left:50%;bottom:6px;transform:translateX(-50%);z-index:10002;color:#fff;font-size:2rem;line-height:1;
+            text-shadow:0 2px 6px rgba(0,0,0,.5);animation:pwaRebote 1s infinite;pointer-events:none;">&#9660;</div>
 
 <style>
 @keyframes pwaSlideUp {
@@ -134,6 +124,7 @@
     to   { transform: translateY(0);    opacity: 1; }
 }
 #pwa-ios-prompt { animation: pwaSlideUp .28s cubic-bezier(.4,0,.2,1); }
+@keyframes pwaRebote { 0%,100% { transform: translate(-50%,0); } 50% { transform: translate(-50%,8px); } }
 </style>
 
 <script>
@@ -143,84 +134,114 @@
     const STORAGE_KEY  = 'pwa_prompt_dismissed';
     const DISMISS_DAYS = 30;
 
-    // Ya está instalado como standalone → no mostrar nada
-    if (window.matchMedia('(display-mode: standalone)').matches
-        || window.navigator.standalone === true) return;
+    const estaInstalada = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
-    // Fue descartado recientemente
-    const dismissed = localStorage.getItem(STORAGE_KEY);
-    if (dismissed && Date.now() < parseInt(dismissed, 10)) return;
+    const banner     = document.getElementById('pwa-install-banner');
+    const installBtn = document.getElementById('pwa-install-btn');
+    const dismissBtn = document.getElementById('pwa-install-dismiss');
+    const guia       = document.getElementById('pwa-ios-prompt');
+    const flecha     = document.getElementById('pwa-ios-flecha');
+    const pasos      = document.getElementById('pwa-guia-pasos');
+    const nota       = document.getElementById('pwa-guia-nota');
 
-    const banner      = document.getElementById('pwa-install-banner');
-    const installBtn  = document.getElementById('pwa-install-btn');
-    const dismissBtn  = document.getElementById('pwa-install-dismiss');
-    const iosPrompt   = document.getElementById('pwa-ios-prompt');
-    const iosDismiss  = document.getElementById('pwa-ios-dismiss');
-
-    function snooze() {
-        const until = Date.now() + DISMISS_DAYS * 86400 * 1000;
-        localStorage.setItem(STORAGE_KEY, String(until));
+    function snooze(dias) {
+        try { localStorage.setItem(STORAGE_KEY, String(Date.now() + (dias || DISMISS_DAYS) * 86400 * 1000)); } catch (e) {}
+    }
+    function descartada() {
+        try { const d = localStorage.getItem(STORAGE_KEY); return !!(d && Date.now() < parseInt(d, 10)); } catch (e) { return false; }
     }
 
-    function isIos() {
-        return /iphone|ipad|ipod/i.test(navigator.userAgent)
-            && !window.MSStream;
+    // ── Plataforma ────────────────────────────────────────────────────────
+    const ua = navigator.userAgent;
+    const esIpad = /ipad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);   // iPadOS se presenta como Mac
+    const esIos  = (/iphone|ipod/i.test(ua) || esIpad) && !window.MSStream;
+    const iosOtroNavegador = esIos && /CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua);   // Chrome/Firefox/Edge en iOS también pueden añadir a inicio
+
+    // Iconos reales de iOS, para que se reconozcan en el menú
+    const ICONO_COMPARTIR = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0a84ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/></svg>';
+    const ICONO_MAS = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1e293b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+
+    function pasosParaEstaPlataforma() {
+        if (esIos) {
+            const donde = iosOtroNavegador ? 'arriba a la derecha' : (esIpad ? 'arriba, junto a la barra de direcciones' : 'en la barra de abajo');
+            return {
+                pasos: [
+                    'Toca el botón <b>Compartir</b> ' + ICONO_COMPARTIR + ' <span style="color:#64748b">(' + donde + ')</span>',
+                    'Desliza el menú y elige <b>Añadir a pantalla de inicio</b> ' + ICONO_MAS,
+                    'Toca <b>Añadir</b>. ¡Listo! Encontrarás el icono en tu pantalla de inicio.',
+                ],
+                nota: iosOtroNavegador
+                    ? 'Si no ves esa opción, abre esta página en Safari y repite los pasos.'
+                    : 'Apple no permite instalar con un solo toque desde una página web: por eso hay que hacerlo desde Compartir.',
+                flecha: !iosOtroNavegador && !esIpad,
+            };
+        }
+        const android = /android/i.test(ua);
+        return {
+            pasos: android
+                ? ['Toca el menú <b>&#8942;</b> del navegador (arriba a la derecha)', 'Elige <b>Instalar aplicación</b> o <b>Añadir a la pantalla de inicio</b>', 'Confirma con <b>Instalar</b>']
+                : ['Busca el icono de instalar <b>&#8853;</b> al final de la barra de direcciones', 'O abre el menú del navegador y elige <b>Instalar ZuraEdu</b>', 'Confirma con <b>Instalar</b>'],
+            nota: 'Si no aparece la opción, tu navegador puede no permitir instalar apps desde esta dirección.',
+            flecha: false,
+        };
     }
 
-    function isSafari() {
-        return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    function pintarPasos(cfg) {
+        pasos.innerHTML = cfg.pasos.map(function (t, n) {
+            return '<li style="display:flex;gap:.7rem;align-items:flex-start;background:#f8fafc;border-radius:.8rem;padding:.65rem .8rem;">'
+                 + '<span style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:{{ $pwaColor }};color:#fff;font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center;">' + (n + 1) + '</span>'
+                 + '<span>' + t + '</span></li>';
+        }).join('');
+        nota.textContent = cfg.nota;
     }
 
-    // ── iOS Safari ────────────────────────────────────────────────────────
-    if (isIos() && isSafari()) {
-        window.addEventListener('load', function () {
-            setTimeout(function () {
-                iosPrompt.style.display = 'block';
-            }, 3000);
-        });
-
-        iosDismiss.addEventListener('click', function () {
-            iosPrompt.style.display = 'none';
-            snooze();
-        });
-        return;
+    function abrirGuia() {
+        const cfg = pasosParaEstaPlataforma();
+        pintarPasos(cfg);
+        guia.style.paddingBottom = cfg.flecha ? 'calc(2.9rem + env(safe-area-inset-bottom))' : '';   // deja sitio a la flecha que señala el botón Compartir
+        guia.style.display = 'block';
+        flecha.style.display = cfg.flecha ? 'block' : 'none';
     }
+    function cerrarGuia() { guia.style.display = 'none'; flecha.style.display = 'none'; }
+
+    document.getElementById('pwa-ios-ok').addEventListener('click', function () { cerrarGuia(); snooze(30); });
+    document.getElementById('pwa-ios-luego').addEventListener('click', function () { cerrarGuia(); snooze(3); });
+    document.getElementById('pwa-ios-dismiss').addEventListener('click', function () { cerrarGuia(); snooze(3); });
 
     // ── Chrome / Edge / Samsung (beforeinstallprompt) ─────────────────────
-    var deferredPrompt = null;
-
+    let deferredPrompt = null;
     window.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();
         deferredPrompt = e;
-
-        // Pequeño retraso para no interrumpir la carga inicial
-        setTimeout(function () {
-            banner.style.display = 'block';
-        }, 2500);
+        document.dispatchEvent(new CustomEvent('zura:instalable'));
+        if (estaInstalada() || descartada()) return;
+        setTimeout(function () { banner.style.display = 'block'; }, 2500);
     });
 
     installBtn.addEventListener('click', function () {
-        if (!deferredPrompt) return;
+        if (!deferredPrompt) { banner.style.display = 'none'; abrirGuia(); return; }   // antes: no hacía nada
         banner.style.display = 'none';
         deferredPrompt.prompt();
         deferredPrompt.userChoice.then(function (result) {
-            if (result.outcome === 'accepted') {
-                snooze();
-            }
+            if (result.outcome === 'accepted') snooze();
             deferredPrompt = null;
         });
     });
+    dismissBtn.addEventListener('click', function () { banner.style.display = 'none'; snooze(); });
+    window.addEventListener('appinstalled', function () { banner.style.display = 'none'; cerrarGuia(); deferredPrompt = null; snooze(); });
 
-    dismissBtn.addEventListener('click', function () {
-        banner.style.display = 'none';
-        snooze();
-    });
+    // ── Acción única para el menú «Instalar la app» (accesos rápidos) ─────
+    window.zuraInstalarApp = function () {
+        if (estaInstalada()) return;
+        if (deferredPrompt) { installBtn.click(); return; }
+        abrirGuia();
+    };
+    window.zuraAppInstalada = estaInstalada;
 
-    // Si el usuario instala desde el menú del navegador, ocultamos el banner
-    window.addEventListener('appinstalled', function () {
-        banner.style.display = 'none';
-        deferredPrompt = null;
-        snooze();
-    });
+    // ── Aviso automático (una vez, sin molestar) ──────────────────────────
+    if (estaInstalada() || descartada()) return;
+    if (esIos) {
+        window.addEventListener('load', function () { setTimeout(abrirGuia, 3000); });
+    }
 })();
 </script>

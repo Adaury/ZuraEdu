@@ -167,4 +167,27 @@ class CafeteriaRecargaWebTest extends TestCase
         $this->assertNotNull($ajuste);
         $this->assertStringContainsString('Error de cobro', $ajuste->descripcion);
     }
+
+    public function test_la_migracion_da_los_permisos_a_los_roles_que_ya_recargaban_sin_tocar_los_demas(): void
+    {
+        // Base anterior al cambio: los permisos nuevos no existen (en una instalación real el seeder no vuelve a correr)
+        \Spatie\Permission\Models\Permission::whereIn('name', ['operar-cafeteria', 'ajustar-saldo-cafeteria'])->delete();
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        $antes = \Spatie\Permission\Models\Role::where('name', 'Biblioteca')->first()->permissions()->pluck('name')->sort()->values()->all();
+
+        (require database_path('migrations/2026_10_05_000001_permisos_cafeteria_operar_y_ajustar.php'))->up();
+
+        $permisos = fn (string $rol) => \Spatie\Permission\Models\Role::where('name', $rol)->first()->permissions()->pluck('name')->all();
+        $this->assertContains('operar-cafeteria', $permisos('Administrador'));
+        $this->assertContains('ajustar-saldo-cafeteria', $permisos('Administrador'));
+        $this->assertContains('operar-cafeteria', $permisos('Director'));
+        $this->assertContains('operar-cafeteria', $permisos('Recepción'));
+        $this->assertNotContains('ajustar-saldo-cafeteria', $permisos('Recepción'));
+        $this->assertNotContains('operar-cafeteria', $permisos('Biblioteca'), 'Biblioteca ve la cafetería pero no mueve dinero');
+        $this->assertSame($antes, collect($permisos('Biblioteca'))->sort()->values()->all(), 'no se toca ningún otro permiso');
+
+        // Y se puede ejecutar de nuevo sin duplicar nada
+        (require database_path('migrations/2026_10_05_000001_permisos_cafeteria_operar_y_ajustar.php'))->up();
+        $this->assertSame(1, \Spatie\Permission\Models\Permission::where('name', 'operar-cafeteria')->count());
+    }
 }

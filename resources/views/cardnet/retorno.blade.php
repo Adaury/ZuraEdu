@@ -12,8 +12,7 @@
             align-items: center;
             justify-content: center;
             background: #F8FAFC;
-            font-family: system-ui, -apple-system, sans-serif;
-        }
+            font-family: system-ui, -apple-system, sans-serif; flex-direction: column; /* el pie de marca va DEBAJO del contenido (en fila quedaba al lado y desbordaba en móvil) */}
         .card {
             background: #fff;
             border-radius: 16px;

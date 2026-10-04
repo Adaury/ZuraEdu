@@ -14,8 +14,7 @@
             align-items: center;
             justify-content: center;
             font-family: 'Inter', system-ui, sans-serif;
-            padding: 2rem 1rem;
-        }
+            padding: 2rem 1rem; flex-direction: column; /* el pie de marca va DEBAJO del contenido (en fila quedaba al lado y desbordaba en móvil) */}
         .card {
             border-radius: 20px;
             border: none;

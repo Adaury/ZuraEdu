@@ -26,8 +26,7 @@
         background: linear-gradient(135deg, #060b20 0%, #0e1f5e 50%, #1d4ed8 100%);
         min-height: 100vh;
         display: flex; align-items: center; justify-content: center;
-        padding: 2rem 1rem;
-    }
+        padding: 2rem 1rem; flex-direction: column; /* el pie de marca va DEBAJO del contenido (en fila quedaba al lado y desbordaba en móvil) */}
     .wrap {
         width: 100%; max-width: 520px;
     }

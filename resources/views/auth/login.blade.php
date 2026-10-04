@@ -6,7 +6,11 @@
     <meta name="robots" content="noindex, nofollow">
 
     @php
-        $ls   = \App\Helpers\Setting::all();
+        // En el dominio de la PLATAFORMA (el genérico, sin dominio propio de un colegio) el acceso es de ZuraEdu: antes caía en
+        // el colegio por defecto y mostraba su logo y su nombre (p. ej. el del PSAC) a quien entraba desde la dirección general.
+        // Con el dominio de un colegio (dominio propio) sí se muestra la identidad de ese colegio.
+        $dominioDelColegio = app()->bound('tenant.dominio_propio') && app('tenant.dominio_propio');
+        $ls   = $dominioDelColegio ? \App\Helpers\Setting::all() : [];
         $lBg1 = $ls['login_color_bg1'] ?? '#0a0f2e';
         $lBg2 = $ls['login_color_bg2'] ?? '#1e3a8a';
         $lBg3 = $ls['login_color_bg3'] ?? '#1d4ed8';
@@ -18,9 +22,11 @@
         // usa PublicSiteController para el sitio público. Este bloque se
         // movió ANTES del <title> — antes vivía después y $ls nunca estaba
         // definido a tiempo para el título (siempre caía al genérico).
-        $tenantLogin  = app()->bound('tenant') ? app('tenant') : null;
-        $nombreCentro = ($ls['system_name'] ?? null) ?: (\App\Models\ConfigInstitucional::get('nombre_institucion') ?: $tenantLogin?->nombre_institucion) ?: 'ZuraEdu';
-        $logoPathLogin = $ls['system_logo'] ?? \App\Models\ConfigInstitucional::get('hp_logo_path');
+        $tenantLogin  = $dominioDelColegio && app()->bound('tenant') ? app('tenant') : null;
+        $nombreCentro = $dominioDelColegio
+            ? (($ls['system_name'] ?? null) ?: (\App\Models\ConfigInstitucional::get('nombre_institucion') ?: $tenantLogin?->nombre_institucion) ?: 'ZuraEdu')
+            : 'ZuraEdu';
+        $logoPathLogin = $dominioDelColegio ? ($ls['system_logo'] ?? \App\Models\ConfigInstitucional::get('hp_logo_path')) : null;
         $logoCentroUrl = $logoPathLogin ? asset('storage/' . $logoPathLogin) : $tenantLogin?->logo_url;
     @endphp
 

@@ -250,4 +250,21 @@ class MenuYAccesosRapidosTest extends TestCase
         $this->assertArrayHasKey('start_url', $r->json());
         $this->assertStringContainsString('public', (string) $r->headers->get('Cache-Control'));
     }
+
+    public function test_el_menu_del_administrador_agrupa_inscripciones_con_solicitudes_e_integraciones_con_sistema(): void
+    {
+        $u = $this->usuario('Administrador');
+        $html = $this->actingAs($u)->get(route('admin.dashboard'))->assertOk()->getContent();
+        $menu = substr($html, strpos($html, '<nav class="sidebar-nav">'), strpos($html, '</nav>') - strpos($html, '<nav class="sidebar-nav">'));
+
+        $this->assertStringContainsString('Inscripciones y Solicitudes', $menu);
+        $this->assertStringNotContainsString('<div class="nav-section-title">Solicitudes</div>', $menu);
+        $this->assertStringNotContainsString('<div class="nav-section-title">Integraciones</div>', $menu);
+
+        // Ningún enlace se perdió al reagrupar
+        foreach (['admin.inscripciones.index', 'admin.pre-matriculas.index', 'admin.solicitudes.index', 'admin.solicitudes-est.index',
+                  'admin.solicitudes-docente.index', 'admin.integraciones.index', 'admin.asistente.index', 'admin.sistema.index'] as $ruta) {
+            $this->assertStringContainsString('href="' . route($ruta) . '"', $menu, $ruta);
+        }
+    }
 }

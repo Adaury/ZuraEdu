@@ -1093,10 +1093,11 @@ if (auth()->check()) {
             @endif
 
             {{-- ══ INSCRIPCIONES ══ --}}
-            @if($isAdmin || $isDir || $isSecre)
-            @php $pmPendientes = \App\Models\PreMatricula::where('estado','pendiente')->count(); @endphp
-            <div class="nav-section-title">Inscripciones</div>
+            @if($isAdmin || $isDir || $isSecre || $isCoord)
+            <div class="nav-section-title">Inscripciones y Solicitudes</div>
             <ul class="list-unstyled mb-0">
+                @if($isAdmin || $isDir || $isSecre)
+                @php $pmPendientes = \App\Models\PreMatricula::where('estado','pendiente')->count(); @endphp
                 <li class="nav-item">
                     <a href="{{ route('admin.inscripciones.index') }}" class="{{ request()->routeIs('admin.inscripciones*') ? 'active' : '' }}">
                         <i class="bi bi-clipboard-check"></i>Inscripciones
@@ -1112,13 +1113,10 @@ if (auth()->check()) {
                         @endif
                     </a>
                 </li>
-            </ul>
-            @endif
+                @endif
 
-            {{-- ══ SOLICITUDES DEL PERSONAL ══ --}}
-            @if($isAdmin || $isDir || $isCoord)
-            <div class="nav-section-title">Solicitudes</div>
-            <ul class="list-unstyled mb-0">
+                {{-- ══ SOLICITUDES DEL PERSONAL ══ --}}
+                @if($isAdmin || $isDir || $isCoord)
                 <li class="nav-item">
                     <a href="{{ route('admin.solicitudes.index') }}" class="{{ request()->routeIs('admin.solicitudes.index') ? 'active' : '' }}"
                        style="display:flex;align-items:center;justify-content:space-between;">
@@ -1168,6 +1166,7 @@ if (auth()->check()) {
                         @endif
                     </a>
                 </li>
+                @endif
             </ul>
             @endif
 
@@ -1346,23 +1345,6 @@ if (auth()->check()) {
             </ul>
             @endif
 
-                        {{-- INTEGRACIONES --}}
-            @if($isAdmin)
-            <div class="nav-section-title">Integraciones</div>
-            <ul class="list-unstyled mb-0">
-                <li>
-                    <a href="{{ route("admin.integraciones.index") }}" class="{{ request()->routeIs("admin.integraciones*", "admin.sigerd*") ? "active" : "" }}">
-                        <i class="bi bi-plug-fill"></i>Integraciones
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ route('admin.asistente.index') }}" class="{{ request()->routeIs('admin.asistente*') ? 'active' : '' }}">
-                        <i class="bi bi-stars"></i>ZuraAI
-                    </a>
-                </li>
-            </ul>
-            @endif
-
             {{-- ══ SISTEMA ══ --}}
             @if($isAdmin)
             <div class="nav-section-title">Sistema</div>
@@ -1425,6 +1407,16 @@ if (auth()->check()) {
                 <li class="nav-item">
                     <a href="{{ route('admin.billing.index') }}" class="{{ request()->routeIs('admin.billing*') ? 'active' : '' }}">
                         <i class="bi bi-credit-card"></i>Facturación
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.integraciones.index') }}" class="{{ request()->routeIs('admin.integraciones*', 'admin.sigerd*') ? 'active' : '' }}">
+                        <i class="bi bi-plug-fill"></i>Integraciones
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.asistente.index') }}" class="{{ request()->routeIs('admin.asistente*') ? 'active' : '' }}">
+                        <i class="bi bi-stars"></i>ZuraAI
                     </a>
                 </li>
             </ul>

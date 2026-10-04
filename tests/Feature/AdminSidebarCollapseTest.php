@@ -46,7 +46,14 @@ class AdminSidebarCollapseTest extends TestCase
     {
         $response = $this->actingAs($this->admin())->get(route('admin.dashboard'));
         $response->assertOk();
-        return $response->getContent();
+        $html = $response->getContent();
+        // El CSS/JS del layout vive en public/{css,js}/admin-*: se añade su contenido para comprobar las reglas y scripts.
+        preg_match_all('#(?:css|js)/admin-[a-z0-9-]+\.(?:css|js)#', $html, $archivos);
+        foreach (array_unique($archivos[0]) as $archivo) {
+            $html .= "
+" . file_get_contents(public_path($archivo));
+        }
+        return $html;
     }
 
     public function test_el_boton_de_colapsar_sidebar_y_su_icono_estan_presentes_y_enlazados(): void

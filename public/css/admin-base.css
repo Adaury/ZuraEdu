@@ -1,0 +1,135 @@
+        /* ══ DataTables wrapper layout ══════════════════════════════════════ */
+        div.dataTables_wrapper                    { position: relative; clear: both; }
+        div.dataTables_wrapper:after              { visibility: hidden; display: block; content: ""; clear: both; height: 0; }
+
+        /* Cabecera y pie del wrapper */
+        div.dataTables_wrapper div.dt-top          { padding: .35rem 0 .5rem; }
+        div.dataTables_wrapper div.dt-bottom       { padding: .35rem 0 0; }
+
+        /* ── Búsqueda ── */
+        div.dataTables_wrapper div.dataTables_filter        { display: inline-block; }
+        div.dataTables_wrapper div.dataTables_filter label  { font-size: .82rem; font-weight: 600; color: #6b7280; display: flex; align-items: center; gap: .4rem; margin: 0; }
+        div.dataTables_wrapper div.dataTables_filter input[type="search"] {
+            padding: .35rem .7rem; border: 1.5px solid #d1d5db; border-radius: 8px;
+            font-size: .83rem; color: #1e293b; background: #fff;
+            outline: none; min-width: 180px;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        div.dataTables_wrapper div.dataTables_filter input[type="search"]:focus {
+            border-color: var(--primary, #2563eb);
+            box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+        }
+        div.dataTables_wrapper div.dataTables_filter input[type="search"]::placeholder { color: #9ca3af; }
+
+        /* ── Info ── */
+        div.dataTables_wrapper div.dataTables_info { font-size: .79rem; color: #9ca3af; padding: 0; }
+
+        /* ── Scroll ── */
+        div.dataTables_wrapper .dataTables_scroll         { clear: both; }
+        div.dataTables_wrapper .dataTables_scrollHead     { overflow: hidden !important; }
+        div.dataTables_wrapper .dataTables_scrollBody     { overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
+        div.dataTables_wrapper .dataTables_scrollHeadInner{ box-sizing: border-box !important; }
+        div.dataTables_wrapper .dataTables_scrollHeadInner table { margin-bottom: 0 !important; }
+        div.dataTables_wrapper .dataTables_scrollFoot     { overflow: hidden; }
+
+        /* ══ DataTables 2.x: nombres de clase nuevos ═══════════════════════
+           Las reglas de arriba son de DataTables 1.x (dataTables_wrapper, dataTables_scrollBody…), pero el JS cargado es la 2.x
+           (dt-container, dt-scroll-body…) y su hoja de estilos no se carga: el <thead> original que DT 2 deja dentro del cuerpo con scroll
+           quedaba VISIBLE y toda tabla grande mostraba la cabecera duplicada y desalineada. */
+        div.dt-container                         { position: relative; clear: both; }
+        div.dt-container div.dt-search           { display: inline-block; }
+        div.dt-container div.dt-search label     { display: none; }
+        div.dt-container div.dt-search input[type="search"] {
+            padding: .35rem .7rem; border: 1.5px solid #d1d5db; border-radius: 8px;
+            font-size: .83rem; color: #1e293b; background: #fff; outline: none; min-width: 180px;
+        }
+        div.dt-container div.dt-search input[type="search"]:focus { border-color: var(--primary, #2563eb); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+        div.dt-container div.dt-info             { font-size: .79rem; color: #9ca3af; padding: 0; }
+        div.dt-container div.dt-scroll-head      { overflow: hidden !important; }
+        div.dt-container div.dt-scroll-body      { overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
+        div.dt-container div.dt-scroll-headInner { box-sizing: border-box !important; }
+        div.dt-container div.dt-scroll-headInner table { margin-bottom: 0 !important; }
+        /* El thead original dentro del cuerpo con scroll solo sirve para medir columnas: colapsado (la cabecera visible es la clonada) */
+        div.dt-container div.dt-scroll-body > table > thead > tr > th,
+        div.dt-container div.dt-scroll-body > table > thead > tr > td {
+            height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important;
+            border-top-width: 0 !important; border-bottom-width: 0 !important;
+            line-height: 0 !important; font-size: 0 !important; overflow: hidden;
+        }
+        div.dt-container div.dt-scroll-body > table > thead > tr > th div.dt-scroll-sizing,
+        div.dt-container div.dt-scroll-body > table > thead > tr > td div.dt-scroll-sizing { height: 0; overflow: hidden; }
+        [data-theme="dark"] div.dt-container div.dt-search input[type="search"] { background: #1e293b !important; border-color: #334155 !important; color: #e2e8f0 !important; }
+        [data-theme="dark"] div.dt-container div.dt-info { color: #94a3b8 !important; }
+
+        /* ══ Tabla ══════════════════════════════════════════════════════════ */
+        table.dataTable { border-collapse: collapse !important; border-spacing: 0 !important; width: 100% !important; }
+        table.dataTable.no-footer { border-bottom: 1px solid #dee2e6; }
+
+        /* thead: fondo primario, texto blanco */
+        table.dataTable > thead > tr > th,
+        table.dataTable > thead > tr > td {
+            background: var(--primary, #6366f1) !important;
+            color: #fff !important;
+            font-size: .8rem !important;
+            font-weight: 700 !important;
+            border-bottom: 2px solid rgba(255,255,255,.2) !important;
+            padding: .55rem .75rem !important;
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* Íconos de ordenamiento */
+        table.dataTable > thead > tr > th.sorting          { background-image: none !important; }
+        table.dataTable > thead > tr > th.dt-orderable-asc,
+        table.dataTable > thead > tr > th.dt-orderable-desc{ position: relative; padding-right: 1.5rem !important; }
+        table.dataTable > thead > tr > th.dt-orderable-asc::after,
+        table.dataTable > thead > tr > th.dt-orderable-desc::after {
+            position: absolute; right: .5rem; top: 50%; transform: translateY(-50%);
+            font-size: .65rem; opacity: .6; color: #fff;
+        }
+        table.dataTable > thead > tr > th.dt-ordering-asc::after  { content: '▲'; opacity: 1; }
+        table.dataTable > thead > tr > th.dt-ordering-desc::after { content: '▼'; opacity: 1; }
+        /* DT2 usa clases distintas para sort */
+        table.dataTable thead th.sorting       { background-image: none !important; }
+        table.dataTable thead th.sorting::after,
+        table.dataTable thead th.sorting_asc::after,
+        table.dataTable thead th.sorting_desc::after { color: rgba(255,255,255,.75) !important; }
+
+        /* tbody: texto oscuro, fondo blanco explícito */
+        table.dataTable > tbody > tr > td,
+        table.dataTable > tbody > tr > th {
+            color: #1e293b !important;
+            background-color: #fff !important;
+            border-color: #f1f5f9 !important;
+            padding: .5rem .75rem;
+            vertical-align: middle;
+        }
+        table.dataTable > tbody > tr:nth-child(even) > td,
+        table.dataTable > tbody > tr:nth-child(even) > th { background-color: #f8faff !important; }
+        table.dataTable > tbody > tr:hover > td,
+        table.dataTable > tbody > tr:hover > th {
+            background-color: #eff6ff !important;
+            color: #1e293b !important;
+        }
+        table.dataTable > tbody > tr { transition: background .1s; }
+
+        /* Scroller placeholder rows */
+        div.dataTables_wrapper div.DTS div.dataTables_scrollBody table { background: transparent; }
+        div.dataTables_wrapper div.DTS tbody tr { background: transparent !important; }
+
+        /* ══ Dark mode ══════════════════════════════════════════════════════ */
+        [data-theme="dark"] div.dataTables_wrapper div.dataTables_filter input[type="search"] {
+            background: #1e293b !important; border-color: #334155 !important; color: #e2e8f0 !important;
+        }
+        [data-theme="dark"] div.dataTables_wrapper div.dataTables_filter input[type="search"]::placeholder { color: #64748b; }
+        [data-theme="dark"] div.dataTables_wrapper div.dataTables_filter label,
+        [data-theme="dark"] div.dataTables_wrapper div.dataTables_info    { color: #94a3b8 !important; }
+        [data-theme="dark"] div.dataTables_wrapper .dataTables_scrollBody { background: #0f172a; }
+        [data-theme="dark"] table.dataTable > tbody > tr > td,
+        [data-theme="dark"] table.dataTable > tbody > tr > th             { color: #e2e8f0 !important; background-color: #1e293b !important; border-color: #334155 !important; }
+        [data-theme="dark"] table.dataTable > tbody > tr:nth-child(even) > td,
+        [data-theme="dark"] table.dataTable > tbody > tr:nth-child(even) > th { background-color: #172032 !important; }
+        [data-theme="dark"] table.dataTable > tbody > tr:hover > td,
+        [data-theme="dark"] table.dataTable > tbody > tr:hover > th       { background-color: #334155 !important; color: #f1f5f9 !important; }
+    

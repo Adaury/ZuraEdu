@@ -7,7 +7,7 @@
 
     @php
         // En el dominio de la PLATAFORMA (el genérico, sin dominio propio de un colegio) el acceso es de ZuraEdu: antes caía en
-        // el colegio por defecto y mostraba su logo y su nombre (p. ej. el del PSAC) a quien entraba desde la dirección general.
+        // el colegio por defecto y mostraba su logo y su nombre a quien entraba desde la dirección general.
         // Con el dominio de un colegio (dominio propio) sí se muestra la identidad de ese colegio.
         $dominioDelColegio = app()->bound('tenant.dominio_propio') && app('tenant.dominio_propio');
         $ls   = $dominioDelColegio ? \App\Helpers\Setting::all() : [];

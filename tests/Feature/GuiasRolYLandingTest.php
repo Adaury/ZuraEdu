@@ -165,4 +165,14 @@ class GuiasRolYLandingTest extends TestCase
             $this->assertStringContainsString('id="' . $ancla . '"', $html, "el enlace #$ancla apunta a una sección que no existe");
         }
     }
+
+    public function test_el_acceso_para_iniciar_sesion_se_ve_en_el_celular_desde_el_encabezado(): void
+    {
+        $html = $this->get('/')->assertOk()->getContent();
+
+        // El encabezado no tiene menú móvil: el botón de login debe verse en pantallas pequeñas (antes «hidden sm:inline-flex»)
+        $cabecera = substr($html, strpos($html, '<header'), strpos($html, '</header>') - strpos($html, '<header'));
+        $this->assertMatchesRegularExpression('#<a href="[^"]*/login" class="inline-flex[^"]*">\s*<span class="sm:hidden">Entrar</span>#', $cabecera);
+        $this->assertStringNotContainsString('hidden sm:inline-flex', $cabecera);
+    }
 }

@@ -66,7 +66,11 @@ class EnviarWhatsApp extends TenantJob
             return ['ok' => false, 'error' => 'Faltan el Account SID, el Auth Token o el número de Twilio (o el número no es válido).', 'definitivo' => true];
         }
 
-        $response = Http::withBasicAuth($sid, $token)
+        if (! preg_match('/^(AC|SK)[0-9a-f]{32}$/i', trim($sid))) {
+            return ['ok' => false, 'error' => 'El Account SID guardado no tiene el formato de Twilio (debe empezar con «AC» y medir 34 caracteres; el actual mide ' . strlen(trim($sid)) . '). Corrígelo en esta pantalla.', 'definitivo' => true];
+        }
+
+        $response = Http::withBasicAuth(trim($sid), trim($token))
             ->asForm()
             ->post("https://api.twilio.com/2010-04-01/Accounts/{$sid}/Messages.json", [
                 'From' => "whatsapp:+{$from}",

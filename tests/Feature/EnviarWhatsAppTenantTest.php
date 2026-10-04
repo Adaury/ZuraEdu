@@ -36,7 +36,7 @@ class EnviarWhatsAppTenantTest extends TestCase
         Setting::setMany([
             'module_whatsapp'       => '1',
             'whatsapp_provider'     => 'twilio',
-            'whatsapp_account_sid'  => "SID_{$sufijo}",
+            'whatsapp_account_sid'  => 'AC' . str_repeat(['A' => 'a', 'B' => 'b'][$sufijo], 32),
             'whatsapp_auth_token'   => "TOKEN_{$sufijo}",
             'whatsapp_from_number'  => '+180900000' . (['A' => '01', 'B' => '02'][$sufijo]),   // A → +18090000001, B → +18090000002
         ]);
@@ -85,9 +85,9 @@ class EnviarWhatsAppTenantTest extends TestCase
         (new ResolveTenantForJob())->handle($job, fn ($j) => $j->handle());
 
         Http::assertSent(function ($request) {
-            return str_contains($request->url(), 'SID_A/Messages.json')
+            return str_contains($request->url(), 'AC' . str_repeat('a', 32) . '/Messages.json')
                 && $request['From'] === 'whatsapp:+18090000001';
         });
-        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'SID_B'));
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'AC' . str_repeat('b', 32)));
     }
 }

@@ -960,6 +960,20 @@ class SistemaController extends Controller
             'whatsapp_notify_alerts' => 'nullable|in:1',
         ]);
 
+        // Quitar espacios de los extremos (al copiar y pegar casi siempre se cuelan y Twilio responde «invalid username»)
+        // (solo los campos que vienen: añadir una clave vacía haría creer que se envió y borraría el valor guardado)
+        foreach (['whatsapp_account_sid', 'whatsapp_auth_token'] as $campo) {
+            if ($request->filled($campo)) {
+                $request->merge([$campo => trim((string) $request->input($campo))]);
+            }
+        }
+
+        // Twilio: el «usuario» es el Account SID (AC + 32 caracteres) o una API Key (SK + 32)
+        if ($request->whatsapp_provider === 'twilio' && $request->filled('whatsapp_account_sid')
+            && ! preg_match('/^(AC|SK)[0-9a-f]{32}$/i', $request->whatsapp_account_sid)) {
+            return back()->withInput()->with('error', 'El Account SID de Twilio no tiene el formato correcto: empieza con «AC» y mide 34 caracteres (lo ves en console.twilio.com, página de inicio, «Account Info»). Revisa que no sea el Auth Token ni que falten caracteres.');
+        }
+
         // El «número de origen» se valida según el proveedor: antes se guardaba cualquier cosa y el envío fallaba después
         $from = trim((string) $request->whatsapp_from_number);
         if ($from !== '') {

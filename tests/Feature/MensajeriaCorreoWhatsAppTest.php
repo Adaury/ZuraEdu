@@ -35,6 +35,12 @@ class MensajeriaCorreoWhatsAppTest extends TestCase
         app()->instance('tenant', $this->tenant);
     }
 
+    /** Un Account SID con el formato real de Twilio: AC + 32 caracteres. */
+    private function sidValido(): string
+    {
+        return 'AC' . str_repeat('0', 32);
+    }
+
     private function url(string $nombre): string
     {
         return 'http://' . $this->tenant->dominio . '.zuraedu.test' . route($nombre, [], false);
@@ -79,7 +85,7 @@ class MensajeriaCorreoWhatsAppTest extends TestCase
     {
         Http::fake(['api.twilio.com/*' => Http::response(['sid' => 'SM1'], 201)]);
         Setting::set('whatsapp_provider', 'twilio');
-        Setting::set('whatsapp_account_sid', 'AC123');
+        Setting::set('whatsapp_account_sid', $this->sidValido());
         Setting::set('whatsapp_auth_token', 'tok');
         Setting::set('whatsapp_from_number', '1+829-477-8613');   // tal como lo escribió el cliente: mal formado
 
@@ -154,7 +160,7 @@ class MensajeriaCorreoWhatsAppTest extends TestCase
     {
         Http::fake(['api.twilio.com/*' => Http::response(['message' => 'Authenticate'], 401)]);
         Setting::set('whatsapp_provider', 'twilio');
-        Setting::set('whatsapp_account_sid', 'AC123');
+        Setting::set('whatsapp_account_sid', $this->sidValido());
         Setting::set('whatsapp_auth_token', 'malo');
         Setting::set('whatsapp_from_number', '+18095550100');
 
@@ -195,22 +201,58 @@ class MensajeriaCorreoWhatsAppTest extends TestCase
 
     public function test_con_meta_se_guarda_el_phone_number_id_y_se_conserva_el_sid_de_twilio(): void
     {
-        Setting::set('whatsapp_account_sid', 'AC_GUARDADO');
+        Setting::set('whatsapp_account_sid', $this->sidValido());
 
         $this->guardarWa(['whatsapp_provider' => 'meta', 'whatsapp_auth_token' => 'tok', 'whatsapp_from_number' => '109876543210'])
             ->assertRedirect()->assertSessionHas('success');
 
         $this->assertSame('109876543210', Setting::get('whatsapp_from_number'));
-        $this->assertSame('AC_GUARDADO', Setting::get('whatsapp_account_sid'), 'el SID de Twilio no se borra al guardar con Meta');
+        $this->assertSame($this->sidValido(), Setting::get('whatsapp_account_sid'), 'el SID de Twilio no se borra al guardar con Meta');
     }
 
     public function test_con_twilio_se_valida_el_numero_de_origen(): void
     {
-        $this->guardarWa(['whatsapp_provider' => 'twilio', 'whatsapp_account_sid' => 'AC1', 'whatsapp_auth_token' => 'tok', 'whatsapp_from_number' => '123'])
+        $this->guardarWa(['whatsapp_provider' => 'twilio', 'whatsapp_account_sid' => $this->sidValido(), 'whatsapp_auth_token' => 'tok', 'whatsapp_from_number' => '123'])
             ->assertSessionHas('error');
 
-        $this->guardarWa(['whatsapp_provider' => 'twilio', 'whatsapp_account_sid' => 'AC1', 'whatsapp_auth_token' => 'tok', 'whatsapp_from_number' => '+18095550100'])
+        $this->guardarWa(['whatsapp_provider' => 'twilio', 'whatsapp_account_sid' => $this->sidValido(), 'whatsapp_auth_token' => 'tok', 'whatsapp_from_number' => '+18095550100'])
             ->assertSessionHas('success');
         $this->assertSame('+18095550100', Setting::get('whatsapp_from_number'));
+    }
+
+    public function test_un_account_sid_de_twilio_con_formato_incorrecto_se_rechaza_al_guardar(): void
+    {
+        $this->guardarWa(['whatsapp_provider' => 'twilio', 'whatsapp_account_sid' => 'abc123', 'whatsapp_auth_token' => 'tok', 'whatsapp_from_number' => '+18095550100'])
+            ->assertSessionHas('error');
+
+        $this->assertStringContainsString('Account SID', session('error'));
+        $this->assertNotSame('abc123', Setting::get('whatsapp_account_sid'));
+    }
+
+    public function test_el_account_sid_correcto_se_guarda_sin_los_espacios_del_copiar_y_pegar(): void
+    {
+        $sid = 'AC' . str_repeat('a1', 16);
+
+        $this->guardarWa(['whatsapp_provider' => 'twilio', 'whatsapp_account_sid' => "  {$sid} 
+", 'whatsapp_auth_token' => '  tok ', 'whatsapp_from_number' => '+18095550100'])
+            ->assertSessionHas('success');
+
+        $this->assertSame($sid, Setting::get('whatsapp_account_sid'));
+        $this->assertSame('tok', Setting::get('whatsapp_auth_token'));
+    }
+
+    public function test_la_prueba_explica_un_sid_guardado_con_formato_incorrecto_sin_llamar_a_twilio(): void
+    {
+        Http::fake();
+        Setting::set('whatsapp_provider', 'twilio');
+        Setting::set('whatsapp_account_sid', 'abc123');
+        Setting::set('whatsapp_auth_token', 'tok');
+        Setting::set('whatsapp_from_number', '+18095550100');
+
+        $r = (new EnviarWhatsApp('809-555-1234', 'Hola'))->enviar();
+
+        $this->assertFalse($r['ok']);
+        $this->assertStringContainsString('el actual mide 6', $r['error']);
+        Http::assertNothingSent();
     }
 }

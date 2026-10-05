@@ -25,6 +25,9 @@ Route::prefix('cafeteria')->name('cafeteria.')->middleware('can:ver-servicios')-
     Route::post('/recargas/registrar',           [CafeteriaController::class, 'registrarRecarga'])->middleware('can:operar-cafeteria')->name('recargas.store');
     Route::post('/ajustes/registrar',            [CafeteriaController::class, 'registrarAjuste'])->middleware('can:ajustar-saldo-cafeteria')->name('ajustes.store');
 
+    // ── Buscador de estudiante para los formularios (autocompletado; antes cargaban todos en un <select>) ──
+    Route::get('/estudiantes/buscar',            [CafeteriaController::class, 'buscarEstudiantes'])->middleware('throttle:90,1')->name('estudiantes.buscar');
+
     // ── Balance por estudiante ─────────────────────────────────────────────
     Route::get('/balance/{estudiante}',          [CafeteriaController::class, 'balanceEstudiante'])->name('balance');
 

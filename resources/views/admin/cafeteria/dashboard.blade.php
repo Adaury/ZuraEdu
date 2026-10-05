@@ -52,6 +52,14 @@
         <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>{{ session('error') }}
     </div>
     @endif
+    @if($errors->any())
+    <div class="mb-4 bg-red-50 border border-red-200 text-red-800 text-sm rounded-lg px-4 py-3" role="alert">
+        <div class="flex items-center gap-2 font-semibold"><i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>No se pudo registrar:</div>
+        <ul class="list-disc ml-9 mt-1">
+            @foreach($errors->all() as $__e)<li>{{ $__e }}</li>@endforeach
+        </ul>
+    </div>
+    @endif
 
     {{-- Tarjetas resumen ─────────────────────────────────────────────────── --}}
     <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
@@ -213,7 +221,6 @@
         </div>
     </div>
 
-</div>
 
 {{-- ═══ Modal: Registrar Venta ══════════════════════════════════════════════ --}}
 <div x-show="modalVenta" x-cloak
@@ -233,17 +240,12 @@
             <input type="hidden" name="token_operacion" value="{{ \Illuminate\Support\Str::uuid() }}">
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Estudiante <span class="text-red-500">*</span></label>
-                <select name="estudiante_id" required class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">— Seleccionar —</option>
-                    @foreach(\App\Models\Estudiante::activos()->orderBy('apellidos')->get(['id','nombres','apellidos']) as $est)
-                    <option value="{{ $est->id }}">{{ $est->nombre_completo }}</option>
-                    @endforeach
-                </select>
+                @include('admin.cafeteria._selector_estudiante')
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Producto (opcional)</label>
                 <select name="producto_id" class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        x-on:change="let p=$event.target.selectedOptions[0].dataset.precio; if(p) $root.querySelector('[name=monto]').value=p;">
+                        x-on:change="let p=$event.target.selectedOptions[0].dataset.precio; if(p) $el.form.querySelector('[name=monto]').value=p;">
                     <option value="">— Libre / Sin producto —</option>
                     @foreach(\App\Models\ProductoCafeteria::activos()->orderBy('nombre')->get() as $prod)
                     <option value="{{ $prod->id }}" data-precio="{{ $prod->precio }}">
@@ -292,12 +294,7 @@
             <input type="hidden" name="token_operacion" value="{{ \Illuminate\Support\Str::uuid() }}">
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Estudiante <span class="text-red-500">*</span></label>
-                <select name="estudiante_id" required class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                    <option value="">— Seleccionar —</option>
-                    @foreach(\App\Models\Estudiante::activos()->orderBy('apellidos')->get(['id','nombres','apellidos']) as $est)
-                    <option value="{{ $est->id }}">{{ $est->nombre_completo }}</option>
-                    @endforeach
-                </select>
+                @include('admin.cafeteria._selector_estudiante')
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Monto a Recargar (RD$) <span class="text-red-500">*</span></label>
@@ -343,12 +340,7 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Estudiante <span class="text-red-500">*</span></label>
-                <select name="estudiante_id" required class="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
-                    <option value="">— Seleccionar —</option>
-                    @foreach(\App\Models\Estudiante::activos()->orderBy('apellidos')->get(['id','nombres','apellidos']) as $est)
-                    <option value="{{ $est->id }}">{{ $est->nombre_completo }}</option>
-                    @endforeach
-                </select>
+                @include('admin.cafeteria._selector_estudiante')
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Monto (RD$) — puede ser negativo <span class="text-red-500">*</span></label>
@@ -372,4 +364,5 @@
     </div>
 </div>
 
+</div>{{-- fin de la raíz de Alpine: los modales van dentro para ver modalVenta/modalRecarga --}}
 @endsection

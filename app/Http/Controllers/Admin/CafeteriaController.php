@@ -82,7 +82,7 @@ class CafeteriaController extends Controller
     {
         $data = $request->validate([
             'nombre'    => 'required|string|max:120',
-            'precio'    => 'required|numeric|min:0',
+            'precio'    => 'required|numeric|between:0,99999.99',
             'categoria' => ['required', Rule::in(array_keys(ProductoCafeteria::CATEGORIAS))],
             'activo'    => 'boolean',
         ]);
@@ -105,7 +105,7 @@ class CafeteriaController extends Controller
     {
         $data = $request->validate([
             'nombre'    => 'required|string|max:120',
-            'precio'    => 'required|numeric|min:0',
+            'precio'    => 'required|numeric|between:0,99999.99',
             'categoria' => ['required', Rule::in(array_keys(ProductoCafeteria::CATEGORIAS))],
             'activo'    => 'boolean',
         ]);
@@ -177,6 +177,19 @@ class CafeteriaController extends Controller
         ));
     }
 
+    /** Avisos de validación en español (Laravel los daba en inglés: «The monto field must be between…»). */
+    private const MENSAJES = [
+        'estudiante_id.required' => 'Elige un estudiante.',
+        'estudiante_id.exists'   => 'Ese estudiante no existe en este colegio.',
+        'producto_id.exists'     => 'Ese producto no existe en este colegio.',
+        'monto.required'         => 'Escribe el monto.',
+        'monto.numeric'          => 'El monto debe ser un número.',
+        'monto.between'          => 'El monto debe estar entre :min y :max (RD$).',
+        'monto.not_in'           => 'El ajuste no puede ser de 0: escribe un monto positivo (suma) o negativo (resta).',
+        'descripcion.required'   => 'Escribe el motivo del ajuste.',
+        'descripcion.max'        => 'La nota no puede pasar de 200 caracteres.',
+    ];
+
     /** Colegio de la petición (el que resuelve ResolveTenant); nunca un ID que mande el navegador. */
     private function tenantId(): int
     {
@@ -209,6 +222,28 @@ class CafeteriaController extends Controller
         return ! Cache::add('cafeteria_op:' . $this->tenantId() . ':' . auth()->id() . ':' . $token, 1, now()->addMinutes(30));
     }
 
+    /** Autocompletado de estudiantes activos del propio colegio (el alcance de tenant del modelo lo aísla); máx. 15. */
+    public function buscarEstudiantes(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+        if (mb_strlen($q) < 2 || mb_strlen($q) > 60) {
+            return response()->json([]);
+        }
+
+        $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q) . '%';
+
+        return response()->json(
+            Estudiante::activos()
+                ->where(function ($w) use ($like) {
+                    $w->where('nombres', 'like', $like)->orWhere('apellidos', 'like', $like)->orWhere('numero_matricula', 'like', $like)->orWhere('cedula', 'like', $like);
+                })
+                ->orderBy('apellidos')->orderBy('nombres')->limit(15)
+                ->get(['id', 'nombres', 'apellidos', 'numero_matricula'])
+                ->map(fn ($e) => ['id' => $e->id, 'nombre' => $e->nombre_completo, 'matricula' => $e->numero_matricula])
+                ->values()
+        );
+    }
+
     public function registrarVenta(Request $request)
     {
         $data = $request->validate([
@@ -216,7 +251,7 @@ class CafeteriaController extends Controller
             'producto_id'   => ['nullable', Rule::exists('productos_cafeteria', 'id')->where('tenant_id', $this->tenantId())],
             'descripcion'   => 'nullable|string|max:200',
             'monto'         => 'required|numeric|between:0.01,' . self::MONTO_MAXIMO,
-        ]);
+        ], self::MENSAJES);
 
         if ($this->yaRegistrada($request)) {
             return back()->with('success', 'Esta venta ya estaba registrada: no se repitió.');
@@ -248,7 +283,7 @@ class CafeteriaController extends Controller
             'estudiante_id' => ['required', $this->existeEnMiColegio('estudiantes')],
             'monto'         => 'required|numeric|between:0.01,' . self::MONTO_MAXIMO,
             'descripcion'   => 'nullable|string|max:200',
-        ]);
+        ], self::MENSAJES);
 
         if ($this->yaRegistrada($request)) {
             return back()->with('success', 'Esta recarga ya estaba registrada: no se repitió.');
@@ -274,7 +309,7 @@ class CafeteriaController extends Controller
             'estudiante_id' => ['required', $this->existeEnMiColegio('estudiantes')],
             'monto'         => ['required', 'numeric', 'between:-' . self::MONTO_MAXIMO . ',' . self::MONTO_MAXIMO, 'not_in:0'],
             'descripcion'   => 'required|string|max:200',
-        ]);
+        ], self::MENSAJES);
 
         if ($this->yaRegistrada($request)) {
             return back()->with('success', 'Este ajuste ya estaba registrado: no se repitió.');

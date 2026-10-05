@@ -30,6 +30,14 @@
             {{ session('error') }}
         </div>
     @endif
+    @if($errors->any())
+    <div class="mb-4 bg-red-50 border border-red-200 text-red-800 text-sm rounded-lg px-4 py-3" role="alert">
+        <div class="flex items-center gap-2 font-semibold"><i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>No se pudo registrar:</div>
+        <ul class="list-disc ml-9 mt-1">
+            @foreach($errors->all() as $__e)<li>{{ $__e }}</li>@endforeach
+        </ul>
+    </div>
+    @endif
 
     {{-- Tarjetas de resumen --}}
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -155,7 +163,6 @@
         @endif
     </div>
 
-</div>
 
 {{-- ═══ Modal: Registrar Venta ══════════════════════════════════════════════ --}}
 <div x-show="modalVenta" x-cloak
@@ -193,7 +200,7 @@
                         x-on:change="
                             let opt = $event.target.selectedOptions[0];
                             let precio = opt.dataset.precio;
-                            if (precio) $root.querySelector('[name=monto]').value = precio;
+                            if (precio) $el.form.querySelector('[name=monto]').value = precio;
                         ">
                     <option value="">-- Libre / Sin producto --</option>
                     @foreach($productos as $prod)
@@ -298,4 +305,5 @@
     </div>
 </div>
 
+</div>{{-- fin de la raíz de Alpine: los modales van dentro para ver modalVenta/modalRecarga --}}
 @endsection

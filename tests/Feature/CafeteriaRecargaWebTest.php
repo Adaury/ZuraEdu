@@ -190,4 +190,77 @@ class CafeteriaRecargaWebTest extends TestCase
         (require database_path('migrations/2026_10_05_000001_permisos_cafeteria_operar_y_ajustar.php'))->up();
         $this->assertSame(1, \Spatie\Permission\Models\Permission::where('name', 'operar-cafeteria')->count());
     }
+
+    // ── Revisión completa de la pantalla (los botones no abrían el formulario) ────
+
+    public function test_los_formularios_estan_dentro_del_contenedor_de_alpine_para_que_los_botones_los_abran(): void
+    {
+        $admin = $this->usuario('Administrador');
+        $e = Estudiante::factory()->create();
+
+        foreach ([route('admin.cafeteria.dashboard'), route('admin.cafeteria.ventas'), route('admin.cafeteria.balance', $e)] as $url) {
+            $html = $this->actingAs($admin)->get($url)->assertOk()->getContent();
+            $raiz = strpos($html, 'x-data="{ modalVenta');
+            $this->assertNotFalse($raiz, "$url tiene la raíz de Alpine");
+
+            foreach (['modalVenta', 'modalRecarga'] as $modal) {
+                $pos = strpos($html, 'x-show="' . $modal . '"');
+                $this->assertNotFalse($pos, "$url tiene el formulario $modal");
+                $entre = substr($html, $raiz, $pos - $raiz);
+                // Entre la raíz y el formulario hay más <div> abiertos que cerrados: el formulario está DENTRO de la raíz
+                $this->assertGreaterThan(
+                    preg_match_all('#</div>#', $entre),
+                    preg_match_all('#<div[ >]#', $entre),
+                    "$url: el formulario $modal quedó fuera del contenedor x-data y nunca se abriría"
+                );
+            }
+        }
+    }
+
+    public function test_la_pantalla_no_carga_a_todos_los_estudiantes_en_los_formularios(): void
+    {
+        Estudiante::factory()->count(25)->create(['apellidos' => 'ZzApellidoQueNoDebeSalirEnLaPagina']);
+
+        $html = $this->actingAs($this->usuario('Administrador'))->get(route('admin.cafeteria.dashboard'))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('ZzApellidoQueNoDebeSalirEnLaPagina', $html, 'ya no hay un <select> con todos los estudiantes');
+        $this->assertStringContainsString(route('admin.cafeteria.estudiantes.buscar'), $html, 'usa el buscador');
+    }
+
+    public function test_el_buscador_devuelve_solo_estudiantes_activos_del_colegio_y_exige_dos_letras(): void
+    {
+        $admin = $this->usuario('Administrador');
+        Estudiante::factory()->create(['nombres' => 'Zelmira', 'apellidos' => 'Buscable']);
+        Estudiante::factory()->create(['nombres' => 'Zelmira', 'apellidos' => 'Retirada', 'estado' => 'inactivo']);
+
+        $otro = Tenant::create(['nombre_institucion' => 'Otro', 'dominio' => 'otro' . random_int(10000, 99999), 'estado' => 'activo', 'tipo' => 'privado', 'plan' => 'free']);
+        app()->instance('tenant', $otro);
+        Estudiante::factory()->create(['nombres' => 'Zelmira', 'apellidos' => 'DeOtroColegio']);
+        app()->forgetInstance('tenant');
+
+        $r = $this->actingAs($admin)->getJson(route('admin.cafeteria.estudiantes.buscar', ['q' => 'Zelmira']))->assertOk()->json();
+        $apellidos = collect($r)->pluck('nombre')->implode(' | ');
+
+        $this->assertStringContainsString('Buscable', $apellidos);
+        $this->assertStringNotContainsString('Retirada', $apellidos, 'solo activos');
+        $this->assertStringNotContainsString('DeOtroColegio', $apellidos, 'jamás de otro colegio');
+
+        $this->assertSame([], $this->actingAs($admin)->getJson(route('admin.cafeteria.estudiantes.buscar', ['q' => 'Z']))->json(), 'mínimo dos letras');
+        $this->assertSame([], $this->actingAs($admin)->getJson(route('admin.cafeteria.estudiantes.buscar', ['q' => '%%']))->json(), 'los comodines del LIKE no listan a todos');
+    }
+
+    public function test_los_avisos_de_validacion_salen_en_espanol_y_se_muestran_en_la_pantalla(): void
+    {
+        $e = Estudiante::factory()->create();
+        $admin = $this->usuario('Administrador');
+
+        $r = $this->actingAs($admin)->from(route('admin.cafeteria.dashboard'))
+            ->post(route('admin.cafeteria.recargas.store'), ['estudiante_id' => $e->id, 'monto' => 99999999]);
+        $r->assertRedirect(route('admin.cafeteria.dashboard'));
+        $this->assertStringContainsString('El monto debe estar entre', session('errors')->first('monto'));
+
+        // y la pantalla los pinta (antes la página se recargaba sin decir nada)
+        $this->actingAs($admin)->withSession(['errors' => session('errors')])->get(route('admin.cafeteria.dashboard'))
+            ->assertSee('No se pudo registrar', false)->assertSee('El monto debe estar entre', false);
+    }
 }

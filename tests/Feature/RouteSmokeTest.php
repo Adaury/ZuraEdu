@@ -21,6 +21,7 @@ use Tests\TestCase;
 class RouteSmokeTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\DetectaAlpineHuerfano;
 
     /** Rutas con GET idempotente en apariencia pero con efecto secundario real —
      *  se excluyen del smoke para no ensuciar el estado entre iteraciones. */
@@ -65,6 +66,7 @@ class RouteSmokeTest extends TestCase
         );
 
         $fallos = [];
+        $huerfanos = [];
 
         foreach (self::ROLES as $rol) {
             $user = User::factory()->create(['activo' => true]);
@@ -75,10 +77,18 @@ class RouteSmokeTest extends TestCase
             }
 
             foreach ($rutas as $nombre) {
-                $status = $this->actingAs($user)->get(route($nombre))->getStatusCode();
+                $resp = $this->actingAs($user)->get(route($nombre));
+                $status = $resp->getStatusCode();
 
                 if ($status >= 500) {
                     $fallos[] = "{$nombre} ({$rol}): HTTP {$status}";
+                }
+
+                // Pantallas completas del Administrador: ningún botón/formulario de Alpine puede quedar fuera de un x-data
+                if ($rol === 'Administrador' && $status === 200 && str_contains((string) $resp->headers->get('Content-Type'), 'text/html')) {
+                    foreach ($this->alpineHuerfanos((string) $resp->getContent()) as $h) {
+                        $huerfanos[] = "{$nombre}: {$h}";
+                    }
                 }
             }
         }
@@ -86,6 +96,11 @@ class RouteSmokeTest extends TestCase
         $this->assertEmpty(
             $fallos,
             "Rutas que devolvieron 5xx:\n" . implode("\n", $fallos)
+        );
+
+        $this->assertEmpty(
+            $huerfanos,
+            "Alpine no procesa esto (está fuera de un x-data; el botón o formulario no hará nada):\n" . implode("\n", array_unique($huerfanos))
         );
     }
 }

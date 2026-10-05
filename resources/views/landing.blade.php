@@ -222,7 +222,7 @@
         </a>
 
         {{-- Links desktop --}}
-        <ul class="hidden md:flex items-center gap-1">
+        <ul class="hidden lg:flex items-center gap-1">   {{-- desde lg: a 768 px logo + enlaces + 2 botones no caben y la página se ensanchaba 90 px --}}
             @foreach([['#beneficios','Beneficios'],['#modulos','Módulos'],['#roles','Para quién'],['#demo','Demo'],['#planes','Planes'],['#faq','Preguntas']] as [$href,$label])
             <li class="{{ in_array($href, ['#roles', '#demo']) ? 'hidden lg:block' : '' }}"><a href="{{ $href }}" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-all">{{ $label }}</a></li>
             @endforeach

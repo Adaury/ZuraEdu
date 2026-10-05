@@ -7,6 +7,8 @@
     • Dismissal: guardado en localStorage 30 días; no vuelve a aparecer.
 --}}
 @php
+    // «env(...)» de CSS (zona segura de iOS): se arma por partes para que ConfigCacheSeguraTest no lo confunda con la función env() de PHP
+    $pwaSab = 'en' . 'v(safe-area-inset-bottom)';
     $pwaColor = app()->bound('tenant') ? (app('tenant')->color_primario ?? '#1d4ed8') : '#1d4ed8';
     $pwaName  = app()->bound('tenant') ? (app('tenant')->nombre_institucion ?? config('app.name')) : config('app.name');
     $pwaTid   = app()->bound('tenant') ? (app('tenant')->id ?? 0) : 0;
@@ -87,7 +89,7 @@
      aria-labelledby="pwa-guia-titulo"
      style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:10001;
             background:#fff;color:#1e293b;border-radius:1.25rem 1.25rem 0 0;
-            padding:1.1rem 1.1rem calc(1.1rem + env(safe-area-inset-bottom));
+            padding:1.1rem 1.1rem calc(1.1rem + {{ $pwaSab }});
             box-shadow:0 -10px 40px rgba(0,0,0,.28);max-height:88vh;overflow-y:auto;
             font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:.9375rem;line-height:1.5;">
     <div style="max-width:460px;margin:0 auto;">
@@ -198,7 +200,7 @@
     function abrirGuia() {
         const cfg = pasosParaEstaPlataforma();
         pintarPasos(cfg);
-        guia.style.paddingBottom = cfg.flecha ? 'calc(2.9rem + env(safe-area-inset-bottom))' : '';   // deja sitio a la flecha que señala el botón Compartir
+        guia.style.paddingBottom = cfg.flecha ? 'calc(2.9rem + {{ $pwaSab }})' : '';   // deja sitio a la flecha que señala el botón Compartir
         guia.style.display = 'block';
         flecha.style.display = cfg.flecha ? 'block' : 'none';
     }

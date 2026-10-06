@@ -216,3 +216,119 @@ Por severidad e impacto/esfuerzo:
 No se modificó ningún archivo durante esta auditoría — es puramente de
 lectura, tal como pide la regla de "primero AUDITA, después CORRIGE" del
 checklist.
+
+---
+
+# Re-verificación — 2026-10-06
+
+Actualización de la auditoría del 2026-09-04. Solo lectura: **no se modificó
+ningún archivo de código** (únicamente se añadió esta sección).
+Alcance de esta pasada: re-comprobar en el código actual cada hallazgo
+anterior (H1–H4 y medios), análisis automático de las 1525 rutas
+(`php artisan route:list --json`), aislamiento multi-tenant (modelos,
+`DB::table`, `withoutTenant`), seguridad transversal (subidas, rutas
+públicas, webhooks) y estado de migraciones. **No** se revisó de nuevo
+módulo por módulo todo el dominio académico, finanzas, SIGERD ni Classroom:
+para eso sigue vigente la auditoría del 2026-09-04, salvo lo indicado abajo.
+
+## 1. Estado de los hallazgos anteriores
+
+| ID | Hallazgo | Estado hoy | Evidencia |
+|----|----------|-----------|-----------|
+| H4 | Tailwind por CDN en producción | 🟢 Corregido | `resources/views/layouts/admin.blade.php:52` y `landing.blade.php:20` ya no cargan el CDN; CSS compilado en `resources/css/admin.css` y `landing.css` |
+| H3 | Sub-recursos admin sin permiso específico | 🟢 Corregido | `routes/admin/sistema.php:69` (`can:gestionar-school-years`), `:76` (`can:gestionar-periodos`, incluye cerrar/reabrir); alertas y calendario protegidos en `routes/admin/reportes.php` |
+| H2 | QR estático + endpoint público que filtra PII | 🟢 Corregido | `CarnetCheckinController::scanPublico` solo devuelve `valido`, `numero_carnet`, `tipo`; ruta con `throttle:30,1` |
+| — | Doble escaneo Carnet+ | 🟢 Corregido | `CarnetApiController.php:~190` usa `CarnetAcceso::recienteParaCarnet()` y responde `duplicado: true`; el controlador web también (`CarnetCheckinController.php:94`) |
+| — | Reingreso sin flujo propio | 🟡 Parcial | `MatriculaController.php:104-124,290-295` ya lista candidatos a reingreso con fecha/motivo de baja; no se verificó historial dedicado |
+| — | `PromedioEstudianteService` no usado | 🔵 Mejorado, no completo | Ya lo usan 10 archivos; quedan `avg('nota_final')` directos en `PortalRepresentanteController.php:95`, `PortalEstudianteController.php:2009,2015`, `AcademicRiskScoreService.php:187` y 4 en `SistemaController.php` |
+| H1 | Dos reglas de promoción distintas | 🟠 **Sigue abierto** | `CierreAnoController.php:790` promueve con `>= 60` sin asistencia; `RegistroAcademicoService.php:19-20` usa 65 + 75 % de asistencia. Mitigado: `calcular-promociones` ahora exige `can:acceso-direccion` (`routes/admin/academico.php:~200`), pero las dos reglas siguen escribiendo en `promociones`. Requiere decisión de negocio |
+
+## 2. Hallazgos nuevos
+
+### N1 — CRÍTICO (🟢 CORREGIDO 2026-10-06): "Limpiar datos" borraba los datos de TODOS los colegios
+- **Dónde**: `app/Http/Controllers/Admin/SistemaController.php:288-361`
+  (`limpiarDatos`), ruta `POST admin/sistema/limpiar-datos`
+  (`routes/admin/sistema.php:171`, gate `can:solo-administrador`), botón en
+  `resources/views/admin/sistema/index.blade.php:664`.
+- **Qué hace**: `DB::table($tabla)->truncate()` sobre `calificaciones`,
+  `calificaciones_academicas`, `asistencias`, `matriculas`, `asignaciones`,
+  `grupos`, `horarios`, `estudiantes`, etc., con `FOREIGN_KEY_CHECKS=0`.
+  `TRUNCATE` ignora el global scope de tenant. El borrado de usuarios
+  (`DB::table('estudiantes')->pluck('user_id')`) tampoco filtra por tenant.
+- **Impacto**: el Administrador de **un** colegio que escriba `CONFIRMAR`
+  borra los datos académicos y estudiantes de **todos** los colegios de la
+  plataforma, y deja la integridad referencial desactivada si algo falla a
+  mitad (no hay transacción ni `try/finally` que reactive el chequeo).
+- **Pruebas**: ninguna (`grep` en `tests/` sin resultados).
+- **No ejecutado** durante la auditoría (regla de no destrucción).
+- **Corrección aplicada**: `limpiarDatos` ahora borra con `where tenant_id = tenant_id()` dentro de `DB::transaction`, restaura `FOREIGN_KEY_CHECKS` en `finally`, limita el pivote `estudiante_representante` (sin `tenant_id`) por los estudiantes del colegio y filtra los usuarios por tenant. Prueba: `tests/Feature/LimpiarDatosAislamientoTenantTest.php` (3 pruebas: dos colegios, scope `todo` y `estudiantes`, y confirmación obligatoria). Limitación conocida: con las claves foráneas desactivadas, tablas hijas no listadas (p. ej. `promociones`) del mismo colegio pueden quedar huérfanas, igual que antes.
+- **Propuesta original**: sustituir `truncate()` por `->where('tenant_id',
+  tenant_id())->delete()` dentro de una transacción, en orden de
+  dependencias, y filtrar los usuarios por tenant; añadir prueba con dos
+  tenants. Alternativa: retirar la función y dejarla solo para SuperAdmin.
+
+### N2 — Medio: rutas públicas con detalles a revisar
+- `GET /demo/{rol}` (`routes/web.php:88`) inicia sesión sin contraseña como
+  docente/padre/estudiante demo, **sin `throttle`** (el `/demo` sí lo tiene).
+  Depende de `Setting demo_activo`; `.env.production` tiene
+  `DEMO_MODE_ENABLED=true`. Confirmar que los usuarios demo pertenecen a un
+  tenant aislado y sin datos reales.
+- `POST /cardnet/notify` (`CardNetController.php:37`) escribe en el log
+  `$request->all()` completo antes de verificar la firma: contenido no
+  autenticado en logs. La firma sí se verifica después.
+- `DELETE admin/tenant-chat/clear` (`TenantChatController.php:27`) borra todo
+  el chat del tenant y solo exige el acceso admin genérico.
+
+### N3 — Bajo: consultas `DB::table` sin `tenant_id` explícito
+`RendimientoController.php:203-277` (3 consultas de promedio por área) y
+`RendimientoCache.php:57-71` filtran por `school_year_id`/`grupo_id`, que son
+IDs propios del tenant, así que hoy no cruzan datos; pero no tienen
+defensa en profundidad como sí la tienen `KpiDashboardService.php:221,250`.
+Recomendado añadir `where tenant_id`.
+
+## 3. Verificado sin hallazgos (🟢)
+
+- **Rutas**: 1525 rutas, 0 duplicadas por URI+método, 0 nombres duplicados.
+  Solo 40 son públicas (login, registro/inscripción con throttle, webhooks
+  Stripe/CardNet con firma, galería, sitio, health). De las rutas
+  `/admin/*`, solo **68** dependen únicamente del gate genérico (antes eran
+  decenas de sub-recursos); las sensibles (tickets, mensajes, riesgo)
+  autorizan dentro del controlador (`abort(403)` y filtros por `tenant_id`).
+- **Multi-tenant**: de 168 modelos, 13 no usan `BelongsToTenant`:
+  `Tenant`, `Plan`, `Module`, `Subscription`, `TenantFeature`,
+  `SupportSession` (globales o de plataforma, justificados) y
+  `BackupConfiguracion`, `DeviceToken`, `EncuestaInteres`,
+  `InsigniaEstudiante`, `PuntoEstudiante`, `MensajeDestinatario`,
+  `SupportMessage` (**pendiente confirmar** caso por caso que se acceden
+  siempre a través de un padre con tenant; la auditoría anterior listaba 4
+  excepciones). Los 27 usos de `withoutGlobalScope(s)/withoutTenant` están
+  en login, jobs, SuperAdmin y servicios de Carnet+ con filtro posterior.
+- **Seguridad**: 0 modelos con `$guarded = []`; las subidas revisadas
+  (`GaleriaController`, `HomepageController`, `PublicacionController`,
+  `AuthApiController::uploadAvatar`) validan con `image|max:`; no se halló
+  `eval/unserialize/exec` en `app/`.
+- **Migraciones**: 255 archivos; `migrate:status` sin pendientes.
+- **Webhooks**: Stripe con tabla de idempotencia
+  (`stripe_webhook_events`); CardNet con verificación de firma.
+
+## 4. Pruebas realizadas
+
+- Análisis estático de rutas y código descrito arriba.
+- Suite `php artisan test` (BD `sge_test`, no toca `sge`): ver resultado en
+  la sección 5.
+
+## 5. Resultado de la suite de pruebas
+
+La suite completa se interrumpió a los ~320 pruebas (todas verdes) para ejecutar la prueba nueva sin pisar `sge_test`; **pendiente relanzarla completa** tras la corrección de N1.
+
+## 6. Orden de corrección recomendado
+
+1. **N1** (`limpiarDatos`) — corregir antes de cualquier otro cambio; es
+   pérdida de datos entre clientes.
+2. **H1** — decidir la regla oficial de promoción (60 sin asistencia vs.
+   65 + 75 % + condicionado) y unificar en `RegistroAcademicoService`.
+3. **N2** — throttle en `/demo/{rol}`, no loguear el IPN sin firmar,
+   restringir `tenant-chat/clear`.
+4. Confirmar los 7 modelos sin `BelongsToTenant` y añadir `tenant_id` en
+   los `DB::table` de N3.
+5. Completar la migración a `PromedioEstudianteService`.

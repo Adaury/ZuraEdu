@@ -293,11 +293,13 @@ class SistemaController extends Controller
             'scope'        => 'required|in:estudiantes,todo',
         ]);
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        // Solo se borran filas del colegio actual. Antes se usaba truncate(),
+        // que vacía la tabla completa y destruía los datos de TODOS los
+        // colegios de la plataforma (hallazgo crítico N1, auditoría 2026-10-06).
+        $tenantId = tenant_id();
 
-        if ($request->scope === 'todo') {
-            // Limpiar absolutamente todo (datos académicos + estudiantes)
-            $tablas = [
+        $tablas = $request->scope === 'todo'
+            ? [
                 'evaluaciones_indicadores',
                 'calificaciones_academicas',
                 'calificaciones',
@@ -309,52 +311,54 @@ class SistemaController extends Controller
                 'horarios',
                 'asignaciones',
                 'matriculas',
-                'estudiante_representante',
                 'grupos',
                 'secciones',
-            ];
-            foreach ($tablas as $tabla) {
-                if (\Illuminate\Support\Facades\Schema::hasTable($tabla)) {
-                    DB::table($tabla)->truncate();
-                }
-            }
-            // Eliminar users de estudiantes/representantes
-            $estudianteUserIds = DB::table('estudiantes')->whereNotNull('user_id')->pluck('user_id');
-            if ($estudianteUserIds->isNotEmpty()) {
-                \App\Models\User::whereIn('id', $estudianteUserIds->toArray())
-                    ->whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['Administrador','Director','Coordinador','Docente']))
-                    ->delete();
-            }
-            DB::table('estudiantes')->truncate();
-            $mensaje = 'Todos los datos académicos y estudiantes han sido eliminados.';
-
-        } else {
-            // Solo estudiantes + sus datos
-            $tablas = [
+            ]
+            : [
                 'evaluaciones_indicadores',
                 'calificaciones_academicas',
                 'calificaciones',
                 'asistencias',
                 'observaciones',
                 'matriculas',
-                'estudiante_representante',
             ];
-            foreach ($tablas as $tabla) {
-                if (\Illuminate\Support\Facades\Schema::hasTable($tabla)) {
-                    DB::table($tabla)->truncate();
-                }
-            }
-            $estudianteUserIds = DB::table('estudiantes')->whereNotNull('user_id')->pluck('user_id');
-            if ($estudianteUserIds->isNotEmpty()) {
-                \App\Models\User::whereIn('id', $estudianteUserIds->toArray())
-                    ->whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['Administrador','Director','Coordinador','Docente']))
-                    ->delete();
-            }
-            DB::table('estudiantes')->truncate();
-            $mensaje = 'Todos los estudiantes y sus datos han sido eliminados.';
-        }
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        $mensaje = $request->scope === 'todo'
+            ? 'Todos los datos académicos y estudiantes han sido eliminados.'
+            : 'Todos los estudiantes y sus datos han sido eliminados.';
+
+        $schema = \Illuminate\Support\Facades\Schema::class;
+
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        try {
+            DB::transaction(function () use ($tablas, $tenantId, $schema) {
+                $estudianteIds     = DB::table('estudiantes')->where('tenant_id', $tenantId)->pluck('id');
+                $estudianteUserIds = DB::table('estudiantes')->where('tenant_id', $tenantId)
+                    ->whereNotNull('user_id')->pluck('user_id');
+
+                foreach ($tablas as $tabla) {
+                    if ($schema::hasTable($tabla) && $schema::hasColumn($tabla, 'tenant_id')) {
+                        DB::table($tabla)->where('tenant_id', $tenantId)->delete();
+                    }
+                }
+
+                // Pivote sin tenant_id: se limita por los estudiantes del colegio.
+                foreach ($estudianteIds->chunk(1000) as $chunk) {
+                    DB::table('estudiante_representante')->whereIn('estudiante_id', $chunk)->delete();
+                }
+
+                if ($estudianteUserIds->isNotEmpty()) {
+                    \App\Models\User::where('tenant_id', $tenantId)
+                        ->whereIn('id', $estudianteUserIds->toArray())
+                        ->whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['Administrador','Director','Coordinador','Docente']))
+                        ->delete();
+                }
+
+                DB::table('estudiantes')->where('tenant_id', $tenantId)->delete();
+            });
+        } finally {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        }
 
         // Log actividad
         try {

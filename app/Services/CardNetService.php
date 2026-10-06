@@ -154,7 +154,6 @@ class CardNetService
         if (! hash_equals($expectedSig, strtolower($signature))) {
             Log::warning('CardNet IPN: firma inválida', [
                 'order_id'  => $orderId,
-                'expected'  => $expectedSig,
                 'received'  => $signature,
             ]);
             return null;

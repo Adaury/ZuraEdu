@@ -87,6 +87,7 @@ Route::get('/demo', [DemoAutoController::class, 'enter'])->name('demo.auto')->mi
 
 Route::get('/demo/{rol}', [AuthController::class, 'demoLogin'])
     ->name('demo.login')
+    ->middleware('throttle:20,1')
     ->where('rol', 'docente|padre|estudiante');
 
 Route::get('/login',  [AuthController::class, 'showLogin'])->name('login')->middleware('guest');
@@ -772,7 +773,8 @@ Route::post('/webhook/stripe', [\App\Http\Controllers\WebhookStripeController::c
 Route::prefix('admin/tenant-chat')->name('admin.tenant-chat.')->middleware(['auth', 'activo', 'admin.access'])->group(function () {
     Route::get('/',       [\App\Http\Controllers\Admin\TenantChatController::class, 'index'])->name('index');
     Route::post('/',      [\App\Http\Controllers\Admin\TenantChatController::class, 'store'])->name('store');
-    Route::delete('/clear', [\App\Http\Controllers\Admin\TenantChatController::class, 'clear'])->name('clear');
+    // Borra el chat de TODO el colegio: solo Dirección (antes cualquier rol con acceso admin).
+    Route::delete('/clear', [\App\Http\Controllers\Admin\TenantChatController::class, 'clear'])->name('clear')->middleware('can:acceso-direccion');
 });
 
 // ── Chat de Soporte Público ───────────────────────────────────────────────

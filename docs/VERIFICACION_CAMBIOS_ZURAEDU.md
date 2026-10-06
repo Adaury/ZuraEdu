@@ -267,7 +267,15 @@ para eso sigue vigente la auditoría del 2026-09-04, salvo lo indicado abajo.
   dependencias, y filtrar los usuarios por tenant; añadir prueba con dos
   tenants. Alternativa: retirar la función y dejarla solo para SuperAdmin.
 
-### N2 — Medio: rutas públicas con detalles a revisar
+### N2 — Medio (🟢 CORREGIDO 2026-10-06, salvo el último punto): rutas públicas con detalles a revisar
+**Corrección aplicada**: `/demo/{rol}` con `throttle:20,1` (`routes/web.php`);
+`CardNetController::notify` registra solo `OrderId` y `ResponseCode`, y
+`CardNetService::verifyNotification` ya no escribe la firma esperada en el
+log; `admin/tenant-chat/clear` exige `can:acceso-direccion`. Prueba:
+`tests/Feature/AuditoriaN2RutasPublicasTest.php` (cubre chat y límite del
+demo; el log de CardNet no tiene prueba). **Sigue pendiente**: confirmar que
+los usuarios demo viven en un tenant aislado sin datos reales.
+Descripción original:
 - `GET /demo/{rol}` (`routes/web.php:88`) inicia sesión sin contraseña como
   docente/padre/estudiante demo, **sin `throttle`** (el `/demo` sí lo tiene).
   Depende de `Setting demo_activo`; `.env.production` tiene

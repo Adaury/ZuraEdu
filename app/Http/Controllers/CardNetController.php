@@ -34,7 +34,11 @@ class CardNetController extends Controller
      */
     public function notify(Request $request)
     {
-        Log::info('CardNet IPN recibido', $request->all());
+        // Solo identificadores: el payload llega sin autenticar hasta verificar la firma.
+        Log::info('CardNet IPN recibido', [
+            'order_id'      => $request->input('OrderId'),
+            'response_code' => $request->input('ResponseCode'),
+        ]);
 
         $result = CardNetService::verifyNotification($request->all());
 

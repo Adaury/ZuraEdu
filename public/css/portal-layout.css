@@ -455,6 +455,18 @@
         letter-spacing: .12em;
         padding: .75rem .8rem .2rem;
     }
+    /* Grupos plegables del menú (los crea js/portal-sidebar.js sobre cada .prt-sidebar-section) */
+    .prt-sidebar-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        user-select: none;
+        border-radius: 8px;
+    }
+    .prt-sidebar-toggle:hover { background: rgba(255,255,255,.05); color: #94a3b8; }
+    .prt-sidebar-chevron { font-size: .6rem; opacity: .7; transition: transform .2s ease; }
+    .prt-sidebar-group[hidden] { display: none; }
 
     /* ── Contenido principal ── */
     .prt-main {

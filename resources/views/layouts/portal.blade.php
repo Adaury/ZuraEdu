@@ -411,6 +411,7 @@ window._SGE_DEBUG     = {{ config('app.debug') ? 'true' : 'false' }};
 <script>window.ZURA_PORTAL_CFG = @json($zuraPortalCfg);</script>
 <script src="{{ asset('js/portal-zura-chat.js') }}?v={{ @filemtime(public_path('js/portal-zura-chat.js')) }}"></script>
 @endif
+<script src="{{ asset('js/portal-sidebar.js') }}?v={{ @filemtime(public_path('js/portal-sidebar.js')) }}"></script>
 @endauth
 </body>
 </html>

@@ -165,6 +165,16 @@ class PantallasDetallePortalesTest extends TestCase
             }
         }
 
+        // Los menús de los portales se agruparon en secciones plegables (js/portal-sidebar.js): títulos y script presentes
+        $htmlDocente = $this->actingAs($docUser)->get(route('portal.docente.calificaciones', $asignacion))->assertOk()->getContent();
+        foreach (['Mi Portal', 'Informes de la clase', 'Planificación y evaluación', 'Mis gestiones', 'Cuenta', 'js/portal-sidebar.js'] as $texto) {
+            $this->assertStringContainsString($texto, $htmlDocente, "Menú del docente sin «{$texto}»");
+        }
+        $htmlPadre = $this->actingAs($repUser)->get(route('portal.padre.hijo', $estudiante))->assertOk()->getContent();
+        foreach ([' · Aula', ' · Más', 'js/portal-sidebar.js'] as $texto) {
+            $this->assertStringContainsString($texto, $htmlPadre, "Menú del padre sin «{$texto}»");
+        }
+
         fwrite(STDERR, "\nPantallas abiertas por portal: " . json_encode($revisadas) . "\n");
         $this->assertGreaterThan(30, array_sum($revisadas), 'se abrieron muy pocas pantallas de portales: ¿falló el sembrado?');
         $this->assertSame([], $fallos, "Pantallas de portales con error de servidor:\n  " . implode("\n  ", array_map(fn ($k, $v) => "$k → $v", array_keys($fallos), $fallos)));

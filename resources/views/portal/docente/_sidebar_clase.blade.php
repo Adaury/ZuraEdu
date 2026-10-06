@@ -9,7 +9,7 @@
 $ak  = $activeKey ?? '';
 @endphp
 
-{{-- ── MI PORTAL ── --}}
+{{-- ── MI PORTAL (uso diario) ── --}}
 <div class="prt-sidebar-section">Mi Portal</div>
 
 <a href="{{ route('portal.docente.dashboard') }}"
@@ -24,10 +24,6 @@ $ak  = $activeKey ?? '';
 <a href="{{ route('portal.docente.horario') }}"
    class="prt-sidebar-link {{ $ak === 'horario' ? 'active' : '' }}">
     <i class="bi bi-calendar3"></i>Mi Horario
-</a>
-<a href="{{ route('portal.docente.mi-carnet') }}"
-   class="prt-sidebar-link {{ $ak === 'mi-carnet' ? 'active' : '' }}">
-    <i class="bi bi-credit-card-2-front-fill" style="{{ $ak === 'mi-carnet' ? '' : 'color:#0ea5e9;' }}"></i>Mi Carnet+
 </a>
 <a href="{{ route('portal.docente.calendario') }}"
    class="prt-sidebar-link {{ $ak === 'calendario' ? 'active' : '' }}">
@@ -45,66 +41,6 @@ $ak  = $activeKey ?? '';
    class="prt-sidebar-link {{ $ak === 'mis-estadisticas' ? 'active' : '' }}">
     <i class="bi bi-bar-chart-fill"></i>Estadísticas
 </a>
-@php try { $__gamifSb = !app()->bound('tenant') || (app()->bound('tenant') && app('tenant')?->can('gamificacion')); } catch(\Exception $e){ $__gamifSb = false; } @endphp
-@if($__gamifSb)
-<a href="{{ route('portal.docente.gamificacion') }}"
-   class="prt-sidebar-link {{ $ak === 'gamificacion' ? 'active' : '' }}">
-    <i class="bi bi-trophy-fill" style="color:#f59e0b;"></i>Gamificación
-</a>
-@endif
-@php
-try { $evDocFeature = !app()->bound('tenant') || (app()->bound('tenant') && app('tenant')?->can('evaluaciones_docentes')); } catch(\Exception $e){ $evDocFeature = false; }
-if ($evDocFeature) {
-    try {
-        $misEvsCount = \App\Models\EvaluacionDocente::where('docente_id', auth()->user()->docente?->id ?? 0)->count();
-    } catch(\Exception $e){ $misEvsCount = 0; }
-}
-@endphp
-@if(!empty($evDocFeature) && !empty($misEvsCount) && $misEvsCount > 0)
-<a href="{{ route('portal.docente.mis-evaluaciones') }}"
-   class="prt-sidebar-link {{ $ak === 'mis-evaluaciones' ? 'active' : '' }}"
-   style="{{ $ak === 'mis-evaluaciones' ? '' : 'color:#6366f1;' }}">
-    <i class="bi bi-clipboard2-check-fill"></i>Mis Evaluaciones
-</a>
-@endif
-@php
-try { $reunionesFeature = !app()->bound('tenant') || (app()->bound('tenant') && app('tenant')?->can('reuniones')); } catch(\Exception $e){ $reunionesFeature = false; }
-@endphp
-@if(!empty($reunionesFeature))
-<a href="{{ route('portal.docente.mis-reuniones') }}"
-   class="prt-sidebar-link {{ $ak === 'mis-reuniones' ? 'active' : '' }}">
-    <i class="bi bi-journal-text"></i>Mis Reuniones
-</a>
-@endif
-<a href="{{ route('portal.docente.rubricas.index') }}"
-   class="prt-sidebar-link {{ $ak === 'rubricas' ? 'active' : '' }}"
-   style="{{ $ak === 'rubricas' ? '' : 'color:#ec4899;' }}">
-    <i class="bi bi-table"></i>Rúbricas
-</a>
-<a href="{{ route('portal.docente.banco-preguntas.index') }}"
-   class="prt-sidebar-link {{ $ak === 'banco-preguntas' ? 'active' : '' }}"
-   style="{{ $ak === 'banco-preguntas' ? '' : 'color:#8b5cf6;' }}">
-    <i class="bi bi-collection-fill"></i>Banco de Preguntas
-    @php try { $totalBancoSb = \App\Models\BancoPregunta::where('docente_id', auth()->user()->docente?->id ?? 0)->count(); } catch(\Exception $e){ $totalBancoSb=0; } @endphp
-    @if($totalBancoSb > 0)
-    <span style="background:#8b5cf6;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $totalBancoSb }}</span>
-    @endif
-</a>
-@php
-try {
-    $docenteSb = auth()->user()->docente ?? null;
-    $tutoriasSb = $docenteSb ? \App\Models\Tutoria::where('docente_id', $docenteSb->id)
-        ->where('activo', true)
-        ->count() : 0;
-} catch(\Exception $e){ $tutoriasSb = 0; }
-@endphp
-@if($tutoriasSb > 0)
-<a href="{{ route('portal.docente.mis-tutorias') }}"
-   class="prt-sidebar-link {{ $ak === 'mis-tutorias' ? 'active' : '' }}">
-    <i class="bi bi-person-hearts"></i>Mis Tutorías
-    <span style="background:#7c3aed;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $tutoriasSb }}</span>
-</a>
-@endif
 
 {{-- ── ESTA CLASE ── --}}
 @if(isset($asignacion))
@@ -125,15 +61,6 @@ try {
    class="prt-sidebar-link {{ $ak === 'calificaciones' ? 'active' : '' }}">
     <i class="bi bi-journal-check"></i>Calificaciones
 </a>
-<a href="{{ route('portal.docente.registro-minerd', $asignacion) }}"
-   class="prt-sidebar-link {{ $ak === 'registro-minerd' ? 'active' : '' }}"
-   style="{{ $ak === 'registro-minerd' ? '' : 'color:#7c3aed;' }}">
-    <i class="bi bi-table"></i>Registro MINERD
-</a>
-<a href="{{ route('portal.docente.conducta.index', $asignacion) }}"
-   class="prt-sidebar-link {{ $ak === 'conducta' ? 'active' : '' }}">
-    <i class="bi bi-person-check-fill"></i>Conducta
-</a>
 <a href="{{ route('portal.docente.estudiantes', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'estudiantes' ? 'active' : '' }}">
     <i class="bi bi-people-fill"></i>Estudiantes
@@ -141,6 +68,32 @@ try {
 <a href="{{ route('portal.docente.observaciones', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'observaciones' ? 'active' : '' }}">
     <i class="bi bi-chat-square-text"></i>Observaciones
+</a>
+<a href="{{ route('portal.docente.conducta.index', $asignacion) }}"
+   class="prt-sidebar-link {{ $ak === 'conducta' ? 'active' : '' }}">
+    <i class="bi bi-person-check-fill"></i>Conducta
+</a>
+<a href="{{ route('portal.docente.diario.index', $asignacion) }}"
+   class="prt-sidebar-link {{ $ak === 'diario' ? 'active' : '' }}">
+    <i class="bi bi-journal-text"></i>Diario de Clase
+</a>
+
+<a href="{{ route('portal.docente.recursos', $asignacion) }}"
+   class="prt-sidebar-link {{ $ak === 'recursos' ? 'active' : '' }}">
+    <i class="bi bi-folder-fill"></i>Recursos
+</a>
+<a href="{{ route('portal.docente.comunicado', $asignacion) }}"
+   class="prt-sidebar-link {{ $ak === 'comunicado' ? 'active' : '' }}">
+    <i class="bi bi-megaphone-fill"></i>Comunicado
+</a>
+
+{{-- ── INFORMES DE LA CLASE ── --}}
+<div class="prt-sidebar-section mt-2">Informes de la clase</div>
+
+<a href="{{ route('portal.docente.registro-minerd', $asignacion) }}"
+   class="prt-sidebar-link {{ $ak === 'registro-minerd' ? 'active' : '' }}"
+   style="{{ $ak === 'registro-minerd' ? '' : 'color:#7c3aed;' }}">
+    <i class="bi bi-table"></i>Registro MINERD
 </a>
 <a href="{{ route('portal.docente.boletines', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'boletines' ? 'active' : '' }}">
@@ -168,22 +121,12 @@ try {
    class="prt-sidebar-link {{ $ak === 'historial-notas' ? 'active' : '' }}">
     <i class="bi bi-activity"></i>Comparativa P1→P4
 </a>
-<a href="{{ route('portal.docente.comunicado', $asignacion) }}"
-   class="prt-sidebar-link {{ $ak === 'comunicado' ? 'active' : '' }}">
-    <i class="bi bi-megaphone-fill"></i>Comunicado
-</a>
-<a href="{{ route('portal.docente.recursos', $asignacion) }}"
-   class="prt-sidebar-link {{ $ak === 'recursos' ? 'active' : '' }}">
-    <i class="bi bi-folder-fill"></i>Recursos
-</a>
-<a href="{{ route('portal.docente.diario.index', $asignacion) }}"
-   class="prt-sidebar-link {{ $ak === 'diario' ? 'active' : '' }}">
-    <i class="bi bi-journal-text"></i>Diario de Clase
-</a>
+@endif
 
-{{-- ── PLANIFICACIÓN ── --}}
-<div class="prt-sidebar-section mt-2">Planificación</div>
+{{-- ── PLANIFICACIÓN Y EVALUACIÓN ── --}}
+<div class="prt-sidebar-section mt-2">Planificación y evaluación</div>
 
+@if(isset($asignacion))
 <a href="{{ route('portal.docente.planes-clase.index', $asignacion) }}"
    class="prt-sidebar-link {{ $ak === 'planes' ? 'active' : '' }}">
     <i class="bi bi-journal-text"></i>Planes de Clase
@@ -220,9 +163,23 @@ try {
 </a>
 @endif
 @endif
+<a href="{{ route('portal.docente.rubricas.index') }}"
+   class="prt-sidebar-link {{ $ak === 'rubricas' ? 'active' : '' }}"
+   style="{{ $ak === 'rubricas' ? '' : 'color:#ec4899;' }}">
+    <i class="bi bi-table"></i>Rúbricas
+</a>
+<a href="{{ route('portal.docente.banco-preguntas.index') }}"
+   class="prt-sidebar-link {{ $ak === 'banco-preguntas' ? 'active' : '' }}"
+   style="{{ $ak === 'banco-preguntas' ? '' : 'color:#8b5cf6;' }}">
+    <i class="bi bi-collection-fill"></i>Banco de Preguntas
+    @php try { $totalBancoSb = \App\Models\BancoPregunta::where('docente_id', auth()->user()->docente?->id ?? 0)->count(); } catch(\Exception $e){ $totalBancoSb=0; } @endphp
+    @if($totalBancoSb > 0)
+    <span style="background:#8b5cf6;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $totalBancoSb }}</span>
+    @endif
+</a>
 
-{{-- ── GESTIONES ── --}}
-<div class="prt-sidebar-section mt-2">Gestiones</div>
+{{-- ── MIS GESTIONES (comunicados, solicitudes, tutorías, documentos…) ── --}}
+<div class="prt-sidebar-section mt-2">Mis gestiones</div>
 
 <a href="{{ route('portal.docente.comint.index') }}"
    class="prt-sidebar-link {{ $ak === 'comint' ? 'active' : '' }}">
@@ -259,9 +216,57 @@ try {
     @endif
 </a>
 
-{{-- ── MIS DOCUMENTOS ── --}}
-<div class="prt-sidebar-section mt-2">Mis Documentos</div>
+@php
+try {
+    $docenteSb = auth()->user()->docente ?? null;
+    $tutoriasSb = $docenteSb ? \App\Models\Tutoria::where('docente_id', $docenteSb->id)
+        ->where('activo', true)
+        ->count() : 0;
+} catch(\Exception $e){ $tutoriasSb = 0; }
+@endphp
+@if($tutoriasSb > 0)
+<a href="{{ route('portal.docente.mis-tutorias') }}"
+   class="prt-sidebar-link {{ $ak === 'mis-tutorias' ? 'active' : '' }}">
+    <i class="bi bi-person-hearts"></i>Mis Tutorías
+    <span style="background:#7c3aed;color:#fff;border-radius:99px;font-size:.6rem;padding:.1rem .38rem;font-weight:700;margin-left:auto;">{{ $tutoriasSb }}</span>
+</a>
+@endif
 
+@php try { $__gamifSb = !app()->bound('tenant') || (app()->bound('tenant') && app('tenant')?->can('gamificacion')); } catch(\Exception $e){ $__gamifSb = false; } @endphp
+@if($__gamifSb)
+<a href="{{ route('portal.docente.gamificacion') }}"
+   class="prt-sidebar-link {{ $ak === 'gamificacion' ? 'active' : '' }}">
+    <i class="bi bi-trophy-fill" style="color:#f59e0b;"></i>Gamificación
+</a>
+@endif
+@php
+try { $evDocFeature = !app()->bound('tenant') || (app()->bound('tenant') && app('tenant')?->can('evaluaciones_docentes')); } catch(\Exception $e){ $evDocFeature = false; }
+if ($evDocFeature) {
+    try {
+        $misEvsCount = \App\Models\EvaluacionDocente::where('docente_id', auth()->user()->docente?->id ?? 0)->count();
+    } catch(\Exception $e){ $misEvsCount = 0; }
+}
+@endphp
+@if(!empty($evDocFeature) && !empty($misEvsCount) && $misEvsCount > 0)
+<a href="{{ route('portal.docente.mis-evaluaciones') }}"
+   class="prt-sidebar-link {{ $ak === 'mis-evaluaciones' ? 'active' : '' }}"
+   style="{{ $ak === 'mis-evaluaciones' ? '' : 'color:#6366f1;' }}">
+    <i class="bi bi-clipboard2-check-fill"></i>Mis Evaluaciones
+</a>
+@endif
+@php
+try { $reunionesFeature = !app()->bound('tenant') || (app()->bound('tenant') && app('tenant')?->can('reuniones')); } catch(\Exception $e){ $reunionesFeature = false; }
+@endphp
+@if(!empty($reunionesFeature))
+<a href="{{ route('portal.docente.mis-reuniones') }}"
+   class="prt-sidebar-link {{ $ak === 'mis-reuniones' ? 'active' : '' }}">
+    <i class="bi bi-journal-text"></i>Mis Reuniones
+</a>
+@endif
+<a href="{{ route('portal.docente.mi-carnet') }}"
+   class="prt-sidebar-link {{ $ak === 'mi-carnet' ? 'active' : '' }}">
+    <i class="bi bi-credit-card-2-front-fill" style="{{ $ak === 'mi-carnet' ? '' : 'color:#0ea5e9;' }}"></i>Mi Carnet+
+</a>
 <a href="{{ route('portal.docente.constancia-trabajo') }}"
    class="prt-sidebar-link {{ $ak === 'constancia-trabajo' ? 'active' : '' }}"
    target="_blank">

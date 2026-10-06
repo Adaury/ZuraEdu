@@ -46,14 +46,20 @@
    class="prt-sidebar-link {{ $ak === 'riesgo' ? 'active' : '' }}">
     <i class="bi bi-shield-fill-check" style="{{ $ak === 'riesgo' ? '' : 'color:#f59e0b;' }}"></i>Situación Académica
 </a>
-<a href="{{ route('portal.padre.hijo.carnet', $estudiante) }}"
-   class="prt-sidebar-link {{ $ak === 'carnet' ? 'active' : '' }}">
-    <i class="bi bi-credit-card-2-front-fill" style="{{ $ak === 'carnet' ? '' : 'color:#0ea5e9;' }}"></i>Carnet+
-</a>
 <a href="{{ route('portal.padre.hijo.observaciones', $estudiante) }}"
    class="prt-sidebar-link {{ $ak === 'observaciones' ? 'active' : '' }}">
     <i class="bi bi-chat-square-text"></i>Observaciones
 </a>
+<a href="{{ route('portal.padre.hijo.conducta', $estudiante) }}"
+   class="prt-sidebar-link {{ $ak === 'conducta' ? 'active' : '' }}">
+    <i class="bi bi-stars"></i>Conducta
+</a>
+
+<div class="prt-sidebar-section mt-2" style="display:flex;align-items:center;gap:.4rem;">
+    <i class="bi bi-person-circle" style="font-size:.75rem;"></i>
+    {{ $estudiante->nombres }} · Aula
+</div>
+
 <a href="{{ route('portal.padre.hijo.classroom.index', $estudiante) }}"
    class="prt-sidebar-link {{ $ak === 'classroom' ? 'active' : '' }}">
     <i class="bi bi-easel2-fill"></i>Classroom
@@ -74,9 +80,15 @@
    class="prt-sidebar-link {{ $ak === 'rubricas' ? 'active' : '' }}">
     <i class="bi bi-grid-3x3-gap-fill"></i>Rúbricas
 </a>
-<a href="{{ route('portal.padre.hijo.conducta', $estudiante) }}"
-   class="prt-sidebar-link {{ $ak === 'conducta' ? 'active' : '' }}">
-    <i class="bi bi-stars"></i>Conducta
+
+<div class="prt-sidebar-section mt-2" style="display:flex;align-items:center;gap:.4rem;">
+    <i class="bi bi-person-circle" style="font-size:.75rem;"></i>
+    {{ $estudiante->nombres }} · Más
+</div>
+
+<a href="{{ route('portal.padre.hijo.carnet', $estudiante) }}"
+   class="prt-sidebar-link {{ $ak === 'carnet' ? 'active' : '' }}">
+    <i class="bi bi-credit-card-2-front-fill" style="{{ $ak === 'carnet' ? '' : 'color:#0ea5e9;' }}"></i>Carnet+
 </a>
 <a href="{{ route('portal.padre.hijo.documentos', $estudiante) }}"
    class="prt-sidebar-link {{ $ak === 'documentos' ? 'active' : '' }}">

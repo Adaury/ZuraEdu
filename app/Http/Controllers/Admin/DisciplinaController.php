@@ -235,7 +235,14 @@ class DisciplinaController extends Controller
 
     public function toggleResuelto(FaltaDisciplinaria $disciplina)
     {
+        $antes = $disciplina->resuelto;
         $disciplina->update(['resuelto' => ! $disciplina->resuelto]);
+        ActivityLog::registrar(
+            'disciplina.falta_resuelto_cambiado',
+            FaltaDisciplinaria::class,
+            $disciplina->id,
+            "Falta #{$disciplina->id} (Estudiante #{$disciplina->estudiante_id}): resuelto: " . ($antes ? 'Sí' : 'No') . ' → ' . ($disciplina->resuelto ? 'Sí' : 'No')
+        );
 
         if (request()->expectsJson()) {
             return response()->json([

@@ -334,8 +334,22 @@ class UsuarioController extends Controller
             'motivo' => 'nullable|string|max:500',
         ]);
 
-        // We delete the user; optionally you could keep them with a rejected flag
+        // Rechazar solo aplica a solicitudes pendientes: sin esta comprobación el endpoint
+        // servía para borrar cualquier cuenta activa sin pasar por destroy().
+        if (! $usuario->pendiente_aprobacion || $usuario->id === auth()->id()) {
+            return back()->with('error', 'Solo se pueden rechazar solicitudes de acceso pendientes.');
+        }
+
+        // User no usa SoftDeletes: el borrado es físico, así que el motivo se guarda en el log.
         $nombre = $usuario->nombre_completo;
+        $motivo = trim((string) $request->input('motivo', ''));
+        ActivityLog::registrar(
+            'usuario.solicitud_rechazada',
+            User::class,
+            $usuario->id,
+            "Solicitud #{$usuario->id} rechazada y eliminada: {$usuario->name} {$usuario->apellidos} ({$usuario->email})"
+                . ($motivo !== '' ? " | Motivo: {$motivo}" : ' | Sin motivo indicado')
+        );
         $usuario->delete();
 
         Cache::forget('usuarios_pendientes_count');

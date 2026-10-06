@@ -195,6 +195,52 @@ Para restaurar los archivos, descomprimir el `.zip` correspondiente dentro
 de `storage/app/public/` del entorno destino y correr `php artisan
 storage:link` si el symlink no existe.
 
+### 6.1 Recuperar los datos de UN solo colegio (sin tocar a los demás)
+
+La copia que descarga cada colegio en «Copia de datos» (ZIP de CSV) es solo para
+consulta: no lleva contraseñas, tokens ni mensajes, así que **no sirve para
+restaurar**. Si un colegio pierde datos (borrado por error, importación mala), se
+recupera desde el respaldo global, sin restaurar sobre producción:
+
+1. **Montar el respaldo en una base temporal**, en el servidor o en un equipo aparte:
+   ```bash
+   mysql -h HOST -u USUARIO -p -e "CREATE DATABASE sge_recuperacion CHARACTER SET utf8mb4;"
+   mysql -h HOST -u USUARIO -p sge_recuperacion < backup_AAAA-MM-DD_HH-MM-SS.sql
+   ```
+2. **Confirmar que el dato perdido está ahí** y de qué colegio es (`tenants.id`):
+   ```sql
+   SELECT id, nombre_institucion FROM sge_recuperacion.tenants;
+   SELECT COUNT(*) FROM sge_recuperacion.estudiantes WHERE tenant_id = 12;
+   ```
+3. **Sacar solo las filas de ese colegio y solo de las tablas afectadas**
+   (casi todas las tablas tienen `tenant_id`; `INFORMATION_SCHEMA.COLUMNS` dice cuáles):
+   ```bash
+   mysqldump -h HOST -u USUARIO -p --no-create-info --skip-triggers --complete-insert \
+     --insert-ignore --where="tenant_id=12" sge_recuperacion estudiantes matriculas > colegio12.sql
+   ```
+   - `--insert-ignore` **no pisa** filas que ya existen en producción: solo añade las que faltan.
+     Es lo que se quiere para recuperar borrados. No usar `--replace` salvo que se haya
+     decidido volver a un valor antiguo: sobrescribe lo que hay hoy.
+   - Las tablas hijas que no tienen `tenant_id` (pivotes como `estudiante_representante`) se
+     extraen por su padre, p. ej. `--where="estudiante_id IN (SELECT id FROM estudiantes WHERE tenant_id=12)"`
+     (esta forma no se probó; revisar el `.sql` resultante antes de cargarlo).
+   - Cargar en orden: primero las tablas padre (estudiantes, grupos), luego las hijas.
+4. **Antes de cargar en producción**: hacer un respaldo nuevo, ensayar el paso 5 en una copia
+   (staging) y revisar el `.sql` a mano. Cargar dentro de una transacción
+   (`START TRANSACTION; SOURCE colegio12.sql; -- revisar conteos --; COMMIT;`).
+5. **Archivos** (fotos, entregas, boletines): descomprimir el `.zip` de archivos del mismo día en una carpeta
+   temporal y copiar solo los de ese colegio hacia `storage/app/public/`, sin sobrescribir los existentes.
+6. **Borrar la base temporal** al terminar (`DROP DATABASE sge_recuperacion;`): contiene los datos de
+   todos los colegios.
+
+**Qué se probó** (2026-10-06): volcado con las opciones de `BackupService`, carga en una base
+temporal (187 tablas, 163 con `tenant_id`) y extracción filtrada por colegio con `--insert-ignore`,
+todo en una base de pruebas **vacía** y sin cargar nada en producción. Falta ensayarlo con datos
+reales de un colegio en staging antes de depender de este procedimiento.
+
+Los usuarios se recuperan con su contraseña: el respaldo global sí la incluye (la copia
+por colegio no). Esto es otra razón para tratar el `.sql` como dato confidencial.
+
 ## 7. Qué ocurre si falla
 
 El comando (`sge:backup`) nunca oculta un error:

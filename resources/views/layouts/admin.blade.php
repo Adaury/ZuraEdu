@@ -648,20 +648,31 @@ if (auth()->check()) {
 
             {{-- ══ SIDEBAR ADMIN COMPLETO (Administrador, Director, Personal Adm) ══ --}}
             @else
-            {{-- Dashboard --}}
+            @php
+                // Submenús plegables: botón + lista. Se generan aquí para no repetir 12 líneas de HTML por grupo.
+                $subAbrir = function (string $id, string $icono, string $texto, bool $activo, string $insignia = ''): string {
+                    return '<li class="nav-item"><button class="nav-link-btn w-100 text-start d-flex align-items-center justify-content-between" type="button" data-sidebar-toggle="' . $id . '" aria-expanded="' . ($activo ? 'true' : 'false') . '">'
+                        . '<span class="d-flex align-items-center gap-2"><i class="bi ' . $icono . '"></i>' . $texto . $insignia . '</span>'
+                        . '<i class="bi bi-chevron-down" style="font-size:.65rem;transition:transform .2s;' . ($activo ? 'transform:rotate(180deg)' : '') . '"></i></button>'
+                        . '<div class="sidebar-submenu ' . ($activo ? 'sidebar-submenu-open' : '') . '" id="' . $id . '">'
+                        . '<ul class="list-unstyled ps-3 mb-0" style="border-left:2px solid rgba(255,255,255,.12);margin-left:1.25rem;margin-top:.25rem;">';
+                };
+                $subCerrar = '</ul></div></li>';
+                $subItem = function (string $url, string $icono, string $texto, bool $activo, string $extra = ''): string {
+                    return '<li><a href="' . $url . '" class="' . ($activo ? 'active' : '') . '" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi ' . $icono . '"></i>' . $texto . $extra . '</a></li>';
+                };
+                $punto = fn (int $n, string $color): string => $n > 0
+                    ? '<span style="background:' . $color . ';color:#fff;font-size:.62rem;font-weight:800;padding:.1rem .45rem;border-radius:20px;line-height:1.5;margin-left:.35rem;">' . ($n > 99 ? '99+' : $n) . '</span>'
+                    : '';
+            @endphp
+
+            {{-- Dashboard: un único punto de entrada. Los paneles de análisis (Ejecutivo, KPIs, Rendimiento) viven juntos en «Rendimiento y análisis». --}}
             <ul class="list-unstyled mb-0">
                 <li class="nav-item">
                     <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
                         <i class="bi bi-speedometer2"></i>Dashboard
                     </a>
                 </li>
-                @if($isAdmin || $isDir)
-                <li class="nav-item">
-                    <a href="{{ route('admin.kpis.index') }}" class="{{ request()->routeIs('admin.kpis*') ? 'active' : '' }}">
-                        <i class="bi bi-graph-up-arrow"></i>KPIs Director
-                    </a>
-                </li>
-                @endif
             </ul>
 
             {{-- ══ GESTIÓN ACADÉMICA ══ --}}
@@ -685,6 +696,30 @@ if (auth()->check()) {
                     </a>
                 </li>
                 @endif
+                @if($isAdmin || $isDir || $isSecre || $isCoord)
+                @php
+                    $pmPendientes = \App\Models\PreMatricula::where('estado', 'pendiente')->count();
+                    try {
+                        $__tid = tenant_id();
+                        $solRepPend = \Illuminate\Support\Facades\Cache::remember("t{$__tid}_sol_rep_pend", 60, fn () => \App\Models\SolicitudRepresentante::where('estado', 'pendiente')->count());
+                        $solEstPend = \Illuminate\Support\Facades\Cache::remember("t{$__tid}_sol_est_pend", 60, fn () => \App\Models\SolicitudEstudiante::where('estado', 'pendiente')->count());
+                        $solDocPend = \Illuminate\Support\Facades\Cache::remember("t{$__tid}_sol_doc_pend", 60, fn () => \App\Models\SolicitudDocente::where('estado', 'pendiente')->count());
+                    } catch (\Exception $e) { $solRepPend = $solEstPend = $solDocPend = 0; }
+                    $verSolicitudes = $isAdmin || $isDir || $isCoord;
+                    $admisionesPend = ($isAdmin || $isDir || $isSecre ? $pmPendientes : 0) + ($verSolicitudes ? $solRepPend + $solEstPend + $solDocPend : 0);
+                    $admisionesActivo = request()->routeIs('admin.pre-matriculas*', 'admin.solicitudes.index', 'admin.solicitudes-est*', 'admin.solicitudes-docente*');
+                @endphp
+                {!! $subAbrir('subAdmisiones', 'bi-inbox', 'Admisiones y solicitudes', $admisionesActivo, $punto($admisionesPend, '#d97706')) !!}
+                    @if($isAdmin || $isDir || $isSecre)
+                    {!! $subItem(route('admin.pre-matriculas.index'), 'bi-person-lines-fill', 'Pre-matrículas', request()->routeIs('admin.pre-matriculas*'), $punto($pmPendientes, '#f59e0b')) !!}
+                    @endif
+                    @if($verSolicitudes)
+                    {!! $subItem(route('admin.solicitudes.index'), 'bi-people-fill', 'Representantes', request()->routeIs('admin.solicitudes.index'), $punto($solRepPend, '#d97706')) !!}
+                    {!! $subItem(route('admin.solicitudes-est.index'), 'bi-mortarboard-fill', 'Solicitudes de estudiantes', request()->routeIs('admin.solicitudes-est*'), $punto($solEstPend, '#d97706')) !!}
+                    {!! $subItem(route('admin.solicitudes-docente.index'), 'bi-person-badge-fill', 'Solicitudes de docentes', request()->routeIs('admin.solicitudes-docente*'), $punto($solDocPend, '#d97706')) !!}
+                    @endif
+                {!! $subCerrar !!}
+                @endif
                 @if($canCalif || $isDocente)
                 <li class="nav-item">
                     <a href="{{ route('admin.asistencia.index') }}" class="{{ request()->routeIs('admin.asistencia*') ? 'active' : '' }}">
@@ -692,23 +727,12 @@ if (auth()->check()) {
                     </a>
                 </li>
                 @if(!$isDocente)
-                @php $horarioActive = request()->routeIs('admin.horarios*'); @endphp
-                <li class="nav-item">
-                    <button class="nav-link-btn w-100 text-start d-flex align-items-center justify-content-between"
-                            type="button" data-sidebar-toggle="subHorarios"
-                            aria-expanded="{{ $horarioActive ? 'true' : 'false' }}">
-                        <span class="d-flex align-items-center gap-2"><i class="bi bi-calendar-week"></i>Horarios</span>
-                        <i class="bi bi-chevron-down" style="font-size:.65rem;transition:transform .2s;{{ $horarioActive ? 'transform:rotate(180deg)' : '' }}"></i>
-                    </button>
-                    <div class="sidebar-submenu {{ $horarioActive ? 'sidebar-submenu-open' : '' }}" id="subHorarios">
-                        <ul class="list-unstyled ps-3 mb-0" style="border-left:2px solid rgba(255,255,255,.12);margin-left:1.25rem;margin-top:.25rem;">
-                            <li><a href="{{ route('admin.horarios.index') }}" class="{{ request()->routeIs('admin.horarios.index') || request()->routeIs('admin.horarios.show') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-calendar3"></i>Horarios</a></li>
-                            <li><a href="{{ route('admin.horarios.vista-maestra') }}" class="{{ request()->routeIs('admin.horarios.vista-maestra') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-grid-3x3-gap-fill"></i>Vista Maestra</a></li>
-                            <li><a href="{{ route('admin.horarios.suplencias') }}" class="{{ request()->routeIs('admin.horarios.suplencias*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-person-fill-exclamation"></i>Suplencias</a></li>
-                            <li><a href="{{ route('admin.horarios.disponibilidad') }}" class="{{ request()->routeIs('admin.horarios.disponibilidad') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-person-check"></i>Disponibilidad</a></li>
-                        </ul>
-                    </div>
-                </li>
+                {!! $subAbrir('subHorarios', 'bi-calendar-week', 'Horarios', request()->routeIs('admin.horarios*')) !!}
+                    {!! $subItem(route('admin.horarios.index'), 'bi-calendar3', 'Horarios', request()->routeIs('admin.horarios.index', 'admin.horarios.show')) !!}
+                    {!! $subItem(route('admin.horarios.vista-maestra'), 'bi-grid-3x3-gap-fill', 'Vista Maestra', request()->routeIs('admin.horarios.vista-maestra')) !!}
+                    {!! $subItem(route('admin.horarios.suplencias'), 'bi-person-fill-exclamation', 'Suplencias', request()->routeIs('admin.horarios.suplencias*')) !!}
+                    {!! $subItem(route('admin.horarios.disponibilidad'), 'bi-person-check', 'Disponibilidad', request()->routeIs('admin.horarios.disponibilidad')) !!}
+                {!! $subCerrar !!}
                 @else
                 <li class="nav-item">
                     <a href="{{ route('admin.horarios.mi-horario') }}" class="{{ request()->routeIs('admin.horarios.mi-horario') ? 'active' : '' }}">
@@ -758,6 +782,11 @@ if (auth()->check()) {
                         <i class="bi bi-person-badge"></i>Docentes
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.evaluaciones-docentes.dashboard') }}" class="{{ request()->routeIs('admin.evaluaciones-docentes*') ? 'active' : '' }}">
+                        <i class="bi bi-clipboard2-check"></i>Evaluación de Docentes
+                    </a>
+                </li>
                 @if($canAcad)
                 <li class="nav-item">
                     <a href="{{ route('admin.academico.index') }}" class="{{ request()->routeIs('admin.academico*') ? 'active' : '' }}">
@@ -777,14 +806,14 @@ if (auth()->check()) {
                     </a>
                 </li>
                 @endif
+            </ul>
+
+            {{-- ══ CONVIVENCIA Y BIENESTAR ══ --}}
+            <div class="nav-section-title">Convivencia y bienestar</div>
+            <ul class="list-unstyled mb-0">
                 <li class="nav-item">
-                    <a href="{{ route('admin.calificaciones.resumen') }}" class="{{ request()->routeIs('admin.calificaciones.resumen') ? 'active' : '' }}">
-                        <i class="bi bi-table"></i>Resumen de Notas
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.calificaciones.ranking') }}" class="{{ request()->routeIs('admin.calificaciones.ranking') ? 'active' : '' }}">
-                        <i class="bi bi-trophy"></i>Ranking Académico
+                    <a href="{{ route('admin.disciplina.dashboard') }}" class="{{ request()->routeIs('admin.disciplina*') ? 'active' : '' }}">
+                        <i class="bi bi-shield-exclamation"></i>Disciplina
                     </a>
                 </li>
                 <li class="nav-item">
@@ -793,31 +822,26 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.disciplina.dashboard') }}" class="{{ request()->routeIs('admin.disciplina*') ? 'active' : '' }}">
-                        <i class="bi bi-shield-exclamation"></i>Disciplina
+                    <a href="{{ route('admin.tutorias.index') }}" class="{{ request()->routeIs('admin.tutorias*') ? 'active' : '' }}">
+                        <i class="bi bi-person-hearts"></i>Tutorías
                     </a>
                 </li>
-                @php $otrasActive = request()->routeIs('admin.reconocimientos*') || request()->routeIs('admin.gamificacion*') || request()->routeIs('admin.proyectos*') || request()->routeIs('admin.salud*') || request()->routeIs('admin.tutorias*') || request()->routeIs('admin.seguimiento-social*') || request()->routeIs('admin.reuniones*') || request()->routeIs('admin.evaluaciones-docentes*'); @endphp
                 <li class="nav-item">
-                    <button class="nav-link-btn w-100 text-start d-flex align-items-center justify-content-between"
-                            type="button" data-sidebar-toggle="subOtrasFunciones"
-                            aria-expanded="{{ $otrasActive ? 'true' : 'false' }}">
-                        <span class="d-flex align-items-center gap-2"><i class="bi bi-three-dots"></i>Más funciones</span>
-                        <i class="bi bi-chevron-down" style="font-size:.65rem;transition:transform .2s;{{ $otrasActive ? 'transform:rotate(180deg)' : '' }}"></i>
-                    </button>
-                    <div class="sidebar-submenu {{ $otrasActive ? 'sidebar-submenu-open' : '' }}" id="subOtrasFunciones">
-                        <ul class="list-unstyled ps-3 mb-0" style="border-left:2px solid rgba(255,255,255,.12);margin-left:1.25rem;margin-top:.25rem;">
-                            <li><a href="{{ route('admin.tutorias.index') }}" class="{{ request()->routeIs('admin.tutorias*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-person-hearts"></i>Tutorías</a></li>
-                            <li><a href="{{ route('admin.seguimiento-social.dashboard') }}" class="{{ request()->routeIs('admin.seguimiento-social*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-people"></i>Seguimiento Social</a></li>
-                            <li><a href="{{ route('admin.salud.dashboard') }}" class="{{ request()->routeIs('admin.salud*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-heart-pulse"></i>Salud Escolar</a></li>
-                            <li><a href="{{ route('admin.evaluaciones-docentes.dashboard') }}" class="{{ request()->routeIs('admin.evaluaciones-docentes*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-clipboard2-check"></i>Eval. Docentes</a></li>
-                            <li><a href="{{ route('admin.reuniones.dashboard') }}" class="{{ request()->routeIs('admin.reuniones*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-journal-text"></i>Actas Reuniones</a></li>
-                            <li><a href="{{ route('admin.proyectos.dashboard') }}" class="{{ request()->routeIs('admin.proyectos*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-lightbulb"></i>Proyectos</a></li>
-                            <li><a href="{{ route('admin.reconocimientos.dashboard') }}" class="{{ request()->routeIs('admin.reconocimientos*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-trophy"></i>Reconocimientos</a></li>
-                            <li><a href="{{ route('admin.gamificacion.index') }}" class="{{ request()->routeIs('admin.gamificacion*') ? 'active' : '' }}" style="font-size:.81rem;padding:.4rem .75rem;"><i class="bi bi-controller"></i>Gamificación</a></li>
-                        </ul>
-                    </div>
+                    <a href="{{ route('admin.seguimiento-social.dashboard') }}" class="{{ request()->routeIs('admin.seguimiento-social*') ? 'active' : '' }}">
+                        <i class="bi bi-people"></i>Seguimiento Social
+                    </a>
                 </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.salud.dashboard') }}" class="{{ request()->routeIs('admin.salud*') ? 'active' : '' }}">
+                        <i class="bi bi-heart-pulse"></i>Salud Escolar
+                    </a>
+                </li>
+                {!! $subAbrir('subVidaEscolar', 'bi-stars', 'Vida escolar', request()->routeIs('admin.reconocimientos*', 'admin.gamificacion*', 'admin.proyectos*', 'admin.reuniones*')) !!}
+                    {!! $subItem(route('admin.reconocimientos.dashboard'), 'bi-trophy', 'Reconocimientos', request()->routeIs('admin.reconocimientos*')) !!}
+                    {!! $subItem(route('admin.gamificacion.index'), 'bi-controller', 'Gamificación', request()->routeIs('admin.gamificacion*')) !!}
+                    {!! $subItem(route('admin.proyectos.dashboard'), 'bi-lightbulb', 'Proyectos', request()->routeIs('admin.proyectos*')) !!}
+                    {!! $subItem(route('admin.reuniones.dashboard'), 'bi-journal-text', 'Actas de Reuniones', request()->routeIs('admin.reuniones*')) !!}
+                {!! $subCerrar !!}
             </ul>
             @endif
 
@@ -838,13 +862,43 @@ if (auth()->check()) {
             </ul>
             @endif
 
-            {{-- ══ RENDIMIENTO INSTITUCIONAL ══ --}}
+            {{-- ══ RENDIMIENTO Y ANÁLISIS: todos los paneles de indicadores en un solo lugar ══ --}}
             @if($isAdmin || $isDir || $isCoord)
-            <div class="nav-section-title">Rendimiento</div>
+            <div class="nav-section-title">Rendimiento y análisis</div>
             <ul class="list-unstyled mb-0">
                 <li class="nav-item">
+                    <a href="{{ route('admin.ejecutivo.index') }}" class="{{ request()->routeIs('admin.ejecutivo*') ? 'active' : '' }}">
+                        <i class="bi bi-bar-chart-line-fill" style="color:#f59e0b;"></i>Dashboard Ejecutivo
+                    </a>
+                    @if(request()->routeIs('admin.ejecutivo*'))
+                    <ul class="list-unstyled ms-3 mt-1 mb-1" style="font-size:.76rem;">
+                        <li>
+                            <a href="{{ route('admin.ejecutivo.pdf', request()->query()) }}" target="_blank"
+                               style="color:#94a3b8;display:flex;align-items:center;gap:.4rem;padding:.25rem .5rem;border-radius:6px;text-decoration:none;"
+                               onmouseover="this.style.color='#e2e8f0'" onmouseout="this.style.color='#94a3b8'">
+                                <i class="bi bi-file-earmark-pdf" style="color:#f87171;"></i>Exportar PDF
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('admin.ejecutivo.excel', request()->query()) }}"
+                               style="color:#94a3b8;display:flex;align-items:center;gap:.4rem;padding:.25rem .5rem;border-radius:6px;text-decoration:none;"
+                               onmouseover="this.style.color='#e2e8f0'" onmouseout="this.style.color='#94a3b8'">
+                                <i class="bi bi-file-earmark-excel" style="color:#4ade80;"></i>Exportar Excel
+                            </a>
+                        </li>
+                    </ul>
+                    @endif
+                </li>
+                @if($isAdmin || $isDir)
+                <li class="nav-item">
+                    <a href="{{ route('admin.kpis.index') }}" class="{{ request()->routeIs('admin.kpis*') ? 'active' : '' }}">
+                        <i class="bi bi-graph-up-arrow"></i>KPIs del Director
+                    </a>
+                </li>
+                @endif
+                <li class="nav-item">
                     <a href="{{ route('admin.rendimiento.dashboard') }}" class="{{ request()->routeIs('admin.rendimiento.dashboard') && !request('ciclo') ? 'active' : '' }}">
-                        <i class="bi bi-bar-chart-line"></i>Dashboard General
+                        <i class="bi bi-bar-chart-line"></i>Rendimiento académico
                     </a>
                 </li>
                 <li class="nav-item">
@@ -853,45 +907,29 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.rendimiento.porArea') }}" class="{{ request()->routeIs('admin.rendimiento.porArea') ? 'active' : '' }}">
-                        <i class="bi bi-graph-up-arrow"></i>Por Área
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.rendimiento.recuperaciones') }}" class="{{ request()->routeIs('admin.rendimiento.recuperaciones') ? 'active' : '' }}">
-                        <i class="bi bi-exclamation-triangle-fill" style="color:#ef4444;font-size:.75rem;"></i>&nbsp;Recuperaciones
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.rendimiento.rezagados') }}" class="{{ request()->routeIs('admin.rendimiento.rezagados') ? 'active' : '' }}">
-                        <i class="bi bi-person-x-fill" style="color:#d97706;font-size:.75rem;"></i>&nbsp;Rezagados
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.rendimiento.comparativo') }}" class="{{ request()->routeIs('admin.rendimiento.comparativo') ? 'active' : '' }}">
-                        <i class="bi bi-bar-chart-steps"></i>Comparativo Períodos
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.rendimiento.rankingAsignaturas') }}" class="{{ request()->routeIs('admin.rendimiento.rankingAsignaturas') ? 'active' : '' }}">
-                        <i class="bi bi-trophy"></i>Ranking Asignaturas
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.rendimiento.tendencia') }}" class="{{ request()->routeIs('admin.rendimiento.tendencia') ? 'active' : '' }}">
-                        <i class="bi bi-graph-up-arrow"></i>Tendencia por Grupo
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a href="{{ route('admin.riesgo.index') }}" class="{{ request()->routeIs('admin.riesgo*') ? 'active' : '' }}">
                         <i class="bi bi-shield-exclamation" style="color:#ef4444;font-size:.75rem;"></i>Risk Score
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.malla.matriz') }}" class="{{ request()->routeIs('admin.malla.matriz') ? 'active' : '' }}">
-                        <i class="bi bi-grid-3x3"></i>Matriz Curricular
+                    <a href="{{ route('admin.calificaciones.resumen') }}" class="{{ request()->routeIs('admin.calificaciones.resumen') ? 'active' : '' }}">
+                        <i class="bi bi-table"></i>Resumen de Notas
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.calificaciones.ranking') }}" class="{{ request()->routeIs('admin.calificaciones.ranking') ? 'active' : '' }}">
+                        <i class="bi bi-trophy"></i>Ranking Académico
+                    </a>
+                </li>
+                {!! $subAbrir('subMasAnalisis', 'bi-bar-chart-steps', 'Más análisis', request()->routeIs('admin.rendimiento.porArea', 'admin.rendimiento.recuperaciones', 'admin.rendimiento.rezagados', 'admin.rendimiento.comparativo', 'admin.rendimiento.rankingAsignaturas', 'admin.rendimiento.tendencia', 'admin.malla.matriz')) !!}
+                    {!! $subItem(route('admin.rendimiento.porArea'), 'bi-graph-up-arrow', 'Por Área', request()->routeIs('admin.rendimiento.porArea')) !!}
+                    {!! $subItem(route('admin.rendimiento.recuperaciones'), 'bi-exclamation-triangle-fill', 'Recuperaciones', request()->routeIs('admin.rendimiento.recuperaciones')) !!}
+                    {!! $subItem(route('admin.rendimiento.rezagados'), 'bi-person-x-fill', 'Rezagados', request()->routeIs('admin.rendimiento.rezagados')) !!}
+                    {!! $subItem(route('admin.rendimiento.comparativo'), 'bi-bar-chart-steps', 'Comparativo Períodos', request()->routeIs('admin.rendimiento.comparativo')) !!}
+                    {!! $subItem(route('admin.rendimiento.rankingAsignaturas'), 'bi-trophy', 'Ranking Asignaturas', request()->routeIs('admin.rendimiento.rankingAsignaturas')) !!}
+                    {!! $subItem(route('admin.rendimiento.tendencia'), 'bi-graph-up-arrow', 'Tendencia por Grupo', request()->routeIs('admin.rendimiento.tendencia')) !!}
+                    {!! $subItem(route('admin.malla.matriz'), 'bi-grid-3x3', 'Matriz Curricular', request()->routeIs('admin.malla.matriz')) !!}
+                {!! $subCerrar !!}
             </ul>
             @endif
 
@@ -923,31 +961,6 @@ if (auth()->check()) {
             @if($canSupervisar || $isDir || $isCoord)
             <div class="nav-section-title">Supervisión</div>
             <ul class="list-unstyled mb-0">
-                @if($isAdmin || $isDir || $isCoord)
-                <li class="nav-item">
-                    <a href="{{ route('admin.ejecutivo.index') }}" class="{{ request()->routeIs('admin.ejecutivo*') ? 'active' : '' }}">
-                        <i class="bi bi-bar-chart-line-fill" style="color:#f59e0b;"></i>Dashboard Ejecutivo
-                    </a>
-                    @if(request()->routeIs('admin.ejecutivo*'))
-                    <ul class="list-unstyled ms-3 mt-1 mb-1" style="font-size:.76rem;">
-                        <li>
-                            <a href="{{ route('admin.ejecutivo.pdf', request()->query()) }}" target="_blank"
-                               style="color:#94a3b8;display:flex;align-items:center;gap:.4rem;padding:.25rem .5rem;border-radius:6px;text-decoration:none;"
-                               onmouseover="this.style.color='#e2e8f0'" onmouseout="this.style.color='#94a3b8'">
-                                <i class="bi bi-file-earmark-pdf" style="color:#f87171;"></i>Exportar PDF
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('admin.ejecutivo.excel', request()->query()) }}"
-                               style="color:#94a3b8;display:flex;align-items:center;gap:.4rem;padding:.25rem .5rem;border-radius:6px;text-decoration:none;"
-                               onmouseover="this.style.color='#e2e8f0'" onmouseout="this.style.color='#94a3b8'">
-                                <i class="bi bi-file-earmark-excel" style="color:#4ade80;"></i>Exportar Excel
-                            </a>
-                        </li>
-                    </ul>
-                    @endif
-                </li>
-                @endif
                 <li class="nav-item">
                     <a href="{{ route('admin.reportes.index') }}" class="{{ request()->routeIs('admin.reportes*') ? 'active' : '' }}">
                         <i class="bi bi-clipboard2-data"></i>Reportes Institucionales
@@ -974,29 +987,19 @@ if (auth()->check()) {
                         <i class="bi bi-lock-fill"></i>Cierre de Año
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.exportacion-masiva.index') }}" class="{{ request()->routeIs('admin.exportacion-masiva*') ? 'active' : '' }}">
-                        <i class="bi bi-file-zip"></i>Exportación Masiva
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.respaldo-colegio.index') }}" class="{{ request()->routeIs('admin.respaldo-colegio*') ? 'active' : '' }}">
-                        <i class="bi bi-cloud-arrow-down"></i>Copia de mis datos
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.importaciones.index') }}" class="{{ request()->routeIs('admin.importaciones*') ? 'active' : '' }}">
-                        <i class="bi bi-cloud-upload"></i>Importaciones
-                    </a>
-                </li>
+                {!! $subAbrir('subImportarExportar', 'bi-arrow-down-up', 'Importar y exportar', request()->routeIs('admin.exportacion-masiva*', 'admin.respaldo-colegio*', 'admin.importaciones*')) !!}
+                    {!! $subItem(route('admin.exportacion-masiva.index'), 'bi-file-zip', 'Exportación Masiva', request()->routeIs('admin.exportacion-masiva*')) !!}
+                    {!! $subItem(route('admin.respaldo-colegio.index'), 'bi-cloud-arrow-down', 'Copia de mis datos', request()->routeIs('admin.respaldo-colegio*')) !!}
+                    {!! $subItem(route('admin.importaciones.index'), 'bi-cloud-upload', 'Importaciones', request()->routeIs('admin.importaciones*')) !!}
+                {!! $subCerrar !!}
                 @endif
             </ul>
             @endif
 
-            {{-- ══ CALENDARIO Y ALERTAS ══ --}}
-            @if($isAdmin || $isDir || $isCoord || $isDocente)
-            <div class="nav-section-title">Calendario</div>
+            {{-- ══ COMUNICACIÓN Y AGENDA ══ --}}
+            <div class="nav-section-title">Comunicación y agenda</div>
             <ul class="list-unstyled mb-0">
+                @if($isAdmin || $isDir || $isCoord || $isDocente)
                 <li class="nav-item">
                     <a href="{{ route('admin.calendario.index') }}" class="{{ request()->routeIs('admin.calendario*') ? 'active' : '' }}">
                         <i class="bi bi-calendar-event"></i>Calendario Académico
@@ -1012,12 +1015,7 @@ if (auth()->check()) {
                         @endif
                     </a>
                 </li>
-            </ul>
-        @endif
-
-            {{-- ══ COMUNICADOS Y MENSAJES ══ --}}
-            <div class="nav-section-title">Comunicados y Mensajes</div>
-            <ul class="list-unstyled mb-0">
+                @endif
                 <li class="nav-item">
                     <a href="{{ route('admin.comunicaciones.index') }}" class="{{ request()->routeIs('admin.comunicaciones*') ? 'active' : '' }}">
                         <i class="bi bi-envelope-fill"></i>Mensajes Internos
@@ -1077,101 +1075,13 @@ if (auth()->check()) {
                         <i class="bi bi-award"></i>Becas y Descuentos
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.pagos.conceptos') }}" class="{{ request()->routeIs('admin.pagos.conceptos') ? 'active' : '' }}">
-                        <i class="bi bi-tags"></i>Conceptos de Pago
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.pagos.config') }}" class="{{ request()->routeIs('admin.pagos.config') ? 'active' : '' }}">
-                        <i class="bi bi-gear"></i>Config. Pagos
-                    </a>
-                </li>
-                @can('solo-administrador')
-                <li class="nav-item">
-                    <a href="{{ route('admin.odoo.index') }}" class="{{ request()->routeIs('admin.odoo.*') ? 'active' : '' }}">
-                        <i class="bi bi-plug"></i>Integración Odoo
-                    </a>
-                </li>
-                @endcan
-            </ul>
-            @endif
-
-            {{-- ══ INSCRIPCIONES ══ --}}
-            @if($isAdmin || $isDir || $isSecre || $isCoord)
-            <div class="nav-section-title">Inscripciones y Solicitudes</div>
-            <ul class="list-unstyled mb-0">
-                @if($isAdmin || $isDir || $isSecre)
-                @php $pmPendientes = \App\Models\PreMatricula::where('estado','pendiente')->count(); @endphp
-                <li class="nav-item">
-                    <a href="{{ route('admin.inscripciones.index') }}" class="{{ request()->routeIs('admin.inscripciones*') ? 'active' : '' }}">
-                        <i class="bi bi-clipboard-check"></i>Inscripciones
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.pre-matriculas.index') }}"
-                       class="{{ request()->routeIs('admin.pre-matriculas*') ? 'active' : '' }}"
-                       style="display:flex;align-items:center;justify-content:space-between;">
-                        <span><i class="bi bi-person-lines-fill"></i>Pre-matrículas</span>
-                        @if($pmPendientes > 0)
-                        <span style="background:#f59e0b;color:#fff;font-size:.65rem;font-weight:800;padding:.1rem .45rem;border-radius:20px;line-height:1.5;flex-shrink:0;margin-left:.4rem;">{{ $pmPendientes }}</span>
-                        @endif
-                    </a>
-                </li>
-                @endif
-
-                {{-- ══ SOLICITUDES DEL PERSONAL ══ --}}
-                @if($isAdmin || $isDir || $isCoord)
-                <li class="nav-item">
-                    <a href="{{ route('admin.solicitudes.index') }}" class="{{ request()->routeIs('admin.solicitudes.index') ? 'active' : '' }}"
-                       style="display:flex;align-items:center;justify-content:space-between;">
-                        <span><i class="bi bi-people-fill"></i>Representantes</span>
-                        @php
-                        try {
-                            $__tid = tenant_id();
-                            $solRepPend = \Illuminate\Support\Facades\Cache::remember("t{$__tid}_sol_rep_pend", 60,
-                                fn() => \App\Models\SolicitudRepresentante::where('estado','pendiente')->count()
-                            );
-                        } catch(\Exception $e){ $solRepPend=0; }
-                        @endphp
-                        @if($solRepPend > 0)
-                        <span style="background:#d97706;color:#fff;font-size:.65rem;font-weight:800;padding:.1rem .45rem;border-radius:20px;line-height:1.5;">{{ $solRepPend }}</span>
-                        @endif
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.solicitudes-est.index') }}" class="{{ request()->routeIs('admin.solicitudes-est*') ? 'active' : '' }}"
-                       style="display:flex;align-items:center;justify-content:space-between;">
-                        <span><i class="bi bi-mortarboard-fill"></i>Solicitudes de estudiantes</span>
-                        @php
-                        try {
-                            $solEstPend = \Illuminate\Support\Facades\Cache::remember("t{$__tid}_sol_est_pend", 60,
-                                fn() => \App\Models\SolicitudEstudiante::where('estado','pendiente')->count()
-                            );
-                        } catch(\Exception $e){ $solEstPend=0; }
-                        @endphp
-                        @if($solEstPend > 0)
-                        <span style="background:#d97706;color:#fff;font-size:.65rem;font-weight:800;padding:.1rem .45rem;border-radius:20px;line-height:1.5;">{{ $solEstPend }}</span>
-                        @endif
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.solicitudes-docente.index') }}" class="{{ request()->routeIs('admin.solicitudes-docente*') ? 'active' : '' }}"
-                       style="display:flex;align-items:center;justify-content:space-between;">
-                        <span><i class="bi bi-person-badge-fill"></i>Solicitudes de docentes</span>
-                        @php
-                        try {
-                            $solDocPend = \Illuminate\Support\Facades\Cache::remember("t{$__tid}_sol_doc_pend", 60,
-                                fn() => \App\Models\SolicitudDocente::where('estado','pendiente')->count()
-                            );
-                        } catch(\Exception $e){ $solDocPend=0; }
-                        @endphp
-                        @if($solDocPend > 0)
-                        <span style="background:#d97706;color:#fff;font-size:.65rem;font-weight:800;padding:.1rem .45rem;border-radius:20px;line-height:1.5;">{{ $solDocPend }}</span>
-                        @endif
-                    </a>
-                </li>
-                @endif
+                {!! $subAbrir('subAjustesPagos', 'bi-gear', 'Ajustes de pagos', request()->routeIs('admin.pagos.conceptos', 'admin.pagos.config', 'admin.odoo.*')) !!}
+                    {!! $subItem(route('admin.pagos.conceptos'), 'bi-tags', 'Conceptos de Pago', request()->routeIs('admin.pagos.conceptos')) !!}
+                    {!! $subItem(route('admin.pagos.config'), 'bi-sliders', 'Configuración de pagos', request()->routeIs('admin.pagos.config')) !!}
+                    @can('solo-administrador')
+                    {!! $subItem(route('admin.odoo.index'), 'bi-plug', 'Integración Odoo', request()->routeIs('admin.odoo.*')) !!}
+                    @endcan
+                {!! $subCerrar !!}
             </ul>
             @endif
 
@@ -1186,45 +1096,23 @@ if (auth()->check()) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('admin.equipos.dashboard') }}" class="{{ request()->routeIs('admin.equipos.dashboard') || request()->routeIs('admin.equipos.index') || request()->routeIs('admin.equipos.create') || request()->routeIs('admin.equipos.edit') ? 'active' : '' }}">
-                        <i class="bi bi-laptop"></i>Equipos
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.equipos.prestamos.index') }}" class="{{ request()->routeIs('admin.equipos.prestamos*') ? 'active' : '' }}">
-                        <i class="bi bi-arrow-left-right"></i>Préstamos de Equipos
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.biblioteca.dashboard') }}" class="{{ request()->routeIs('admin.biblioteca.dashboard') || request()->routeIs('admin.biblioteca.index') || request()->routeIs('admin.biblioteca.libros*') ? 'active' : '' }}">
-                        <i class="bi bi-book-half"></i>Biblioteca
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.biblioteca.prestamos.index') }}" class="{{ request()->routeIs('admin.biblioteca.prestamos*') ? 'active' : '' }}">
-                        <i class="bi bi-arrow-left-right"></i>Préstamos de Libros
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.inventario.index') }}" class="{{ request()->routeIs('admin.inventario*') ? 'active' : '' }}">
-                        <i class="bi bi-archive"></i>Inventario Escolar
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.recursos.index') }}" class="{{ request()->routeIs('admin.recursos*') && !request()->routeIs('admin.recursos.disponibilidad') ? 'active' : '' }}">
-                        <i class="bi bi-building"></i>Recursos y Aulas
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.recursos.disponibilidad') }}" class="{{ request()->routeIs('admin.recursos.disponibilidad') ? 'active' : '' }}">
-                        <i class="bi bi-calendar2-check"></i>Disponibilidad Aulas
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a href="{{ route('admin.transporte.dashboard') }}" class="{{ request()->routeIs('admin.transporte*') ? 'active' : '' }}">
                         <i class="bi bi-bus-front"></i>Transporte Escolar
                     </a>
                 </li>
+                {!! $subAbrir('subBiblioteca', 'bi-book-half', 'Biblioteca', request()->routeIs('admin.biblioteca*')) !!}
+                    {!! $subItem(route('admin.biblioteca.dashboard'), 'bi-book-half', 'Libros', request()->routeIs('admin.biblioteca.dashboard', 'admin.biblioteca.index', 'admin.biblioteca.libros*')) !!}
+                    {!! $subItem(route('admin.biblioteca.prestamos.index'), 'bi-arrow-left-right', 'Préstamos de Libros', request()->routeIs('admin.biblioteca.prestamos*')) !!}
+                {!! $subCerrar !!}
+                {!! $subAbrir('subEquipos', 'bi-laptop', 'Equipos e inventario', request()->routeIs('admin.equipos*', 'admin.inventario*')) !!}
+                    {!! $subItem(route('admin.equipos.dashboard'), 'bi-laptop', 'Equipos', request()->routeIs('admin.equipos.dashboard', 'admin.equipos.index', 'admin.equipos.create', 'admin.equipos.edit')) !!}
+                    {!! $subItem(route('admin.equipos.prestamos.index'), 'bi-arrow-left-right', 'Préstamos de Equipos', request()->routeIs('admin.equipos.prestamos*')) !!}
+                    {!! $subItem(route('admin.inventario.index'), 'bi-archive', 'Inventario Escolar', request()->routeIs('admin.inventario*')) !!}
+                {!! $subCerrar !!}
+                {!! $subAbrir('subAulas', 'bi-building', 'Aulas y recursos', request()->routeIs('admin.recursos*')) !!}
+                    {!! $subItem(route('admin.recursos.index'), 'bi-building', 'Recursos y Aulas', request()->routeIs('admin.recursos*') && !request()->routeIs('admin.recursos.disponibilidad')) !!}
+                    {!! $subItem(route('admin.recursos.disponibilidad'), 'bi-calendar2-check', 'Disponibilidad Aulas', request()->routeIs('admin.recursos.disponibilidad')) !!}
+                {!! $subCerrar !!}
                 <li class="nav-item">
                     <a href="{{ route('admin.galeria.dashboard') }}" class="{{ request()->routeIs('admin.galeria*') ? 'active' : '' }}">
                         <i class="bi bi-images"></i>Galería
@@ -1246,22 +1134,8 @@ if (auth()->check()) {
             </ul>
             @endif
 
-            {{-- ══ SOPORTE ══ --}}
-            @if($isAdmin || $isDir)
-            <div class="nav-section-title">Soporte</div>
-            <ul class="list-unstyled mb-0">
-                <li class="nav-item">
-                    <a href="{{ route('admin.soporte.chat') }}" class="{{ request()->routeIs('admin.soporte.chat*') ? 'active' : '' }}"
-                       id="sidebar-soporte-chat">
-                        <i class="bi bi-headset"></i>Chat de Soporte
-                        <span id="sidebar-support-badge" style="display:none;background:#ef4444;color:#fff;border-radius:99px;font-size:.6rem;font-weight:700;min-width:17px;height:17px;padding:0 4px;margin-left:auto;align-items:center;justify-content:center;"></span>
-                    </a>
-                </li>
-            </ul>
-            @endif
-
-            {{-- ══ CONFIGURACIÓN ══ --}}
-            @if($canConfig || $isDir)
+            {{-- ══ CONFIGURACIÓN (académica y sitio web) ══ --}}
+            @if($canConfig || $isDir || $isCoord)
             <div class="nav-section-title">Configuración</div>
             <ul class="list-unstyled mb-0">
                 @if($isAdmin || $isDir || $isSuperAdmin)
@@ -1273,21 +1147,6 @@ if (auth()->check()) {
                 <li class="nav-item">
                     <a href="{{ route('admin.asignaciones.index') }}" class="{{ request()->routeIs('admin.asignaciones*') ? 'active' : '' }}">
                         <i class="bi bi-diagram-3"></i>Asignaciones
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.familias.index') }}" class="{{ request()->routeIs('admin.familias*') ? 'active' : '' }}">
-                        <i class="bi bi-collection"></i>Familias Profesionales
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.bachillerato-tecnico.index') }}" class="{{ request()->routeIs('admin.bachillerato-tecnico*') ? 'active' : '' }}">
-                        <i class="bi bi-mortarboard-fill"></i>Bachillerato Técnico
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.especialidades.index') }}" class="{{ request()->routeIs('admin.especialidades*') ? 'active' : '' }}">
-                        <i class="bi bi-tools"></i>Especialidades Técnicas
                     </a>
                 </li>
                 <li class="nav-item">
@@ -1318,34 +1177,22 @@ if (auth()->check()) {
                     </a>
                 </li>
                 @endif
-            </ul>
-            @endif
-
-            {{-- ══ PÁGINA DE INICIO ══ --}}
-            @if($isAdmin || $isDir || $isCoord)
-            <div class="nav-section-title">Página de Inicio</div>
-            <ul class="list-unstyled mb-0">
-                <li class="nav-item">
-                    <a href="{{ route('admin.sistema.landing') }}" class="{{ request()->routeIs('admin.sistema.landing') ? 'active' : '' }}">
-                        <i class="bi bi-display"></i>Editor Landing
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.secciones.index') }}" class="{{ request()->routeIs('admin.secciones*') ? 'active' : '' }}">
-                        <i class="bi bi-grid-1x2"></i>Secciones del Sitio
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.homepage.edit') }}" class="{{ request()->routeIs('admin.homepage*') ? 'active' : '' }}">
-                        <i class="bi bi-layout-text-window-reverse"></i>Branding / Institución
-                    </a>
-                </li>
-                @if($isAdmin)
-                <li class="nav-item">
-                    <a href="{{ route('admin.sistema.login-config') }}" class="{{ request()->routeIs('admin.sistema.login-config') ? 'active' : '' }}">
-                        <i class="bi bi-palette"></i>Config. Login
-                    </a>
-                </li>
+                @if($isAdmin || $isDir || $isSuperAdmin)
+                {!! $subAbrir('subEducTecnica', 'bi-tools', 'Educación técnica', request()->routeIs('admin.familias*', 'admin.bachillerato-tecnico*', 'admin.especialidades*')) !!}
+                    {!! $subItem(route('admin.familias.index'), 'bi-collection', 'Familias Profesionales', request()->routeIs('admin.familias*')) !!}
+                    {!! $subItem(route('admin.bachillerato-tecnico.index'), 'bi-mortarboard-fill', 'Bachillerato Técnico', request()->routeIs('admin.bachillerato-tecnico*')) !!}
+                    {!! $subItem(route('admin.especialidades.index'), 'bi-tools', 'Especialidades Técnicas', request()->routeIs('admin.especialidades*')) !!}
+                {!! $subCerrar !!}
+                @endif
+                @if($isAdmin || $isDir || $isCoord)
+                {!! $subAbrir('subSitioWeb', 'bi-globe', 'Página de inicio y sitio', request()->routeIs('admin.sistema.landing', 'admin.secciones*', 'admin.homepage*', 'admin.sistema.login-config')) !!}
+                    {!! $subItem(route('admin.sistema.landing'), 'bi-display', 'Editor Landing', request()->routeIs('admin.sistema.landing')) !!}
+                    {!! $subItem(route('admin.secciones.index'), 'bi-grid-1x2', 'Secciones del Sitio', request()->routeIs('admin.secciones*')) !!}
+                    {!! $subItem(route('admin.homepage.edit'), 'bi-layout-text-window-reverse', 'Branding / Institución', request()->routeIs('admin.homepage*')) !!}
+                    @if($isAdmin)
+                    {!! $subItem(route('admin.sistema.login-config'), 'bi-palette', 'Config. Login', request()->routeIs('admin.sistema.login-config')) !!}
+                    @endif
+                {!! $subCerrar !!}
                 @endif
             </ul>
             @endif
@@ -1374,26 +1221,12 @@ if (auth()->check()) {
                         <i class="bi bi-gear"></i>Configuración
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.sistema.whatsapp') }}" class="{{ request()->routeIs('admin.sistema.whatsapp') ? 'active' : '' }}">
-                        <i class="bi bi-whatsapp"></i>WhatsApp
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.sistema.email-notif') }}" class="{{ request()->routeIs('admin.sistema.email-notif') ? 'active' : '' }}">
-                        <i class="bi bi-envelope-check"></i>Email / Notif.
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.sistema.notificaciones') }}" class="{{ request()->routeIs('admin.sistema.notificaciones') ? 'active' : '' }}">
-                        <i class="bi bi-bell-fill"></i>Notificaciones In-app
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.plantillas.index') }}" class="{{ request()->routeIs('admin.plantillas*') ? 'active' : '' }}">
-                        <i class="bi bi-chat-square-text"></i>Plantillas de Mensajes
-                    </a>
-                </li>
+                {!! $subAbrir('subMensajeria', 'bi-chat-dots', 'Mensajería y avisos', request()->routeIs('admin.sistema.whatsapp', 'admin.sistema.email-notif', 'admin.sistema.notificaciones', 'admin.plantillas*')) !!}
+                    {!! $subItem(route('admin.sistema.whatsapp'), 'bi-whatsapp', 'WhatsApp', request()->routeIs('admin.sistema.whatsapp')) !!}
+                    {!! $subItem(route('admin.sistema.email-notif'), 'bi-envelope-check', 'Email / Notif.', request()->routeIs('admin.sistema.email-notif')) !!}
+                    {!! $subItem(route('admin.sistema.notificaciones'), 'bi-bell-fill', 'Notificaciones In-app', request()->routeIs('admin.sistema.notificaciones')) !!}
+                    {!! $subItem(route('admin.plantillas.index'), 'bi-chat-square-text', 'Plantillas de Mensajes', request()->routeIs('admin.plantillas*')) !!}
+                {!! $subCerrar !!}
                 <li class="nav-item">
                     <a href="{{ route('admin.sistema.actividad') }}" class="{{ request()->routeIs('admin.sistema.actividad') ? 'active' : '' }}">
                         <i class="bi bi-shield-check"></i>Log de Actividad
@@ -1402,11 +1235,6 @@ if (auth()->check()) {
                 <li class="nav-item">
                     <a href="{{ route('admin.sistema.estadisticas') }}" class="{{ request()->routeIs('admin.sistema.estadisticas') ? 'active' : '' }}">
                         <i class="bi bi-speedometer2"></i>Estadísticas
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.sistema.demo-trial') }}" class="{{ request()->routeIs('admin.sistema.demo-trial') ? 'active' : '' }}">
-                        <i class="bi bi-play-circle"></i>Demo & Prueba
                     </a>
                 </li>
                 <li class="nav-item">
@@ -1422,6 +1250,11 @@ if (auth()->check()) {
                 <li class="nav-item">
                     <a href="{{ route('admin.asistente.index') }}" class="{{ request()->routeIs('admin.asistente*') ? 'active' : '' }}">
                         <i class="bi bi-stars"></i>ZuraAI
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.sistema.demo-trial') }}" class="{{ request()->routeIs('admin.sistema.demo-trial') ? 'active' : '' }}">
+                        <i class="bi bi-play-circle"></i>Demo & Prueba
                     </a>
                 </li>
             </ul>
@@ -1440,22 +1273,26 @@ if (auth()->check()) {
             </ul>
             @endif
 
-            {{-- ══ CENTRO DE ADMINISTRACIÓN (hub, roadmap: "tipo Moodle") ══ --}}
-            <div class="nav-section-title">Administración</div>
+            {{-- ══ ADMINISTRACIÓN Y SOPORTE (centro de administración + chat, tickets y ayuda en un solo grupo) ══ --}}
+            <div class="nav-section-title">Administración y soporte</div>
             <ul class="list-unstyled mb-0">
                 <li class="nav-item">
                     <a href="{{ route('admin.centro-administracion') }}" class="{{ request()->routeIs('admin.centro-administracion') ? 'active' : '' }}">
                         <i class="bi bi-grid-3x3-gap"></i>Centro de Administración
                     </a>
                 </li>
-            </ul>
-
-            {{-- ══ SOPORTE ══ --}}
-            <div class="nav-section-title">Soporte</div>
-            <ul class="list-unstyled mb-0">
+                @if($isAdmin || $isDir)
                 <li class="nav-item">
-                    <a href="{{ route('admin.soporte.dashboard') }}" class="{{ request()->routeIs('admin.soporte*') ? 'active' : '' }}">
-                        <i class="bi bi-headset"></i>Tickets de Soporte
+                    <a href="{{ route('admin.soporte.chat') }}" class="{{ request()->routeIs('admin.soporte.chat*') ? 'active' : '' }}"
+                       id="sidebar-soporte-chat">
+                        <i class="bi bi-headset"></i>Chat de Soporte
+                        <span id="sidebar-support-badge" style="display:none;background:#ef4444;color:#fff;border-radius:99px;font-size:.6rem;font-weight:700;min-width:17px;height:17px;padding:0 4px;margin-left:auto;align-items:center;justify-content:center;"></span>
+                    </a>
+                </li>
+                @endif
+                <li class="nav-item">
+                    <a href="{{ route('admin.soporte.dashboard') }}" class="{{ request()->routeIs('admin.soporte*') && !request()->routeIs('admin.soporte.chat*') ? 'active' : '' }}">
+                        <i class="bi bi-ticket-perforated"></i>Tickets de Soporte
                     </a>
                 </li>
                 <li class="nav-item">

@@ -1173,7 +1173,7 @@
     <div class="sc-body">
         <h4 class="sc-title"><i class="bi bi-speedometer2 me-2" style="color:var(--c-rep);"></i>Dashboard de Rendimiento Institucional</h4>
         <p class="sc-desc">Vista ejecutiva del rendimiento académico de todo el plantel: promedios por grupo, semáforo de riesgo, comparativa por área.</p>
-        <div class="tip"><i class="bi bi-info-circle me-1"></i>Ruta: <strong>Rendimiento Institucional → Dashboard General</strong></div>
+        <div class="tip"><i class="bi bi-info-circle me-1"></i>Ruta: <strong>Rendimiento y análisis → Rendimiento académico</strong></div>
 
         <div class="mock">
             <div class="mbar"><div class="d" style="background:#ef4444;"></div><div class="d" style="background:#f59e0b;"></div><div class="d" style="background:#22c55e;"></div><span class="lbl">Dashboard General — Año 2025-2026</span></div>
@@ -1205,7 +1205,7 @@
         </div>
 
         <ul class="sc-steps">
-            <li><i class="bi bi-layout-sidebar" style="color:var(--c-rep);"></i>Ve a <strong>Rendimiento Institucional → Dashboard General</strong>.</li>
+            <li><i class="bi bi-layout-sidebar" style="color:var(--c-rep);"></i>Ve a <strong>Rendimiento y análisis → Rendimiento académico</strong>.</li>
             <li><i class="bi bi-circle-fill text-success"></i><span class="sem sem-g"></span> Verde = promedio ≥ 80 · <span class="sem sem-y"></span> Amarillo = 70–79 · <span class="sem sem-r"></span> Rojo = &lt; 70.</li>
             <li><i class="bi bi-bar-chart text-primary"></i>Ve la distribución por grupo, por ciclo y por área.</li>
             <li><i class="bi bi-people text-danger"></i>La sección <strong>"En riesgo"</strong> lista a los estudiantes con promedio menor a 70 para intervención.</li>

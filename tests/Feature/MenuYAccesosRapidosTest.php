@@ -257,7 +257,7 @@ class MenuYAccesosRapidosTest extends TestCase
         $html = $this->actingAs($u)->get(route('admin.dashboard'))->assertOk()->getContent();
         $menu = substr($html, strpos($html, '<nav class="sidebar-nav">'), strpos($html, '</nav>') - strpos($html, '<nav class="sidebar-nav">'));
 
-        $this->assertStringContainsString('Inscripciones y Solicitudes', $menu);
+        $this->assertStringContainsString('Admisiones y solicitudes', $menu);
         $this->assertStringNotContainsString('<div class="nav-section-title">Solicitudes</div>', $menu);
         $this->assertStringNotContainsString('<div class="nav-section-title">Integraciones</div>', $menu);
 

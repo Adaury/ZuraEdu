@@ -319,7 +319,7 @@ Recomendado añadir `where tenant_id`.
 
 ## 5. Resultado de la suite de pruebas
 
-La suite completa se interrumpió a los ~320 pruebas (todas verdes) para ejecutar la prueba nueva sin pisar `sge_test`; **pendiente relanzarla completa** tras la corrección de N1.
+Suite completa `php artisan test` (BD `sge_test`) ejecutada tras la corrección de N1 (commit f76be66): **970 pruebas pasadas, 0 fallidas, 3876 aserciones, 1130,9 s**. Incluye las 3 pruebas nuevas de `LimpiarDatosAislamientoTenantTest`.
 
 ## 6. Orden de corrección recomendado
 

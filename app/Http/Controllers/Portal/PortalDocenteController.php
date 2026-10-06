@@ -3670,7 +3670,7 @@ class PortalDocenteController extends Controller
             if ($esTecnica) {
                 foreach ($periodos as $p) {
                     $key  = $mat->id . '_' . $p->id;
-                    $nota = $calMap[$key]?->first()?->nota_final ?? null;
+                    $nota = ($calMap[$key] ?? null)?->first()?->nota_final;
                     $ws->setCellValue([$col++, $row], $nota ?? '');
                     if ($nota !== null) $notasParaPromedio[] = $nota;
                 }

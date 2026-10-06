@@ -736,7 +736,7 @@ class PlanClaseDocenteController extends Controller
                 ? round(array_sum($ponderaciones) / count($ponderaciones), 2)
                 : null;
 
-            $notaActual = $calActuales[$mat->id]?->$campo;
+            $notaActual = ($calActuales[$mat->id] ?? null)?->$campo;
 
             return [
                 'matricula'     => $mat,

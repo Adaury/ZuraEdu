@@ -125,7 +125,7 @@ tbody tr:nth-child(even) td { background:#f9f6ff; }
             @foreach($periodos as $p)
             @php
                 $key = $mat->id . '_' . $p->id;
-                $reg = $registrosTodos[$key]?->first() ?? null;
+                $reg = ($registrosTodos[$key] ?? null)?->first();
                 if ($reg?->observaciones) $obsAll[] = 'P'.$p->numero.': '.$reg->observaciones;
                 $concepto = $reg?->concepto;
             @endphp

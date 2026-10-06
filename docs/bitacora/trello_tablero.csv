@@ -1,0 +1,527 @@
+﻿Nombre,Descripción,Lista,Etiquetas
+Poner contraseña de aplicación de Gmail en MAIL_PASSWORD,"Solo en .env del servidor, nunca en el repo. Luego probar con el botón de prueba de correo del admin.",Por hacer,"Cliente, Correo"
+Crear plantilla de WhatsApp en Twilio y pegar su Content SID,"Sin plantilla, Twilio solo deja enviar texto libre dentro de las 24 h. Alternativa: Phone Number ID de Meta.",Por hacer,"Cliente, WhatsApp"
+Credenciales de Google Drive para el respaldo,Necesarias para copiar el respaldo diario a Drive.,Por hacer,"Cliente, Respaldo"
+Cron en el servidor: schedule:run cada minuto,"Sin esto no corren alertas, respaldos ni colas programadas.",Por hacer,"Despliegue, Servidor"
+"Desplegar: migrate, npm run build, subir public/css y public/js",Incluye la migración de permisos de cafetería (operar y ajustar saldo).,Por hacer,"Despliegue, Servidor"
+Revisar textos «Soporte 24/7» y «menos de 2 minutos» de la landing,Confirmar si son promesas que el colegio puede cumplir.,Por hacer,"Decisión, Landing"
+Restauración de la copia de datos por colegio,Existe la exportación; la restauración no está implementada.,Por hacer,"Técnica, Respaldo"
+Ampliar cobertura de pruebas en pantallas de detalle de los portales,Cobertura parcial; se han encontrado varios errores 500 así.,Por hacer,"Técnica, Calidad"
+Auditar toggleResuelto() en disciplina,Anotado en la campaña de auditoría; sin corregir.,Por hacer,"Técnica, Auditoría"
+Guardar el motivo al rechazar un usuario,rechazar() pierde el motivo de rechazo.,Por hacer,"Técnica, Auditoría"
+Usar fecha_baja y motivo_baja en matrículas,Columnas existentes sin usar; la matrícula no guarda quién la registró.,Por hacer,"Técnica, Matrículas"
+Revisar reglas exists: sin filtro de colegio en Laravel,Hallazgo pendiente (82 reglas) de la migración a TypeScript.,Por hacer,"Técnica, Seguridad"
+Probar la integración Odoo contra un Odoo real,Hasta ahora sin probar.,Por hacer,"Técnica, Integraciones"
+App móvil (36 entradas),"36 entradas, del 2026-05-18 al 2026-09-10.
+
+- 2026-05-18: Pantallas completas para todos los roles en la app
+- 2026-05-19: App móvil: encuestas, tareas, cafetería y transporte
+- 2026-05-19: App móvil: documentos, solicitudes y observaciones
+- 2026-05-19: App móvil: calendario, notificaciones y perfil
+- 2026-05-19: App móvil: observaciones y tareas del docente
+- 2026-05-19: App móvil: editar notas y crear materiales
+- 2026-05-19: Notificaciones push y publicar calificaciones por período
+- 2026-05-19: Solicitudes del representante: pantalla rehecha
+- 2026-05-19: Solicitudes del estudiante: pantalla rehecha
+- 2026-05-19: Notas, asistencia y pagos del padre en la app
+- 2026-05-19: Inicio del padre: tarjetas de hijos y accesos
+- 2026-05-19: Inicio del estudiante: perfil, indicadores y gamificación
+- 2026-05-19: Pantalla de inicio de sesión mejorada
+- 2026-05-20: Deslizar para actualizar notas y asistencia
+- 2026-05-20: Descarga de PDF en documentos del padre
+- 2026-05-20: Descarga de PDF en documentos del estudiante
+- 2026-05-20: Notificaciones push para administradores
+- 2026-05-20: Configuración de compilación (EAS) de la app
+- 2026-05-20: Ícono de notificaciones en Android
+- 2026-05-20: Plantilla de Google Services y .gitignore
+- 2026-05-20: Ocultar Mis Documentos y botón atrás estable
+- 2026-05-20: Botón atrás fijo para evitar saltos del encabezado
+- 2026-05-20: Configuración de producción iOS
+- 2026-05-23: Error de duplicado en notificaciones push
+- 2026-05-23: Espacio inferior en inicios de docente y padre
+- 2026-05-24: Espacio inferior en inicio admin y URL de prueba
+- 2026-05-24: Compatibilidad con Expo SDK 54
+- 2026-05-24: Inicio de sesión en Android y cierres en Pagos/Cafetería
+- 2026-05-24: Pagos del estudiante: datos y estado nulo
+- 2026-05-24: Configuración para compilar Android
+- 2026-05-24: Quitar paquete inexistente y ajustar EAS
+- 2026-05-24: Cierre del perfil y seguridad de rutas del docente
+- 2026-05-26: Errores de TypeScript y compatibilidad de SDK
+- 2026-05-28: Más tiempo de espera para iOS (30 s)
+- 2026-09-04: Botón de menú en móvil
+- 2026-09-10: Vista «Hoy» de docente y padre en la app",Hecho,App móvil
+Pagos (18 entradas),"18 entradas, del 2026-05-04 al 2026-09-18.
+
+- 2026-05-04: Pagos con Stripe: guardar sesión y pago
+- 2026-05-04: Migración de cobros que no falla si se repite
+- 2026-05-05: Pago en línea con CardNet (RD)
+- 2026-05-05: Método de pago libre (no solo una lista fija)
+- 2026-05-14: Pagos: filtros rápidos, semáforo de mora y progreso
+- 2026-05-15: Webhooks de Stripe completos y sin duplicados
+- 2026-05-16: Corregir estado de cuota al generar cuotas
+- 2026-05-18: Conceptos de pago predefinidos
+- 2026-05-22: Pagos y Becas: panel financiero con indicadores
+- 2026-05-30: Pago de cuotas de estudiantes con Stripe
+- 2026-05-30: Permisos en todas las rutas de Pagos
+- 2026-05-31: Notificación automática al pagar
+- 2026-08-27: Bloqueo opcional de impresión por pagos vencidos
+- 2026-09-04: NCF/e-CF en el recibo de pago
+- 2026-09-10: 2 hallazgos de pagos de la auditoría
+- 2026-09-11: RNC de la institución en el recibo
+- 2026-09-17: Recaudación por concepto, grado y sección
+- 2026-09-18: Recibo PDF de suscripción",Hecho,Pagos
+Calificaciones (18 entradas),"18 entradas, del 2026-05-16 al 2026-10-03.
+
+- 2026-05-16: Aplicar notas de instrumentos al período
+- 2026-05-18: Tres errores: boletín, chat y animación de portada
+- 2026-05-22: Error 500 en boletín y gráficas en blanco
+- 2026-05-22: Editor de diseño del boletín
+- 2026-05-22: Botón «Configurar diseño» en boletines
+- 2026-05-30: Observaciones del boletín y nota mínima al cerrar
+- 2026-08-26: Carga masiva de notas en segundo plano
+- 2026-08-27: Error 500 al abrir notas de una asignatura
+- 2026-08-27: Verificar el índice de calificaciones (ya existía)
+- 2026-09-01: Error en auditoría y consultas repetidas en boletines
+- 2026-09-01: Un solo cálculo de promedio
+- 2026-09-04: Promedio unificado en 14 sitios más
+- 2026-09-10: Candado real en períodos cerrados
+- 2026-09-12: Acta final y boletín editables (Primer Ciclo)
+- 2026-09-13: Período cerrado ya no se puede saltar desde el docente
+- 2026-09-16: Promedio unificado en Acta y promoción
+- 2026-09-30: Planilla anual del estudiante en la planilla académica
+- 2026-10-03: Calificaciones del docente: integridad y PDF",Hecho,Calificaciones
+Calidad (14 entradas),"14 entradas, del 2026-05-04 al 2026-10-06.
+
+- 2026-05-04: Datos de prueba completos para el sistema
+- 2026-05-21: Revisión de 88 controladores del admin
+- 2026-05-21: Corrección de controladores de los portales
+- 2026-08-24: Fallos hallados al probar en navegador real
+- 2026-08-25: 6 errores hallados al auditar portales docente y estudiante
+- 2026-08-25: 20 errores hallados al recorrer 393 páginas del admin
+- 2026-08-26: Pruebas de calificaciones y permisos
+- 2026-09-02: Pruebas de cuotas, procesar mes y suscripción
+- 2026-09-16: Eliminar una vista sin uso (encuestas)
+- 2026-09-16: Eliminar código muerto de mensajes fijados
+- 2026-09-17: Eliminar la plantilla welcome sin usar
+- 2026-09-30: Errores en resumen y boletín de calificaciones
+- 2026-10-05: Alpine huérfano comprobado en todos los roles
+- 2026-10-06: Vistas con error de sintaxis y prueba de compilación",Hecho,Calidad
+Permisos (13 entradas),"13 entradas, del 2026-05-29 al 2026-10-03.
+
+- 2026-05-29: Rol de Registro Académico con su panel y menú
+- 2026-05-30: Rol Encargado de Registro y permisos por rol
+- 2026-05-30: Acceso del Encargado de Registro al panel admin
+- 2026-05-31: Protección de 69 rutas del admin
+- 2026-08-24: Matriz de accesos en el manual de ayuda
+- 2026-08-25: Permisos por módulo y super_admin sin bloqueo
+- 2026-08-25: Confirmar rutas de comunicaciones y soporte
+- 2026-08-25: Política de boletines activada y políticas sobrantes eliminadas
+- 2026-08-27: Proteger la gestión de comunicados institucionales
+- 2026-09-04: Permisos exactos en sub-recursos y rol super_admin
+- 2026-09-04: Finanzas ya no edita estudiantes
+- 2026-09-11: Exportar notas y pagos con permiso propio
+- 2026-10-03: Permisos: Personal Administrativo en solo lectura",Hecho,Permisos
+Rendimiento (12 entradas),"12 entradas, del 2026-03-19 al 2026-10-04.
+
+- 2026-03-19: Sistema más rápido: consultas, índices y caché
+- 2026-09-01: No vaciar toda la caché al guardar la portada
+- 2026-09-01: Índice faltante en horarios y asistencia
+- 2026-09-04: Estilos compilados en lugar de CDN
+- 2026-09-30: Asistencia más rápida y contador de tardanzas
+- 2026-09-30: Validar nómina SIGERD más rápido
+- 2026-09-30: Resumen de pagos en una sola consulta
+- 2026-09-30: Listado de estudiantes más rápido
+- 2026-10-01: SIGERD: validación de nómina 14 veces más rápida
+- 2026-10-02: Prueba de carga en Linux
+- 2026-10-03: Rendimiento: pagos y CSS/JS externos
+- 2026-10-04: Dashboard: KPIs en caché",Hecho,Rendimiento
+Documentación (12 entradas),"12 entradas, del 2026-05-27 al 2026-10-06.
+
+- 2026-05-27: Corregir línea en blanco en AGENTS.md
+- 2026-08-27: Próximos pasos del informe, ya ejecutados
+- 2026-09-04: Regla de verificar antes de modificar (CLAUDE.md)
+- 2026-09-04: Informe de la auditoría completa (4 sep)
+- 2026-09-04: Aclarar el nombre «Curso» en dos controladores
+- 2026-09-11: Hojas de ruta y revisión de producción
+- 2026-09-11: Estado de pruebas de promoción MINERD
+- 2026-09-11: Hoja de ruta cerrada: 10 puntos hechos
+- 2026-09-11: Decisión sobre reingreso
+- 2026-09-12: Tipo de contribuyente registrado como seguimiento
+- 2026-10-03: Documento Word de la revisión integral
+- 2026-10-06: Bitácora de trabajo para Notion",Hecho,Documentación
+Auditoría (11 entradas),"11 entradas, del 2026-09-13 al 2026-09-15.
+
+- 2026-09-13: Auditar ediciones de notas
+- 2026-09-13: Auditar pagos, asistencia y becas
+- 2026-09-13: Auditar cambios de matrícula
+- 2026-09-13: Auditar cambios de rol y contraseñas
+- 2026-09-14: Auditar nómina
+- 2026-09-14: Auditar disciplina y seguimiento social
+- 2026-09-14: Auditar carnets
+- 2026-09-15: Auditar ficha médica e incidentes
+- 2026-09-15: Auditar datos de estudiantes y docentes
+- 2026-09-15: Auditar borrado de evaluaciones docentes
+- 2026-09-15: Auditar observaciones de docentes",Hecho,Auditoría
+Classroom (9 entradas),"9 entradas, del 2026-04-27 al 2026-10-03.
+
+- 2026-04-27: ZuraClass: aulas virtuales con sincronización de notas
+- 2026-05-04: ZuraClass Pro: chat en vivo y videollamada
+- 2026-05-05: Pantallas faltantes del docente en ZuraClass
+- 2026-05-15: Menú lateral en el portal de Classroom
+- 2026-05-18: Duplicar aula virtual y Classroom en la app móvil
+- 2026-09-03: Sincronización de notas pisaba datos; archivos sin lista blanca
+- 2026-09-04: Docentes no pueden tocar mensajes de otra clase
+- 2026-09-06: Planificación conectada a ZuraClass (solo lectura)
+- 2026-10-03: Classroom: defectos hallados en navegador real",Hecho,Classroom
+ZuraAI (9 entradas),"9 entradas, del 2026-05-08 al 2026-09-04.
+
+- 2026-05-08: Chat Zura: nombre dinámico y historial sin duplicados
+- 2026-05-17: Asistente académico de IA para docentes
+- 2026-05-17: Asistente de IA para padres y representantes
+- 2026-05-17: ZuraAI en el panel admin, página completa
+- 2026-05-18: ZuraAI pasa a Gemini y nuevos comunicados internos
+- 2026-05-18: Ajuste de versión de Gemini por límite gratuito
+- 2026-05-18: ZuraAI con Gemini 2.5 y chat corregido
+- 2026-05-18: Tutor de IA para representantes
+- 2026-09-04: Límite de uso en el chat de IA",Hecho,ZuraAI
+Marca (9 entradas),"9 entradas, del 2026-05-08 al 2026-10-04.
+
+- 2026-05-08: Nombre del sistema configurable (ya no fijo)
+- 2026-05-20: Imagen de marca ZuraEdu: birrete y Z sobre azul
+- 2026-05-31: Quitar el nombre fijo del colegio
+- 2026-08-24: Quitar nombre fijo de documentos, correos y manual
+- 2026-09-06: Logo del colegio en la barra superior de los portales
+- 2026-09-06: Galería única y logos sincronizados
+- 2026-09-10: Colores institucionales editables por el colegio
+- 2026-10-02: Marca ZuraEdu en todo el sistema
+- 2026-10-04: Acceso con marca ZuraEdu en el dominio general",Hecho,Marca
+Dashboard (8 entradas),"8 entradas, del 2026-05-08 al 2026-09-05.
+
+- 2026-05-08: 21 módulos del admin completados y dashboard con gráficas
+- 2026-05-14: Accesos rápidos PDF/Excel en el Dashboard Ejecutivo
+- 2026-05-15: Lista de pendientes después del onboarding
+- 2026-05-18: Dashboard ejecutivo con gráficas interactivas
+- 2026-05-18: Acceso rápido a pantallas ocultas desde el inicio
+- 2026-05-22: Proyectos y Reuniones: paneles
+- 2026-05-31: Sección del grupo mostraba código en vez de nombre
+- 2026-09-05: Indicadores institucionales en el dashboard",Hecho,Dashboard
+Despliegue (8 entradas),"8 entradas, del 2026-05-20 al 2026-10-01.
+
+- 2026-05-20: Guías DEPLOY de la app móvil y del portal web
+- 2026-06-01: Guía completa para subir al servidor
+- 2026-09-04: Detectar colas en modo sync en producción
+- 2026-09-04: Pruebas automáticas en GitHub Actions
+- 2026-09-04: Decisión sobre rama de staging
+- 2026-09-30: No usar env() fuera de config
+- 2026-09-30: Ajustes de MySQL y medición de OPcache
+- 2026-10-01: Despliegue y reversión más seguros",Hecho,Despliegue
+Pendiente (8 entradas),"8 entradas, del 2026-10-06 al 2026-10-06.
+
+- 2026-10-06: Pendiente 1: Poner la contraseña de aplicación de Gmail en MAIL_PASSWORD y…
+- 2026-10-06: Pendiente 2: WhatsApp: Content SID de Twilio de una plantilla aprobada (o…
+- 2026-10-06: Pendiente 3: Google Drive: crear credenciales de Google y conectarlas en…
+- 2026-10-06: Pendiente 4: Tarea programada del servidor llamando a schedule:run cada…
+- 2026-10-06: Pendiente 5: Decidir el texto de «Soporte 24/7» y «menos de 2 minutos» en…
+- 2026-10-06: Pendiente 6: Al desplegar: php artisan migrate, npm run build y subir…
+- 2026-10-06: Pendiente 7: Restauración por colegio (hoy solo existe la copia para…
+- 2026-10-06: Pendiente 8: Recorrer pantallas de detalle de los portales con más datos y…",Hecho,Pendiente
+Plataforma (7 entradas),"7 entradas, del 2026-05-04 al 2026-09-16.
+
+- 2026-05-04: Subir al repositorio todos los archivos de ZuraEdu
+- 2026-05-14: Integrar cambios acumulados de sesiones anteriores
+- 2026-05-15: Actualizar 58 llamadas a la librería de Excel
+- 2026-08-27: Red de seguridad antes de subir de versión
+- 2026-08-27: Laravel 10 → 11
+- 2026-08-28: Laravel 11 → 12 → 13
+- 2026-09-16: Choque de rutas de secciones y logs rotados",Hecho,Plataforma
+Matrículas (7 entradas),"7 entradas, del 2026-05-08 al 2026-09-17.
+
+- 2026-05-08: Pre-matrícula pública con código de seguimiento
+- 2026-05-08: Corrección de datos en páginas públicas de pre-matrícula
+- 2026-05-09: Barra de inscripción pública con nombre dinámico
+- 2026-05-18: Matrícula → inscripción → asignación
+- 2026-08-25: Estado de matrícula y concurrencia en cierre de año
+- 2026-09-10: Validar cupo del grupo en las 4 entradas
+- 2026-09-17: Reingreso de estudiantes retirados",Hecho,Matrículas
+Planificación (7 entradas),"7 entradas, del 2026-05-08 al 2026-09-13.
+
+- 2026-05-08: Asistente de IA en la planificación docente
+- 2026-05-16: Planificación anual por unidades
+- 2026-05-22: Planificaciones: panel de cumplimiento
+- 2026-05-22: Error al crear RA y actividad
+- 2026-09-07: Plan de clase vinculado a unidad y RA
+- 2026-09-11: IA de planificación en la línea académica
+- 2026-09-13: Plantillas e importación en los 3 módulos de planificación",Hecho,Planificación
+WhatsApp (7 entradas),"7 entradas, del 2026-05-14 al 2026-10-04.
+
+- 2026-05-14: Alertas automáticas: cumpleaños, pagos próximos y vencidos
+- 2026-05-17: WhatsApp Business en el Centro de Integraciones
+- 2026-05-30: Envíos de WhatsApp en cola y error crítico en Pagos
+- 2026-09-02: Envíos sin colegio y caché mezclada
+- 2026-09-05: WhatsApp al representante y paridad con kiosco/API
+- 2026-09-09: Plantillas de mensaje editables por colegio
+- 2026-10-04: WhatsApp: Twilio, Meta y plantilla",Hecho,WhatsApp
+Cierre de año (7 entradas),"7 entradas, del 2026-05-15 al 2026-10-02.
+
+- 2026-05-15: Cierre de año escolar en 4 fases
+- 2026-05-22: Cierre de año: promociones y reporte PDF
+- 2026-05-30: Cerrar y reabrir períodos desde Registro
+- 2026-08-26: Error que impedía siempre el cierre de año
+- 2026-09-04: Promociones solo para Dirección
+- 2026-10-01: Cierre de año: sin notas no repite
+- 2026-10-02: Cierre de año: traslado automático",Hecho,Cierre de año
+MINERD / SIGERD (7 entradas),"7 entradas, del 2026-05-22 al 2026-09-16.
+
+- 2026-05-22: Exportaciones PDF de SIGERD
+- 2026-05-22: Pantalla de SIGERD rediseñada
+- 2026-05-30: Registro MINERD: PDF y edición de notas por docentes
+- 2026-05-31: Integración completa de SIGERD
+- 2026-09-02: Fórmulas peligrosas en exportaciones y error en CSV
+- 2026-09-15: Error 500 en bloque MINERD
+- 2026-09-16: Servicio único de boletín MINERD",Hecho,MINERD / SIGERD
+Carnet+ (7 entradas),"7 entradas, del 2026-05-23 al 2026-09-30.
+
+- 2026-05-23: Carnet+: identidad digital, QR y control de acceso
+- 2026-05-23: Generar carnets masivo sin estudiantes sin usuario
+- 2026-05-23: Carnet+ como pestaña principal en los 3 roles
+- 2026-09-03: Escaneo móvil sin restricción por rol
+- 2026-09-04: Canal privado y menos datos expuestos en escaneos
+- 2026-09-06: Vista «Hoy»: Carnet+, tareas y próximo pago
+- 2026-09-30: Abordaje de bus con Carnet+",Hecho,Carnet+
+Sitio público (7 entradas),"7 entradas, del 2026-09-06 al 2026-09-08.
+
+- 2026-09-06: Sitio público por centro, fase 1
+- 2026-09-06: Sitio público fase 2 y Centro de Administración
+- 2026-09-06: Botones de portada con destino configurable
+- 2026-09-06: Mínimo 5 fotos en carrusel y párrafo descriptivo
+- 2026-09-07: Imágenes con URL relativa y evolución del portal
+- 2026-09-07: Marcar carrusel desde la pantalla de fotos
+- 2026-09-08: Constructor visual de bloques del portal público",Hecho,Sitio público
+Estudiantes (6 entradas),"6 entradas, del 2026-05-09 al 2026-06-01.
+
+- 2026-05-09: Portal del estudiante: solicitudes, historial y constancias
+- 2026-05-15: Nivel Inicial, paso 3 del onboarding y estado de cuenta
+- 2026-05-16: Plan de evaluación visible a padres y estudiantes
+- 2026-05-17: Seguimiento de tareas y expediente del estudiante
+- 2026-05-29: Registro de estudiante en 5 pasos
+- 2026-06-01: Botones para registrar traslado y baja",Hecho,Estudiantes
+Docentes (6 entradas),"6 entradas, del 2026-05-14 al 2026-09-18.
+
+- 2026-05-14: Dashboard Ejecutivo en el menú del docente
+- 2026-05-16: Plan de evaluación, rendimiento del grupo y comunicados del docente
+- 2026-05-22: Evaluaciones docentes y reconocimientos en la app
+- 2026-08-25: Docente Académico/Técnico/Guía sin acceso al portal
+- 2026-09-05: Vista «Hoy» del docente
+- 2026-09-18: Elegir docente real en citas padre-docente",Hecho,Docentes
+Seguridad (6 entradas),"6 entradas, del 2026-06-15 al 2026-10-01.
+
+- 2026-06-15: Auditoría completa: errores críticos, altos y medios
+- 2026-08-24: Seguridad: XSS, CSP y permisos del superadmin
+- 2026-08-27: Actualizar dependencias con vulnerabilidades
+- 2026-09-01: Cerrar enlaces javascript: y sanear logos SVG
+- 2026-09-07: Orden de middleware permitía acceder sin filtro de colegio
+- 2026-10-01: Seguridad multicolegio: exists/unique y proxies",Hecho,Seguridad
+Landing (5 entradas),"5 entradas, del 2026-03-27 al 2026-08-31.
+
+- 2026-03-27: Página pública y demo automática por rol
+- 2026-05-18: Rediseño de la página de inicio
+- 2026-05-20: Ícono (favicon) en la página y el portal
+- 2026-06-01: Datos de ejemplo de bajas y traslados
+- 2026-08-31: Panel y chat de portada rotos por falta de CDN",Hecho,Landing
+Asistencia (5 entradas),"5 entradas, del 2026-05-11 al 2026-09-17.
+
+- 2026-05-11: Asistencia con QR: el docente proyecta, el estudiante escanea
+- 2026-05-16: Corregir estados tarde/excusa en asistencia
+- 2026-05-16: Asistencia rápida del docente y estadísticas
+- 2026-05-24: Push a representantes al tomar asistencia
+- 2026-09-17: Justificar ausencias actualiza la asistencia",Hecho,Asistencia
+Menú (5 entradas),"5 entradas, del 2026-05-16 al 2026-09-17.
+
+- 2026-05-16: Bachillerato Técnico visible en el menú del superadmin
+- 2026-05-31: Menús propios para Registro y Biblioteca
+- 2026-09-05: Menú admin plegable con íconos
+- 2026-09-16: Menú compartido en horario y mis estudiantes
+- 2026-09-17: Biblioteca y Logros dentro de Vida Escolar",Hecho,Menú
+Gamificación (5 entradas),"5 entradas, del 2026-05-18 al 2026-09-30.
+
+- 2026-05-18: Gamificación en portales y app móvil
+- 2026-05-20: Error 500 en Gamificación y botón atrás en la app
+- 2026-05-22: Insignia «sin faltas» y limpieza de vistas
+- 2026-09-03: Estadísticas globales sin filtro de colegio
+- 2026-09-30: Estados tarde/excusa en perfil, reportes y API",Hecho,Gamificación
+Académico (4 entradas),"4 entradas, del 2026-04-16 al 2026-08-27.
+
+- 2026-04-16: Planificaciones, matrícula masiva y búsqueda global
+- 2026-05-18: Año escolar: cursos y materias en el admin
+- 2026-08-26: Ordenar grados por su orden real
+- 2026-08-27: Ciclo escolar sin forzar equivalencia con el nivel",Hecho,Académico
+Multi-colegio (4 entradas),"4 entradas, del 2026-04-29 al 2026-09-01.
+
+- 2026-04-29: Base multi-colegio: cada institución con sus datos
+- 2026-06-15: El colegio elegido por SuperAdmin manda sobre el dominio
+- 2026-09-01: Cada colegio con su propia marca
+- 2026-09-01: Alertas programadas por colegio",Hecho,Multi-colegio
+SuperAdmin (4 entradas),"4 entradas, del 2026-05-15 al 2026-09-06.
+
+- 2026-05-15: Dashboard Ejecutivo en el menú del superadmin
+- 2026-06-01: Modo oscuro del superadmin y encuesta pública
+- 2026-09-04: Registrar acciones sobre colegios
+- 2026-09-06: Crear administrador al crear una institución",Hecho,SuperAdmin
+Interfaz (4 entradas),"4 entradas, del 2026-05-18 al 2026-09-08.
+
+- 2026-05-18: Rediseño visual premium de ZuraEdu
+- 2026-05-18: Agregar React y gráficas al proyecto
+- 2026-09-05: Fondos degradados que no se veían
+- 2026-09-08: Desborde de anuncios laterales",Hecho,Interfaz
+Respaldo (4 entradas),"4 entradas, del 2026-09-04 al 2026-10-03.
+
+- 2026-09-04: Respaldo diario y despliegue con vuelta atrás
+- 2026-09-07: Respaldo automático real (S3) y 2 errores que lo bloqueaban
+- 2026-10-03: Respaldo automático (hora, carpeta, Drive)
+- 2026-10-03: Copia de datos del propio colegio",Hecho,Respaldo
+Migración a TypeScript (4 entradas),"4 entradas, del 2026-09-30 al 2026-10-01.
+
+- 2026-09-30: Base del proyecto TypeScript
+- 2026-09-30: API NestJS con autenticación y permisos
+- 2026-10-01: API TypeScript con paridad (matrículas, notificaciones, tiempo real)
+- 2026-10-01: Benchmark de carga y costo operativo",Hecho,Migración a TypeScript
+Horarios (3 entradas),"3 entradas, del 2026-03-26 al 2026-09-01.
+
+- 2026-03-26: Generador de horarios con validación de errores
+- 2026-08-28: Errores al generar horario con datos reales
+- 2026-09-01: Quitar módulo de horarios huérfano",Hecho,Horarios
+Reportes (3 entradas),"3 entradas, del 2026-04-17 al 2026-05-22.
+
+- 2026-04-17: Reportes en PDF y Excel de uso diario
+- 2026-05-14: Reportes ejecutivos mejorados para directores
+- 2026-05-22: Color por defecto en PDF de boletín",Hecho,Reportes
+Familias (3 entradas),"3 entradas, del 2026-05-08 al 2026-08-25.
+
+- 2026-05-08: Notificaciones a representantes: ausencias y alertas académicas
+- 2026-05-14: Dashboard Ejecutivo en el menú de padre y estudiante
+- 2026-08-25: Error en avisos del padre y enlace roto de préstamos",Hecho,Familias
+Soporte (3 entradas),"3 entradas, del 2026-05-14 al 2026-08-26.
+
+- 2026-05-14: Chat de primera asistencia en la web pública y panel admin
+- 2026-05-15: Chat de soporte del admin: mejoras y errores corregidos
+- 2026-08-26: Tiempos de respuesta y causa raíz en tickets",Hecho,Soporte
+Evaluación (3 entradas),"3 entradas, del 2026-05-16 al 2026-05-17.
+
+- 2026-05-16: Evaluación por instrumento con nuevo diseño
+- 2026-05-16: Diario de clase y banco de preguntas
+- 2026-05-17: Rúbricas en el admin y mejoras a los tres portales",Hecho,Evaluación
+Riesgo académico (3 entradas),"3 entradas, del 2026-05-18 al 2026-09-03.
+
+- 2026-05-18: Puntaje de riesgo académico del estudiante
+- 2026-05-19: Riesgo académico por grupo y resultados de evaluación
+- 2026-09-03: Consultas repetidas y promedio duplicado",Hecho,Riesgo académico
+Registro Académico (3 entradas),"3 entradas, del 2026-06-01 al 2026-06-01.
+
+- 2026-06-01: Usuario de ejemplo del Encargado de Registro
+- 2026-06-01: Redirigir al Encargado a su panel
+- 2026-06-01: Bajas, traslados y estudiantes sin grupo",Hecho,Registro Académico
+Portal docente (2 entradas),"2 entradas, del 2026-04-02 al 2026-10-06.
+
+- 2026-04-02: Docentes califican P1–P4 desde su portal
+- 2026-10-06: Portal docente: estadísticas y rúbricas",Hecho,Portal docente
+Encuestas (2 entradas),"2 entradas, del 2026-05-05 al 2026-05-22.
+
+- 2026-05-05: Encuestas: poder editar y actualizar
+- 2026-05-22: Encuestas y Soporte: panel con estadísticas",Hecho,Encuestas
+Configuración (2 entradas),"2 entradas, del 2026-05-08 al 2026-09-09.
+
+- 2026-05-08: Panel de configuración del sistema (5 pestañas)
+- 2026-09-09: Centro de Administración completo",Hecho,Configuración
+Tiempo real (2 entradas),"2 entradas, del 2026-05-14 al 2026-09-04.
+
+- 2026-05-14: Tiempo real con Reverb: eventos, chat y notificaciones
+- 2026-09-04: Canales de tiempo real con doble prefijo",Hecho,Tiempo real
+Notificaciones (2 entradas),"2 entradas, del 2026-05-15 al 2026-09-10.
+
+- 2026-05-15: Dashboard Ejecutivo en el portal de notificaciones
+- 2026-09-10: Matriz de institución y preferencias de notificación",Hecho,Notificaciones
+Onboarding (2 entradas),"2 entradas, del 2026-05-15 al 2026-05-15.
+
+- 2026-05-15: Asistente de 4 pasos para colegios nuevos
+- 2026-05-15: Onboarding: secciones A–D predefinidas",Hecho,Onboarding
+PWA (2 entradas),"2 entradas, del 2026-05-15 al 2026-05-15.
+
+- 2026-05-15: App instalable (PWA) con modo sin conexión
+- 2026-05-15: Aviso para instalar la app en Android e iOS",Hecho,PWA
+Comunicados (2 entradas),"2 entradas, del 2026-05-16 al 2026-06-15.
+
+- 2026-05-16: Comunicados que mostraban HTML crudo
+- 2026-06-15: Comunicados: mostrar el HTML ya saneado",Hecho,Comunicados
+Biblioteca (2 entradas),"2 entradas, del 2026-05-18 al 2026-05-22.
+
+- 2026-05-18: Biblioteca: renovaciones y errores de Excel
+- 2026-05-22: Biblioteca e Inventario TI: paneles con estadísticas",Hecho,Biblioteca
+Inventario (2 entradas),"2 entradas, del 2026-05-21 al 2026-05-21.
+
+- 2026-05-21: Inventario: colegio en 4 tablas y estado de reparación
+- 2026-05-21: Inventario: costo unitario y valor total",Hecho,Inventario
+Salud (2 entradas),"2 entradas, del 2026-05-21 al 2026-05-21.
+
+- 2026-05-21: Salud escolar: panel e incidentes
+- 2026-05-21: Error al editar un incidente de salud",Hecho,Salud
+Cafetería (2 entradas),"2 entradas, del 2026-05-21 al 2026-10-04.
+
+- 2026-05-21: Cafetería: panel y ajuste de saldo
+- 2026-10-04: Cafetería: permisos, botones y buscador",Hecho,Cafetería
+Portales (1 entradas),"1 entradas, del 2026-04-04 al 2026-04-04.
+
+- 2026-04-04: Portales del representante y del estudiante",Hecho,Portales
+Comunicación (1 entradas),"1 entradas, del 2026-05-05 al 2026-05-05.
+
+- 2026-05-05: Avisos de emergencia: ver y eliminar",Hecho,Comunicación
+API (1 entradas),"1 entradas, del 2026-05-15 al 2026-05-15.
+
+- 2026-05-15: API REST: 11 controladores y 28 endpoints",Hecho,API
+Bachillerato Técnico (1 entradas),"1 entradas, del 2026-05-16 al 2026-05-16.
+
+- 2026-05-16: Bachillerato Técnico: áreas, cursos y módulos",Hecho,Bachillerato Técnico
+Nómina (1 entradas),"1 entradas, del 2026-05-18 al 2026-05-18.
+
+- 2026-05-18: Nómina: recibo PDF con TSS e ISR",Hecho,Nómina
+Transporte (1 entradas),"1 entradas, del 2026-05-21 al 2026-05-21.
+
+- 2026-05-21: Transporte: horarios y teléfono del conductor",Hecho,Transporte
+Reconocimientos (1 entradas),"1 entradas, del 2026-05-22 al 2026-05-22.
+
+- 2026-05-22: Reconocimientos: panel y portales",Hecho,Reconocimientos
+Bienestar (1 entradas),"1 entradas, del 2026-05-22 al 2026-05-22.
+
+- 2026-05-22: Seguimiento social: panel de casos críticos",Hecho,Bienestar
+Usuarios (1 entradas),"1 entradas, del 2026-05-30 al 2026-05-30.
+
+- 2026-05-30: Vista de detalle de usuario",Hecho,Usuarios
+Pruebas (1 entradas),"1 entradas, del 2026-09-04 al 2026-09-04.
+
+- 2026-09-04: Pruebas del algoritmo de promoción",Hecho,Pruebas
+Calendario (1 entradas),"1 entradas, del 2026-10-02 al 2026-10-02.
+
+- 2026-10-02: Calendario: avisos a familias, docentes y personal",Hecho,Calendario
+Concurrencia (1 entradas),"1 entradas, del 2026-10-02 al 2026-10-02.
+
+- 2026-10-02: Operaciones atómicas bajo concurrencia",Hecho,Concurrencia
+Integraciones (1 entradas),"1 entradas, del 2026-10-02 al 2026-10-02.
+
+- 2026-10-02: Integración con Odoo",Hecho,Integraciones
+Carnets (1 entradas),"1 entradas, del 2026-10-02 al 2026-10-02.
+
+- 2026-10-02: Carnets: PDF y QR en el servidor",Hecho,Carnets
+Menú y portada (1 entradas),"1 entradas, del 2026-10-03 al 2026-10-03.
+
+- 2026-10-03: Menú por rol, accesos rápidos, landing y guías",Hecho,Menú y portada
+Soporte y mensajería (1 entradas),"1 entradas, del 2026-10-03 al 2026-10-03.
+
+- 2026-10-03: Chat de soporte y cola de mensajería",Hecho,Soporte y mensajería
+Móvil (1 entradas),"1 entradas, del 2026-10-04 al 2026-10-04.
+
+- 2026-10-04: Adaptación a móvil y guía de instalación",Hecho,Móvil
+Operación (1 entradas),"1 entradas, del 2026-10-04 al 2026-10-04.
+
+- 2026-10-04: Túnel de pruebas con cierre automático",Hecho,Operación
+Detalle de pantallas (1 entradas),"1 entradas, del 2026-10-05 al 2026-10-05.
+
+- 2026-10-05: Pantallas de detalle: ficha, registro y asistencia",Hecho,Detalle de pantallas

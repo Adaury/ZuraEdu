@@ -117,7 +117,7 @@
                 @if($plan->fecha_inicio && $plan->fecha_fin)
                 &nbsp;·&nbsp;<i class="bi bi-calendar3 me-1"></i>{{ $plan->fecha_inicio->format('d/m/Y') }} — {{ $plan->fecha_fin->format('d/m/Y') }}
                 @endif
-                @if($plan->horas)&nbsp;·&nbsp;{{ $plan->horas }}h@endif
+                @if($plan->horas)&nbsp;·&nbsp;{{ $plan->horas }}h @endif   {{-- con espacio: «h@endif» pegado no lo reconoce Blade y el @if queda abierto --}}
             </div>
             @if($plan->tipo === 'ra' && $plan->raItems->isNotEmpty())
             <div style="margin-top:.45rem;display:flex;flex-direction:column;gap:.25rem;">

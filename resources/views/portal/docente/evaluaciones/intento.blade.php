@@ -236,7 +236,7 @@
 
 @push('scripts')
 <script>
-const CALIFICAR_URL = @json(route('portal.docente.evaluaciones.intento.calificar', [$asignacion, $quiz, $intento]));
+const CALIFICAR_URL = {!! json_encode(route('portal.docente.evaluaciones.intento.calificar', [$asignacion, $quiz, $intento])) !!};
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
 function guardarPuntos(input) {

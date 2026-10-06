@@ -193,6 +193,15 @@
 </div>
 
 @push('scripts')
+@php
+    // Se calcula aparte: un @json(...) de varias líneas con una función flecha rompía la compilación de Blade
+    // («Unclosed '[' ... does not match ')'») y la pantalla de editar encuesta no abría nunca.
+    $preguntasExistentes = $encuesta->preguntas->map(fn ($p) => [
+        'texto'    => $p->texto,
+        'tipo'     => $p->tipo,
+        'opciones' => $p->opciones->pluck('texto')->toArray(),
+    ])->values();
+@endphp
 <script>
 function encuestaBuilder() {
     return {
@@ -201,11 +210,7 @@ function encuestaBuilder() {
 
         init() {
             // Precargar preguntas existentes desde el servidor
-            const existentes = @json($encuesta->preguntas->map(fn($p) => [
-                'texto'   => $p->texto,
-                'tipo'    => $p->tipo,
-                'opciones'=> $p->opciones->pluck('texto')->toArray(),
-            ]));
+            const existentes = @json($preguntasExistentes);
 
             existentes.forEach(p => {
                 this.preguntas.push({

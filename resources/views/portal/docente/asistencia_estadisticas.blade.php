@@ -140,7 +140,7 @@
 
 {{-- Ausencias por día de la semana ─────────────────────────────────────── --}}
 @php
-$maxDia = max(array_max($ausenciaPorDia), 1);
+$maxDia = max($ausenciaPorDia ? max($ausenciaPorDia) : 0, 1);   // array_max() no existe en PHP: la pantalla daba error 500 siempre
 @endphp
 <div class="prt-card" style="margin-bottom:1rem;">
     <div class="prt-card-header">

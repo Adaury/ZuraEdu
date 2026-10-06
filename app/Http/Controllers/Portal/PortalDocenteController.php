@@ -4779,7 +4779,7 @@ class PortalDocenteController extends Controller
         $schoolYear = SchoolYear::actual();
         $fecha      = request('fecha', now()->toDateString());
 
-        $asignaciones = Asignacion::with(['asignatura', 'grupo'])
+        $asignaciones = Asignacion::with(['asignatura', 'grupo.grado', 'grupo.seccion'])
             ->where('docente_id', $docente->id)
             ->where('activo', true)
             ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))

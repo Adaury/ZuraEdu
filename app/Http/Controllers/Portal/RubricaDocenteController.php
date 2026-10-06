@@ -89,7 +89,7 @@ class RubricaDocenteController extends Controller
             ->orderBy('nombre')->get();
 
         $asignaciones = Asignacion::where('docente_id', $docente->id)
-            ->with(['asignatura', 'grupo'])
+            ->with(['asignatura', 'grupo.grado', 'grupo.seccion'])
             ->get();
 
         return view('portal.docente.rubricas.show', compact('rubrica', 'asignaturas', 'asignaciones'));
@@ -152,7 +152,7 @@ class RubricaDocenteController extends Controller
         $asignacionId = $request->input('asignacion_id');
 
         $asignaciones = Asignacion::where('docente_id', $docente->id)
-            ->with(['asignatura', 'grupo'])
+            ->with(['asignatura', 'grupo.grado', 'grupo.seccion'])
             ->get();
 
         $asignacion = $asignacionId
@@ -369,7 +369,7 @@ class RubricaDocenteController extends Controller
         $asignacionId = $request->input('asignacion_id');
 
         $asignaciones = Asignacion::where('docente_id', $docente->id)
-            ->with(['asignatura', 'grupo'])
+            ->with(['asignatura', 'grupo.grado', 'grupo.seccion'])
             ->get();
 
         $asignacion   = null;

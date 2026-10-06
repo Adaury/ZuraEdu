@@ -86,4 +86,17 @@ class DetallePantallasTest extends TestCase
         $this->actingAs($this->admin)->get(route('admin.asistencia.reporteEstudiante', $this->matricula))
             ->assertOk()->assertSee('Matemática Det', false);
     }
+
+    public function test_las_estadisticas_de_asistencia_del_docente_abren_con_y_sin_ausencias(): void
+    {
+        $usuario = User::factory()->create(['activo' => true])->assignRole('Docente');
+        $docente = Docente::factory()->create(['user_id' => $usuario->id]);
+        $this->asignacion->update(['docente_id' => $docente->id]);
+
+        // Sin registros: antes daba error 500 por llamar a array_max(), una función que no existe en PHP
+        $this->actingAs($usuario)->get(route('portal.docente.asistencia.estadisticas', $this->asignacion))->assertOk();
+
+        Asistencia::create(['matricula_id' => $this->matricula->id, 'asignacion_id' => $this->asignacion->id, 'fecha' => '2025-09-01', 'estado' => 'ausente', 'registrado_por' => $usuario->id]);
+        $this->actingAs($usuario)->get(route('portal.docente.asistencia.estadisticas', $this->asignacion))->assertOk();
+    }
 }

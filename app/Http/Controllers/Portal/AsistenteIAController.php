@@ -28,7 +28,7 @@ class AsistenteIAController extends Controller
         $materias      = '';
 
         if ($docente && $schoolYear) {
-            $asignaciones = Asignacion::with(['asignatura', 'grupo'])
+            $asignaciones = Asignacion::with(['asignatura', 'grupo.grado', 'grupo.seccion'])
                 ->where('docente_id', $docente->id)
                 ->where('school_year_id', $schoolYear->id)
                 ->where('activo', true)

@@ -262,7 +262,7 @@ class AsistenciaController extends Controller
         $matricula->load(['estudiante', 'grupo.grado', 'grupo.seccion']);
 
         // Asistencias grouped by asignacion
-        $asistencias = Asistencia::with('asignacion.asignatura')
+        $asistencias = Asistencia::with(['asignacion.asignatura', 'asignacion.docente'])   // docente se usa en la vista: sin precargarlo daba error 500 (carga diferida)
             ->where('matricula_id', $matricula->id)
             ->orderBy('fecha')
             ->get();

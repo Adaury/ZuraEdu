@@ -690,6 +690,8 @@
     </div>
 </div>
 
+@endsection {{-- faltaba: el @section('content') quedaba abierto y el script anidado dentro --}}
+
 @push('scripts')
 <script>
 // ════════════════════════════════════════════════════════════════════════
@@ -698,7 +700,7 @@
 const CSRF       = '{{ csrf_token() }}';
 const URL_SAVE   = '{{ route('admin.registro.guardar') }}';
 const URL_BATCH  = '{{ route('admin.registro.guardar-lote') }}';
-const CERRADO    = {{ $periodo->cerrado ? 'true' : 'false' }};
+const CERRADO    = {{ isset($periodo) && $periodo->cerrado ? 'true' : 'false' }};   // sin período elegido (panel de selección) no hay $periodo
 const SY_ID      = {{ $schoolYear->id }};
 const ASIG_ID    = {{ isset($asignacion) ? $asignacion->id : 0 }};
 const PER_ID     = {{ isset($periodo) ? $periodo->id : 0 }};

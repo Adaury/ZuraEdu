@@ -275,7 +275,9 @@ class EstudianteController extends Controller
             ->first();
 
         $periodos     = collect();
-        $calificaciones = collect(); // keyed by [asignacion_id][periodo_id]
+        // Arreglo (no Collection): se asigna anidado [asignacion_id][periodo_id] y una Collection lanza «Undefined array key» al leer una
+        // clave que aún no existe — la ficha de cualquier estudiante con calificaciones daba error 500.
+        $calificaciones = [];
         $asignaciones = collect();
 
         if ($matriculaActual) {

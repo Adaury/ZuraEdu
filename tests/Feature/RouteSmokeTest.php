@@ -84,10 +84,10 @@ class RouteSmokeTest extends TestCase
                     $fallos[] = "{$nombre} ({$rol}): HTTP {$status}";
                 }
 
-                // Pantallas completas del Administrador: ningún botón/formulario de Alpine puede quedar fuera de un x-data
-                if ($rol === 'Administrador' && $status === 200 && str_contains((string) $resp->headers->get('Content-Type'), 'text/html')) {
+                // Pantallas completas de cada rol: ningún botón/formulario de Alpine puede quedar fuera de un x-data
+                if ($status === 200 && str_contains((string) $resp->headers->get('Content-Type'), 'text/html')) {
                     foreach ($this->alpineHuerfanos((string) $resp->getContent()) as $h) {
-                        $huerfanos[] = "{$nombre}: {$h}";
+                        $huerfanos[] = "{$nombre} ({$rol}): {$h}";
                     }
                 }
             }

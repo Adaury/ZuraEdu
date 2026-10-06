@@ -77,7 +77,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
 <div class="section">
     <div class="section-title">Datos del Estudiante</div>
     <div class="row"><span class="label">Nombre</span><span class="value">{{ $est?->nombre_completo ?? '—' }}</span></div>
-    <div class="row"><span class="label">Matrícula</span><span class="value">{{ $est?->matricula ?? '—' }}</span></div>
+    <div class="row"><span class="label">Matrícula</span><span class="value">{{ $est?->numero_matricula ?? '—' }}</span></div>
     <div class="row"><span class="label">Grado</span><span class="value">{{ $pago->matricula?->grupo?->grado?->nombre ?? '—' }} {{ $pago->matricula?->grupo?->seccion?->nombre ?? '' }}</span></div>
     @if($rep)
     <div class="row"><span class="label">Representante</span><span class="value">{{ $rep->nombres }} {{ $rep->apellidos }}</span></div>

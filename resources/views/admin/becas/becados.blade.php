@@ -132,7 +132,7 @@
                             <p class="font-semibold text-gray-900 dark:text-white">
                                 {{ $est?->apellidos ?? $est?->apellido ?? '—' }}, {{ $est?->nombres ?? $est?->nombre ?? '—' }}
                             </p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $est?->matricula ?? '' }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $est?->numero_matricula ?? '' }}</p>
                         </td>
                         <td class="px-4 py-3 text-gray-600 dark:text-gray-300">
                             {{ $grp?->grado?->nombre ?? '—' }} {{ $grp?->seccion?->nombre ?? '' }}

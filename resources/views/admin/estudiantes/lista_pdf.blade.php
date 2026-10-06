@@ -52,7 +52,7 @@
     @php $mat = $est->matriculas->first(); $rep = $est->representantes->first(); @endphp
     <tr>
         <td class="center" style="color:#9ca3af;">{{ $i + 1 }}</td>
-        <td>{{ $est->matricula ?? '—' }}</td>
+        <td>{{ $est->numero_matricula ?? '—' }}</td>
         <td style="font-weight:600;">{{ $est->apellidos ?? $est->apellido ?? '—' }}</td>
         <td>{{ $est->nombres ?? $est->nombre ?? '—' }}</td>
         <td class="center">{{ $est->cedula ?? '—' }}</td>

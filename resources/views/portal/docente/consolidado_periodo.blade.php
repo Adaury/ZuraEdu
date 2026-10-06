@@ -183,8 +183,8 @@
                     <span style="font-weight:700;color:#1e293b;">
                         {{ $fila['matricula']->estudiante?->apellidos }}, {{ $fila['matricula']->estudiante?->nombres }}
                     </span>
-                    @if($fila['matricula']->estudiante?->matricula)
-                    <div style="font-size:.63rem;color:#94a3b8;">{{ $fila['matricula']->estudiante->matricula }}</div>
+                    @if($fila['matricula']->estudiante?->numero_matricula)
+                    <div style="font-size:.63rem;color:#94a3b8;">{{ $fila['matricula']->estudiante->numero_matricula }}</div>
                     @endif
                 </td>
                 @foreach($componentes as $campo)

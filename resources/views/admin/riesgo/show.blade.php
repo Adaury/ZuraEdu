@@ -40,7 +40,7 @@
             <div class="card-body p-3">
                 {{-- Info del estudiante --}}
                 <table class="table table-sm small mb-0">
-                    <tr><td class="text-muted fw-600">Matrícula</td><td class="fw-700">{{ $est?->matricula ?? '—' }}</td></tr>
+                    <tr><td class="text-muted fw-600">Matrícula</td><td class="fw-700">{{ $est?->numero_matricula ?? '—' }}</td></tr>
                     <tr><td class="text-muted fw-600">Grupo</td><td class="fw-700">{{ $matricula?->grupo?->nombre_completo ?? '—' }}</td></tr>
                     <tr><td class="text-muted fw-600">Año Escolar</td><td class="fw-700">{{ $score->schoolYear?->nombre ?? '—' }}</td></tr>
                     <tr><td class="text-muted fw-600">Calculado</td><td class="fw-700">{{ \Carbon\Carbon::parse($score->calculado_en)->format('d/m/Y H:i') }}</td></tr>

@@ -78,7 +78,7 @@ tbody td.left { text-align: left; }
     </div>
     <div class="info-box">
         <div class="label">No. Matrícula</div>
-        <div class="value">{{ $est->matricula ?? '—' }}</div>
+        <div class="value">{{ $est->numero_matricula ?? '—' }}</div>
     </div>
     <div class="info-box">
         <div class="label">Grupo</div>

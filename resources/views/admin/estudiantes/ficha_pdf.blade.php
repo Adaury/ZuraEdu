@@ -104,7 +104,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9pt; color:#1a1a2e;
                 </div>
                 <div class="field">
                     <div class="field-label">No. Matrícula</div>
-                    <div class="field-value">{{ $estudiante->matricula ?? '—' }}</div>
+                    <div class="field-value">{{ $estudiante->numero_matricula ?? '—' }}</div>
                 </div>
                 <div class="field">
                     <div class="field-label">Fecha de nacimiento</div>

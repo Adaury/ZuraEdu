@@ -43,6 +43,32 @@ class VistasCompilanTest extends TestCase
     }
 
     /**
+     * `Estudiante` solo tiene `nombres`, `apellidos` y `numero_matricula`. La pantalla de deudores leía `apellido`, `nombre` y `matricula`
+     * (no existen) y mostraba nombres vacíos desde mayo; once PDF de certificados y recibos imprimían «Matrícula: —» siempre.
+     */
+    public function test_ninguna_vista_lee_campos_que_el_estudiante_no_tiene(): void
+    {
+        $errores = [];
+        $base = resource_path('views');
+        $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($base, \FilesystemIterator::SKIP_DOTS));
+
+        foreach ($it as $f) {
+            if (! str_ends_with($f->getFilename(), '.blade.php')) {
+                continue;
+            }
+            $ruta = str_replace('\\', '/', substr($f->getPathname(), strlen($base) + 1));
+            foreach (file($f->getPathname()) as $n => $linea) {
+                if (preg_match('/(?:estudiante|\$est)\??->matricula(?![\w(])/', $linea)
+                    || preg_match('/estudiante\??->(?:apellido|nombre)\s*\}\}/', $linea)) {
+                    $errores[] = "$ruta:" . ($n + 1);
+                }
+            }
+        }
+
+        $this->assertSame([], $errores, "Vistas que leen un campo que Estudiante no tiene (usar numero_matricula, apellidos, nombres):\n  " . implode("\n  ", $errores));
+    }
+
+    /**
      * `array_max()` (que no existe en PHP) dejó sin abrir «Estadísticas de asistencia» del docente: un error de tipeo que solo explota al
      * abrir la pantalla. Se buscan llamadas a funciones inexistentes en el PHP compilado de cada vista.
      */

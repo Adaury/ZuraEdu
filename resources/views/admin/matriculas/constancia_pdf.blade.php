@@ -128,7 +128,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:10pt; color:#1a1a2e
     </div>
     <div class="data-row">
         <span class="data-label">No. de matrícula:</span>
-        <span class="data-value">{{ $est->matricula ?? $matricula->id }}</span>
+        <span class="data-value">{{ $est->numero_matricula ?? $matricula->id }}</span>
     </div>
     <div class="data-row">
         <span class="data-label">Grado / Sección:</span>

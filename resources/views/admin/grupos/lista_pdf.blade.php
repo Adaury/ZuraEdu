@@ -97,7 +97,7 @@ tbody tr:nth-child(even) td { background:#f0f4ff; }
         @php $est = $mat->estudiante; $rep = $est->representantes->first(); @endphp
         <tr>
             <td class="num">{{ $mat->numero_orden ?? ($i + 1) }}</td>
-            <td class="mat">{{ $est->matricula ?? '—' }}</td>
+            <td class="mat">{{ $est->numero_matricula ?? '—' }}</td>
             <td class="nom"><strong>{{ $est->apellidos ?? $est->apellido ?? '' }}</strong>, {{ $est->nombres ?? $est->nombre ?? '' }}</td>
             <td class="ced">{{ $est->cedula ?? '—' }}</td>
             <td class="rep">{{ $rep ? trim(($rep->nombres ?? '') . ' ' . ($rep->apellidos ?? '')) : '—' }}</td>

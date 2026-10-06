@@ -55,7 +55,7 @@ table.carnet { width: 100%; border: 2px solid #1e3a6e; border-collapse: collapse
                         <td style="width:42px;vertical-align:top;"><div class="avatar">{{ $inicial }}</div></td>
                         <td style="vertical-align:top;">
                             <div class="carnet-nombre">{{ mb_strimwidth($apell, 0, 14, '.') }}, {{ mb_strimwidth($nombre, 0, 12, '.') }}</div>
-                            <div class="carnet-mat">Mat: {{ $est->matricula ?? '—' }}</div>
+                            <div class="carnet-mat">Mat: {{ $est->numero_matricula ?? '—' }}</div>
                             @if($est->cedula)
                             <div class="carnet-mat">Céd: {{ $est->cedula }}</div>
                             @endif

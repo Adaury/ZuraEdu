@@ -147,7 +147,7 @@ $nivelesOrden = ['sin_riesgo','bajo','moderado','alto','critico'];
         <tr onclick="window.location='{{ route('admin.riesgo.show', $ars) }}'" style="cursor:pointer;">
             <td class="ps-3">
                 <div class="fw-700">{{ $nombre }}</div>
-                <div class="text-muted" style="font-size:.74rem;">{{ $ars->estudiante?->matricula ?? '' }}</div>
+                <div class="text-muted" style="font-size:.74rem;">{{ $ars->estudiante?->numero_matricula ?? '' }}</div>
             </td>
             <td>
                 @if($mat)

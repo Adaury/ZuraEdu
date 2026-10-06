@@ -75,7 +75,7 @@ tr:nth-child(even) td { background:#fef2f2; }
         <tr>
             <td class="text-center">{{ $i + 1 }}</td>
             <td class="fw-bold">{{ $mat->estudiante->apellido ?? $mat->estudiante->apellidos ?? '' }}, {{ $mat->estudiante->nombre ?? $mat->estudiante->nombres ?? '' }}</td>
-            <td>{{ $mat->estudiante->matricula ?? '—' }}</td>
+            <td>{{ $mat->estudiante->numero_matricula ?? '—' }}</td>
             <td>{{ $mat->grupo->grado->nombre ?? '—' }} {{ $mat->grupo->seccion->nombre ?? '' }}</td>
             <td class="text-center text-danger fw-bold">{{ $mat->cuotas_vencidas }}</td>
             <td class="text-right text-danger fw-bold">{{ number_format($mat->total_vencido, 2) }}</td>

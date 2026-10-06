@@ -56,7 +56,7 @@
             </div>
             <div class="flex-grow-1 min-w-0">
                 <div class="fw-semibold" style="font-size:.9rem;">{{ $nombre }}</div>
-                <small class="text-muted">{{ $est->user?->email ?? ('Mat. '.$est->matricula ?? '—') }}</small>
+                <small class="text-muted">{{ $est->user?->email ?? ('Mat. '.$est->numero_matricula ?? '—') }}</small>
             </div>
             <span class="badge rounded-pill" style="background:#F0FDF4;color:#16A34A;font-size:.7rem;">Activo</span>
         </div>

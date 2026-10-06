@@ -343,8 +343,8 @@
                     <div style="font-weight:700;color:#1e293b;font-size:.78rem;">
                         {{ $mat->estudiante?->apellidos }}, {{ $mat->estudiante?->nombres }}
                     </div>
-                    @if($mat->estudiante?->matricula)
-                    <div style="font-size:.65rem;color:#94a3b8;">{{ $mat->estudiante->matricula }}</div>
+                    @if($mat->estudiante?->numero_matricula)
+                    <div style="font-size:.65rem;color:#94a3b8;">{{ $mat->estudiante->numero_matricula }}</div>
                     @endif
                 </td>
                 <td class="col-spark">

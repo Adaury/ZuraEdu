@@ -135,7 +135,7 @@ tbody tr:nth-child(even) td { background:#f8faff; }
         <tr>
             <td class="num">{{ $i + 1 }}</td>
             <td class="nom"><strong>{{ $est->apellidos ?? $est->apellido ?? '' }}</strong>, {{ $est->nombres ?? $est->nombre ?? '' }}</td>
-            <td style="text-align:center;font-size:7pt;color:#374151;">{{ $est->matricula ?? '—' }}</td>
+            <td style="text-align:center;font-size:7pt;color:#374151;">{{ $est->numero_matricula ?? '—' }}</td>
             @foreach($periodos as $p)
             <td class="nota {{ isset($notasPeriodos[$p->id]) ? ($notasPeriodos[$p->id] >= 65 ? 'aprobado' : 'reprobado') : '' }}">
                 {{ $notasPeriodos[$p->id] ?? '—' }}

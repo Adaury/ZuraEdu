@@ -98,7 +98,7 @@ Año Escolar <strong>{{ $sy?->nombre ?? '' }}</strong>.
     </div>
     <div class="dato-fila">
         <div class="dato-label">No. Matrícula</div>
-        <div class="dato-valor">{{ $est->matricula ?? '—' }}</div>
+        <div class="dato-valor">{{ $est->numero_matricula ?? '—' }}</div>
     </div>
     <div class="dato-fila">
         <div class="dato-label">Grado / Sección</div>

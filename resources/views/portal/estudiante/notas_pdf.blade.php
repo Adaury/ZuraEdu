@@ -54,7 +54,7 @@ tbody td.left { text-align: left; }
     </div>
     <div class="est-col">
         <div class="est-lbl">Matrícula</div>
-        <div class="est-val">{{ $estudiante->matricula ?? '—' }}</div>
+        <div class="est-val">{{ $estudiante->numero_matricula ?? '—' }}</div>
     </div>
 </div>
 

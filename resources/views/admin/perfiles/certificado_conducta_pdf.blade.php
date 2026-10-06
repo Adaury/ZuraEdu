@@ -59,7 +59,7 @@ body { font-family: DejaVu Sans, sans-serif; font-size: 10.5px; color: #1e293b; 
         </div>
         <div class="est-col">
             <div class="est-lbl">No. Matrícula</div>
-            <div class="est-val">{{ $estudiante->matricula ?? '—' }}</div>
+            <div class="est-val">{{ $estudiante->numero_matricula ?? '—' }}</div>
         </div>
         <div class="est-col">
             <div class="est-lbl">Cédula / ID</div>
@@ -85,7 +85,7 @@ body { font-family: DejaVu Sans, sans-serif; font-size: 10.5px; color: #1e293b; 
 <div class="cuerpo">
     &nbsp;&nbsp;&nbsp;&nbsp;Por medio del presente documento, <strong>{{ $si }}</strong>,
     certifica que el/la estudiante <strong>{{ strtoupper($estudiante->nombre_completo) }}</strong>,
-    con número de matrícula <strong>{{ $estudiante->matricula ?? '—' }}</strong>,
+    con número de matrícula <strong>{{ $estudiante->numero_matricula ?? '—' }}</strong>,
     quien cursa el <strong>{{ ($matricula->grupo->grado->nombre ?? '') . ' ' . ($matricula->grupo->seccion->nombre ?? '') }}</strong>
     durante el Año Escolar <strong>{{ $schoolYear->nombre }}</strong>,
     ha mostrado una conducta <strong>{{ $nivelConducta ?? 'EXCELENTE' }}</strong> dentro de las instalaciones de este

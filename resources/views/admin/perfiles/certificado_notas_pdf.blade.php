@@ -82,7 +82,7 @@ tbody td.left { text-align: left; }
         </div>
         <div class="est-col">
             <div class="est-lbl">No. de Matrícula</div>
-            <div class="est-val">{{ $estudiante->matricula ?? '—' }}</div>
+            <div class="est-val">{{ $estudiante->numero_matricula ?? '—' }}</div>
         </div>
         <div class="est-col">
             <div class="est-lbl">Cédula / RNE</div>
@@ -109,7 +109,7 @@ tbody td.left { text-align: left; }
 <div class="certifica-text">
     Por medio del presente documento, <strong>{{ $si }}</strong> certifica que el/la estudiante
     <strong>{{ strtoupper($estudiante->nombre_completo) }}</strong>, con número de matrícula
-    <strong>{{ $estudiante->matricula ?? '—' }}</strong>, obtuvo las siguientes calificaciones durante
+    <strong>{{ $estudiante->numero_matricula ?? '—' }}</strong>, obtuvo las siguientes calificaciones durante
     el Año Escolar <strong>{{ $schoolYear->nombre }}</strong>:
 </div>
 

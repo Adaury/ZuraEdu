@@ -130,8 +130,8 @@
             <tr>
                 <td class="text-muted" style="font-size:.78rem;">{{ $i + 1 }}</td>
                 <td>
-                    <div class="fw-semibold" style="color:#1e293b;">{{ $mat->estudiante->apellido }}, {{ $mat->estudiante->nombre }}</div>
-                    <div style="font-size:.72rem;color:#6b7280;">Matr. {{ $mat->estudiante->matricula ?? '—' }}</div>
+                    <div class="fw-semibold" style="color:#1e293b;">{{ $mat->estudiante->apellidos }}, {{ $mat->estudiante->nombres }}</div>
+                    <div style="font-size:.72rem;color:#6b7280;">Matr. {{ $mat->estudiante->numero_matricula ?? '—' }}</div>
                 </td>
                 <td style="font-size:.82rem;">{{ $mat->grupo->grado->nombre ?? '—' }} {{ $mat->grupo->seccion->nombre ?? '' }}</td>
                 <td>

@@ -85,7 +85,7 @@
 <div class="est-row {{ $aplic ? 'guardado' : '' }}" id="row-{{ $mat->id }}">
     <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.65rem;flex-wrap:wrap;">
         <div style="width:34px;height:34px;border-radius:50%;background:#fce7f3;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:800;color:#be185d;flex-shrink:0;">
-            {{ strtoupper(substr($mat->estudiante?->nombre ?? '?', 0, 1)) }}
+            {{ strtoupper(substr($mat->estudiante?->nombres ?? '?', 0, 1)) }}
         </div>
         <div style="flex:1;min-width:0;">
             <div style="font-weight:700;font-size:.88rem;">{{ $mat->estudiante?->nombre_completo ?? '—' }}</div>

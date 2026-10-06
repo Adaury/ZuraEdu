@@ -77,7 +77,7 @@ td { font-size:8pt; padding:3.5px 7px; border-bottom:1px solid #e5e7eb; vertical
     <div class="est-name">{{ strtoupper($estudiante->nombre_completo ?? $estudiante->nombres . ' ' . $estudiante->apellidos) }}</div>
     <div class="est-meta">
         Cédula: <strong>{{ $estudiante->cedula ?? '—' }}</strong>
-        &nbsp;·&nbsp; Matrícula: <strong>{{ $estudiante->matricula ?? '—' }}</strong>
+        &nbsp;·&nbsp; Matrícula: <strong>{{ $estudiante->numero_matricula ?? '—' }}</strong>
         @if($rep)
         &nbsp;·&nbsp; Representante: <strong>{{ $rep->nombres }} {{ $rep->apellidos }}</strong>
         @endif

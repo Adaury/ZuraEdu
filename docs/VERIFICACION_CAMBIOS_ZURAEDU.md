@@ -315,9 +315,8 @@ Recomendado añadir `where tenant_id`.
   `SupportSession` (globales o de plataforma, justificados) y
   `BackupConfiguracion`, `DeviceToken`, `EncuestaInteres`,
   `InsigniaEstudiante`, `PuntoEstudiante`, `MensajeDestinatario`,
-  `SupportMessage` (**pendiente confirmar** caso por caso que se acceden
-  siempre a través de un padre con tenant; la auditoría anterior listaba 4
-  excepciones). Los 27 usos de `withoutGlobalScope(s)/withoutTenant` están
+  `SupportMessage` — **revisados caso por caso el 2026-10-06, ver
+  apartado 3.1**: ninguno cruza datos entre colegios. Los 27 usos de `withoutGlobalScope(s)/withoutTenant` están
   en login, jobs, SuperAdmin y servicios de Carnet+ con filtro posterior.
 - **Seguridad**: 0 modelos con `$guarded = []`; las subidas revisadas
   (`GaleriaController`, `HomepageController`, `PublicacionController`,
@@ -326,6 +325,26 @@ Recomendado añadir `where tenant_id`.
 - **Migraciones**: 255 archivos; `migrate:status` sin pendientes.
 - **Webhooks**: Stripe con tabla de idempotencia
   (`stripe_webhook_events`); CardNet con verificación de firma.
+
+### 3.1 Modelos sin `BelongsToTenant` — revisión (2026-10-06)
+
+Solo lectura; sin cambios de código. Resultado: 🟢 los 7 son seguros hoy.
+
+| Modelo | Por qué no lleva el trait | Cómo queda aislado (evidencia) |
+|--------|---------------------------|--------------------------------|
+| `PuntoEstudiante` | Hijo de `Matricula` (`matricula_id`) | Todas las consultas (`GamificacionController`, `Api/GamificacionApiController`, portales docente/estudiante/padre) filtran por `matricula_id` obtenido de `Matricula`, que sí tiene scope; las cuentas globales usan `whereHas('matricula')`, que aplica el scope. Los `create` con `matricula_id` del navegador validan con `exists:matriculas,id`, que es consciente del colegio (`TenantPresenceVerifier`), y los de docente además comprueban que la matrícula sea de su grupo |
+| `InsigniaEstudiante` | Igual que el anterior | Mismo patrón; solo se escribe con `firstOrCreate` por `matricula_id` ya resuelto |
+| `MensajeDestinatario` | Hijo de `Mensaje` (que sí tiene el trait) | Se lee por `destinatario_id = auth()->id()` o por `mensaje_id` de un `Mensaje` con scope; los destinatarios al enviar (`ComunicacionesController`, `Api/MensajesApiController`, `MensajesPortalController`) validan `exists:users,id`, consciente del colegio |
+| `SupportMessage` | Hijo de `SupportSession` | Solo se alcanza vía sesión. Las acciones admin comparan `tenant_id` de la sesión con el del usuario (`SupportChatController.php:139,150,184`) y el listado usa `delTenant()`. El acceso público usa un token de 40 caracteres aleatorios (`SupportSession::iniciar`) |
+| `DeviceToken` | Pertenece a un usuario (`user_id`) | Registro y baja siempre con `$request->user()->id` (`AuthApiController.php:95,109`); `PushNotificationService` busca por id de usuario |
+| `EncuestaInteres` | Captación de clientes de la plataforma, no de un colegio | Escritura pública con throttle (`routes/web.php`); ningún código la lee, solo avisa por WhatsApp al equipo de ZuraEdu. Guarda nombre, teléfono e IP de interesados |
+| `BackupConfiguracion` | El respaldo cubre la base compartida completa | Solo la usan el comando de respaldo, el `Kernel` y `SuperAdmin\RespaldoController` (rutas de superadministrador); la migración lo documenta |
+
+Observaciones menores (no son hallazgos): `DeviceToken` no impide que el mismo
+token de dispositivo esté registrado por dos usuarios (p. ej. dispositivo
+compartido) y `PushNotificationService` enviaría a ambos; y `EncuestaInteres`
+conserva datos personales de interesados sin pantalla ni política de
+retención.
 
 ## 4. Pruebas realizadas
 
@@ -349,6 +368,6 @@ Tercera ejecución completa tras corregir N3 (commit dcca9e5): **973 pruebas pas
    65 + 75 % + condicionado) y unificar en `RegistroAcademicoService`.
 3. **N2** — throttle en `/demo/{rol}`, no loguear el IPN sin firmar,
    restringir `tenant-chat/clear`.
-4. Confirmar los 7 modelos sin `BelongsToTenant` y añadir `tenant_id` en
-   los `DB::table` de N3.
+4. ~~Confirmar los 7 modelos sin `BelongsToTenant` y añadir `tenant_id` en
+   los `DB::table` de N3~~ — hecho (apartado 3.1 y corrección de N3).
 5. Completar la migración a `PromedioEstudianteService`.

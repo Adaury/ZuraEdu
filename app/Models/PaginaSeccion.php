@@ -61,7 +61,7 @@ class PaginaSeccion extends Model
         'stats'    => ['items' => []],
         'features' => ['titulo' => '', 'items' => []],
         'noticias' => ['titulo' => '', 'limite' => 6],
-        'contacto' => ['titulo' => '', 'direccion' => '', 'telefono' => '', 'email' => '', 'facebook' => '', 'instagram' => '', 'twitter' => ''],
+        'contacto' => ['titulo' => '', 'direccion' => '', 'telefono' => '', 'email' => '', 'facebook' => '', 'instagram' => '', 'twitter' => '', 'youtube' => ''],
     ];
 
     public const LIMITE_NOTICIAS_MAX = 12;

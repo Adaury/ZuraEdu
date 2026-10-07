@@ -7,6 +7,7 @@ Graba los videos de la portada con un navegador real (Playwright) sobre el siste
 |---------|--------------|
 | `zuraedu-presentacion.mp4` | Video del **inicio** (sección "Míralo en acción") |
 | `zuraedu-promo.mp4` | Video **publicitario** (misma sección; también sirve para redes) |
+| `zuraedu-promo-vertical.mp4` | Publicitario **vertical 9:16 (1080×1920, ~40 s)** para Instagram (Reels/Stories), Facebook y YouTube Shorts. No sale en la portada: se sube a las redes |
 | `modulo-*.mp4` (8) | **Un video por módulo** (inscripción/matrícula, asistencia, notas y boletines, pagos, cafetería, comunicados, portal docente, portal de familias) |
 
 Cada MP4 sale con su miniatura `.jpg`. La portada (`resources/views/partials/landing-videos.blade.php`) solo muestra
@@ -32,3 +33,9 @@ VIDEO_CLAVE_FILE=... node tools/videos/grabar.cjs zuraedu-promo modulo-pagos   #
 
 Los guiones están en `escenas.cjs` (una entrada por video); la mecánica de grabación, en `lib.cjs`.
 `VIDEO_OUT` cambia la carpeta de salida.
+
+## Notas
+
+- Una escena puede grabarse a menor tamaño y entregarse ampliada con `escalarA` en sus opciones (el vertical se graba en 540×960 y se entrega en 1080×1920).
+- Al grabar el vertical, el panel de administración tarda ~2 s en pintarse tras iniciar sesión; ese tramo en blanco se recortó a mano con ffmpeg (de 0:09 a 0:13). Si se regraba, hay que repetir el recorte.
+- Los iconos de redes sociales sueltos están en `public/brand/redes/` (instagram, facebook, youtube; SVG). Los enlaces del pie de la portada se configuran con `BRAND_INSTAGRAM_URL`, `BRAND_FACEBOOK_URL` y `BRAND_YOUTUBE_URL` en el `.env`.

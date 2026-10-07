@@ -78,8 +78,8 @@ function tarjetaHtml({ titulo, subtitulo = '', lineas = [], pie = '', tono = 'az
     </body></html>`;
 }
 
-/** Graba `escena(v)` en un MP4. opciones: { ancho, alto, movil } */
-async function grabar(nombre, escena, { ancho = 1280, alto = 720, movil = false } = {}) {
+/** Graba `escena(v)` en un MP4. opciones: { ancho, alto, movil, escalarA: [ancho, alto] (tamaño final del MP4, p. ej. [1080, 1920]) } */
+async function grabar(nombre, escena, { ancho = 1280, alto = 720, movil = false, escalarA = null } = {}) {
     fs.mkdirSync(SALIDA, { recursive: true });
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'zuraedu-video-'));
     const browser = await chromium.launch({ executablePath: CHROME, headless: true });
@@ -172,7 +172,9 @@ async function grabar(nombre, escena, { ancho = 1280, alto = 720, movil = false 
 
     const mp4 = path.join(SALIDA, nombre + '.mp4');
     const poster = path.join(SALIDA, nombre + '.jpg');
-    execFileSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', webm, '-an', '-c:v', 'libx264', '-preset', 'slow', '-crf', '29', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-r', '25', mp4]);
+    const filtro = escalarA ? ['-vf', `scale=${escalarA[0]}:${escalarA[1]}:flags=lanczos`] : [];
+    const calidad = escalarA ? '24' : '29';   // al ampliar, más calidad para que el texto no se vea pastoso
+    execFileSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', webm, '-an', ...filtro, '-c:v', 'libx264', '-preset', 'slow', '-crf', calidad, '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-r', escalarA ? '30' : '25', mp4]);
     execFileSync(FFMPEG, ['-y', '-loglevel', 'error', '-ss', '2.5', '-i', mp4, '-frames:v', '1', '-q:v', '4', poster]);
     fs.rmSync(tmp, { recursive: true, force: true });
     const seg = ((Date.now() - inicio) / 1000).toFixed(0);

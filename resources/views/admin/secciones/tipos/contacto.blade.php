@@ -25,7 +25,12 @@
     </div>
 </div>
 
-<div class="grid grid-cols-3 gap-4">
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div>
+        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1.5">YouTube</label>
+        <input type="text" name="contenido[youtube]" maxlength="255" class="{{ $in }}"
+               value="{{ old('contenido.youtube', $seccion->dato('youtube')) }}" placeholder="URL">
+    </div>
     <div>
         <label class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1.5">Facebook</label>
         <input type="text" name="contenido[facebook]" maxlength="255" class="{{ $in }}"

@@ -17,6 +17,14 @@ return [
     // Texto legal de TODOS los pies de página (pantallas, PDF y correos).
     'derechos' => 'Todos los derechos reservados',
 
+    // Cuentas oficiales de ZuraEdu en redes sociales (pie de la portada). Vacías = no se muestra el icono.
+    // Definirlas en .env: BRAND_INSTAGRAM_URL, BRAND_FACEBOOK_URL, BRAND_YOUTUBE_URL (URL completa, https://…).
+    'redes' => [
+        'instagram' => env('BRAND_INSTAGRAM_URL'),
+        'facebook'  => env('BRAND_FACEBOOK_URL'),
+        'youtube'   => env('BRAND_YOUTUBE_URL'),
+    ],
+
     // Rutas dentro de public/
     'logos' => [
         'color'        => 'brand/zuraedu-logo.svg',

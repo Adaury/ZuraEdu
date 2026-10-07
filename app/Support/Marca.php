@@ -53,4 +53,36 @@ class Marca
 
         return $cache[$variante];
     }
+
+
+    /**
+     * Una URL de red social lista para un href, o null si no sirve. Sin esquema se asume https://; un esquema distinto de
+     * http/https (javascript:, data:…) se rechaza, porque estos valores se guardan como texto libre y se escriben en el HTML.
+     */
+    public static function urlSegura(?string $url): ?string
+    {
+        $url = trim((string) $url);
+
+        if ($url === '' || preg_match('/[\s<>"\x00-\x1f]/', $url)) {
+            return null;
+        }
+        if (preg_match('#^[a-z][a-z0-9+.-]*:#i', $url)) {
+            return preg_match('#^https?://[^/]#i', $url) ? $url : null;
+        }
+
+        return 'https://' . ltrim($url, '/');
+    }
+
+    /** Redes sociales oficiales de ZuraEdu con URL válida: ['instagram' => url, 'facebook' => url, 'youtube' => url]. */
+    public static function redes(): array
+    {
+        $redes = [];
+        foreach (['instagram', 'facebook', 'youtube'] as $red) {
+            if ($url = self::urlSegura(config("brand.redes.{$red}"))) {
+                $redes[$red] = $url;
+            }
+        }
+
+        return $redes;
+    }
 }

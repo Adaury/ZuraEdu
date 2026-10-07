@@ -930,6 +930,7 @@
                     <x-marca.logo variante="blanco" :alto="36" />
                 </a>
                 <p class="text-sm text-slate-500 leading-relaxed mb-5">Plataforma SaaS educativa todo-en-uno para instituciones modernas.</p>
+                @include('partials.marca.redes')
             </div>
 
             {{-- Producto --}}

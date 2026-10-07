@@ -60,6 +60,27 @@ module.exports = {
         },
     },
 
+    // ─────────────────────────────── Publicitario vertical para redes (Reels, Shorts, Stories, TikTok) ───────────────────────────────
+    // Se graba en 540×960 (pantalla de celular) y se entrega en 1080×1920 (9:16). ~35 s, el mensaje empieza en los primeros 3 s.
+    'zuraedu-promo-vertical': {
+        opciones: { ancho: 540, alto: 960, movil: true, escalarA: [1080, 1920] },
+        async escena(v) {
+            await v.tarjeta({ titulo: '¿Notas en Excel, pagos en papel y avisos por WhatsApp?', tono: 'oscuro' }, 3200);
+            await v.tarjeta({ titulo: 'Todo tu colegio en un solo lugar', subtitulo: 'ZuraEdu', tono: 'azul' }, 2800);
+            await v.login(CUENTAS.admin);
+            await v.ir('/admin/dashboard', 'Dirección ve todo en tiempo real', 2800);
+            await v.login(CUENTAS.padre);
+            await v.ir('/portal/padre', 'Familias informadas, sin llamadas', 2600);
+            const hijo = await v.primerEnlace('a[href*="/portal/padre/hijo/"]');
+            if (hijo) {
+                await v.ir(hijo, 'Notas, asistencia y alertas al instante', 2800);
+                await v.ir(hijo.replace(/\/$/, '') + '/estado-cuenta', 'Pagos y estado de cuenta claros', 2800);
+            }
+            await v.tarjeta({ titulo: 'Más tiempo para educar', subtitulo: 'Menos papeleo, familias contentas', lineas: ['Dirección', 'Docentes', 'Familias'], tono: 'claro' }, 3000);
+            await cierre(v, 'Prueba ZuraEdu gratis');
+        },
+    },
+
     // ─────────────────────────────── Un video por módulo ───────────────────────────────
     'modulo-inscripcion-matricula': {
         opciones: {},

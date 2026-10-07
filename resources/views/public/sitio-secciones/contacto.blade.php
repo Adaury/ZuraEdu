@@ -12,11 +12,20 @@
             <div class="contacto-item"><i class="bi bi-envelope-fill"></i>{{ $seccion->dato('email') }}</div>
             @endif
         </div>
-        @if($seccion->dato('facebook') || $seccion->dato('instagram') || $seccion->dato('twitter'))
+        {{-- Las URLs son texto libre del administrador: solo http/https llegan al href (Marca::urlSegura rechaza javascript:, data:…) --}}
+        @php
+            $redesSitio = [
+                'facebook'  => \App\Support\Marca::urlSegura($seccion->dato('facebook')),
+                'instagram' => \App\Support\Marca::urlSegura($seccion->dato('instagram')),
+                'youtube'   => \App\Support\Marca::urlSegura($seccion->dato('youtube')),
+                'twitter-x' => \App\Support\Marca::urlSegura($seccion->dato('twitter')),
+            ];
+        @endphp
+        @if(array_filter($redesSitio))
         <div class="socials">
-            @if($seccion->dato('facebook'))<a href="{{ $seccion->dato('facebook') }}" target="_blank" rel="noopener"><i class="bi bi-facebook"></i></a>@endif
-            @if($seccion->dato('instagram'))<a href="{{ $seccion->dato('instagram') }}" target="_blank" rel="noopener"><i class="bi bi-instagram"></i></a>@endif
-            @if($seccion->dato('twitter'))<a href="{{ $seccion->dato('twitter') }}" target="_blank" rel="noopener"><i class="bi bi-twitter-x"></i></a>@endif
+            @foreach(array_filter($redesSitio) as $icono => $url)
+            <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ ucfirst(str_replace('-x', '', $icono)) }}"><i class="bi bi-{{ $icono }}"></i></a>
+            @endforeach
         </div>
         @endif
     </div>

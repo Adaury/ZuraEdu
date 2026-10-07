@@ -105,6 +105,7 @@ class PaginaSeccionController extends Controller
                 'contenido.facebook'  => 'nullable|string|max:255',
                 'contenido.instagram' => 'nullable|string|max:255',
                 'contenido.twitter'   => 'nullable|string|max:255',
+                'contenido.youtube'   => 'nullable|string|max:255',
             ],
             default => [],
         };

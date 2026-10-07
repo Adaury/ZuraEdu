@@ -375,3 +375,45 @@ Una ejecución intermedia de esta misma fecha se cortó tras 620 pruebas con `Ma
 4. ~~Confirmar los 7 modelos sin `BelongsToTenant` y añadir `tenant_id` en
    los `DB::table` de N3~~ — hecho (apartado 3.1 y corrección de N3).
 5. Completar la migración a `PromedioEstudianteService`.
+
+## 7. Prueba de carga y resistencia (2026-10-07)
+
+Ejecución manual del flujo `.github/workflows/carga.yml` (GitHub Actions, run `37630680708`, escenario completo, 1500 usuarios,
+PHP-FPM `pm=static` con 16 procesos) sobre el commit `01f2280` del `master` remoto. Servidor Linux desechable de 4 vCPU con Nginx,
+PHP-FPM 8.3, MySQL 8 y Redis, con los datos de demostración (360 estudiantes, 3600 calificaciones, 17 280 asistencias). No toca
+producción ni ninguna base real. **El generador de carga corre en la misma máquina**, así que las cifras son un piso conservador.
+
+| Escenario | Usuarios | OK | Resp./s | p50 | p95 | Timeouts | 5xx |
+|---|---|---|---|---|---|---|---|
+| escalera | 8 | 100 % | 20,2 | 0,43 s | 0,52 s | 0 | 0 |
+| escalera | 32 | 100 % | 19,9 | 1,6 s | 2,0 s | 0 | 0 |
+| escalera | 64 | 100 % | 20,0 | 3,1 s | 3,5 s | 0 | 0 |
+| escalera | 128 | 100 % | 17,7 | 7,1 s | 8,0 s | 0 | 0 |
+| escalera | 256 | 100 % | 18,7 | 13,3 s | 14,6 s | 0 | 0 |
+| realista (pausa 10-30 s, 90 s) | 1500 | **47,5 %** | 8,9 | 28,4 s | 56,7 s | **1764** | 0 |
+| ráfaga (todos a la vez) | 1500 | 100 % | 17,9 | 42,4 s | 79,6 s (máx. 83,7 s) | 0 | 0 |
+
+**Lectura**
+- **Sin caídas ni errores**: 0 respuestas 5xx, 0 rechazadas, 0 errores en los logs de Nginx y PHP-FPM, MySQL con 17 conexiones máximas
+  (de 151), sin esperas de bloqueo ni tablas temporales en disco. El sistema se degrada, no se rompe.
+- **Capacidad ≈ 18-21 páginas por segundo** en esta máquina, con la CPU al 100 % desde 8 usuarios. Subir los usuarios no sube el
+  rendimiento: sube la espera en proporción (cuello de botella en CPU, no en base de datos ni en procesos de PHP).
+- **Cuándo se nota**: con unos 8 a 16 usuarios pidiendo sin parar la página tarda menos de 1 s; con ~1500 personas navegando a
+  ritmo humano (≈75 páginas/s de demanda, unas 4 veces la capacidad) la mitad de las peticiones supera los 60 s y expira. Una
+  ráfaga de 1500 a la vez se atiende completa, pero la última persona espera ~80 s.
+- **Sin protección ante sobrecarga**: las peticiones se acumulan en cola en vez de rechazarse rápido; los usuarios ven esperas de
+  decenas de segundos en lugar de un aviso inmediato.
+- **Escenario `base-conteo-32` con 0 % OK**: igual que en la ejecución del 2-oct, con 0 timeouts y 0 5xx; parece un problema de
+  cómo clasifica la herramienta esa ruta, no del servidor. No se investigó.
+
+**Comparación con la ejecución del 2-oct (modo rápido, 32 usuarios, `0eadc2c`)**: los paneles rindieron entre un 20 y un 25 % menos
+(estudiante 17,2 vs 21,7 resp./s; padre 22,2 vs 28,8; docente 15,5 vs 19,5) con latencias p50 algo mayores, aunque 51 commits
+separan las dos versiones. Puede ser variación del runner compartido o un coste añadido por página; **no es concluyente**: conviene
+repetir la prueba antes de atribuirlo a un cambio.
+
+**Recomendaciones**
+1. Para más capacidad hay que bajar el coste por página (cachear con Redis los paneles y listados, que ya está instalado) o subir
+   núcleos; añadir procesos de PHP no ayuda porque el límite es la CPU.
+2. Poner un tope de cola en Nginx (`limit_req` / conexiones máximas con respuesta 503 amable) para que, ante una avalancha, la gente
+   reciba un aviso en vez de esperar 60 s.
+3. Repetir la prueba en un servidor dedicado, sin el generador en la misma máquina, antes de dimensionar producción.

@@ -201,6 +201,7 @@ class RendimientoController extends Controller
 
         // Promedios académica vs técnica calculados desde calificaciones
         $academica = DB::table('calificaciones_academicas as ca')
+                ->where('ca.tenant_id', tenant_id())
             ->join('asignaciones as a', 'a.id', '=', 'ca.asignacion_id')
             ->join('matriculas as m', 'm.id', '=', 'ca.matricula_id')
             ->where('ca.school_year_id', $schoolYear->id)
@@ -210,6 +211,7 @@ class RendimientoController extends Controller
             ->first();
 
         $tecnica = DB::table('calificaciones as c')
+                ->where('c.tenant_id', tenant_id())
             ->join('asignaciones as a', 'a.id', '=', 'c.asignacion_id')
             ->join('matriculas as m', 'm.id', '=', 'c.matricula_id')
             ->where('a.school_year_id', $schoolYear->id)
@@ -228,6 +230,7 @@ class RendimientoController extends Controller
         if (! $schoolYear) abort(404, 'No hay año escolar activo.');
 
         $academica = DB::table('calificaciones_academicas as ca')
+                ->where('ca.tenant_id', tenant_id())
             ->join('asignaciones as a', 'a.id', '=', 'ca.asignacion_id')
             ->join('matriculas as m', 'm.id', '=', 'ca.matricula_id')
             ->where('ca.school_year_id', $schoolYear->id)
@@ -237,6 +240,7 @@ class RendimientoController extends Controller
             ->first();
 
         $tecnica = DB::table('calificaciones as c')
+                ->where('c.tenant_id', tenant_id())
             ->join('asignaciones as a', 'a.id', '=', 'c.asignacion_id')
             ->join('matriculas as m', 'm.id', '=', 'c.matricula_id')
             ->where('a.school_year_id', $schoolYear->id)
@@ -262,12 +266,14 @@ class RendimientoController extends Controller
         if (! $schoolYear) abort(404);
 
         $academica = DB::table('calificaciones_academicas as ca')
+                ->where('ca.tenant_id', tenant_id())
             ->join('asignaciones as a', 'a.id', '=', 'ca.asignacion_id')
             ->where('ca.school_year_id', $schoolYear->id)->where('a.area', 'academica')
             ->whereNotNull('ca.nota_final')
             ->selectRaw('AVG(ca.nota_final) as promedio, COUNT(*) as total')->first();
 
         $tecnica = DB::table('calificaciones as c')
+                ->where('c.tenant_id', tenant_id())
             ->join('asignaciones as a', 'a.id', '=', 'c.asignacion_id')
             ->where('a.school_year_id', $schoolYear->id)->where('a.area', 'tecnica')
             ->whereNotNull('c.nota_final')
@@ -275,6 +281,7 @@ class RendimientoController extends Controller
 
         // Por asignatura
         $porAsig = DB::table('calificaciones_academicas as ca')
+                ->where('ca.tenant_id', tenant_id())
             ->join('asignaciones as a', 'a.id', '=', 'ca.asignacion_id')
             ->join('asignaturas as asig', 'asig.id', '=', 'a.asignatura_id')
             ->where('ca.school_year_id', $schoolYear->id)->whereNotNull('ca.nota_final')
@@ -333,7 +340,8 @@ class RendimientoController extends Controller
             ->orderBy('grado_id')
             ->get();
 
-        $grupoId = $request->grupo_id;
+        // grupo_id llega del navegador: solo se acepta si es un grupo de este colegio.
+        $grupoId = $request->grupo_id ? Grupo::where('id', $request->grupo_id)->value('id') : null;
         $detalle = null;
 
         if ($grupoId) {

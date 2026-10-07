@@ -55,6 +55,7 @@ class RendimientoCache extends Model
     {
         if ($periodoId) {
             $notas = DB::table('calificaciones as c')
+                ->where('c.tenant_id', tenant_id())
                 ->join('matriculas as m', 'm.id', '=', 'c.matricula_id')
                 ->where('m.grupo_id', $grupoId)
                 ->where('m.estado', 'activa')
@@ -63,6 +64,7 @@ class RendimientoCache extends Model
                 ->pluck('c.nota_final');
         } else {
             $notas = DB::table('calificaciones_academicas as ca')
+                ->where('ca.tenant_id', tenant_id())
                 ->join('matriculas as m', 'm.id', '=', 'ca.matricula_id')
                 ->where('m.grupo_id', $grupoId)
                 ->where('m.estado', 'activa')

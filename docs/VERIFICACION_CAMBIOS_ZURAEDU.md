@@ -287,7 +287,15 @@ Descripción original:
 - `DELETE admin/tenant-chat/clear` (`TenantChatController.php:27`) borra todo
   el chat del tenant y solo exige el acceso admin genérico.
 
-### N3 — Bajo: consultas `DB::table` sin `tenant_id` explícito
+### N3 — Bajo (🟢 CORREGIDO 2026-10-06): consultas `DB::table` sin `tenant_id` explícito
+**Corrección aplicada**: las 7 consultas de `RendimientoController` y las 2 de
+`RendimientoCache::recalcularParaGrupo` filtran ahora por
+`tenant_id = tenant_id()` en la tabla base; además `RendimientoController`
+solo acepta un `grupo_id` del navegador si es un grupo del colegio. Prueba:
+`tests/Feature/RendimientoAislamientoTenantTest.php` — con dos colegios y el
+mismo `school_year_id`, el promedio por área solo cuenta las notas del
+colegio actual; verificada: **falla sin la corrección** (cuenta 2 notas en
+vez de 1) y pasa con ella. Descripción original:
 `RendimientoController.php:203-277` (3 consultas de promedio por área) y
 `RendimientoCache.php:57-71` filtran por `school_year_id`/`grupo_id`, que son
 IDs propios del tenant, así que hoy no cruzan datos; pero no tienen

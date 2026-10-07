@@ -403,13 +403,25 @@ producción ni ninguna base real. **El generador de carga corre en la misma máq
   ráfaga de 1500 a la vez se atiende completa, pero la última persona espera ~80 s.
 - **Sin protección ante sobrecarga**: las peticiones se acumulan en cola en vez de rechazarse rápido; los usuarios ven esperas de
   decenas de segundos en lugar de un aviso inmediato.
-- **Escenario `base-conteo-32` con 0 % OK**: igual que en la ejecución del 2-oct, con 0 timeouts y 0 5xx; parece un problema de
-  cómo clasifica la herramienta esa ruta, no del servidor. No se investigó.
+- **Escenario `base-conteo-32` con 0 % OK** (🟢 explicado y corregido en la herramienta, commit `da679d5`): no era el servidor
+  (Nginx registraba 200 con p50 de 0,19-0,40 s). `scripts/carga/carga.py` lee la respuesta cruda de HTTP/1.1 y, cuando Nginx la
+  envía «chunked», el cuerpo termina en `0\r\n\r\n`; una respuesta JSON completa acababa en `0` en vez de `}` y se clasificaba como
+  «incompleta», una clase sin columna en la tabla. Ahora se reconoce el fin de transferencia, hay una columna «Otras» y
+  `scripts/carga/test_clasificar.py` cubre 8 casos (incluidos los truncados, que siguen marcándose como incompletos). La corrección
+  aún no está en GitHub, por lo que las ejecuciones remotas siguen mostrando ese 0 % hasta hacer push.
 
-**Comparación con la ejecución del 2-oct (modo rápido, 32 usuarios, `0eadc2c`)**: los paneles rindieron entre un 20 y un 25 % menos
-(estudiante 17,2 vs 21,7 resp./s; padre 22,2 vs 28,8; docente 15,5 vs 19,5) con latencias p50 algo mayores, aunque 51 commits
-separan las dos versiones. Puede ser variación del runner compartido o un coste añadido por página; **no es concluyente**: conviene
-repetir la prueba antes de atribuirlo a un cambio.
+**Variación entre ejecuciones del mismo código** (modo rápido, 32 usuarios, `01f2280` en ambas, run `37649099499` frente al completo):
+
+| Panel | Ejecución completa | Repetición rápida | Referencia 2-oct (`0eadc2c`) |
+|---|---|---|---|
+| Estudiante | 17,2 resp./s · p50 1,85 s | 38,1 resp./s · p50 0,84 s | 21,7 resp./s · p50 1,47 s |
+| Padre | 22,2 resp./s · p50 1,44 s | 48,6 resp./s · p50 0,66 s | 28,8 resp./s · p50 1,11 s |
+| Docente | 15,5 resp./s · p50 1,90 s | 36,2 resp./s · p50 0,84 s | 19,5 resp./s · p50 1,50 s |
+
+Sobre **el mismo código** el rendimiento cambió más del doble entre dos ejecuciones, así que la «bajada del 20-25 %» frente al 2-oct
+**era ruido del servidor compartido de GitHub, no una regresión**. Consecuencia: las cifras de capacidad de esta sección valen como
+orden de magnitud (entre ~15 y ~50 páginas/s según la ejecución, con 0 errores en todas), no como número exacto; para dimensionar
+producción hace falta un servidor dedicado y varias repeticiones.
 
 **Recomendaciones**
 1. Para más capacidad hay que bajar el coste por página (cachear con Redis los paneles y listados, que ya está instalado) o subir
@@ -417,3 +429,34 @@ repetir la prueba antes de atribuirlo a un cambio.
 2. Poner un tope de cola en Nginx (`limit_req` / conexiones máximas con respuesta 503 amable) para que, ante una avalancha, la gente
    reciba un aviso en vez de esperar 60 s.
 3. Repetir la prueba en un servidor dedicado, sin el generador en la misma máquina, antes de dimensionar producción.
+
+## 8. Hallazgo N4 — las cuentas demo se enlazan a registros reales (2026-10-07)
+
+**Gravedad: alta si algún colegio real ejecutó "Crear usuarios demo"; no verificable desde el entorno de desarrollo.**
+
+- **Dónde**: `database/seeders/DemoUsersSeeder.php` (docente: `Docente::whereNull('user_id')->first()` y, además, le reescribe el
+  correo a `docente@demo.com`; estudiante: `Estudiante::whereNull('user_id')->first()`; representante: igual) y
+  `AuthController::ensureDemoProfile()` (`app/Http/Controllers/AuthController.php:331`, mismo patrón), que se ejecuta en la ruta
+  pública `GET /demo/{rol}`. El seeder se lanza desde el botón «Crear usuarios demo» (`DemoTrialController::crearUsuariosDemo`,
+  `POST admin/sistema/demo-trial/crear`, gate `solo-administrador`) del **Administrador de cualquier colegio**.
+- **Qué pasa**: en el colegio donde se ejecute, las cuentas `docente@demo.com`, `estudiante@demo.com` y `padre@demo.com`
+  (contraseña `123456`, que el propio mensaje de éxito muestra) quedan vinculadas al **primer docente, estudiante y representante
+  reales sin usuario** de ese colegio. Cualquiera que conozca la contraseña puede entrar por `/login` (no hace falta el modo demo)
+  y ver las notas, pagos y datos de esa persona real; el docente real pierde además su correo.
+- **Evidencia (base de desarrollo)**: las tres cuentas existen en el tenant 1 «ZuraEdu Demo» y cada una apunta a un registro
+  existente (1 estudiante, 1 docente, 1 representante); ese tenant tiene 359 estudiantes y 2 docentes sin usuario. Ahí son datos
+  sembrados, así que no hay fuga; **en producción hay que comprobar qué colegio las tiene**:
+
+```sql
+SELECT u.tenant_id, t.nombre_institucion, u.email,
+       (SELECT COUNT(*) FROM estudiantes e WHERE e.user_id = u.id) AS estudiantes,
+       (SELECT COUNT(*) FROM docentes d WHERE d.user_id = u.id)    AS docentes,
+       (SELECT COUNT(*) FROM representantes r WHERE r.user_id = u.id) AS representantes
+FROM users u LEFT JOIN tenants t ON t.id = u.tenant_id
+WHERE u.email IN ('docente@demo.com', 'estudiante@demo.com', 'padre@demo.com', 'admin@demo.com');
+```
+
+- **Corrección propuesta (no aplicada: cambia cómo se ve el demo)**: adoptar registros sin usuario solo en un colegio marcado como
+  demo; en cualquier otro, crear perfiles propios vacíos con cédula/matrícula `DEMO-…`; restringir el botón «Crear usuarios demo» al
+  SuperAdmin; y rechazar el inicio de sesión normal de las cuentas `@demo.com` cuando el modo demo está desactivado. Falta decidir
+  qué marca identifica al colegio demo de producción (`Tenant` solo tiene `is_demo_temporal`, que es otra cosa: demos efímeras).

@@ -339,6 +339,8 @@ Suite completa `php artisan test` (BD `sge_test`) ejecutada tras la corrección 
 
 Segunda ejecución completa tras corregir N2 (commit 4b47353): **972 pruebas pasadas, 0 fallidas, 3879 aserciones, 1053,8 s**. Suma las 2 pruebas de `AuditoriaN2RutasPublicasTest`.
 
+Tercera ejecución completa tras corregir N3 (commit dcca9e5): **973 pruebas pasadas, 0 fallidas, 3882 aserciones, 1178,8 s**. Suma la prueba de `RendimientoAislamientoTenantTest`.
+
 ## 6. Orden de corrección recomendado
 
 1. **N1** (`limpiarDatos`) — corregir antes de cualquier otro cambio; es

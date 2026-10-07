@@ -252,8 +252,8 @@ jobs:
             echo "- Datos: $(mysql -h127.0.0.1 -uroot -proot -N -e 'select count(*) from sge_carga.estudiantes' 2>/dev/null) estudiantes, $(mysql -h127.0.0.1 -uroot -proot -N -e 'select count(*) from sge_carga.calificaciones_academicas' 2>/dev/null) calificaciones, $(mysql -h127.0.0.1 -uroot -proot -N -e 'select count(*) from sge_carga.asistencias' 2>/dev/null) asistencias"
             echo "- **El generador de carga corre en la misma máquina que el servidor**: las cifras son un piso conservador (un servidor dedicado rendiría más)."
             echo ""
-            echo "| Escenario | Usuarios | Peticiones | OK | OK/s | p50 ms | p95 ms | máx ms | Rechazadas | Timeouts | 5xx | Redir. (sesión) | Servidor p50/p95 |"
-            echo "|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+            echo "| Escenario | Usuarios | Peticiones | OK | OK/s | p50 ms | p95 ms | máx ms | Rechazadas | Timeouts | 5xx | Redir. (sesión) | Otras | Servidor p50/p95 |"
+            echo "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
           } > "$MD"
 
           correr() {

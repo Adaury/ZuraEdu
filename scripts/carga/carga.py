@@ -31,7 +31,10 @@ def pct(valores, p):
 def clasificar(estado, cuerpo_final):
     if 200 <= estado < 300:
         # HTML completo (termina en </html>) o JSON completo (termina en } o ]): la petición llegó entera
-        return 'ok' if (b'</html>' in cuerpo_final.lower() or cuerpo_final.rstrip()[-1:] in (b'}', b']')) else 'incompleta'
+        fin = cuerpo_final.rstrip()
+        if fin.endswith(b'\n0'):          # fin de una respuesta «chunked» (…\r\n0\r\n\r\n): el contenido real termina antes
+            fin = fin[:-1].rstrip()
+        return 'ok' if (b'</html>' in cuerpo_final.lower() or fin[-1:] in (b'}', b']')) else 'incompleta'
     if 300 <= estado < 400:
         return 'redireccion'          # normalmente: la sesión no valió y mandó al login
     if estado == 429:
@@ -174,9 +177,11 @@ async def main():
     if a.md:
         c = res['clases']
         srv = res.get('servidor', {})
+        # Todo lo que no es ok ni una de las columnas anteriores (incompleta, 4xx, reset…): antes quedaba sin columna y un 0 % OK parecía misterioso.
+        otras = res['total'] - sum(c.get(k, 0) for k in ('ok', 'rechazada', 'timeout', '5xx', 'redireccion'))
         with open(a.md, 'a', encoding='utf-8') as f:
             f.write(f"| {a.etiqueta} | {a.usuarios} | {res['total']} | {res['ok_pct']}% | {res['ok_por_s']} | {res['ok_p50_ms']} | {res['ok_p95_ms']} | "
-                    f"{res['ok_max_ms']} | {c.get('rechazada', 0)} | {c.get('timeout', 0)} | {c.get('5xx', 0)} | {c.get('redireccion', 0)} | "
+                    f"{res['ok_max_ms']} | {c.get('rechazada', 0)} | {c.get('timeout', 0)} | {c.get('5xx', 0)} | {c.get('redireccion', 0)} | {otras} | "
                     f"{srv.get('p50_ms', '-')} / {srv.get('p95_ms', '-')} |\n")
 
 

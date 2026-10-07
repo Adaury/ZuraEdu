@@ -360,6 +360,10 @@ Segunda ejecución completa tras corregir N2 (commit 4b47353): **972 pruebas pas
 
 Tercera ejecución completa tras corregir N3 (commit dcca9e5): **973 pruebas pasadas, 0 fallidas, 3882 aserciones, 1178,8 s**. Suma la prueba de `RendimientoAislamientoTenantTest`.
 
+Cuarta ejecución completa, tras añadir los videos, los iconos de redes y la validación de URLs (commit cdef267 más el arreglo de `tests/TestCase.php`): **980 pruebas pasadas, 2 omitidas, 0 fallidas, 3917 aserciones, 1345,3 s**. Las 2 omitidas son los casos «sin videos» de `LandingVideosTest`, que no aplican mientras haya videos en `public/videos`.
+
+Una ejecución intermedia de esta misma fecha se cortó tras 620 pruebas con `Maximum execution time of 600 seconds exceeded`. No era una prueba fallida: flujos como `BoletinController`, `ExportacionMasivaController` y `RespaldoColegioService` llaman a `set_time_limit(300|600)` y, al correr todas las pruebas en un solo proceso, ese límite seguía vigente entre pruebas; si la suite iba lenta, PHP abortaba la prueba en curso. Arreglado en `tests/TestCase.php`, que reinicia el límite (`set_time_limit(0)`) al empezar cada prueba.
+
 ## 6. Orden de corrección recomendado
 
 1. **N1** (`limpiarDatos`) — corregir antes de cualquier otro cambio; es

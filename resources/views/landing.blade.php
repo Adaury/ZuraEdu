@@ -392,6 +392,8 @@
     </div>
 </div>
 
+{{-- Videos: presentación, publicitario y uno por módulo (solo los que existan en public/videos) --}}
+@include('partials.landing-videos')
 
 {{-- ═══════════════════════════════════════════════
      2. BENEFICIOS

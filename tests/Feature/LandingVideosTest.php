@@ -37,6 +37,23 @@ class LandingVideosTest extends TestCase
         $this->get('/')->assertOk()->assertDontSee('id="videos"', false)->assertDontSee('zv-modal', false);
     }
 
+    public function test_con_los_videos_reales_la_portada_ofrece_cada_uno_que_existe(): void
+    {
+        if (! $this->hayVideosReales()) {
+            $this->markTestSkipped('No hay videos reales en public/videos.');
+        }
+
+        $r = $this->get('/')->assertOk()->assertSee('id="videos"', false);
+
+        foreach (self::NOMBRES as $n) {
+            if (is_file(public_path("videos/{$n}.mp4"))) {
+                $r->assertSee("videos/{$n}.mp4", false);
+            } else {
+                $r->assertDontSee("{$n}.mp4", false);
+            }
+        }
+    }
+
     public function test_con_un_video_aparece_solo_ese_y_su_boton_de_modulo(): void
     {
         if ($this->hayVideosReales()) {

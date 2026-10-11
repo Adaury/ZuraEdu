@@ -120,6 +120,24 @@ class AcademicRiskAlcanceCoordinadorTest extends TestCase
         $this->assertCount(0, $r->viewData('scores'));
     }
 
+    public function test_inicial_va_con_primer_ciclo_y_bachillerato_con_segundo(): void
+    {
+        [$estInicial]    = $this->estudiante('inicial', 3);
+        [$estBachiller]  = $this->estudiante('bachillerato', 4);
+
+        $primer = $this->actingAs($this->user('Coordinador Primer Ciclo'))->get(route('admin.riesgo.index'));
+        $this->assertEqualsCanonicalizing(
+            [$this->estPrimer->id, $estInicial->id],
+            $primer->viewData('scores')->pluck('estudiante_id')->all()
+        );
+
+        $segundo = $this->actingAs($this->user('Coordinador Segundo Ciclo'))->get(route('admin.riesgo.index'));
+        $this->assertEqualsCanonicalizing(
+            [$this->estSegundo->id, $estBachiller->id],
+            $segundo->viewData('scores')->pluck('estudiante_id')->all()
+        );
+    }
+
     public function test_roles_de_alcance_total_ven_ambos_ciclos(): void
     {
         foreach (['Administrador', 'Director', 'Coordinador Académico'] as $rol) {

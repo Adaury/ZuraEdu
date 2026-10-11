@@ -37,9 +37,11 @@ class AcademicRiskController extends Controller
             return null;
         }
 
+        // Inicial se agrupa con Primer Ciclo (primeros años) y Bachillerato con
+        // Segundo Ciclo (últimos años), para que ningún grado quede sin coordinador.
         $ciclos = [];
-        if ($user->hasRole('Coordinador Primer Ciclo'))  $ciclos[] = 'primer_ciclo';
-        if ($user->hasRole('Coordinador Segundo Ciclo')) $ciclos[] = 'segundo_ciclo';
+        if ($user->hasRole('Coordinador Primer Ciclo'))  array_push($ciclos, 'inicial', 'primer_ciclo');
+        if ($user->hasRole('Coordinador Segundo Ciclo')) array_push($ciclos, 'segundo_ciclo', 'bachillerato');
 
         return $ciclos;
     }

@@ -12,6 +12,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
+        // ── Academic Risk Score: recálculo diario (antes solo con el botón admin) ──
+        $schedule->command('riesgo:calcular')->dailyAt('05:00')->withoutOverlapping(60);
+
         // ── Alertas de ausencias repetidas (diario 05:30) ────────────────────
         $schedule->command('alertas:ausencias')->dailyAt('05:30');
 

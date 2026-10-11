@@ -33,6 +33,20 @@ class QuizEstudianteController extends Controller
         return $matricula;
     }
 
+    /** Segundos de gracia tras el límite de tiempo (latencia de red / reloj) antes de rechazar respuestas. */
+    private const GRACIA_SEGUNDOS = 30;
+
+    private function expirado(ZcIntento $intento, ZcQuiz $quiz): bool
+    {
+        if (! $quiz->duracion_minutos || ! $intento->iniciado_en) {
+            return false;
+        }
+
+        return now()->greaterThan(
+            $intento->iniciado_en->copy()->addMinutes($quiz->duracion_minutos)->addSeconds(self::GRACIA_SEGUNDOS)
+        );
+    }
+
     // ── Pantalla de inicio del quiz ──────────────────────────────────────
     public function iniciar(ClaseVirtual $claseVirtual, MaterialClase $material)
     {
@@ -40,6 +54,8 @@ class QuizEstudianteController extends Controller
 
         abort_unless($material->clase_virtual_id === $claseVirtual->id, 404);
         abort_unless($claseVirtual->asignacion->grupo_id === $matricula->grupo_id, 403);
+        // Un quiz en borrador (no publicado) no se puede abrir por URL directa.
+        abort_unless($material->publicado, 404);
 
         $quiz = $material->quiz()->with('preguntas')->firstOrFail();
 
@@ -70,8 +86,15 @@ class QuizEstudianteController extends Controller
         $matricula = $this->getMatricula();
         abort_unless($material->clase_virtual_id === $claseVirtual->id, 404);
         abort_unless($claseVirtual->asignacion->grupo_id === $matricula->grupo_id, 403);
+        abort_unless($material->publicado, 404);
 
         $quiz = $material->quiz()->with('preguntas.opciones')->firstOrFail();
+
+        // Un intento ya en curso se reanuda (antes, un POST directo creaba otro
+        // en paralelo y se podía "ensayar" con uno y enviar el otro).
+        if ($activo = $quiz->intentoActivo($matricula->id)) {
+            return redirect()->route('portal.estudiante.classroom.quiz.tomar', [$claseVirtual, $material, $activo]);
+        }
 
         if (!$quiz->puedeIntentar($matricula->id)) {
             return back()->with('error', "Máximo de intentos alcanzado.");
@@ -98,6 +121,12 @@ class QuizEstudianteController extends Controller
         $matricula = $this->getMatricula();
         abort_unless($intento->matricula_id === $matricula->id, 403);
         abort_unless($intento->estado === 'en_curso', 422, 'Este intento ya está finalizado.');
+        // El intento debe ser del quiz/material/aula de la URL (padre→hijo contra la BD).
+        abort_unless(
+            $intento->quiz && $intento->quiz->material_id === $material->id
+                && $material->clase_virtual_id === $claseVirtual->id,
+            404
+        );
 
         $quiz      = $intento->quiz()->with([
             'preguntas' => fn($q) => $quiz_order = $intento->quiz?->aleatorizar_preguntas
@@ -112,8 +141,9 @@ class QuizEstudianteController extends Controller
             $finPrevisto = $intento->iniciado_en->addMinutes($quiz->duracion_minutos);
             $tiempoRestante = max(0, now()->diffInSeconds($finPrevisto, false));
             if ($tiempoRestante <= 0) {
-                // Tiempo expirado — finalizar automáticamente
-                return $this->finalizarIntento($intento, $quiz, $matricula);
+                // Tiempo expirado — finalizar automáticamente (con el material, para que
+                // la nota llegue a la entrega y al libro de notas igual que al enviar).
+                return $this->finalizarIntento($intento, $quiz, $matricula, $material);
             }
         }
 
@@ -135,14 +165,30 @@ class QuizEstudianteController extends Controller
         abort_unless($intento->estado === 'en_curso', 422);
 
         $request->validate([
-            'pregunta_id'    => 'required|exists:zc_preguntas,id',
-            'opcion_id'      => 'nullable|exists:zc_opciones,id',
+            'pregunta_id'    => 'required|integer',
+            'opcion_id'      => 'nullable|integer',
             'texto_respuesta'=> 'nullable|string|max:3000',
         ]);
 
+        $quiz = $intento->quiz;
+        abort_unless($quiz, 404);
+
+        // Fuera de tiempo no se aceptan respuestas nuevas (antes solo se vigilaba al abrir la pantalla).
+        abort_if($this->expirado($intento, $quiz), 422, 'El tiempo del quiz terminó.');
+
+        // La pregunta debe ser de ESTE quiz y la opción de ESA pregunta (no confiar en los IDs del cliente).
+        $pregunta = ZcPregunta::where('quiz_id', $quiz->id)->find($request->pregunta_id);
+        abort_unless($pregunta, 422, 'Pregunta inválida.');
+
+        $opcionId = null;
+        if ($request->filled('opcion_id')) {
+            $opcionId = ZcOpcion::where('pregunta_id', $pregunta->id)->where('id', $request->opcion_id)->value('id');
+            abort_unless($opcionId, 422, 'Opción inválida.');
+        }
+
         ZcRespuesta::updateOrCreate(
-            ['intento_id' => $intento->id, 'pregunta_id' => $request->pregunta_id],
-            ['opcion_id' => $request->opcion_id, 'texto_respuesta' => $request->texto_respuesta]
+            ['intento_id' => $intento->id, 'pregunta_id' => $pregunta->id],
+            ['opcion_id' => $opcionId, 'texto_respuesta' => $request->texto_respuesta]
         );
 
         return response()->json(['ok' => true]);
@@ -162,8 +208,12 @@ class QuizEstudianteController extends Controller
         abort_unless($quiz && $quiz->material_id === $material->id && $material->clase_virtual_id === $claseVirtual->id, 404);
         abort_unless($claseVirtual->asignacion->grupo_id === $matricula->grupo_id, 403);
 
-        // Guardar respuestas del formulario (fallback si no usaron AJAX)
-        foreach ($request->all() as $key => $valor) {
+        // Guardar respuestas del formulario (fallback si no usaron AJAX). Si el tiempo ya
+        // terminó (con gracia), se ignora lo que llegue en este envío y se califica con lo
+        // guardado antes de vencer: antes el límite solo se vigilaba al abrir la pantalla.
+        $fueraDeTiempo = $this->expirado($intento, $quiz);
+
+        foreach ($fueraDeTiempo ? [] : $request->all() as $key => $valor) {
             if (str_starts_with($key, 'pregunta_')) {
                 $preguntaId = (int) str_replace('pregunta_', '', $key);
                 $pregunta   = $quiz->preguntas->find($preguntaId);
@@ -175,6 +225,10 @@ class QuizEstudianteController extends Controller
                     $texto = is_string($valor) ? $valor : null;
                 } else {
                     $opcionId = is_numeric($valor) ? (int) $valor : null;
+                    // La opción debe pertenecer a esa pregunta.
+                    if ($opcionId && ! $pregunta->opciones->contains('id', $opcionId)) {
+                        $opcionId = null;
+                    }
                 }
 
                 ZcRespuesta::updateOrCreate(
@@ -220,29 +274,48 @@ class QuizEstudianteController extends Controller
             'finalizado_en'=> now(),
         ]);
 
-        // Sincronizar nota con libro de notas si tiene período asignado
+        // Entrega + libro de notas
         if ($material && $quiz->autocorreccion) {
-            $material_model = $material instanceof MaterialClase ? $material : MaterialClase::find($material);
-            if ($material_model) {
-                $puntajeMax = $quiz->puntaje_total ?: 100;
-                $notaSobre100 = round(($puntuacion / $puntajeMax) * ($material_model->puntos ?? 100), 2);
+            $puntajeMax    = $quiz->puntaje_total ?: 100;
+            $tieneAbiertas = $quiz->preguntas->contains('tipo', 'abierta');
 
-                \App\Models\EntregaClassroom::updateOrCreate(
-                    ['material_id' => $material_model->id, 'matricula_id' => $matricula->id],
-                    [
-                        'calificacion'  => $notaSobre100,
-                        'estado'        => 'calificado',
+            // Nota del estudiante = su MEJOR intento finalizado (el docente ve "mejor intento"
+            // en los resultados; antes la entrega quedaba con el último, aunque fuera peor).
+            $mejor = (float) ZcIntento::where('quiz_id', $quiz->id)
+                ->where('matricula_id', $matricula->id)
+                ->where('estado', 'finalizado')
+                ->max('puntuacion');
+            $nota = round(($mejor / $puntajeMax) * ($material->puntos ?? 100), 2);
+
+            $entrega = \App\Models\EntregaClassroom::firstOrNew([
+                'material_id'  => $material->id,
+                'matricula_id' => $matricula->id,
+            ]);
+
+            if ($tieneAbiertas) {
+                // Las preguntas abiertas no tienen pantalla de corrección propia: la parte
+                // automática NO es la nota final. Queda como entrega pendiente para que el docente
+                // la califique con el flujo normal de entregas (antes se marcaba "calificado"
+                // con las abiertas en 0 y esa nota baja llegaba al libro de notas).
+                if ($entrega->estado !== 'calificado') {
+                    $entrega->fill([
+                        'estado'        => 'entregado',
                         'fecha_entrega' => now(),
-                        'fecha_revision'=> now(),
-                        'contenido'     => "Quiz completado — {$puntuacion}/{$puntajeMax} pts",
-                    ]
-                );
+                        'contenido'     => "Quiz completado — {$mejor}/{$puntajeMax} pts autocorregidos; "
+                                         . 'tiene preguntas abiertas pendientes de revisión del docente.',
+                    ])->save();
+                }
+            } else {
+                $entrega->fill([
+                    'calificacion'   => $nota,
+                    'estado'         => 'calificado',
+                    'fecha_entrega'  => $entrega->fecha_entrega ?? now(),
+                    'fecha_revision' => now(),
+                    'contenido'      => "Quiz completado — {$mejor}/{$puntajeMax} pts",
+                ])->save();
 
-                if ($material_model->periodo_id) {
-                    app(ZuraClassGradeSync::class)->sincronizar(
-                        \App\Models\EntregaClassroom::where('material_id', $material_model->id)
-                            ->where('matricula_id', $matricula->id)->first()
-                    );
+                if ($material->periodo_id) {
+                    app(ZuraClassGradeSync::class)->sincronizar($entrega->fresh());
                 }
             }
         }

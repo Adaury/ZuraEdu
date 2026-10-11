@@ -115,6 +115,15 @@ class QuizDocenteController extends Controller
         $this->autorizarClase($claseVirtual, $docente);
         abort_unless($material->clase_virtual_id === $claseVirtual->id, 404);
 
+        $request->validate([
+            'duracion_minutos'      => 'nullable|integer|min:1|max:300',
+            'intentos_max'          => 'nullable|integer|min:1|max:10',
+            'preguntas'             => 'nullable|array',
+            'preguntas.*.enunciado' => 'nullable|string|max:1000',
+            'preguntas.*.tipo'      => 'nullable|in:multiple,verdadero_falso,abierta',
+            'preguntas.*.puntos'    => 'nullable|numeric|min:0.5|max:100',
+        ]);
+
         $quiz = $material->quiz()->firstOrFail();
         $quiz->update([
             'duracion_minutos'      => $request->duracion_minutos,
@@ -124,7 +133,14 @@ class QuizDocenteController extends Controller
             'mostrar_respuestas'    => $request->boolean('mostrar_respuestas', true),
         ]);
 
-        // Regenerar preguntas si se enviaron nuevas
+        // Regenerar preguntas si se enviaron nuevas. `preguntas()->delete()` arrastra las
+        // opciones y las RESPUESTAS de todos los estudiantes: con intentos ya hechos dejaría
+        // notas sin respuestas que las respalden, así que no se permite reemplazarlas.
+        if ($request->has('preguntas') && $quiz->intentos()->exists()) {
+            return redirect()->route('portal.docente.classroom.show', $claseVirtual)
+                ->with('error', 'Los ajustes del quiz se guardaron, pero las preguntas NO se reemplazaron: ya hay estudiantes que lo intentaron. Crea un quiz nuevo si necesitas cambiarlas.');
+        }
+
         if ($request->has('preguntas')) {
             $quiz->preguntas()->delete(); // Cascada borra opciones y respuestas
             foreach ($request->preguntas as $i => $preguntaData) {

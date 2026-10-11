@@ -10,7 +10,6 @@ use App\Models\Docente;
 use App\Models\Matricula;
 use App\Models\SchoolYear;
 use App\Services\CarnetQrService;
-use App\Services\CarnetRiskScoreService;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -95,14 +94,6 @@ class CarnetController extends Controller
         }
 
         return back()->with('success', "Se generaron/verificaron {$creados} carnets de estudiantes y {$docentes} de docentes.");
-    }
-
-    public function show(CarnetIdentidad $carnet)
-    {
-        $carnet->load(['user', 'matricula.grupo.grado', 'matricula.grupo.seccion', 'accesos' => fn($q) => $q->latest()->limit(20)]);
-        $risk = CarnetRiskScoreService::calcular($carnet);
-
-        return view('admin.carnet.show', compact('carnet', 'risk'));
     }
 
     public function suspender(CarnetIdentidad $carnet)

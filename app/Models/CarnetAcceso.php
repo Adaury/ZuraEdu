@@ -113,6 +113,22 @@ class CarnetAcceso extends Model
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    /**
+     * Estado de una ENTRADA según la hora límite del centro (ConfigInstitucional
+     * 'carnet_hora_entrada', 07:30 por defecto). Antes el 07:30 estaba fijo en
+     * dos controladores: un colegio de tanda vespertina marcaba tardanza a todos.
+     */
+    public static function estadoParaEntrada(?\Illuminate\Support\Carbon $ahora = null): string
+    {
+        $ahora  = $ahora ?? now();
+        $limite = (string) \App\Models\ConfigInstitucional::get('carnet_hora_entrada', '07:30');
+        if (! preg_match('/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/', $limite)) {
+            $limite = '07:30';
+        }
+
+        return $ahora->greaterThan($ahora->copy()->setTimeFromTimeString($limite)) ? 'tardanza' : 'presente';
+    }
+
     public function getEstadoBadgeAttribute(): array
     {
         return self::ESTADOS[$this->estado] ?? ['label' => $this->estado, 'color' => 'secondary', 'icon' => 'bi-circle'];

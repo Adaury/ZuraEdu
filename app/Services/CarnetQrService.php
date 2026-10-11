@@ -66,12 +66,15 @@ class CarnetQrService
         $cacheKey = self::CACHE_PREFIX . "perm:{$tenantId}:{$qrToken}";
 
         return Cache::remember($cacheKey, 60, function () use ($qrToken, $tenantId) {
-            return CarnetIdentidad::withoutTenant()
+            $carnet = CarnetIdentidad::withoutTenant()
                 ->where('tenant_id', $tenantId)
                 ->where('qr_token', $qrToken)
                 ->where('estado', 'activo')
                 ->with(['user', 'matricula.grupo.grado', 'matricula.grupo.seccion'])
                 ->first();
+
+            // Vigencia y baja del estudiante (ver CarnetIdentidad::estaHabilitado)
+            return $carnet?->estaHabilitado() ? $carnet : null;
         });
     }
 

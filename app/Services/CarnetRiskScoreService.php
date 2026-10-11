@@ -15,19 +15,26 @@ class CarnetRiskScoreService
 
         return Cache::remember($cacheKey, 1800, function () use ($carnet, $diasAtras) {
             $desde = now()->subDays($diasAtras)->startOfDay();
+            // Un carnet recién emitido no puede acumular ausencias de antes de existir.
+            if ($carnet->created_at && $carnet->created_at->copy()->startOfDay()->gt($desde)) {
+                $desde = $carnet->created_at->copy()->startOfDay();
+            }
 
             $accesos = CarnetAcceso::withoutTenant()
                 ->where('tenant_id', $carnet->tenant_id)
                 ->where('carnet_identidad_id', $carnet->id)
                 ->where('tipo_evento', 'entrada')
                 ->where('created_at', '>=', $desde)
-                ->get();
+                ->orderBy('created_at')
+                ->get()
+                // Un día = una entrada (la primera): reescaneos fuera de la ventana de
+                // dedupe inflaban "presencias" y escondían ausencias reales.
+                ->unique(fn ($a) => $a->created_at->toDateString());
 
             // Días hábiles en el período (aproximado: excluye fines de semana)
             $diasHabiles = 0;
-            for ($i = 0; $i < $diasAtras; $i++) {
-                $day = now()->subDays($i)->dayOfWeek;
-                if ($day >= 1 && $day <= 5) $diasHabiles++;
+            for ($d = $desde->copy(); $d->lte(now()); $d->addDay()) {
+                if ($d->dayOfWeek >= 1 && $d->dayOfWeek <= 5) $diasHabiles++;
             }
 
             $totalEntradas = $accesos->count();

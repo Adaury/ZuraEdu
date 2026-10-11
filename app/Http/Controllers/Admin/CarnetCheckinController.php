@@ -47,15 +47,12 @@ class CarnetCheckinController extends Controller
             ], 404);
         }
 
-        // Detectar tardanza (entrada después de la hora de entrada configurada — 7:30 AM por defecto)
+        // Detectar tardanza (entrada después de la hora límite del centro: carnet_hora_entrada, 07:30 por defecto)
         $tipoEvento = $request->tipo_evento ?? 'entrada';
         $estado     = 'presente';
 
         if ($tipoEvento === 'entrada') {
-            $horaEntrada = now()->setTimeFromTimeString('07:30:00');
-            if (now()->greaterThan($horaEntrada)) {
-                $estado = 'tardanza';
-            }
+            $estado = CarnetAcceso::estadoParaEntrada();
         }
 
         // Abordaje de bus (GAP 06): el estudiante debe estar asignado a esa ruta.

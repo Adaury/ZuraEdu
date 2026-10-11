@@ -104,7 +104,14 @@ class CarnetApiController extends Controller
         $user       = $request->user();
         $schoolYear = \App\Models\SchoolYear::actual();
 
-        $grupoIds = \App\Models\Asignacion::where('user_id', $user->id)
+        // asignaciones no tiene user_id (era SQL "Unknown column" → 500 para todo
+        // docente): se resuelve el Docente del usuario y se filtra por docente_id.
+        $docente = \App\Models\Docente::where('user_id', $user->id)->first();
+        if (! $docente) {
+            return response()->json(['message' => 'Perfil docente no encontrado.'], 404);
+        }
+
+        $grupoIds = \App\Models\Asignacion::where('docente_id', $docente->id)
             ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
             ->pluck('grupo_id')
             ->unique();
@@ -171,8 +178,8 @@ class CarnetApiController extends Controller
 
         $tipoEvento = $request->tipo_evento ?? 'entrada';
         $estado     = 'presente';
-        if ($tipoEvento === 'entrada' && now()->greaterThan(now()->setTimeFromTimeString('07:30:00'))) {
-            $estado = 'tardanza';
+        if ($tipoEvento === 'entrada') {
+            $estado = CarnetAcceso::estadoParaEntrada();
         }
         if ($tipoEvento === 'salida') $estado = 'salida_anticipada';
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\CarnetIdentidad;
 use App\Models\CarnetZona;
+use App\Models\Docente;
 use App\Models\Matricula;
 use App\Models\SchoolYear;
 use App\Services\CarnetQrService;
@@ -48,20 +49,48 @@ class CarnetController extends Controller
             ->where('school_year_id', $schoolYear->id)
             ->get();
 
+        $vigenciaNueva = now()->addYear()->endOfYear();
+
         $creados = 0;
         foreach ($matriculas as $mat) {
             $user = $mat->estudiante?->user;
             if (! $user || ! $user->id) continue;
 
             $carnet = CarnetQrService::obtenerOCrear($user, 'estudiante', $mat->id);
-            // Actualizar matricula_id si ya existía sin él
-            if (! $carnet->matricula_id) {
-                $carnet->update(['matricula_id' => $mat->id]);
+
+            // El carnet es permanente pero la matrícula cambia cada año: sin esto
+            // quedaba apuntando a la del año anterior (grupo equivocado en el PDF,
+            // pdf-grupo vacío, lista del docente sin ese alumno). También se renueva
+            // la vigencia, que ahora sí se valida al escanear.
+            $cambios = [];
+            if ($carnet->matricula_id !== $mat->id) {
+                $cambios['matricula_id'] = $mat->id;
+            }
+            if (! $carnet->vigencia_hasta || $carnet->vigencia_hasta->lt($vigenciaNueva->copy()->startOfDay())) {
+                $cambios['vigencia_hasta'] = $vigenciaNueva;
+            }
+            if ($cambios) {
+                $carnet->update($cambios);
+                CarnetQrService::invalidarCache($carnet);
             }
             $creados++;
         }
 
-        return back()->with('success', "Se generaron/verificaron {$creados} carnets.");
+        // Docentes activos con cuenta: el portal docente mostraba "Mi Carnet+" pero
+        // ningún flujo creaba carnets de docente.
+        $docentes = 0;
+        foreach (Docente::activos()->whereNotNull('user_id')->with('user')->get() as $docente) {
+            if (! $docente->user) continue;
+
+            $carnet = CarnetQrService::obtenerOCrear($docente->user, 'docente');
+            if (! $carnet->vigencia_hasta || $carnet->vigencia_hasta->lt($vigenciaNueva->copy()->startOfDay())) {
+                $carnet->update(['vigencia_hasta' => $vigenciaNueva]);
+                CarnetQrService::invalidarCache($carnet);
+            }
+            $docentes++;
+        }
+
+        return back()->with('success', "Se generaron/verificaron {$creados} carnets de estudiantes y {$docentes} de docentes.");
     }
 
     public function show(CarnetIdentidad $carnet)

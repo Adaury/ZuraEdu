@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicRiskScore;
+use App\Models\ActivityLog;
 use App\Models\Estudiante;
 use App\Models\Grado;
 use App\Models\Matricula;
@@ -118,6 +119,13 @@ class AcademicRiskController extends Controller
 
         $count = $this->service->calcularTodos($schoolYear->id);
 
+        ActivityLog::registrar(
+            'riesgo.recalculado_todos',
+            SchoolYear::class,
+            $schoolYear->id,
+            "Risk Score recalculado manualmente para {$count} estudiantes ({$schoolYear->nombre})"
+        );
+
         if ($request->expectsJson()) {
             return response()->json(['count' => $count, 'message' => "Scores calculados para {$count} estudiantes."]);
         }
@@ -154,6 +162,13 @@ class AcademicRiskController extends Controller
                 'tenant_id'    => tenant_id() ?? 0,
                 'calculado_en' => now(),
             ])
+        );
+
+        ActivityLog::registrar(
+            'riesgo.recalculado',
+            AcademicRiskScore::class,
+            $ars->id,
+            "Risk Score recalculado manualmente para el estudiante #{$estudiante->id}: {$ars->score} ({$ars->nivel})"
         );
 
         return response()->json([

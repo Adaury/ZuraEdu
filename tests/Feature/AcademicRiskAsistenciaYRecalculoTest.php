@@ -132,6 +132,39 @@ class AcademicRiskAsistenciaYRecalculoTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_rol_sin_acceso_recibe_403_y_no_calcula(): void
+    {
+        $tenant = $this->tenant('Colegio Riesgo E');
+        $a = $this->aula();
+        $m = $this->matricular($a['sy'], $a['grupo']);
+        $user = User::factory()->create(['activo' => true, 'tenant_id' => $tenant->id]);
+        $user->assignRole('Secretaría');
+
+        $this->actingAs($user)
+            ->postJson(route('admin.riesgo.recalcular-uno', $m->estudiante_id))
+            ->assertForbidden();
+        $this->actingAs($user)
+            ->postJson(route('admin.riesgo.calcular'))
+            ->assertForbidden();
+
+        $this->assertSame(0, AcademicRiskScore::count());
+    }
+
+    public function test_recalculos_manuales_quedan_en_el_registro_de_actividad(): void
+    {
+        $tenant = $this->tenant('Colegio Riesgo F');
+        $a = $this->aula();
+        $m = $this->matricular($a['sy'], $a['grupo']);
+        $admin = User::factory()->create(['activo' => true, 'tenant_id' => $tenant->id]);
+        $admin->assignRole('Administrador');
+
+        $this->actingAs($admin)->postJson(route('admin.riesgo.recalcular-uno', $m->estudiante_id))->assertOk();
+        $this->actingAs($admin)->postJson(route('admin.riesgo.calcular'))->assertOk();
+
+        $this->assertDatabaseHas('activity_logs', ['accion' => 'riesgo.recalculado', 'user_id' => $admin->id]);
+        $this->assertDatabaseHas('activity_logs', ['accion' => 'riesgo.recalculado_todos', 'user_id' => $admin->id]);
+    }
+
     public function test_recalcular_uno_funciona_con_estudiante_matriculado(): void
     {
         $tenant = $this->tenant('Colegio Riesgo D');

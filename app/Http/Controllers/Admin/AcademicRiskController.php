@@ -15,17 +15,12 @@ use Illuminate\Http\Request;
 
 class AcademicRiskController extends Controller
 {
+    // Acceso: Gate 'acceso-direccion-coordinacion' aplicado en routes/admin/riesgo.php
+    // (Administrador, Director y los 3 coordinadores; super_admin entra por Gate::before).
+    // Los coordinadores de ciclo ven todo el colegio: el seeder les da el mismo
+    // alcance que a Coordinador Académico.
     public function __construct(private AcademicRiskScoreService $service)
     {
-        $this->middleware(function ($request, $next) {
-            abort_unless(auth()->user()->hasAnyRole([
-                'Administrador', 'Director',
-                'Coordinador Académico',
-                'Coordinador Primer Ciclo',
-                'Coordinador Segundo Ciclo',
-            ]), 403);
-            return $next($request);
-        });
     }
 
     /** GET /admin/riesgo */

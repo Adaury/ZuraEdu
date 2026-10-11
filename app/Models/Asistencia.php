@@ -12,6 +12,14 @@ class Asistencia extends Model
 
     public const ESTADOS = ['presente', 'ausente', 'tardanza', 'justificado'];
 
+    /**
+     * Estados que cuentan como "asistió" al calcular porcentajes. El ENUM real
+     * de la columna es presente/ausente/tarde/excusa/retiro (migración
+     * 2026_03_17_000071); 'tardanza' y 'justificado' se conservan por datos
+     * históricos y por la API móvil, que aún los valida. 'retiro' no cuenta.
+     */
+    public const ESTADOS_ASISTIDO = ['presente', 'tarde', 'tardanza', 'excusa', 'justificado'];
+
     public const TIPOS_JUSTIFICACION = [
         'medica'              => 'Cita médica',
         'personal'            => 'Asunto personal',

@@ -270,7 +270,7 @@ class AcademicAlertService
 
         $presentes = \App\Models\Asistencia::where('matricula_id', $matriculaId)
             ->where('asignacion_id', $asignacionId)
-            ->whereIn('estado', ['presente', 'tardanza'])
+            ->whereIn('estado', \App\Models\Asistencia::ESTADOS_ASISTIDO)
             ->count();
 
         return ($presentes / $total) * 100;

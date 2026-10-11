@@ -73,7 +73,7 @@ class PortalRepresentanteController extends Controller
                 ->groupBy('asignacion_id')
                 ->map(function ($rows) {
                     $total    = $rows->count();
-                    $presentes= $rows->whereIn('estado', ['presente', 'tardanza'])->count();
+                    $presentes= $rows->whereIn('estado', Asistencia::ESTADOS_ASISTIDO)->count();
                     $ausentes = $rows->where('estado', 'ausente')->count();
                     $pct      = $total > 0 ? round($presentes / $total * 100, 1) : null;
                     return [

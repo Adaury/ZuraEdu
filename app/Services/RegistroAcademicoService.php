@@ -215,7 +215,7 @@ class RegistroAcademicoService
             $map[$mId] = ['pct_general' => null, 'periodos' => []];
             $matr = $asistencias->where('matricula_id', $mId);
             $total = $matr->count();
-            $pres  = $matr->whereIn('estado', ['presente', 'tardanza'])->count();
+            $pres  = $matr->whereIn('estado', Asistencia::ESTADOS_ASISTIDO)->count();
             $map[$mId]['pct_general'] = $total > 0 ? round(($pres / $total) * 100, 1) : null;
         }
 

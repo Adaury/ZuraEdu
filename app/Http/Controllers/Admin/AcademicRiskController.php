@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicRiskScore;
+use App\Models\Estudiante;
 use App\Models\Grado;
+use App\Models\Matricula;
 use App\Models\Grupo;
 use App\Models\SchoolYear;
 use App\Services\AcademicRiskScoreService;
@@ -129,12 +131,23 @@ class AcademicRiskController extends Controller
         $schoolYear = SchoolYear::actual();
         abort_if(! $schoolYear, 422, 'No hay año escolar activo.');
 
-        $data = $this->service->calcularParaEstudiante($estudianteId, $schoolYear->id);
+        // No confiar en el ID de la URL: el estudiante debe existir en este
+        // tenant (scope BelongsToTenant) y tener matrícula activa en el año.
+        $estudiante = Estudiante::findOrFail($estudianteId);
+        abort_unless(
+            Matricula::where('estudiante_id', $estudiante->id)
+                ->where('school_year_id', $schoolYear->id)
+                ->where('estado', 'activa')
+                ->exists(),
+            404
+        );
+
+        $data = $this->service->calcularParaEstudiante($estudiante->id, $schoolYear->id);
 
         $ars = AcademicRiskScore::updateOrCreate(
             [
                 'tenant_id'      => tenant_id() ?? 0,
-                'estudiante_id'  => $estudianteId,
+                'estudiante_id'  => $estudiante->id,
                 'school_year_id' => $schoolYear->id,
             ],
             array_merge($data, [

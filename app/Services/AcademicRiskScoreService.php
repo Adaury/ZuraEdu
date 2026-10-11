@@ -60,7 +60,7 @@ class AcademicRiskScoreService
 
         $bulkAsistencia = Asistencia::whereIn('matricula_id', $matriculaIds)
             ->selectRaw("matricula_id, COUNT(*) as total,
-                         SUM(CASE WHEN estado IN ('presente','tardanza') THEN 1 ELSE 0 END) as asistidos")
+                         SUM(CASE WHEN estado IN (" . $this->estadosAsistidoSql() . ") THEN 1 ELSE 0 END) as asistidos")
             ->groupBy('matricula_id')
             ->get()
             ->keyBy('matricula_id');
@@ -228,7 +228,7 @@ class AcademicRiskScoreService
 
         $stats = $matriculaIds->isEmpty() ? null : Asistencia::whereIn('matricula_id', $matriculaIds)
             ->selectRaw("COUNT(*) as total,
-                         SUM(CASE WHEN estado IN ('presente','tardanza') THEN 1 ELSE 0 END) as asistidos")
+                         SUM(CASE WHEN estado IN (" . $this->estadosAsistidoSql() . ") THEN 1 ELSE 0 END) as asistidos")
             ->first();
 
         return $this->dimensionAsistenciaDesdeBulk($notasAcademicas, $stats);
@@ -250,6 +250,12 @@ class AcademicRiskScoreService
 
         $pct = round($statsAsistencia->asistidos / $statsAsistencia->total * 100, 2);
         return [$this->scorePorPctAsistencia($pct), $pct];
+    }
+
+    /** Lista SQL literal (constantes del modelo, sin entrada de usuario). */
+    private function estadosAsistidoSql(): string
+    {
+        return implode(',', array_map(fn ($e) => "'{$e}'", Asistencia::ESTADOS_ASISTIDO));
     }
 
     private function scorePorPctAsistencia(float $pct): float

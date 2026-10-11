@@ -93,6 +93,37 @@ class AcademicRiskAsistenciaYRecalculoTest extends TestCase
         $this->assertEquals(75.0, $masivo->pct_asistencia);
     }
 
+    public function test_calculo_individual_ignora_matriculas_no_activas_como_el_masivo(): void
+    {
+        $this->tenant('Colegio Riesgo Activa');
+        $a = $this->aula();
+        $m = $this->matricular($a['sy'], $a['grupo']);
+        $m->update(['estado' => 'retirada']);
+
+        \App\Models\CalificacionAcademica::create([
+            'matricula_id' => $m->id, 'asignacion_id' => $a['asig']->id, 'school_year_id' => $a['sy']->id,
+            'nota_final' => 40, 'pct_asistencia' => 50,
+        ]);
+
+        $r = (new AcademicRiskScoreService())->calcularParaEstudiante($m->estudiante_id, $a['sy']->id);
+
+        $this->assertNull($r['pct_asistencia']);     // antes tomaba el 50 de la matrícula retirada
+        $this->assertSame(0, $r['total_materias']);
+    }
+
+    public function test_sin_datos_de_periodos_la_tendencia_no_suma_riesgo(): void
+    {
+        $this->tenant('Colegio Riesgo Tendencia');
+        $a = $this->aula();
+        $m = $this->matricular($a['sy'], $a['grupo']);
+
+        $r = (new AcademicRiskScoreService())->calcularParaEstudiante($m->estudiante_id, $a['sy']->id);
+
+        $this->assertEquals(0, $r['dim_tendencia']);
+        $this->assertSame(0, $r['score']);
+        $this->assertSame('sin_riesgo', $r['nivel']);
+    }
+
     public function test_recalcular_uno_rechaza_estudiante_inexistente_o_de_otro_tenant(): void
     {
         $tenantA = $this->tenant('Colegio Riesgo A');

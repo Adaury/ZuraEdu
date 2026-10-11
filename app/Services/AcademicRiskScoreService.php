@@ -20,6 +20,9 @@ class AcademicRiskScoreService
     const W_DISCIPLINA = 0.20;
     const W_TENDENCIA  = 0.10;
 
+    // Nota mínima aprobatoria (MINERD, escala 0-100): bajo este valor la materia cuenta "en riesgo".
+    const NOTA_APROBATORIA = 70;
+
     /**
      * Calcula y persiste el score de riesgo para todos los estudiantes activos
      * del año escolar indicado (o el actual). Devuelve la cantidad procesada.
@@ -183,7 +186,7 @@ class AcademicRiskScoreService
         $cals = (new PromedioEstudianteService())->resolverNotas($notasAcademicas, $notasTecnicas);
 
         $total    = $cals->count();
-        $enRiesgo = $cals->where('nota_final', '<', 70)->count();
+        $enRiesgo = $cals->where('nota_final', '<', self::NOTA_APROBATORIA)->count();
         $promedio = $total > 0 ? round($cals->avg('nota_final'), 2) : null;
 
         if ($total === 0) {
@@ -202,8 +205,8 @@ class AcademicRiskScoreService
 
         // Penalización por promedio muy bajo
         if ($promedio !== null) {
-            if ($promedio < 60)      $base = min($base + 20, 100);
-            elseif ($promedio < 70)  $base = min($base + 8,  100);
+            if ($promedio < 60)                          $base = min($base + 20, 100);
+            elseif ($promedio < self::NOTA_APROBATORIA)  $base = min($base + 8,  100);
         }
 
         return [
@@ -216,9 +219,12 @@ class AcademicRiskScoreService
 
     private function dimensionAsistencia(int $estudianteId, int $schoolYearId): array
     {
+        // Solo matrículas activas, igual que el cálculo masivo (si no, un retiro
+        // o transferencia del año daba un score distinto según el botón usado).
         $notasAcademicas = CalificacionAcademica::whereHas('matricula', function ($q) use ($estudianteId, $schoolYearId) {
             $q->where('estudiante_id', $estudianteId)
-              ->where('school_year_id', $schoolYearId);
+              ->where('school_year_id', $schoolYearId)
+              ->where('estado', 'activa');
         })->get();
 
         $matriculaIds = Matricula::where('estudiante_id', $estudianteId)
@@ -310,7 +316,8 @@ class AcademicRiskScoreService
     {
         $cals = CalificacionAcademica::whereHas('matricula', function ($q) use ($estudianteId, $schoolYearId) {
             $q->where('estudiante_id', $estudianteId)
-              ->where('school_year_id', $schoolYearId);
+              ->where('school_year_id', $schoolYearId)
+              ->where('estado', 'activa');
         })->get();
 
         return $this->dimensionTendenciaDesdeNotas($cals);
@@ -318,7 +325,7 @@ class AcademicRiskScoreService
 
     private function dimensionTendenciaDesdeNotas(Collection $cals): float
     {
-        if ($cals->isEmpty()) return 20.0; // sin datos = estable/neutro
+        if ($cals->isEmpty()) return 0.0; // sin datos = sin señal de riesgo (igual que asistencia y académico)
 
         $avgPorPeriodo = [];
         foreach ([1, 2, 3, 4] as $p) {
@@ -335,7 +342,7 @@ class AcademicRiskScoreService
             }
         }
 
-        if (count($avgPorPeriodo) < 2) return 20.0;
+        if (count($avgPorPeriodo) < 2) return 0.0; // un solo período: no hay tendencia que medir
 
         $keys   = array_keys($avgPorPeriodo);
         $first  = $avgPorPeriodo[$keys[0]];

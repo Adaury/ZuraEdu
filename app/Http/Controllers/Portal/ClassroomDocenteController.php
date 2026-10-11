@@ -142,7 +142,30 @@ class ClassroomDocenteController extends Controller
             'periodo_id'        => 'nullable|exists:periodos,id',
             'competencia_id'    => 'nullable|exists:competencias_especificas,id',
             'archivos.*'        => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip|max:10240',
+            'rubric_nombre'     => 'nullable|string|max:150',
+            'rubric_descripcion'=> 'nullable|string|max:500',
+            'criterios'         => 'nullable|array|max:20',
+            'criterios.*.nombre'      => 'nullable|string|max:150',
+            'criterios.*.descripcion' => 'nullable|string|max:500',
+            'criterios.*.puntaje_max' => 'nullable|numeric|min:0.5|max:100',
         ]);
+
+        // padre→hijo contra la BD (no confiar en el id del formulario): el período debe ser del
+        // año escolar de ESTA aula y la competencia de la asignatura de ESTA aula. Si no, la nota
+        // sincronizada caía en el período de otro año/centro o en una competencia ajena.
+        $asig = $claseVirtual->asignacion;
+        if (! empty($data['periodo_id'])
+            && ! Periodo::where('id', $data['periodo_id'])->where('school_year_id', $asig->school_year_id)->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'periodo_id' => 'El período no pertenece al año escolar de esta aula.',
+            ]);
+        }
+        if (! empty($data['competencia_id'])
+            && ! CompetenciaEspecifica::where('id', $data['competencia_id'])->where('asignatura_id', $asig->asignatura_id)->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'competencia_id' => 'La competencia no corresponde a la asignatura de esta aula.',
+            ]);
+        }
 
         $data['clase_virtual_id']  = $claseVirtual->id;
         $data['publicado']         = $request->boolean('publicado', true);
@@ -280,6 +303,17 @@ class ClassroomDocenteController extends Controller
             'archivos.*'   => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip|max:10240',
         ]);
 
+        // No bajar los puntos por debajo de una nota ya puesta: la sincronización calcula
+        // nota/puntos y daría porcentajes > 100 en el libro de notas.
+        if (isset($data['puntos'])) {
+            $maxNota = EntregaClassroom::where('material_id', $material->id)->whereNotNull('calificacion')->max('calificacion');
+            if ($maxNota !== null && (float) $maxNota > (float) $data['puntos']) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'puntos' => "Ya hay notas de hasta {$maxNota} puntos en esta actividad; no se puede bajar el valor por debajo de eso.",
+                ]);
+            }
+        }
+
         $data['publicado'] = $request->boolean('publicado');
         $material->update($data);
 
@@ -390,6 +424,28 @@ class ClassroomDocenteController extends Controller
 
         // Si viene rúbrica, calcular nota desde criterios
         if (!empty($data['rubrica'])) {
+            // padre→hijo contra la BD: los criterios deben ser de la rúbrica de ESTE material y el puntaje
+            // no puede pasar del máximo del criterio (antes se aceptaba cualquier criterio existente: se
+            // podía mezclar criterios de otra actividad y obtener notas por encima de los puntos).
+            $criterios = ZcRubricCriterio::whereIn(
+                'rubric_id',
+                ZcRubric::where('material_id', $entrega->material_id)->select('id')
+            )->get()->keyBy('id');
+
+            foreach ($data['rubrica'] as $k => $item) {
+                $criterio = $criterios->get((int) $item['criterio_id']);
+                if (! $criterio) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        "rubrica.{$k}.criterio_id" => 'El criterio no pertenece a la rúbrica de esta actividad.',
+                    ]);
+                }
+                if ((float) $item['puntaje'] > (float) $criterio->puntaje_max) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        "rubrica.{$k}.puntaje" => "El puntaje de «{$criterio->nombre}» no puede superar {$criterio->puntaje_max}.",
+                    ]);
+                }
+            }
+
             $totalRubric = 0;
             foreach ($data['rubrica'] as $item) {
                 ZcRubricCalificacion::updateOrCreate(
@@ -398,11 +454,20 @@ class ClassroomDocenteController extends Controller
                 );
                 $totalRubric += $item['puntaje'];
             }
-            $maxRubric = ZcRubricCriterio::whereIn('id', collect($data['rubrica'])->pluck('criterio_id'))
+            $maxRubric = $criterios->whereIn('id', collect($data['rubrica'])->pluck('criterio_id')->map(fn ($i) => (int) $i))
                 ->sum('puntaje_max');
             if ($maxRubric > 0) {
                 $data['calificacion'] = round(($totalRubric / $maxRubric) * ($entrega->material->puntos ?? 100), 2);
             }
+        }
+
+        // La nota no puede superar los puntos de la actividad (el máximo del formulario es 100 para
+        // actividades sin puntos; una tarea de 20 pts con "80" daba 400 % en el libro de notas).
+        $puntosActividad = $entrega->material?->puntos;
+        if ($puntosActividad && (float) $data['calificacion'] > (float) $puntosActividad) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'calificacion' => "La calificación no puede superar los {$puntosActividad} puntos de la actividad.",
+            ]);
         }
 
         $estado = $request->boolean('devolver') ? 'devuelto' : 'calificado';
@@ -731,6 +796,13 @@ class ClassroomDocenteController extends Controller
             $nuevoMaterial->clase_virtual_id = $nueva->id;
             $nuevoMaterial->tenant_id        = tenant_id() ?? 0;
             $nuevoMaterial->publicado        = false; // inicia despublicado
+            $nuevoMaterial->publicar_en      = null;
+            // El período solo se conserva si es del año escolar de la asignación destino: al duplicar
+            // un aula de un año anterior apuntaba al período viejo (cerrado o ajeno) y la nota no llegaba bien.
+            $nuevoMaterial->periodo_id = $material->periodo_id
+                && Periodo::where('id', $material->periodo_id)->where('school_year_id', $asignacionDestino->school_year_id)->exists()
+                ? $material->periodo_id
+                : null;
             $nuevoMaterial->save();
         }
 

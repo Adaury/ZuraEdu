@@ -114,6 +114,11 @@
         <form class="d-flex gap-2 flex-wrap align-items-center">
             <input type="text" name="search" class="form-control form-control-sm" style="max-width:200px;"
                    placeholder="Buscar nombre..." value="{{ request('search') }}">
+            <select name="tipo" class="form-select form-select-sm" style="max-width:150px;">
+                <option value="estudiante" {{ ($tipo ?? 'estudiante')=='estudiante' ? 'selected':'' }}>Estudiantes</option>
+                <option value="docente"    {{ ($tipo ?? '')=='docente'  ? 'selected':'' }}>Docentes</option>
+                <option value="empleado"   {{ ($tipo ?? '')=='empleado' ? 'selected':'' }}>Empleados</option>
+            </select>
             <select name="estado" class="form-select form-select-sm" style="max-width:150px;">
                 <option value="">Todos los estados</option>
                 <option value="activo"     {{ request('estado')=='activo'     ? 'selected':'' }}>Activo</option>
@@ -121,7 +126,7 @@
                 <option value="vencido"    {{ request('estado')=='vencido'    ? 'selected':'' }}>Vencido</option>
             </select>
             <button class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Filtrar</button>
-            @if(request()->hasAny(['search','estado']))
+            @if(request()->hasAny(['search','estado','tipo']))
             <a href="{{ route('admin.carnet.index') }}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
             @endif
         </form>

@@ -6,7 +6,8 @@ use App\Models\Asignacion;
 use App\Models\Asignatura;
 use App\Models\CarnetAcceso;
 use App\Models\CarnetIdentidad;
-use App\Models\ConfigInstitucional;
+use App\Helpers\Setting;
+use App\Services\AcademicAlertService;
 use App\Models\Docente;
 use App\Models\Estudiante;
 use App\Models\Grado;
@@ -114,7 +115,7 @@ class CarnetVigenciaYMatriculaTest extends TestCase
 
     public function test_hora_de_entrada_configurable_define_la_tardanza(): void
     {
-        ConfigInstitucional::set('carnet_hora_entrada', '14:00');
+        Setting::set('carnet_hora_entrada', '14:00');
 
         $this->assertSame('presente', CarnetAcceso::estadoParaEntrada(Carbon::parse('2026-03-10 13:59:00')));
         $this->assertSame('tardanza', CarnetAcceso::estadoParaEntrada(Carbon::parse('2026-03-10 14:01:00')));
@@ -125,7 +126,7 @@ class CarnetVigenciaYMatriculaTest extends TestCase
         $this->assertSame('presente', CarnetAcceso::estadoParaEntrada(Carbon::parse('2026-03-10 07:29:00')));
         $this->assertSame('tardanza', CarnetAcceso::estadoParaEntrada(Carbon::parse('2026-03-10 07:31:00')));
 
-        ConfigInstitucional::set('carnet_hora_entrada', 'no-es-una-hora');
+        Setting::set('carnet_hora_entrada', 'no-es-una-hora');
         $this->assertSame('tardanza', CarnetAcceso::estadoParaEntrada(Carbon::parse('2026-03-10 07:31:00')));
     }
 
@@ -181,6 +182,53 @@ class CarnetVigenciaYMatriculaTest extends TestCase
         $this->getJson('/api/v1/docente/carnet')
             ->assertOk()
             ->assertJson(['total' => 1, 'entradas' => 1, 'presentes' => 1, 'ausentes' => 0]);
+    }
+
+    public function test_umbrales_guardados_en_la_pantalla_los_usan_los_servicios_y_la_hora_del_carnet(): void
+    {
+        // Sin nada guardado en la pantalla: valores por defecto.
+        $this->assertEquals(60.0, AcademicAlertService::umbralNota());
+        $this->assertEquals(75.0, AcademicAlertService::umbralAsistencia());
+
+        $this->actingAs($this->usuario('Administrador'))
+            ->post(route('admin.sistema.email-notif.update'), [
+                'alerta_nota_minima'       => 70,
+                'alerta_asistencia_minima' => 85,
+                'carnet_hora_entrada'      => '08:15',
+            ])
+            ->assertRedirect();
+
+        Setting::flush();
+        $this->assertEquals(70.0, AcademicAlertService::umbralNota());
+        $this->assertEquals(85.0, AcademicAlertService::umbralAsistencia());
+        $this->assertSame('presente', CarnetAcceso::estadoParaEntrada(Carbon::parse('2026-03-10 08:14:00')));
+        $this->assertSame('tardanza', CarnetAcceso::estadoParaEntrada(Carbon::parse('2026-03-10 08:16:00')));
+    }
+
+    public function test_hora_de_entrada_invalida_en_la_pantalla_se_rechaza(): void
+    {
+        $this->actingAs($this->usuario('Administrador'))
+            ->from(route('admin.sistema.email-notif'))
+            ->post(route('admin.sistema.email-notif.update'), ['carnet_hora_entrada' => '25:99'])
+            ->assertSessionHasErrors('carnet_hora_entrada');
+    }
+
+    public function test_listado_muestra_carnets_de_docentes_con_el_filtro_tipo(): void
+    {
+        [$estudiante] = $this->estudianteConCarnet();
+        $userDoc = $this->usuario('Docente');
+        $docente = CarnetIdentidad::create([
+            'tipo' => 'docente', 'user_id' => $userDoc->id, 'matricula_id' => null,
+            'numero_carnet' => 'ZR-D-' . random_int(10000, 99999), 'qr_token' => 'qr_d_' . bin2hex(random_bytes(6)),
+            'estado' => 'activo',
+        ]);
+        $admin = $this->usuario('Administrador');
+
+        $porDefecto = $this->actingAs($admin)->get(route('admin.carnet.index'));
+        $this->assertSame([$estudiante->id], $porDefecto->viewData('carnets')->pluck('id')->all());
+
+        $docentes = $this->actingAs($admin)->get(route('admin.carnet.index', ['tipo' => 'docente']));
+        $this->assertSame([$docente->id], $docentes->viewData('carnets')->pluck('id')->all());
     }
 
     public function test_riesgo_cuenta_dias_y_no_escaneos(): void

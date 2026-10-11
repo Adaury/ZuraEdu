@@ -169,12 +169,23 @@
             <span class="threshold-desc">días</span>
         </div>
     </div>
+
+    <div class="threshold-row">
+        <label for="th_entrada">Hora límite de entrada (Carnet+)</label>
+        <div class="d-flex align-items-center gap-1">
+            <input type="time" class="form-control form-control-sm" id="th_entrada"
+                   name="carnet_hora_entrada"
+                   value="{{ $settings['carnet_hora_entrada'] ?? '07:30' }}">
+            <span class="threshold-desc">tardanza después</span>
+        </div>
+    </div>
 </div>
 
 {{-- Horario de alertas (info) --}}
 <div class="notif-card">
     <div class="sec-title"><i class="bi bi-clock-fill"></i>Programación Automática</div>
     <div style="font-size:.8rem;color:#6b7280;line-height:1.8;">
+        <div class="d-flex justify-content-between"><span>Recálculo Risk Score</span><strong>05:00 diario</strong></div>
         <div class="d-flex justify-content-between"><span>Alertas de ausencias</span><strong>05:30 diario</strong></div>
         <div class="d-flex justify-content-between"><span>Alertas de rendimiento</span><strong>06:00 diario</strong></div>
         <div class="d-flex justify-content-between"><span>Alertas académicas</span><strong>06:30 diario</strong></div>

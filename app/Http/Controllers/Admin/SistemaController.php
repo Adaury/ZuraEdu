@@ -1072,6 +1072,7 @@ class SistemaController extends Controller
             'alerta_asistencia_minima'      => 'nullable|numeric|min:0|max:100',
             'alerta_ausencias_consecutivas' => 'nullable|integer|min:1|max:30',
             'alerta_ausencias_dias_ventana' => 'nullable|integer|min:1|max:60',
+            'carnet_hora_entrada'           => ['nullable', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
         ]);
 
         \App\Helpers\Setting::setMany([
@@ -1085,6 +1086,7 @@ class SistemaController extends Controller
             'alerta_asistencia_minima'       => $request->input('alerta_asistencia_minima', '75'),
             'alerta_ausencias_consecutivas'  => $request->input('alerta_ausencias_consecutivas', '3'),
             'alerta_ausencias_dias_ventana'  => $request->input('alerta_ausencias_dias_ventana', '14'),
+            'carnet_hora_entrada'            => $request->input('carnet_hora_entrada') ?: '07:30',
         ]);
         return back()->with('success', 'Configuración de notificaciones guardada.');
     }

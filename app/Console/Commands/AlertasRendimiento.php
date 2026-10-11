@@ -45,7 +45,10 @@ class AlertasRendimiento extends Command
         $creadas  = 0;
         $omitidas = 0;
 
-        // ── Calificaciones técnicas publicadas con nota_final < 60 ──────────
+        // Umbral configurable por el admin (Umbrales de Alerta), 60 por defecto.
+        $umbral = \App\Services\AcademicAlertService::umbralNota();
+
+        // ── Calificaciones técnicas publicadas con nota_final < umbral ──────
         $tecnicas = Calificacion::with([
                 'matricula.estudiante', 'matricula.grupo',
                 'asignacion.asignatura', 'asignacion.docente',
@@ -53,7 +56,7 @@ class AlertasRendimiento extends Command
             ->whereHas('asignacion', fn($q) => $q->where('school_year_id', $schoolYear->id))
             ->where('publicado', true)
             ->whereNotNull('nota_final')
-            ->where('nota_final', '<', 60)
+            ->where('nota_final', '<', $umbral)
             ->get();
 
         foreach ($tecnicas as $cal) {
@@ -69,7 +72,7 @@ class AlertasRendimiento extends Command
             $created ? $creadas++ : $omitidas++;
         }
 
-        // ── Calificaciones académicas publicadas con nota_final < 60 ────────
+        // ── Calificaciones académicas publicadas con nota_final < umbral ────
         $academicas = CalificacionAcademica::with([
                 'matricula.estudiante', 'matricula.grupo',
                 'asignacion.asignatura', 'asignacion.docente',
@@ -77,7 +80,7 @@ class AlertasRendimiento extends Command
             ->where('school_year_id', $schoolYear->id)
             ->where('publicado', true)
             ->whereNotNull('nota_final')
-            ->where('nota_final', '<', 60)
+            ->where('nota_final', '<', $umbral)
             ->get();
 
         foreach ($academicas as $cal) {

@@ -22,14 +22,41 @@ class AcademicAlertService
     const DEFAULT_NOTA_MINIMA       = 60;
     const DEFAULT_ASISTENCIA_MINIMA = 75;
 
+    /**
+     * La pantalla de Notificaciones/Umbrales (SistemaController::emailNotifUpdate)
+     * guarda en system_settings (Setting), pero este servicio leía solo de
+     * config_institucional, que una migración dejó sembrada con 60/75: el valor
+     * que el admin configuraba nunca se aplicaba. Primero lo del admin
+     * (Setting), luego config_institucional, luego el valor por defecto.
+     */
+    private static function umbral(string $clave, float $defecto): float
+    {
+        $v = \App\Helpers\Setting::get($clave);
+        if ($v !== null && $v !== '' && is_numeric($v)) {
+            return (float) $v;
+        }
+
+        return (float) ConfigInstitucional::get($clave, $defecto);
+    }
+
+    public static function umbralNota(): float
+    {
+        return self::umbral('alerta_nota_minima', self::DEFAULT_NOTA_MINIMA);
+    }
+
+    public static function umbralAsistencia(): float
+    {
+        return self::umbral('alerta_asistencia_minima', self::DEFAULT_ASISTENCIA_MINIMA);
+    }
+
     private function notaMinima(): float
     {
-        return (float) ConfigInstitucional::get('alerta_nota_minima', self::DEFAULT_NOTA_MINIMA);
+        return self::umbralNota();
     }
 
     private function asistenciaMinima(): float
     {
-        return (float) ConfigInstitucional::get('alerta_asistencia_minima', self::DEFAULT_ASISTENCIA_MINIMA);
+        return self::umbralAsistencia();
     }
 
     /**

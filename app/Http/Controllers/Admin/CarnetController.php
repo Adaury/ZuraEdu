@@ -20,8 +20,12 @@ class CarnetController extends Controller
     {
         $schoolYear = SchoolYear::actual();
 
+        // Estudiantes por defecto; docentes y empleados también se pueden ver y
+        // suspender (antes el listado los ocultaba y no había forma de hacerlo).
+        $tipo = in_array($request->tipo, CarnetIdentidad::TIPOS, true) ? $request->tipo : 'estudiante';
+
         $query = CarnetIdentidad::with(['user', 'matricula.grupo.grado', 'matricula.grupo.seccion'])
-            ->where('tipo', 'estudiante');
+            ->where('tipo', $tipo);
 
         if ($search = $request->search) {
             $query->whereHas('user', fn($q) => $q->where('name', 'like', "%{$search}%"));
@@ -34,7 +38,7 @@ class CarnetController extends Controller
         $carnets = $query->latest()->paginate(20)->withQueryString();
         $zonas   = CarnetZona::activas()->orderBy('nombre')->get();
 
-        return view('admin.carnet.index', compact('carnets', 'schoolYear', 'zonas'));
+        return view('admin.carnet.index', compact('carnets', 'schoolYear', 'zonas', 'tipo'));
     }
 
     public function generarMasivo(Request $request)

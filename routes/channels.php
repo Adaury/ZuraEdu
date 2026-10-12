@@ -63,11 +63,13 @@ Broadcast::channel('classroom.{claseId}', function ($user, $claseId) {
         return true;
     }
 
-    // Estudiante matriculado en el grupo de esta clase
+    // Estudiante con matrícula ACTIVA en el grupo de esta clase (antes cualquier matrícula, incluso
+    // retirada o transferida, seguía recibiendo el chat, los materiales y la videollamada del aula).
     $grupoId = $clase->asignacion?->grupo_id;
     if ($grupoId && $user->estudiante) {
         return Matricula::where('grupo_id', $grupoId)
             ->where('estudiante_id', $user->estudiante->id)
+            ->where('estado', 'activa')
             ->exists();
     }
 
@@ -86,10 +88,11 @@ Broadcast::channel('grupo.{grupoId}', function ($user, $grupoId) {
         }
     }
 
-    // Estudiante matriculado en el grupo
+    // Estudiante con matrícula activa en el grupo
     if ($user->estudiante) {
         return Matricula::where('grupo_id', $grupoId)
             ->where('estudiante_id', $user->estudiante->id)
+            ->where('estado', 'activa')
             ->exists();
     }
 
@@ -123,6 +126,7 @@ Broadcast::channel('classroom-presence.{claseId}', function ($user, $claseId) {
     $esEstudiante = $grupoId && $user->estudiante
         && Matricula::where('grupo_id', $grupoId)
             ->where('estudiante_id', $user->estudiante->id)
+            ->where('estado', 'activa')
             ->exists();
 
     if (! $esDocente && ! $esEstudiante && ! $user->hasAnyRole(ROLES_ADMIN_CAPACES)) {
@@ -136,10 +140,16 @@ Broadcast::channel('classroom-presence.{claseId}', function ($user, $claseId) {
     ];
 });
 
-// ── 7. Chat interno del tenant ────────────────────────────────────────────────
-// Cualquier usuario activo del tenant puede enviar y recibir mensajes.
+// ── 7. Chat interno del tenant (staff) ────────────────────────────────────────
+// La pantalla (/admin/tenant-chat) es solo para el personal con acceso al panel admin; el canal
+// debe ser igual de estricto. Antes bastaba con ser del tenant: cualquier estudiante o
+// representante con sesión podía suscribirse con la app key pública y leer en vivo las
+// conversaciones internas (y los enlaces a archivos) del personal.
 Broadcast::channel('tenant.{tenantId}.chat', function ($user, $tenantId) {
-    return (int) (tenant_id() ?? 0) === (int) $tenantId;
+    if ((int) (tenant_id() ?? 0) !== (int) $tenantId) {
+        return false;
+    }
+    return $user->hasAnyRole(\App\Http\Middleware\EnsureAdminAccess::ADMIN_ROLES);
 });
 
 // ── 8. Notificaciones tenant-wide ─────────────────────────────────────────────
@@ -148,10 +158,11 @@ Broadcast::channel('tenant.{tenantId}.notifications', function ($user, $tenantId
     return (int) (tenant_id() ?? 0) === (int) $tenantId;
 });
 
-// Canal privado de soporte — solo admins/coordinadores del tenant pueden escuchar mensajes entrantes.
+// Canal privado de soporte — el personal con acceso al panel (mismo criterio que /admin/soporte,
+// que usa admin.access: Secretaría, Recepción, etc. también atienden el chat) escucha los entrantes.
 Broadcast::channel('tenant.{tenantId}.support', function ($user, $tenantId) {
     if ((int) (tenant_id() ?? 0) !== (int) $tenantId) return false;
-    return $user->hasAnyRole(ROLES_ADMIN_CAPACES);
+    return $user->hasAnyRole(\App\Http\Middleware\EnsureAdminAccess::ADMIN_ROLES);
 });
 
 // ── 9. Monitoreo de Carnet+ — escaneos en vivo ────────────────────────────────

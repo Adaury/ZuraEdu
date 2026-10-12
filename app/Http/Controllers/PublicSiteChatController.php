@@ -73,8 +73,9 @@ PROMPT;
         $contents[] = ['role' => 'user', 'parts' => [['text' => $request->message]]];
 
         try {
-            $response = Http::timeout(20)->post(
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}",
+            // Clave en cabecera (no en la URL: los mensajes de excepción de HTTP incluyen la URL completa).
+            $response = Http::withHeaders(['x-goog-api-key' => $apiKey])->timeout(20)->post(
+                'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
                 [
                     'systemInstruction' => ['parts' => [['text' => $systemPrompt]]],
                     'contents'          => $contents,

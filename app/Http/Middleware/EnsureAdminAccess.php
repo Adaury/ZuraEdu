@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 class EnsureAdminAccess
 {
     /** Roles que SÍ pueden acceder al panel admin */
-    private const ADMIN_ROLES = [
+    public const ADMIN_ROLES = [
         'super_admin',
         'Administrador',
         'Director',

@@ -102,8 +102,9 @@ PROMPT;
 
         // ── Call Gemini API ────────────────────────────────────────────────
         try {
-            $response = Http::timeout(20)->post(
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}",
+            // Clave en cabecera (no en la URL: los mensajes de excepción de HTTP incluyen la URL completa).
+            $response = Http::withHeaders(['x-goog-api-key' => $apiKey])->timeout(20)->post(
+                'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
                 [
                     'systemInstruction' => [
                         'parts' => [['text' => $systemPrompt]],
@@ -121,8 +122,9 @@ PROMPT;
                 $reply = $data['candidates'][0]['content']['parts'][0]['text']
                          ?? 'No pude generar una respuesta. Intenta de nuevo.';
             } else {
-                $error = $response->json('error.message', 'Error desconocido');
-                $reply = "Error de la API: {$error}";
+                // No se reenvía el texto del proveedor tal cual al navegador.
+                \Log::warning('Admin ChatController: Gemini respondió ' . $response->status(), ['error' => $response->json('error.message')]);
+                $reply = 'El servicio de IA devolvió un error (' . $response->status() . '). Intenta de nuevo en unos minutos.';
             }
         } catch (\Exception $e) {
             $reply = 'No se pudo conectar con el servicio de IA. Verifica tu conexión.';

@@ -253,6 +253,32 @@ class ImportacionCalificacionesFlexibleTest extends TestCase
         $this->assertSame(0, ImportacionCalificacion::count());
     }
 
+    public function test_la_vista_previa_tambien_sirve_para_area_tecnica_con_periodo_elegido(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        $this->asig->update(['area' => 'tecnica']);
+        $periodo = \App\Models\Periodo::create([
+            'school_year_id' => $this->asig->school_year_id, 'numero' => 2, 'nombre' => 'Período 2',
+            'fecha_inicio' => '2025-11-01', 'fecha_fin' => '2026-01-31', 'activo' => true, 'cerrado' => false,
+        ]);
+        $this->estudiante('Juan', 'Pérez', 1);
+        $admin = $this->admin();
+
+        $r = $this->actingAs($admin)->post(route('admin.importaciones.calificaciones.previsualizar'), [
+            'asignacion_id' => $this->asig->id,
+            'periodo_id'    => $periodo->id,
+            'archivo'       => \Illuminate\Http\UploadedFile::fake()->createWithContent('tec.csv', "Matrícula;Nota final\nM-0001;88,5\n"),
+        ]);
+
+        $r->assertOk();
+        $fila = $r->viewData('filas')[0];
+        $this->assertSame(['Final · Período 2' => 88.5], $fila['notas']);
+
+        $this->actingAs($admin)->post(route('admin.importaciones.calificaciones.confirmar'), ['token' => $r->viewData('token')])
+            ->assertRedirect();
+        $this->assertSame($periodo->id, (int) ImportacionCalificacion::first()->periodo_id);
+    }
+
     public function test_confirmar_crea_la_importacion_y_despacha_el_job(): void
     {
         \Illuminate\Support\Facades\Queue::fake();

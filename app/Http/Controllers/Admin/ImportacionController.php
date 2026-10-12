@@ -208,16 +208,23 @@ class ImportacionController extends Controller
         $request->validate([
             'archivo'       => 'required|file|mimes:csv,txt,xlsx,xls|max:10240',
             'asignacion_id' => 'required|integer',
+            'periodo_id'    => 'nullable|integer',
         ]);
 
         if (! SchoolYear::actual()) {
             return back()->with('error', 'No hay un año escolar activo.');
         }
 
-        // Con el scope del tenant (no confiar en el id del formulario).
+        // Con el scope del tenant (no confiar en el id del formulario). Académica o técnica: el
+        // importador (Job) atiende las dos; la técnica usa nota_final por período.
         $asignacion = Asignacion::with(['asignatura', 'grupo.grado', 'grupo.seccion'])
-            ->where('area', 'academica')
             ->findOrFail($request->asignacion_id);
+        $esAcademica = $asignacion->area === 'academica';
+
+        // Período elegido (solo aplica a técnica): debe ser del año escolar de la asignación.
+        $periodoFijo = $request->filled('periodo_id')
+            ? Periodo::where('id', $request->periodo_id)->where('school_year_id', $asignacion->school_year_id)->first()
+            : null;
 
         // Una sola vista previa viva por usuario: se descarta la anterior (y su archivo temporal).
         if ($previa = session('import_previa')) {
@@ -251,20 +258,34 @@ class ImportacionController extends Controller
 
             $notas = [];
             $problemas = [];
-            foreach ([1, 2, 3, 4] as $p) {
-                foreach ([1, 2, 3, 4] as $c) {
-                    $crudo = (string) ($row["comp{$c}_p{$p}"] ?? $row["p{$p}_comp{$c}"] ?? '');
-                    $n = $lector->parsearNota($crudo);
-                    if ($n === null) {
-                        continue;
+            if ($esAcademica) {
+                foreach ([1, 2, 3, 4] as $p) {
+                    foreach ([1, 2, 3, 4] as $c) {
+                        $crudo = (string) ($row["comp{$c}_p{$p}"] ?? $row["p{$p}_comp{$c}"] ?? '');
+                        $n = $lector->parsearNota($crudo);
+                        if ($n === null) {
+                            continue;
+                        }
+                        if (! is_float($n)) {
+                            $problemas[] = "comp{$c}_p{$p}='{$n}' no es numérico";
+                        } elseif ($n < 0 || $n > 100) {
+                            $problemas[] = "comp{$c}_p{$p}={$n} fuera de 0-100";
+                        } else {
+                            $notas["C{$c}·P{$p}"] = $n;
+                        }
                     }
-                    if (! is_float($n)) {
-                        $problemas[] = "comp{$c}_p{$p}='{$n}' no es numérico";
-                    } elseif ($n < 0 || $n > 100) {
-                        $problemas[] = "comp{$c}_p{$p}={$n} fuera de 0-100";
-                    } else {
-                        $notas["C{$c}·P{$p}"] = $n;
-                    }
+                }
+            } else {
+                // Técnica: una nota_final por período (el del archivo o el elegido en el formulario).
+                $n = $lector->parsearNota((string) ($row['nota_final'] ?? ''));
+                $perNum = (int) ($row['periodo'] ?? 0) ?: 1;
+                $etiqueta = $periodoFijo ? "Final · {$periodoFijo->nombre}" : "Final · P{$perNum}";
+                if ($n === null) {
+                    // sin nota: se informa abajo como "sin notas válidas"
+                } elseif (! is_float($n)) {
+                    $problemas[] = "nota_final='{$n}' no es numérica";
+                } else {
+                    $notas[$etiqueta] = min(100, max(0, $n));
                 }
             }
 
@@ -298,6 +319,7 @@ class ImportacionController extends Controller
             'token'         => $token,
             'path'          => $path,
             'asignacion_id' => $asignacion->id,
+            'periodo_id'    => $periodoFijo?->id,
             'nombre'        => $archivo->getClientOriginalName(),
             'user_id'       => auth()->id(),
         ]]);
@@ -325,12 +347,12 @@ class ImportacionController extends Controller
                 ->with('error', 'La vista previa venció. Sube el archivo otra vez.');
         }
 
-        $asignacion = Asignacion::where('area', 'academica')->findOrFail($previa['asignacion_id']);
+        $asignacion = Asignacion::findOrFail($previa['asignacion_id']);
 
         $importacion = \App\Models\ImportacionCalificacion::create([
             'user_id'          => auth()->id(),
             'asignacion_id'    => $asignacion->id,
-            'periodo_id'       => null,
+            'periodo_id'       => $previa['periodo_id'] ?? null,
             'archivo_original' => $previa['nombre'],
             'archivo_path'     => $previa['path'],
             'estado'           => 'pendiente',

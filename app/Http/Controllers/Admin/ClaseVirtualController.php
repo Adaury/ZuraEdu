@@ -3,13 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
+use App\Models\ArchivoEntrega;
+use App\Models\ArchivoMaterial;
 use App\Models\Asignacion;
 use App\Models\ClaseVirtual;
 use App\Models\EntregaClassroom;
 use App\Models\Matricula;
 use App\Models\MaterialClase;
 use App\Models\SchoolYear;
+use App\Models\ZcRecurso;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ClaseVirtualController extends Controller
 {
@@ -84,10 +89,20 @@ class ClaseVirtualController extends Controller
             'permite_comentarios' => 'boolean',
         ]);
 
+        // `exists:` no filtra por centro: la asignación debe ser de ESTE tenant (scope BelongsToTenant).
+        abort_unless(Asignacion::where('id', $data['asignacion_id'])->exists(), 404);
+
         $data['activo']              = $request->boolean('activo', true);
         $data['permite_comentarios'] = $request->boolean('permite_comentarios', true);
 
-        ClaseVirtual::create($data);
+        $clase = ClaseVirtual::create($data);
+
+        ActivityLog::registrar(
+            'classroom.creada',
+            ClaseVirtual::class,
+            $clase->id,
+            "Aula virtual #{$clase->id} «{$clase->nombre}» creada para la asignación #{$clase->asignacion_id}"
+        );
 
         return redirect()->route('admin.classroom.index')
             ->with('success', 'Aula virtual creada correctamente.');
@@ -188,10 +203,33 @@ class ClaseVirtualController extends Controller
             'permite_comentarios' => 'boolean',
         ]);
 
+        abort_unless(Asignacion::where('id', $data['asignacion_id'])->exists(), 404);
+
+        // Mover el aula a OTRA asignación con entregas ya hechas reasignaría esas notas: la
+        // sincronización escribe en calificaciones usando clase.asignacion_id, así que las notas de
+        // los estudiantes del grupo anterior caerían en otra materia/grupo.
+        $cambiaAsignacion = (int) $data['asignacion_id'] !== (int) $claseVirtual->asignacion_id;
+        if ($cambiaAsignacion
+            && EntregaClassroom::whereIn('material_id', $claseVirtual->materiales()->select('id'))->exists()) {
+            return back()->withInput()->withErrors([
+                'asignacion_id' => 'Esta aula ya tiene entregas: no se puede cambiar su asignación (se perderían las notas). Crea una aula nueva o duplícala.',
+            ]);
+        }
+
+        $antes = "asignación #{$claseVirtual->asignacion_id}, " . ($claseVirtual->activo ? 'activa' : 'inactiva');
+
         $data['activo']              = $request->boolean('activo');
         $data['permite_comentarios'] = $request->boolean('permite_comentarios');
 
         $claseVirtual->update($data);
+
+        ActivityLog::registrar(
+            'classroom.actualizada',
+            ClaseVirtual::class,
+            $claseVirtual->id,
+            "Aula virtual #{$claseVirtual->id} «{$claseVirtual->nombre}»: {$antes} → asignación #{$claseVirtual->asignacion_id}, "
+                . ($claseVirtual->activo ? 'activa' : 'inactiva')
+        );
 
         return redirect()->route('admin.classroom.index')
             ->with('success', 'Aula virtual actualizada.');
@@ -199,7 +237,29 @@ class ClaseVirtualController extends Controller
 
     public function destroy(ClaseVirtual $claseVirtual)
     {
+        // Borrado físico con cascada (materiales, entregas, quizzes, chat): sin SoftDeletes. Se deja
+        // constancia de QUÉ se eliminó y se recogen los archivos para no dejarlos huérfanos en disco.
+        $materialIds = $claseVirtual->materiales()->pluck('id');
+        $entregaIds  = EntregaClassroom::whereIn('material_id', $materialIds)->pluck('id');
+
+        $rutas = ArchivoMaterial::whereIn('material_id', $materialIds)->pluck('ruta')
+            ->merge(ArchivoEntrega::whereIn('entrega_id', $entregaIds)->pluck('ruta'))
+            ->merge(ZcRecurso::where('clase_virtual_id', $claseVirtual->id)->whereNotNull('ruta_archivo')->pluck('ruta_archivo'))
+            ->filter()->unique()->values();
+
+        ActivityLog::registrar(
+            'classroom.eliminada',
+            ClaseVirtual::class,
+            $claseVirtual->id,
+            "Aula virtual #{$claseVirtual->id} «{$claseVirtual->nombre}» eliminada | asignación #{$claseVirtual->asignacion_id}"
+                . " | {$materialIds->count()} material(es), {$entregaIds->count()} entrega(s), {$rutas->count()} archivo(s)"
+        );
+
         $claseVirtual->delete();
+
+        foreach ($rutas as $ruta) {
+            Storage::disk('public')->delete($ruta);
+        }
 
         return redirect()->route('admin.classroom.index')
             ->with('success', 'Aula virtual eliminada.');
@@ -208,6 +268,13 @@ class ClaseVirtualController extends Controller
     public function toggleActivo(ClaseVirtual $claseVirtual)
     {
         $claseVirtual->update(['activo' => ! $claseVirtual->activo]);
+
+        ActivityLog::registrar(
+            'classroom.estado_cambiado',
+            ClaseVirtual::class,
+            $claseVirtual->id,
+            "Aula virtual #{$claseVirtual->id} «{$claseVirtual->nombre}»: " . ($claseVirtual->activo ? 'activada' : 'desactivada')
+        );
 
         return back()->with('success', $claseVirtual->activo
             ? 'Aula virtual activada.'

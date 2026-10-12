@@ -131,7 +131,11 @@ class ClassroomApiController extends Controller
         $esDocente  = $user->tieneRolDocente();
         $materiales = MaterialClase::with('archivos')
             ->where('clase_virtual_id', $claseVirtual->id)
-            ->when(! $esDocente, fn($q) => $q->where('publicado', true))
+            // Mismo criterio que ClaseVirtual::materialesPublicados() (web): publicado Y, si está
+            // programado, que publicar_en ya haya llegado. Antes la API móvil solo miraba
+            // `publicado` y mostraba a estudiantes y padres lo programado a futuro.
+            ->when(! $esDocente, fn($q) => $q->where('publicado', true)
+                ->where(fn($w) => $w->whereNull('publicar_en')->orWhere('publicar_en', '<=', now())))
             ->orderByDesc('created_at')
             ->get();
 
@@ -275,6 +279,12 @@ class ClassroomApiController extends Controller
         if ($user->tieneRolDocente()) {
             $docente = Docente::where('user_id', $user->id)->first();
             return $docente && $clase->asignacion?->docente_id === $docente->id;
+        }
+
+        // Estudiantes y padres: el listado (index) ya oculta las aulas desactivadas; el acceso
+        // directo por id debe cerrarse igual.
+        if (! $clase->activo && in_array($role, ['Estudiante', 'Representante'], true)) {
+            return false;
         }
 
         if ($role === 'Estudiante') {

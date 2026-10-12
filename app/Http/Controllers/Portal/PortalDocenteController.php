@@ -5092,19 +5092,27 @@ class PortalDocenteController extends Controller
 
         $matricula = Matricula::where('id', $request->matricula_id)
             ->whereIn('grupo_id', $grupoIds)
+            ->where('estado', 'activa')   // un estudiante retirado ya no recibe puntos
             ->first();
 
         if (! $matricula) {
             return back()->with('error', 'No tienes acceso a este estudiante.')->withInput();
         }
 
-        PuntoEstudiante::create([
+        $punto = PuntoEstudiante::create([
             'matricula_id' => $matricula->id,
             'concepto'     => $request->concepto,
             'categoria'    => $request->categoria,
             'puntos'       => $request->puntos,
             'fecha'        => $request->fecha,
         ]);
+
+        \App\Models\ActivityLog::registrar(
+            'gamificacion.puntos_asignados',
+            PuntoEstudiante::class,
+            $punto->id,
+            "+{$request->puntos} pts ({$request->categoria}) a matrícula #{$matricula->id} por docente #{$docente->id}: {$request->concepto}"
+        );
 
         $this->gamifVerificarInsigniasAcumulado($matricula->id);
 

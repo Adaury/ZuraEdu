@@ -161,6 +161,14 @@ class GamificacionApiController extends Controller
             'fecha'        => $request->fecha,
         ]);
 
+        // Los puntos alteran ranking e insignias: queda constancia de quién los dio (desde la app).
+        \App\Models\ActivityLog::registrar(
+            'gamificacion.puntos_asignados',
+            PuntoEstudiante::class,
+            $punto->id,
+            "+{$request->puntos} pts ({$request->categoria}) a matrícula #{$matricula->id} por docente #{$docente->id} (app): {$request->concepto}"
+        );
+
         // Verificar insignias acumuladas (100/500 pts)
         $total = PuntoEstudiante::where('matricula_id', $matricula->id)->sum('puntos');
         if ($total >= 100) {

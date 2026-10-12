@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Asistencia;
 use App\Models\CalificacionAcademica;
+use App\Models\FaltaDisciplinaria;
 use App\Models\Calificacion;
 use App\Models\Grupo;
 use App\Models\InsigniaEstudiante;
@@ -81,11 +83,24 @@ class GamificacionController extends Controller
             'fecha'        => ['required', 'date'],
         ]);
 
-        PuntoEstudiante::create($data);
+        // puntos_estudiante no tiene tenant_id propio y `exists:` no filtra por centro: la matrícula
+        // debe resolverse con el scope del tenant (antes se podían dar puntos a una matrícula ajena).
+        $matricula = Matricula::findOrFail($data['matricula_id']);
+        $data['matricula_id'] = $matricula->id;
+
+        $punto = PuntoEstudiante::create($data);
         $this->verificarInsigniasAcumulado($data['matricula_id']);
 
+        ActivityLog::registrar(
+            'gamificacion.puntos_asignados',
+            PuntoEstudiante::class,
+            $punto->id,
+            "+{$data['puntos']} pts ({$data['categoria']}) a matrícula #{$matricula->id}: {$data['concepto']}"
+        );
+
         $redirect = $request->input('_redirect');
-        if ($redirect && str_starts_with($redirect, url('/'))) {
+        // Prefijo con "/" final: "http://sge.test" también "empezaba" con "http://sge.test.evil.com".
+        if ($redirect && str_starts_with($redirect, rtrim(url('/'), '/') . '/')) {
             return redirect($redirect)->with('success', "Se asignaron {$data['puntos']} puntos correctamente.");
         }
 
@@ -115,13 +130,23 @@ class GamificacionController extends Controller
             // ── Puntos académicos ──────────────────────────────────────
             $promedio = $this->calcularPromedioMatricula($matricula, $schoolYear);
 
+            // Cada concepto se otorga UNA vez por matrícula (= una vez por año escolar). Antes se
+            // deduplicaba por fecha: generar otro día volvía a dar 50/40/20 puntos y las
+            // insignias de 100/500 puntos se "compraban" pulsando el botón varios días.
             if ($promedio !== null) {
                 if ($promedio >= 90) {
-                    $this->crearPuntoSiNoExiste($matricula->id, 'Promedio académico ≥ 90', 'academico', 50, $hoy);
-                    $generados++;
+                    // Si ya cobró el tramo ≥ 80 (30 pts), solo se le suma la diferencia.
+                    $yaTramo80 = PuntoEstudiante::where('matricula_id', $matricula->id)
+                        ->where('concepto', 'Promedio académico ≥ 80')->exists();
+                    if ($this->crearPuntoSiNoExiste($matricula->id, 'Promedio académico ≥ 90', 'academico', $yaTramo80 ? 20 : 50, $hoy)) {
+                        $generados++;
+                    }
                 } elseif ($promedio >= 80) {
-                    $this->crearPuntoSiNoExiste($matricula->id, 'Promedio académico ≥ 80', 'academico', 30, $hoy);
-                    $generados++;
+                    $yaTramo90 = PuntoEstudiante::where('matricula_id', $matricula->id)
+                        ->where('concepto', 'Promedio académico ≥ 90')->exists();
+                    if (! $yaTramo90 && $this->crearPuntoSiNoExiste($matricula->id, 'Promedio académico ≥ 80', 'academico', 30, $hoy)) {
+                        $generados++;
+                    }
                 }
             }
 
@@ -129,23 +154,28 @@ class GamificacionController extends Controller
             $pctAsistencia = $this->calcularPorcentajeAsistencia($matricula);
 
             if ($pctAsistencia !== null && $pctAsistencia >= 95) {
-                $this->crearPuntoSiNoExiste($matricula->id, 'Asistencia ≥ 95%', 'asistencia', 40, $hoy);
-                $generados++;
+                if ($this->crearPuntoSiNoExiste($matricula->id, 'Asistencia ≥ 95%', 'asistencia', 40, $hoy)) {
+                    $generados++;
+                }
             }
 
-            // ── Puntos por sin faltas disciplinarias ───────────────────
-            $sinFaltas = ! DB::table('faltas_disciplinarias')
-                ->where('estudiante_id', $matricula->estudiante_id)
-                ->exists();
-
-            if ($sinFaltas) {
-                $this->crearPuntoSiNoExiste($matricula->id, 'Sin faltas disciplinarias', 'conducta', 20, $hoy);
-                $generados++;
+            // ── Puntos por sin faltas disciplinarias (del año escolar, con datos suficientes) ──
+            if ($this->sinFaltasEnElAnio($matricula, $schoolYear)) {
+                if ($this->crearPuntoSiNoExiste($matricula->id, 'Sin faltas disciplinarias', 'conducta', 20, $hoy)) {
+                    $generados++;
+                }
             }
 
             // Verificar insignias tras generar puntos
             $this->verificarInsigniasCompletas($matricula, $schoolYear);
         }
+
+        ActivityLog::registrar(
+            'gamificacion.puntos_generados',
+            Grupo::class,
+            (int) $grupoId,
+            "Puntos automáticos del grupo #{$grupoId}: {$generados} registro(s) nuevo(s) para {$matriculas->count()} estudiante(s)"
+        );
 
         return back()->with('success', "Se generaron {$generados} registros de puntos para el grupo.");
     }
@@ -197,7 +227,28 @@ class GamificacionController extends Controller
     // ── Eliminar un punto ────────────────────────────────────────────────
     public function eliminarPunto(PuntoEstudiante $punto)
     {
+        // El binding de PuntoEstudiante no está filtrado por centro (sin tenant_id): se verifica
+        // contra la matrícula, que sí lo está.
+        $matricula = Matricula::findOrFail($punto->matricula_id);
+
+        ActivityLog::registrar(
+            'gamificacion.punto_eliminado',
+            PuntoEstudiante::class,
+            $punto->id,
+            "Punto eliminado de matrícula #{$matricula->id}: {$punto->puntos} pts ({$punto->categoria}) — {$punto->concepto}"
+        );
+
         $punto->delete();
+
+        // Las insignias por acumulado ya no corresponden si el total bajó del umbral.
+        $total = (int) PuntoEstudiante::where('matricula_id', $matricula->id)->sum('puntos');
+        if ($total < 500) {
+            InsigniaEstudiante::where('matricula_id', $matricula->id)->where('tipo', 'quinientos_puntos')->delete();
+        }
+        if ($total < 100) {
+            InsigniaEstudiante::where('matricula_id', $matricula->id)->where('tipo', 'cien_puntos')->delete();
+        }
+
         return back()->with('success', 'Punto eliminado correctamente.');
     }
 
@@ -314,22 +365,48 @@ class GamificacionController extends Controller
 
     // ── Helpers privados ──────────────────────────────────────────────────
 
-    private function crearPuntoSiNoExiste(int $matriculaId, string $concepto, string $categoria, int $puntos, $fecha): void
+    /** Registros de asistencia mínimos para otorgar premios de asistencia/conducta (con 1 día todos eran "100 %"). */
+    private const MIN_REGISTROS_ASISTENCIA = 20;
+
+    /** @return bool true si creó el punto (false si el concepto ya estaba otorgado en esta matrícula) */
+    private function crearPuntoSiNoExiste(int $matriculaId, string $concepto, string $categoria, int $puntos, $fecha): bool
     {
         $existe = PuntoEstudiante::where('matricula_id', $matriculaId)
             ->where('concepto', $concepto)
-            ->where('fecha', $fecha)
             ->exists();
 
-        if (! $existe) {
-            PuntoEstudiante::create([
-                'matricula_id' => $matriculaId,
-                'concepto'     => $concepto,
-                'categoria'    => $categoria,
-                'puntos'       => $puntos,
-                'fecha'        => $fecha,
-            ]);
+        if ($existe) {
+            return false;
         }
+
+        PuntoEstudiante::create([
+            'matricula_id' => $matriculaId,
+            'concepto'     => $concepto,
+            'categoria'    => $categoria,
+            'puntos'       => $puntos,
+            'fecha'        => $fecha,
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Sin faltas DEL AÑO ESCOLAR (antes: ninguna falta en toda la historia del estudiante, incluso
+     * resueltas de años anteriores) y con datos suficientes (sin ellos, en la primera semana todos
+     * "no tenían faltas").
+     */
+    private function sinFaltasEnElAnio(Matricula $matricula, $schoolYear): bool
+    {
+        if (Asistencia::where('matricula_id', $matricula->id)->count() < self::MIN_REGISTROS_ASISTENCIA) {
+            return false;
+        }
+
+        $desde = $schoolYear?->fecha_inicio ?? now()->startOfYear();
+        $hasta = $schoolYear?->fecha_fin    ?? now()->endOfYear();
+
+        return ! FaltaDisciplinaria::where('estudiante_id', $matricula->estudiante_id)
+            ->whereBetween('fecha', [$desde, $hasta])
+            ->exists();
     }
 
     private function calcularPromedioMatricula(Matricula $matricula, $schoolYear): ?float
@@ -339,7 +416,10 @@ class GamificacionController extends Controller
             ->whereNotNull('nota_final')
             ->get(['nota_final']);
 
+        // Solo notas publicadas (igual que las técnicas): los puntos y la insignia son visibles para
+        // el estudiante y no deben adelantar ni filtrar notas que el docente aún no publica.
         $notasAcad = CalificacionAcademica::where('matricula_id', $matricula->id)
+            ->where('publicado', true)
             ->when($schoolYear, fn($q) => $q->where('school_year_id', $schoolYear->id))
             ->whereNotNull('nota_final')
             ->get(['nota_final']);
@@ -349,11 +429,13 @@ class GamificacionController extends Controller
 
     private function calcularPorcentajeAsistencia(Matricula $matricula): ?float
     {
-        $asistencias = Asistencia::where('matricula_id', $matricula->id)->get();
+        $asistencias = Asistencia::where('matricula_id', $matricula->id)->get(['estado']);
         $total = $asistencias->count();
-        if ($total === 0) return null;
+        // Con pocos registros el porcentaje no significa nada (1 día presente = 100 %).
+        if ($total < self::MIN_REGISTROS_ASISTENCIA) return null;
 
-        $presentes = $asistencias->whereIn('estado', ['presente', 'tarde'])->count();
+        // Mismos estados que cuentan como asistido en el resto del sistema (tarde y excusa incluidos).
+        $presentes = $asistencias->whereIn('estado', Asistencia::ESTADOS_ASISTIDO)->count();
         return round($presentes / $total * 100, 1);
     }
 
@@ -400,11 +482,7 @@ class GamificacionController extends Controller
         }
 
         // Insignia: sin_faltas
-        $sinFaltas = ! DB::table('faltas_disciplinarias')
-            ->where('estudiante_id', $matricula->estudiante_id)
-            ->exists();
-
-        if ($sinFaltas) {
+        if ($this->sinFaltasEnElAnio($matricula, $schoolYear)) {
             InsigniaEstudiante::firstOrCreate(
                 ['matricula_id' => $matricula->id, 'tipo' => 'sin_faltas'],
                 ['fecha_obtencion' => today()]

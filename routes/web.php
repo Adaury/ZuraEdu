@@ -486,7 +486,7 @@ Route::prefix('portal/docente')->name('portal.docente.')->middleware(['auth', 'a
         Route::post('/{tarea}/entregas/pasar-notas', [\App\Http\Controllers\Portal\AgendaDocenteController::class, 'pasarACalificaciones'])->name('entregas.pasar-notas');
     });
     Route::get('/gamificacion',                [PortalDocenteController::class, 'gamificacion'])->name('gamificacion');
-    Route::post('/gamificacion/asignar',       [PortalDocenteController::class, 'asignarPuntosPortal'])->name('gamificacion.asignar');
+    Route::post('/gamificacion/asignar',       [PortalDocenteController::class, 'asignarPuntosPortal'])->middleware('tenant.feature:gamificacion')->name('gamificacion.asignar');
     Route::post('/notificaciones/leer-todas',  [PortalDocenteController::class, 'marcarTodasLeidas'])->name('notif.leer-todas');
     Route::get('/notificaciones',              [PortalDocenteController::class, 'notificaciones'])->name('notificaciones');
     // ── Mensajería Interna ────────────────────────────────────────────────────

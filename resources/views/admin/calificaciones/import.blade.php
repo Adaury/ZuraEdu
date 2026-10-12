@@ -310,6 +310,13 @@
             <div style="font-size:.74rem;color:#6b7280;">
                 <i class="bi bi-lightbulb me-1"></i>
                 Las columnas de <code>nombres</code> y <code>apellidos</code> son solo referencia — no se importan.
+                Si no trae matrícula ni cédula, se usa el nombre (cuando es único en el grupo).
+            </div>
+            <div class="mt-2" style="font-size:.74rem;color:#047857;">
+                <i class="bi bi-file-earmark-excel me-1"></i>
+                También puedes subir <strong>tu propio Excel</strong>: se reconocen encabezados como
+                <code>Matrícula</code>, <code>Estudiante</code>, <code>C1 P1</code> o <code>Nota final</code>,
+                aunque haya títulos arriba o varias hojas.
             </div>
         </div>
 

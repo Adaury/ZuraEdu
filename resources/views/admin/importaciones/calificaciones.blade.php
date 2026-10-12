@@ -337,6 +337,18 @@
                     <i class="bi bi-4-circle-fill"></i>Comp 4: Ética / Ciudadana
                 </span>
             </div>
+            <div class="mt-3 alert alert-success d-flex gap-2 align-items-start"
+                 style="border-radius:8px;font-size:.8rem;">
+                <i class="bi bi-file-earmark-excel-fill flex-shrink-0 mt-1"></i>
+                <div>
+                    <strong>¿Ya llevas las notas en tu propio Excel?</strong> Puedes subirlo tal cual:
+                    el sistema busca la fila de encabezados (aunque haya títulos arriba), revisa todas las hojas
+                    y reconoce nombres como <code>Matrícula</code>, <code>Cédula</code>, <code>Estudiante</code>,
+                    <code>C1 P1</code>, <code>Competencia 2 - Período 3</code> o <code>Nota final</code>.
+                    Acepta coma decimal (<code>85,5</code>). Si no trae matrícula ni cédula, identifica al
+                    estudiante por su nombre cuando es único en el grupo.
+                </div>
+            </div>
             <div class="mt-3 alert alert-info d-flex gap-2 align-items-start"
                  style="border-radius:8px;font-size:.8rem;">
                 <i class="bi bi-lightning-charge-fill flex-shrink-0 mt-1"></i>

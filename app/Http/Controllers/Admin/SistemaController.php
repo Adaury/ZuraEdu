@@ -1087,6 +1087,7 @@ class SistemaController extends Controller
             'alerta_ausencias_consecutivas'  => $request->input('alerta_ausencias_consecutivas', '3'),
             'alerta_ausencias_dias_ventana'  => $request->input('alerta_ausencias_dias_ventana', '14'),
             'carnet_hora_entrada'            => $request->input('carnet_hora_entrada') ?: '07:30',
+            'escala_literal_activa'          => $request->boolean('escala_literal_activa') ? '1' : '0',
         ]);
         return back()->with('success', 'Configuración de notificaciones guardada.');
     }

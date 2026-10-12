@@ -179,6 +179,16 @@
             <span class="threshold-desc">tardanza después</span>
         </div>
     </div>
+
+    <div class="threshold-row">
+        <label for="th_escala">Aceptar notas en letras al importar (A+ … F)</label>
+        <div class="d-flex align-items-center gap-1">
+            <input type="hidden" name="escala_literal_activa" value="0">
+            <input type="checkbox" class="form-check-input" id="th_escala" name="escala_literal_activa" value="1"
+                   {{ ($settings['escala_literal_activa'] ?? '0') == '1' ? 'checked' : '' }}>
+            <span class="threshold-desc" title="A+=100, A=95, B+=90, B=85, C+=80, C=75, D+=70, D=65, F=50">escala opcional</span>
+        </div>
+    </div>
 </div>
 
 {{-- Horario de alertas (info) --}}

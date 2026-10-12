@@ -97,13 +97,29 @@ class SubscriptionController extends Controller
         });
 
         $vence = $tenant->fresh()->fecha_vencimiento->format('d/m/Y');
+
+        // Dinero + cambio de plan, límites y módulos de una institución: queda constancia.
+        try {
+            \App\Models\ActivityLog::registrar(
+                'tenant_pago_registrado',
+                Tenant::class,
+                $tenant->id,
+                "SuperAdmin registró pago para «{$tenant->nombre_institucion}»: plan {$data['plan']}, {$data['meses']} mes(es), "
+                    . "USD {$data['monto_pagado']}" . (! empty($data['referencia_pago']) ? " (ref. {$data['referencia_pago']})" : '')
+                    . ". Vence {$vence}."
+            );
+        } catch (\Exception $e) {}
+
         return back()->with('success', "Pago registrado correctamente. Acceso activo hasta {$vence}.");
     }
 
     /** Toggle individual de un módulo/feature */
     public function toggleFeature(Request $request, Tenant $tenant)
     {
-        $feature = $request->validate(['feature' => 'required|string|max:50'])['feature'];
+        // Solo módulos conocidos (antes cualquier cadena creaba una fila de feature arbitraria).
+        $feature = $request->validate([
+            'feature' => ['required', 'string', \Illuminate\Validation\Rule::in(array_keys(TenantController::ALL_FEATURES))],
+        ])['feature'];
 
         $tf = TenantFeature::firstOrCreate(
             ['tenant_id' => $tenant->id, 'feature' => $feature],
@@ -113,6 +129,15 @@ class SubscriptionController extends Controller
         $tf->save();
 
         Cache::forget("tenant_{$tenant->id}_feature_{$feature}");
+
+        try {
+            \App\Models\ActivityLog::registrar(
+                'tenant_modulo_cambiado',
+                Tenant::class,
+                $tenant->id,
+                "SuperAdmin: módulo «{$feature}» " . ($tf->activo ? 'activado' : 'desactivado') . " en «{$tenant->nombre_institucion}»."
+            );
+        } catch (\Exception $e) {}
 
         return back()->with('success',
             "Módulo «{$feature}» " . ($tf->activo ? 'activado' : 'desactivado') . '.'
@@ -132,7 +157,11 @@ class SubscriptionController extends Controller
     {
         $features = self::FEATURES_POR_PLAN[$plan] ?? self::FEATURES_POR_PLAN['free'];
 
-        TenantFeature::where('tenant_id', $tenant->id)->update(['activo' => false]);
+        // Solo se reinician los módulos que el plan gobierna. Antes se apagaban TODOS (incluidos los
+        // que el SuperAdmin había encendido a mano y que ningún plan incluye: area_tecnica,
+        // modo_publico…) cada vez que se registraba un pago.
+        $gobernados = array_values(array_unique(array_merge(...array_values(self::FEATURES_POR_PLAN))));
+        TenantFeature::where('tenant_id', $tenant->id)->whereIn('feature', $gobernados)->update(['activo' => false]);
 
         foreach ($features as $feature) {
             TenantFeature::updateOrCreate(

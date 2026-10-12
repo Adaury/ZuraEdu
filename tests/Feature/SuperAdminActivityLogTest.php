@@ -67,6 +67,7 @@ class SuperAdminActivityLogTest extends TestCase
     {
         $sa = $this->superAdmin();
         $tenant = $this->tenant();
+        $tenant->update(['estado' => 'suspendido']);   // una institución activa no se elimina directamente
         $tenantId = $tenant->id;
 
         $this->actingAs($sa)

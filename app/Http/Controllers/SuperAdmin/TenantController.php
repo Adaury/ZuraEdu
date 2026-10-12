@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Cache;
 
 class TenantController extends Controller
 {
-    private const ALL_FEATURES = [
+    public const ALL_FEATURES = [
         'pagos'              => 'Pagos y Financiero',
         'classroom'          => 'Classroom Virtual',
         'whatsapp'           => 'Notificaciones WhatsApp',
@@ -89,8 +89,8 @@ class TenantController extends Controller
             'email_contacto'        => 'nullable|email|max:200',
             'telefono_contacto'     => 'nullable|string|max:30',
             'ciudad'                => 'nullable|string|max:100',
-            'color_primario'        => 'nullable|string|max:7',
-            'color_secundario'      => 'nullable|string|max:7',
+            'color_primario'        => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'color_secundario'      => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'fecha_registro'        => 'nullable|date',
             'fecha_vencimiento'     => 'nullable|date|after_or_equal:fecha_registro',
             'max_estudiantes'       => 'required|integer|min:1',
@@ -185,14 +185,25 @@ class TenantController extends Controller
             'email_contacto'        => 'nullable|email|max:200',
             'telefono_contacto'     => 'nullable|string|max:30',
             'ciudad'                => 'nullable|string|max:100',
-            'color_primario'        => 'nullable|string|max:7',
-            'color_secundario'      => 'nullable|string|max:7',
+            'color_primario'        => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'color_secundario'      => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'fecha_registro'        => 'nullable|date',
             'fecha_vencimiento'     => 'nullable|date',
             'max_estudiantes'       => 'required|integer|min:1',
             'max_docentes'          => 'required|integer|min:1',
             'features'              => 'nullable|array',
         ]);
+
+        // toggleEstado y destroy ya protegen el tenant principal; update permitía suspenderlo o cancelarlo
+        // por esta otra vía (y dejar fuera a la plataforma).
+        if ($tenant->id === 1 && in_array($data['estado'], ['suspendido', 'cancelado'], true)) {
+            return back()->withInput()->withErrors(['estado' => 'No se puede suspender ni cancelar el tenant principal.']);
+        }
+
+        // Valores previos para la auditoría y para limpiar la caché del host ANTERIOR (antes solo se
+        // olvidaba la clave del dominio nuevo y el viejo seguía resolviendo al tenant).
+        $antes = $tenant->only(['nombre_institucion', 'dominio', 'dominio_personalizado', 'estado', 'plan', 'fecha_vencimiento', 'max_estudiantes', 'max_docentes']);
+        $featuresAntes = $tenant->features()->where('activo', true)->pluck('feature')->sort()->values()->all();
 
         $tenant->update($data);
 
@@ -209,7 +220,34 @@ class TenantController extends Controller
         foreach (array_keys(self::ALL_FEATURES) as $key) {
             Cache::forget("tenant_{$tenant->id}_feature_{$key}");
         }
-        Cache::forget("tenant_host_{$tenant->dominio}");
+        foreach (array_filter([$antes['dominio'], $antes['dominio_personalizado'], $tenant->dominio, $tenant->dominio_personalizado]) as $host) {
+            Cache::forget("tenant_host_{$host}");
+        }
+
+        // Cambios de plan, estado, límites, dominio o módulos: afectan facturación y acceso.
+        $cambios = [];
+        foreach ($antes as $campo => $valorAntes) {
+            $valorDespues = $tenant->{$campo};
+            if ((string) $valorAntes !== (string) $valorDespues) {
+                $cambios[] = "{$campo}: " . ($valorAntes ?? '—') . ' → ' . ($valorDespues ?? '—');
+            }
+        }
+        $featuresDespues = $tenant->features()->where('activo', true)->pluck('feature')->sort()->values()->all();
+        if ($featuresAntes !== $featuresDespues) {
+            $activados   = array_diff($featuresDespues, $featuresAntes);
+            $desactivados = array_diff($featuresAntes, $featuresDespues);
+            $cambios[] = 'módulos: +[' . implode(',', $activados) . '] −[' . implode(',', $desactivados) . ']';
+        }
+        if ($cambios) {
+            try {
+                ActivityLog::registrar(
+                    'tenant_actualizado',
+                    Tenant::class,
+                    $tenant->id,
+                    "SuperAdmin actualizó «{$tenant->nombre_institucion}»: " . implode(' | ', $cambios)
+                );
+            } catch (\Exception $e) {}
+        }
 
         return redirect()->route('superadmin.tenants.show', $tenant)
             ->with('success', 'Institución actualizada correctamente.');
@@ -244,6 +282,12 @@ class TenantController extends Controller
             return back()->withErrors(['error' => 'No se puede eliminar el tenant principal.']);
         }
 
+        // Borrado físico de TODA la institución (alumnos, notas, pagos…): primero hay que suspenderla o
+        // cancelarla (paso deliberado, con su propio rastro); un centro activo no se elimina de un clic.
+        if (! in_array($tenant->estado, ['suspendido', 'cancelado'], true)) {
+            return back()->withErrors(['error' => 'Para eliminar una institución primero suspéndela o cancélala.']);
+        }
+
         $tenantId = $tenant->id;
         $nombre   = $tenant->nombre_institucion;
         $tenant->delete();
@@ -275,7 +319,11 @@ class TenantController extends Controller
             );
         } catch (\Exception $e) {}
 
-        $destino = $request->input('destino', '/admin/dashboard');
+        // Solo rutas internas: "//evil.com" y "https://…" eran un redirect abierto.
+        $destino = (string) $request->input('destino', '/admin/dashboard');
+        if (! str_starts_with($destino, '/') || str_starts_with($destino, '//') || str_contains($destino, '\\')) {
+            $destino = '/admin/dashboard';
+        }
         return redirect($destino)
             ->with('info', "Estás administrando «{$tenant->nombre_institucion}» como SuperAdmin.");
     }
@@ -311,6 +359,15 @@ class TenantController extends Controller
             $g->save();
             $estado = 'activado';
         }
+
+        try {
+            ActivityLog::registrar(
+                'tenant_nivel_inicial',
+                Tenant::class,
+                $tenant->id,
+                "SuperAdmin: {$data['nombre']} {$estado} en «{$tenant->nombre_institucion}»."
+            );
+        } catch (\Exception $e) {}
 
         return back()->with('success', "{$data['nombre']} {$estado} correctamente.");
     }

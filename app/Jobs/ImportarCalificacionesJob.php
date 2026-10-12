@@ -53,23 +53,15 @@ class ImportarCalificacionesJob extends TenantJob
                 throw new \RuntimeException('La asignación de este lote ya no existe.');
             }
 
-            $rows = $this->leerFilas($importacion->archivo_path);
+            // Lectura y emparejamiento compartidos con la vista previa (App\Services\LectorCalificaciones).
+            $lector  = new \App\Services\LectorCalificaciones();
+            $rows    = $lector->leer(Storage::disk('local')->path($importacion->archivo_path))['filas'];
+            $indices = $lector->indices($asignacion);
 
             $schoolYear      = SchoolYear::actual();
             $periodosIndexed = Periodo::where('school_year_id', $asignacion->school_year_id)
                 ->orderBy('numero')->get()->keyBy('numero');
             $periodoFijo     = $importacion->periodo_id ? Periodo::find($importacion->periodo_id) : null;
-
-            $matriculasPorNum    = $asignacion->grupo->matriculas()
-                ->activas()->with('estudiante')->get()->keyBy(fn ($m) => $m->estudiante->numero_matricula ?? '');
-            $matriculasPorCedula = $matriculasPorNum->groupBy(fn ($m) => $m->estudiante->cedula ?? '');
-            // Respaldo cuando el Excel del docente solo trae nombres: por conjunto de palabras
-            // ("Pérez Juan" = "Juan Pérez"), y solo si el nombre es único en el grupo.
-            $clave = fn (string $t) => collect(explode(' ', \App\Support\EncabezadosImportacion::normalizar($t)))
-                ->filter()->sort()->implode(' ');
-            $matriculasPorNombre = $matriculasPorNum->groupBy(
-                fn ($m) => $clave(($m->estudiante->nombres ?? '') . ' ' . ($m->estudiante->apellidos ?? ''))
-            );
 
             $esAcademica = $asignacion->area === 'academica';
             $importados  = 0;
@@ -77,38 +69,15 @@ class ImportarCalificacionesJob extends TenantJob
             $errores     = [];
 
             foreach ($rows as $i => $row) {
-                $linea  = $row['__linea'] ?? ($i + 2);
-                $numMat = trim($row['numero_matricula'] ?? $row['num_matricula'] ?? '');
-                $cedula = trim($row['cedula'] ?? '');
-                $nombreArchivo = trim(
-                    ($row['nombre_completo'] ?? '') !== ''
-                        ? $row['nombre_completo']
-                        : trim(($row['nombres'] ?? '') . ' ' . ($row['apellidos'] ?? ''))
-                );
+                $linea = $row['__linea'] ?? ($i + 2);
 
-                // Fila sin ningún dato que identifique al estudiante (totales, separadores): se ignora.
-                if ($numMat === '' && $cedula === '' && $nombreArchivo === '') {
-                    continue;
+                [$matricula, $errorEmparejar, $metodo] = $lector->emparejar($row, $indices);
+
+                if ($metodo === 'ignorada') {
+                    continue;   // totales / separadores sin identificador de estudiante
                 }
-
-                $matricula = null;
-                if ($numMat && $matriculasPorNum->has($numMat)) {
-                    $matricula = $matriculasPorNum->get($numMat);
-                } elseif ($cedula && $matriculasPorCedula->has($cedula)) {
-                    $matricula = $matriculasPorCedula->get($cedula)->first();
-                } elseif ($nombreArchivo !== '') {
-                    $candidatas = $matriculasPorNombre->get($clave($nombreArchivo), collect());
-                    if ($candidatas->count() > 1) {
-                        $errores[] = "Fila {$linea}: el nombre '{$nombreArchivo}' coincide con {$candidatas->count()} estudiantes del grupo; usa la matrícula o la cédula.";
-                        $omitidos++;
-                        continue;
-                    }
-                    $matricula = $candidatas->first();
-                }
-
                 if (! $matricula) {
-                    $errores[] = "Fila {$linea}: estudiante no encontrado (matrícula: '{$numMat}', cédula: '{$cedula}'"
-                        . ($nombreArchivo !== '' ? ", nombre: '{$nombreArchivo}'" : '') . ').';
+                    $errores[] = $errorEmparejar;
                     $omitidos++;
                     continue;
                 }
@@ -272,112 +241,10 @@ class ImportarCalificacionesJob extends TenantJob
         return [true, null];
     }
 
-    /**
-     * Lee el archivo temporal (CSV/XLSX) y devuelve filas asociativas con claves canónicas
-     * (ver EncabezadosImportacion). Tolera el Excel propio del docente: título del instrumento en las
-     * primeras filas, encabezados con otros nombres ("Matrícula", "C1 P1"…) y varias hojas (se usa la
-     * primera que tenga encabezados reconocibles). Cada fila lleva '__linea' (número de fila real).
-     *
-     * @throws \RuntimeException si no se reconoce ninguna fila de encabezados
-     */
-    private function leerFilas(string $path): array
-    {
-        $fullPath = Storage::disk('local')->path($path);
-        $ext      = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
-
-        /** @var array<int,array<int,array<int,mixed>>> $hojas  lista de matrices (una por hoja) */
-        $hojas = [];
-
-        if (in_array($ext, ['xlsx', 'xls'])) {
-            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($fullPath);
-            foreach ($spreadsheet->getAllSheets() as $hoja) {
-                $hojas[] = $hoja->toArray(null, true, true, false);
-            }
-        } else {
-            $raw   = $this->normalizeToUtf8(file_get_contents($fullPath));
-            $lines = explode("\n", str_replace(["\r\n", "\r"], "\n", ltrim($raw, "\xEF\xBB\xBF")));
-            $primera = collect($lines)->first(fn ($l) => trim($l) !== '') ?? '';
-            $delim = substr_count($primera, ';') > substr_count($primera, ',') ? ';' : ',';
-            $hojas[] = array_map(fn ($l) => trim($l) === '' ? [] : str_getcsv($l, $delim), $lines);
-        }
-
-        foreach ($hojas as $matriz) {
-            $detectado = \App\Support\EncabezadosImportacion::detectar($matriz);
-            if (! $detectado) {
-                continue;
-            }
-
-            [$filaEnc, $mapa] = $detectado;
-            $rows = [];
-            foreach (array_slice($matriz, $filaEnc + 1, null, true) as $idx => $celdas) {
-                if (! is_array($celdas)) {
-                    continue;
-                }
-                $fila = ['__linea' => $idx + 1];
-                $vacia = true;
-                foreach ($mapa as $col => $clave) {
-                    if ($clave === '') {
-                        continue;
-                    }
-                    $v = $celdas[$col] ?? '';
-                    $v = is_scalar($v) ? trim((string) $v) : '';
-                    if ($v !== '') {
-                        $vacia = false;
-                    }
-                    $fila[$clave] = $v;
-                }
-                if (! $vacia) {
-                    $rows[] = $fila;
-                }
-            }
-
-            return $rows;
-        }
-
-        // Nada reconocible: decir qué encabezados se vieron para que el docente pueda corregirlo.
-        $vistos = [];
-        foreach (array_slice($hojas[0] ?? [], 0, 10) as $fila) {
-            foreach ((array) $fila as $celda) {
-                if (is_scalar($celda) && trim((string) $celda) !== '' && ! is_numeric($celda)) {
-                    $vistos[] = trim((string) $celda);
-                }
-            }
-        }
-        $vistos = array_slice(array_values(array_unique($vistos)), 0, 12);
-
-        throw new \RuntimeException(
-            'No se encontró una fila de encabezados reconocible. Se necesita una columna que identifique al estudiante '
-            . '(matrícula, cédula o nombre) y al menos una de notas (comp1_p1…comp4_p4, "C1 P1", "Nota final"). '
-            . ($vistos ? 'Textos encontrados: ' . implode(' | ', $vistos) . '.' : 'El archivo parece vacío.')
-        );
-    }
-
-    /**
-     * Número de una celda de nota: acepta coma decimal ("85,5"), "%" final y, si el centro activó la
-     * escala literal, letras (A+, B…). null = vacío; string = texto no interpretable (se informa).
-     *
-     * @return float|string|null
-     */
+    /** Número de una celda de nota (ver LectorCalificaciones::parsearNota). @return float|string|null */
     private function parsearNota(string $valor)
     {
-        $v = trim($valor);
-        if ($v === '') {
-            return null;
-        }
-
-        $v = rtrim($v, '% ');
-        if (preg_match('/^\d+,\d+$/', $v)) {
-            $v = str_replace(',', '.', $v);
-        }
-        if (is_numeric($v)) {
-            return (float) $v;
-        }
-
-        if (\App\Support\EscalaLiteral::activa() && ($n = \App\Support\EscalaLiteral::aNumero($v)) !== null) {
-            return $n;
-        }
-
-        return $valor;
+        return (new \App\Services\LectorCalificaciones())->parsearNota($valor);
     }
 
     private function notificar(ImportacionCalificacion $importacion, string $mensaje): void

@@ -213,6 +213,97 @@ class ImportacionCalificacionesFlexibleTest extends TestCase
         $this->assertStringContainsString('Hola', $imp->error_fatal);
     }
 
+    // ── Vista previa → confirmar / descartar ────────────────────────────────
+
+    private function admin(): User
+    {
+        $u = User::factory()->create(['activo' => true, 'tenant_id' => app('tenant')->id]);
+        $u->assignRole('Administrador');
+
+        return $u;
+    }
+
+    private function subirPrevia(User $admin, string $csv)
+    {
+        return $this->actingAs($admin)->post(route('admin.importaciones.calificaciones.previsualizar'), [
+            'asignacion_id' => $this->asig->id,
+            'archivo'       => \Illuminate\Http\UploadedFile::fake()->createWithContent('notas.csv', $csv),
+        ]);
+    }
+
+    public function test_la_vista_previa_muestra_lo_reconocido_y_no_guarda_ninguna_nota(): void
+    {
+        [, $m1] = $this->estudiante('Juan', 'Pérez', 1);
+        $this->estudiante('Rosa', 'Díaz', 2);
+        $this->estudiante('Rosa', 'Díaz', 3);
+
+        $csv = "Matrícula;Estudiante;C1 P1;Nota rara\nM-0001;Juan Pérez;85,5;x\n;Rosa Díaz;70;y\n;Pedro Nadie;60;z\n";
+        $r = $this->subirPrevia($this->admin(), $csv);
+
+        $r->assertOk();
+        $r->assertViewIs('admin.importaciones.previsualizacion');
+        $resumen = $r->viewData('resumen');
+        $this->assertSame(3, $resumen['total']);
+        $this->assertSame(1, $resumen['listas']);
+        $this->assertSame(1, $resumen['ambiguas']);
+        $this->assertSame(1, $resumen['sin_estudiante']);
+        $r->assertSee('Todavía no se guardó nada');
+
+        $this->assertNull($this->nota($m1), 'La vista previa no escribe notas');
+        $this->assertSame(0, ImportacionCalificacion::count());
+    }
+
+    public function test_confirmar_crea_la_importacion_y_despacha_el_job(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        $this->estudiante('Juan', 'Pérez', 1);
+        $admin = $this->admin();
+
+        $r = $this->subirPrevia($admin, "Matrícula;C1 P1\nM-0001;90\n");
+        $token = $r->viewData('token');
+
+        $this->actingAs($admin)->post(route('admin.importaciones.calificaciones.confirmar'), ['token' => $token])
+            ->assertRedirect();
+
+        \Illuminate\Support\Facades\Queue::assertPushed(ImportarCalificacionesJob::class);
+        $this->assertSame(1, ImportacionCalificacion::count());
+        $this->assertSame('notas.csv', ImportacionCalificacion::first()->archivo_original);
+    }
+
+    public function test_confirmar_con_token_ajeno_o_vencido_no_importa(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        $this->estudiante('Juan', 'Pérez', 1);
+        $admin = $this->admin();
+        $this->subirPrevia($admin, "Matrícula;C1 P1\nM-0001;90\n");
+
+        $this->actingAs($admin)->post(route('admin.importaciones.calificaciones.confirmar'), ['token' => 'otro'])
+            ->assertRedirect(route('admin.importaciones.calificaciones'))
+            ->assertSessionHas('error');
+
+        // Otro usuario no puede confirmar la vista previa de este
+        $otro = $this->admin();
+        $this->actingAs($otro)->withSession([])->post(route('admin.importaciones.calificaciones.confirmar'), ['token' => 'x'])
+            ->assertSessionHas('error');
+
+        \Illuminate\Support\Facades\Queue::assertNothingPushed();
+        $this->assertSame(0, ImportacionCalificacion::count());
+    }
+
+    public function test_descartar_borra_el_archivo_temporal(): void
+    {
+        $this->estudiante('Juan', 'Pérez', 1);
+        $admin = $this->admin();
+        $this->subirPrevia($admin, "Matrícula;C1 P1\nM-0001;90\n");
+
+        $archivos = Storage::disk('local')->allFiles('imports/calificaciones');
+        $this->assertNotEmpty($archivos);
+
+        $this->actingAs($admin)->post(route('admin.importaciones.calificaciones.descartar'))->assertRedirect();
+
+        $this->assertEmpty(array_filter(Storage::disk('local')->allFiles('imports/calificaciones'), fn ($f) => $f !== 'imports/calificaciones/test.xlsx'));
+    }
+
     public function test_nota_literal_solo_muestra_la_letra_si_el_centro_activo_la_escala(): void
     {
         $this->assertSame('', nota_literal(92), 'Sin activar no se muestra letra');

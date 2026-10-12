@@ -29,6 +29,10 @@ Route::prefix('importaciones/calificaciones')->name('importaciones.calificacione
         Route::get('/',          [ImportacionController::class, 'calificacionesForm'])->name('');
         Route::get('/plantilla', [ImportacionController::class, 'calificacionesPlantilla'])->name('.plantilla');
         Route::post('/',         [ImportacionController::class, 'calificacionesImportar'])->name('.importar');
+        // Vista previa → confirmar / descartar (nada se guarda hasta confirmar)
+        Route::post('/previsualizar', [ImportacionController::class, 'calificacionesPrevisualizar'])->name('.previsualizar');
+        Route::post('/confirmar',     [ImportacionController::class, 'calificacionesConfirmar'])->name('.confirmar');
+        Route::post('/descartar',     [ImportacionController::class, 'calificacionesDescartar'])->name('.descartar');
     });
 
 // ── Módulo 2: Estudiantes — requiere permiso de gestión ──────────────────

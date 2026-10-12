@@ -228,7 +228,13 @@
                        accept=".csv,.txt,.xlsx,.xls" class="d-none"
                        onchange="onFileSelect(this)">
 
-                <div class="d-flex justify-content-end mt-3">
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <button type="submit" class="btn btn-outline-primary px-4 fw-semibold" id="previewBtn"
+                            formaction="{{ route('admin.importaciones.calificaciones.previsualizar') }}"
+                            style="border-radius:8px;"
+                            title="Revisa qué columnas y qué estudiantes se reconocen antes de guardar nada">
+                        <i class="bi bi-eye me-1"></i>Ver vista previa
+                    </button>
                     <button type="submit" class="btn px-4 fw-semibold" id="submitBtn"
                             style="background:var(--primary);color:#fff;border-radius:8px;">
                         <span id="submitSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>

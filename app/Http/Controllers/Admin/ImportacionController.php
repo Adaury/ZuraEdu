@@ -198,6 +198,165 @@ class ImportacionController extends Controller
             ->with('success', 'Tu archivo se está procesando. Esta página se actualiza sola hasta que termine.');
     }
 
+    /**
+     * POST /admin/importaciones/calificaciones/previsualizar
+     * Lee el archivo con el MISMO lector que usa la importación y muestra qué columnas reconoció, a qué
+     * estudiante empareja cada fila y qué notas son válidas. No guarda ninguna nota.
+     */
+    public function calificacionesPrevisualizar(Request $request)
+    {
+        $request->validate([
+            'archivo'       => 'required|file|mimes:csv,txt,xlsx,xls|max:10240',
+            'asignacion_id' => 'required|integer',
+        ]);
+
+        if (! SchoolYear::actual()) {
+            return back()->with('error', 'No hay un año escolar activo.');
+        }
+
+        // Con el scope del tenant (no confiar en el id del formulario).
+        $asignacion = Asignacion::with(['asignatura', 'grupo.grado', 'grupo.seccion'])
+            ->where('area', 'academica')
+            ->findOrFail($request->asignacion_id);
+
+        // Una sola vista previa viva por usuario: se descarta la anterior (y su archivo temporal).
+        if ($previa = session('import_previa')) {
+            \Illuminate\Support\Facades\Storage::disk('local')->delete($previa['path']);
+            session()->forget('import_previa');
+        }
+
+        $archivo = $request->file('archivo');
+        $path    = $archivo->store('imports/calificaciones', 'local');
+        $lector  = new \App\Services\LectorCalificaciones();
+
+        try {
+            $lectura = $lector->leer(\Illuminate\Support\Facades\Storage::disk('local')->path($path));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Storage::disk('local')->delete($path);
+            return back()->with('error', $e instanceof \RuntimeException
+                ? $e->getMessage()
+                : 'No se pudo leer el archivo. Verifica que sea un CSV o Excel válido.');
+        }
+
+        $indices = $lector->indices($asignacion);
+        $filas   = [];
+        $resumen = ['total' => 0, 'listas' => 0, 'sin_estudiante' => 0, 'ambiguas' => 0, 'con_advertencias' => 0, 'notas' => 0];
+
+        foreach ($lectura['filas'] as $row) {
+            [$matricula, $error, $metodo] = $lector->emparejar($row, $indices);
+            if ($metodo === 'ignorada') {
+                continue;
+            }
+            $resumen['total']++;
+
+            $notas = [];
+            $problemas = [];
+            foreach ([1, 2, 3, 4] as $p) {
+                foreach ([1, 2, 3, 4] as $c) {
+                    $crudo = (string) ($row["comp{$c}_p{$p}"] ?? $row["p{$p}_comp{$c}"] ?? '');
+                    $n = $lector->parsearNota($crudo);
+                    if ($n === null) {
+                        continue;
+                    }
+                    if (! is_float($n)) {
+                        $problemas[] = "comp{$c}_p{$p}='{$n}' no es numérico";
+                    } elseif ($n < 0 || $n > 100) {
+                        $problemas[] = "comp{$c}_p{$p}={$n} fuera de 0-100";
+                    } else {
+                        $notas["C{$c}·P{$p}"] = $n;
+                    }
+                }
+            }
+
+            if (! $matricula) {
+                $resumen[$metodo === 'ambiguo' ? 'ambiguas' : 'sin_estudiante']++;
+            } elseif (empty($notas)) {
+                $problemas[] = 'sin notas válidas';
+                $resumen['con_advertencias']++;
+            } else {
+                $resumen['listas']++;
+                $resumen['notas'] += count($notas);
+                if ($problemas) {
+                    $resumen['con_advertencias']++;
+                }
+            }
+
+            $filas[] = [
+                'linea'      => $row['__linea'],
+                'archivo'    => trim(($row['nombre_completo'] ?? '') !== '' ? $row['nombre_completo']
+                                : (($row['nombres'] ?? '') . ' ' . ($row['apellidos'] ?? ''))) ?: ($row['numero_matricula'] ?? $row['cedula'] ?? '—'),
+                'estudiante' => $matricula ? trim(($matricula->estudiante->apellidos ?? '') . ', ' . ($matricula->estudiante->nombres ?? '')) : null,
+                'metodo'     => $metodo,
+                'error'      => $error,
+                'notas'      => $notas,
+                'problemas'  => $problemas,
+            ];
+        }
+
+        $token = \Illuminate\Support\Str::random(40);
+        session(['import_previa' => [
+            'token'         => $token,
+            'path'          => $path,
+            'asignacion_id' => $asignacion->id,
+            'nombre'        => $archivo->getClientOriginalName(),
+            'user_id'       => auth()->id(),
+        ]]);
+
+        return view('admin.importaciones.previsualizacion', [
+            'asignacion' => $asignacion,
+            'lectura'    => $lectura,
+            'filas'      => $filas,
+            'resumen'    => $resumen,
+            'token'      => $token,
+            'nombreArchivo' => $archivo->getClientOriginalName(),
+        ]);
+    }
+
+    /** POST /admin/importaciones/calificaciones/confirmar — importa el archivo de la vista previa. */
+    public function calificacionesConfirmar(Request $request)
+    {
+        $previa = session('import_previa');
+
+        if (! $previa
+            || ! hash_equals((string) $previa['token'], (string) $request->input('token'))
+            || (int) $previa['user_id'] !== (int) auth()->id()
+            || ! \Illuminate\Support\Facades\Storage::disk('local')->exists($previa['path'])) {
+            return redirect()->route('admin.importaciones.calificaciones')
+                ->with('error', 'La vista previa venció. Sube el archivo otra vez.');
+        }
+
+        $asignacion = Asignacion::where('area', 'academica')->findOrFail($previa['asignacion_id']);
+
+        $importacion = \App\Models\ImportacionCalificacion::create([
+            'user_id'          => auth()->id(),
+            'asignacion_id'    => $asignacion->id,
+            'periodo_id'       => null,
+            'archivo_original' => $previa['nombre'],
+            'archivo_path'     => $previa['path'],
+            'estado'           => 'pendiente',
+        ]);
+
+        session()->forget('import_previa');
+        \App\Jobs\ImportarCalificacionesJob::dispatch($importacion->id);
+
+        return redirect()->route('admin.calificaciones.import.estado', $importacion)
+            ->with('success', 'Tu archivo se está procesando. Esta página se actualiza sola hasta que termine.');
+    }
+
+    /** POST /admin/importaciones/calificaciones/descartar — borra la vista previa y su archivo temporal. */
+    public function calificacionesDescartar(Request $request)
+    {
+        if ($previa = session('import_previa')) {
+            if ((int) $previa['user_id'] === (int) auth()->id()) {
+                \Illuminate\Support\Facades\Storage::disk('local')->delete($previa['path']);
+            }
+            session()->forget('import_previa');
+        }
+
+        return redirect()->route('admin.importaciones.calificaciones')
+            ->with('success', 'Vista previa descartada. No se guardó ninguna nota.');
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     //  MÓDULO 2 — ESTUDIANTES
     // ═══════════════════════════════════════════════════════════════════════

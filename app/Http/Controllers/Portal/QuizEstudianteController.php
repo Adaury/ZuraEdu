@@ -54,8 +54,8 @@ class QuizEstudianteController extends Controller
 
         abort_unless($material->clase_virtual_id === $claseVirtual->id, 404);
         abort_unless($claseVirtual->asignacion->grupo_id === $matricula->grupo_id, 403);
-        // Un quiz en borrador (no publicado) no se puede abrir por URL directa.
-        abort_unless($material->publicado, 404);
+        // Un quiz en borrador o programado a futuro no se puede abrir por URL directa.
+        abort_unless($material->estaDisponible(), 404);
 
         $quiz = $material->quiz()->with('preguntas')->firstOrFail();
 
@@ -86,7 +86,7 @@ class QuizEstudianteController extends Controller
         $matricula = $this->getMatricula();
         abort_unless($material->clase_virtual_id === $claseVirtual->id, 404);
         abort_unless($claseVirtual->asignacion->grupo_id === $matricula->grupo_id, 403);
-        abort_unless($material->publicado, 404);
+        abort_unless($material->estaDisponible(), 404);
 
         $quiz = $material->quiz()->with('preguntas.opciones')->firstOrFail();
 

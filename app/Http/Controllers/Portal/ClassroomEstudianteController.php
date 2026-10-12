@@ -48,6 +48,9 @@ class ClassroomEstudianteController extends Controller
             403,
             'No está matriculado en esta asignatura.'
         );
+        // El listado oculta las aulas desactivadas; la URL directa también debe cerrarse
+        // (antes se podía seguir abriendo, entregando y comentando en un aula inactiva).
+        abort_unless($clase->activo, 404);
     }
 
     // ── index ──────────────────────────────────────────────────────────────
@@ -129,8 +132,10 @@ class ClassroomEstudianteController extends Controller
         $pendientes = MaterialClase::whereIn('clase_virtual_id', $claseIds)
             ->whereIn('tipo', ['tarea', 'evaluacion'])
             ->where('publicado', true)
+            ->where(fn($q) => $q->whereNull('publicar_en')->orWhere('publicar_en', '<=', now()))
+            // 'atrasado' también es una entrega hecha (con retraso): antes seguía contando como pendiente y vencida.
             ->whereDoesntHave('entregas', fn($q) => $q->where('matricula_id', $matricula->id)
-                ->whereIn('estado', ['entregado', 'calificado']))
+                ->whereIn('estado', ['entregado', 'calificado', 'atrasado']))
             ->with(['claseVirtual.asignacion.asignatura'])
             ->get();
 
@@ -151,6 +156,8 @@ class ClassroomEstudianteController extends Controller
 
         abort_unless($material->clase_virtual_id === $claseVirtual->id, 404);
         abort_unless($material->esTareaOEvaluacion(), 422, 'Solo se pueden entregar tareas o evaluaciones.');
+        // Borrador o programado a futuro: el listado no lo muestra, pero la URL directa sí entregaba.
+        abort_unless($material->estaDisponible(), 404);
 
         $data = $request->validate([
             'contenido'    => 'nullable|string|max:5000',
@@ -162,8 +169,10 @@ class ClassroomEstudianteController extends Controller
         $entregaExistente = EntregaClassroom::where('material_id', $material->id)
             ->where('matricula_id', $matricula->id)->first();
 
+        // 'atrasado' cuenta como entregada: antes una entrega tardía se podía reenviar sin límite
+        // aunque la tarea no permitiera reentrega.
         if ($entregaExistente && !$material->permite_reentrega
-            && in_array($entregaExistente->estado, ['entregado', 'calificado'])) {
+            && in_array($entregaExistente->estado, ['entregado', 'calificado', 'atrasado'])) {
             return back()->withErrors(['error' => 'No se permiten reenvíos para esta tarea.']);
         }
 
@@ -222,6 +231,7 @@ class ClassroomEstudianteController extends Controller
 
         abort_unless($material->clase_virtual_id === $claseVirtual->id, 404);
         abort_unless($claseVirtual->permite_comentarios, 403, 'Los comentarios están desactivados en esta aula.');
+        abort_unless($material->estaDisponible(), 404);
 
         $request->validate(['contenido' => 'required|string|max:1000']);
 

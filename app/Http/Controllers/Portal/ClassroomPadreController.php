@@ -48,7 +48,8 @@ class ClassroomPadreController extends Controller
 
         // Para cada clase, contar tareas pendientes del hijo
         $clases->each(function ($clase) use ($matricula) {
-            $tareas = $clase->materiales()->whereIn('tipo', ['tarea','evaluacion'])->pluck('id');
+            // Solo las publicadas: antes las tareas en borrador inflaban "pendientes" del hijo.
+            $tareas = $clase->materialesPublicados()->whereIn('tipo', ['tarea','evaluacion'])->pluck('id');
             $entregadas = EntregaClassroom::where('matricula_id', $matricula->id)
                 ->whereIn('material_id', $tareas)->count();
             $clase->_tareas_total   = $tareas->count();
@@ -69,6 +70,8 @@ class ClassroomPadreController extends Controller
             $claseVirtual->asignacion->grupo_id === $matricula->grupo_id,
             403, 'Esta clase no corresponde al grupo del estudiante.'
         );
+        // Mismo criterio que el listado: un aula desactivada no se abre por URL directa.
+        abort_unless($claseVirtual->activo, 404);
 
         $materiales = $claseVirtual->materialesPublicados()
             ->with(['archivos', 'comentarios.user'])

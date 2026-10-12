@@ -89,6 +89,19 @@ class MaterialClase extends Model
         return self::TIPOS[$this->tipo] ?? ['label' => $this->tipo, 'color' => 'gray', 'icon' => 'document'];
     }
 
+    /**
+     * ¿Lo puede ver/usar un estudiante hoy? Mismo criterio que
+     * ClaseVirtual::materialesPublicados(): publicado y, si está programado
+     * (publicar_en), que esa fecha ya haya llegado. Los endpoints que reciben el
+     * material por URL (entregar, comentar, quiz) deben exigirlo: el listado lo
+     * oculta, pero la URL directa no.
+     */
+    public function estaDisponible(): bool
+    {
+        return $this->publicado
+            && (! $this->publicar_en || $this->publicar_en->lte(now()));
+    }
+
     public function esTareaOEvaluacion(): bool
     {
         return in_array($this->tipo, ['tarea', 'evaluacion']);

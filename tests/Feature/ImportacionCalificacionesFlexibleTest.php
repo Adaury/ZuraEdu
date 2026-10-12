@@ -213,6 +213,17 @@ class ImportacionCalificacionesFlexibleTest extends TestCase
         $this->assertStringContainsString('Hola', $imp->error_fatal);
     }
 
+    public function test_nota_literal_solo_muestra_la_letra_si_el_centro_activo_la_escala(): void
+    {
+        $this->assertSame('', nota_literal(92), 'Sin activar no se muestra letra');
+
+        Setting::set('escala_literal_activa', '1');
+        $this->assertSame('A', nota_literal(97));
+        $this->assertSame('B+', nota_literal('91.5'));
+        $this->assertSame('', nota_literal(null));
+        $this->assertSame('', nota_literal('—'));
+    }
+
     public function test_escala_literal_convierte_en_ambos_sentidos(): void
     {
         $this->assertSame(90.0, EscalaLiteral::aNumero('B+'));

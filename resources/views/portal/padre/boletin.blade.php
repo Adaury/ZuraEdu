@@ -282,13 +282,13 @@
                     @php $cal = $calsXPeriodo->get($per->id); $n = $cal?->nota_final; @endphp
                     <div class="pb {{ $n !== null ? ($n >= 65 ? 'pb-ok' : 'pb-mal') : 'pb-nd' }}">
                         <span class="pb-lbl">P{{ $per->numero }}</span>
-                        {{ $n !== null ? $n : '—' }}
+                        {{ $n !== null ? $n : '—' }}@if(nota_literal($n) !== '') <small>({{ nota_literal($n) }})</small>@endif
                     </div>
                 @endforeach
             </div>
             <div class="final-wrap">
                 <div class="final-num {{ $notaFinal !== null ? ($notaFinal >= 65 ? 'fn-ok' : 'fn-mal') : 'fn-nd' }}">
-                    {{ $notaFinal !== null ? $notaFinal : '—' }}
+                    {{ $notaFinal !== null ? $notaFinal : '—' }}@if(nota_literal($notaFinal) !== '') <small>({{ nota_literal($notaFinal) }})</small>@endif
                 </div>
                 @if($notaFinal !== null)
                 <span class="sit-pill {{ $notaFinal >= 65 ? 'sp-ok' : 'sp-mal' }}">

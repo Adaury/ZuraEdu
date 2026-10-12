@@ -199,8 +199,11 @@ EOT;
         }
 
         try {
-            $response = Http::timeout(45)->post(
-                $this->endpoint . '?key=' . $this->apiKey,
+            // La clave va en la cabecera, NO en la URL: los mensajes de excepción de HTTP/cURL
+            // incluyen la URL completa, y antes ?key=... acababa en el log y en el JSON de error
+            // que ve el docente.
+            $response = Http::withHeaders(['x-goog-api-key' => $this->apiKey])->timeout(45)->post(
+                $this->endpoint,
                 [
                     'contents'         => [['role' => 'user', 'parts' => [['text' => $prompt]]]],
                     'generationConfig' => [
@@ -232,8 +235,9 @@ EOT;
             return $data;
 
         } catch (\Throwable $e) {
-            Log::error('ZuraPlanificacionAI exception', ['message' => $e->getMessage()]);
-            return ['error' => 'Error de conexión con el servicio de IA: ' . $e->getMessage()];
+            // Nunca devolver al usuario el mensaje crudo de la excepción (URL, detalles internos).
+            Log::error('ZuraPlanificacionAI exception', ['message' => str_replace($this->apiKey, '[clave]', $e->getMessage())]);
+            return ['error' => 'No se pudo conectar con el servicio de IA. Intente de nuevo en unos minutos.'];
         }
     }
 }

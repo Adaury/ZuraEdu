@@ -82,6 +82,7 @@ class PlanificacionAIController extends Controller
         $docente = $this->getDocente();
         if ($asignacion->docente_id !== $docente->id
             || $plan->docente_id !== $docente->id
+            || $plan->asignacion_id !== $asignacion->id   // el plan debe ser de ESA asignación (no mezclar contexto)
             || $unidad->planif_anual_id !== $plan->id) {
             abort(403);
         }

@@ -58,8 +58,10 @@ class TutorIaApiController extends Controller
         try {
             $client   = new Client(['timeout' => 60, 'connect_timeout' => 10]);
             $response = $client->post(
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}",
+                'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
                 [
+                    // Clave en cabecera (no en la URL: las excepciones de Guzzle la incluyen).
+                    'headers' => ['x-goog-api-key' => $apiKey],
                     'json' => [
                         'systemInstruction' => ['parts' => [['text' => $systemPrompt]]],
                         'contents'          => $contents,
@@ -98,7 +100,8 @@ class TutorIaApiController extends Controller
     private function promptEstudiante($user, $schoolYear, string $sysName): string
     {
         $estudiante = Estudiante::where('user_id', $user->id)->first();
-        $nombre     = $estudiante?->nombre_completo ?? $user->name;
+        // Solo el nombre de pila: el prompt viaja a un proveedor externo (Google).
+        $nombre     = $estudiante?->nombres ?? strtok((string) $user->name, ' ');
         $grupo      = '';
         $materias   = '';
 
@@ -141,7 +144,7 @@ class TutorIaApiController extends Controller
 
         if ($representante) {
             $hijos = $representante->estudiantes()->get()
-                ->map(fn($e) => $e->nombre_completo)->filter()->join(', ');
+                ->map(fn($e) => $e->nombres)->filter()->join(', ');
         }
 
         return "Eres ZuraAI, el asistente académico de {$sysName} para representantes y padres de familia. " .

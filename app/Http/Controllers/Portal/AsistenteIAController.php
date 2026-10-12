@@ -66,7 +66,9 @@ class AsistenteIAController extends Controller
         $estudiante = Estudiante::where('user_id', $user->id)->first();
         $sysName    = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
 
-        $nombreEstudiante = $estudiante?->nombre_completo ?? $user->name;
+        // Solo el nombre de pila: el prompt viaja a un proveedor externo (Google) y el modelo no
+        // necesita apellidos de un menor para tutorizarlo.
+        $nombreEstudiante = $estudiante?->nombres ?? strtok((string) $user->name, ' ');
         $grupo            = '';
         $materias         = '';
 
@@ -118,9 +120,10 @@ class AsistenteIAController extends Controller
         $hijos       = '';
 
         if ($representante) {
+            // Nombres de pila de los hijos (el prompt sale hacia un proveedor externo).
             $hijos = $representante->estudiantes()
                 ->get()
-                ->map(fn($e) => $e->nombre_completo)
+                ->map(fn($e) => $e->nombres)
                 ->filter()->join(', ');
         }
 
@@ -224,8 +227,10 @@ class AsistenteIAController extends Controller
 
             try {
                 $response = $client->post(
-                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key={$apiKey}",
+                    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse',
                     [
+                        // Clave en cabecera (no en la URL: las excepciones de Guzzle la incluyen).
+                        'headers' => ['x-goog-api-key' => $apiKey],
                         'json' => [
                             'systemInstruction' => ['parts' => [['text' => $systemPrompt]]],
                             'contents'          => $contents,

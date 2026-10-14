@@ -168,11 +168,12 @@ class CafeteriaController extends Controller
         $totalVentasHoy = VentaCafeteria::whereDate('created_at', $hoy)->where('tipo', 'venta')->sum('monto');
         $totalRecargasHoy = VentaCafeteria::whereDate('created_at', $hoy)->where('tipo', 'recarga')->sum('monto');
 
-        $estudiantes = Estudiante::activos()->orderBy('apellidos')->get(['id', 'nombres', 'apellidos']);
-        $productos   = ProductoCafeteria::activos()->orderBy('nombre')->get();
+        // La vista busca estudiantes con el autocompletado (buscarEstudiantes): antes se cargaba aquí
+        // TODA la lista de estudiantes activos en cada visita, sin usarla.
+        $productos = ProductoCafeteria::activos()->orderBy('nombre')->get();
 
         return view('admin.cafeteria.ventas', compact(
-            'movimientos', 'estudiantes', 'productos',
+            'movimientos', 'productos',
             'totalVentasHoy', 'totalRecargasHoy'
         ));
     }
@@ -358,6 +359,7 @@ class CafeteriaController extends Controller
 
     public function reportePdf(Request $request)
     {
+        $request->validate(['fecha' => 'nullable|date']);   // una fecha inválida daba un 500 en Carbon::parse
         $fecha  = $request->filled('fecha') ? $request->fecha : today()->toDateString();
         $ventas = VentaCafeteria::with(['estudiante', 'producto', 'creadoPor'])
             ->whereDate('created_at', $fecha)
@@ -384,6 +386,7 @@ class CafeteriaController extends Controller
 
     public function reporteExcel(Request $request)
     {
+        $request->validate(['fecha' => 'nullable|date']);
         $fecha  = $request->filled('fecha') ? $request->fecha : today()->toDateString();
         $ventas = VentaCafeteria::with(['estudiante', 'producto', 'creadoPor'])
             ->whereDate('created_at', $fecha)

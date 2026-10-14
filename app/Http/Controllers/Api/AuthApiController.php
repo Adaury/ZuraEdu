@@ -9,7 +9,9 @@ use App\Models\Estudiante;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class AuthApiController extends Controller
 {
@@ -22,12 +24,28 @@ class AuthApiController extends Controller
             'device'   => 'nullable|string|max:100',
         ]);
 
+        // Límite por correo + IP (igual que el login web): el límite por IP de la ruta es amplio a propósito,
+        // porque un colegio entero suele salir por una sola IP y 10 inicios por minuto lo bloqueaban.
+        $key = 'api-login|' . Str::lower($request->email) . '|' . $request->ip();
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            return response()->json([
+                'message' => 'Demasiados intentos. Intenta de nuevo en ' . RateLimiter::availableIn($key) . ' segundos.',
+            ], 429);
+        }
+
         // Sin scope de tenant — el login opera antes de que el tenant sea conocido
         $user = User::withoutGlobalScope('tenant')->where('email', $request->email)->first();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
+        // Se compara siempre contra un hash (aunque el correo no exista) para que el tiempo de respuesta
+        // no revele qué correos están registrados.
+        $hash = $user?->password ?? Hash::make(Str::random(16));
+        if (! Hash::check($request->password, $hash) || ! $user) {
+            RateLimiter::hit($key, 60);
+
             return response()->json(['message' => 'Credenciales incorrectas.'], 401);
         }
+        RateLimiter::clear($key);
+
         if (! $user->activo)               return response()->json(['message' => 'Cuenta desactivada.'], 403);
         if ($user->pendiente_aprobacion)   return response()->json(['message' => 'Cuenta pendiente de aprobación.'], 403);
 
@@ -42,6 +60,9 @@ class AuthApiController extends Controller
                 'apellidos' => $user->apellidos,
                 'email'     => $user->email,
                 'role'      => $role,
+                // Todos los roles: la app móvil decide el portal con ellos (antes solo veía el primero y un
+                // «Docente Académico/Técnico/Guía» caía en el portal de estudiante).
+                'roles'     => $user->getRoleNames()->values(),
                 'avatar'    => $this->avatar($user),
             ],
         ]);
@@ -65,6 +86,7 @@ class AuthApiController extends Controller
             'email'     => $user->email,
             'telefono'  => $user->telefono,
             'role'      => $user->roles->first()?->name ?? 'Usuario',
+            'roles'     => $user->getRoleNames()->values(),
             'avatar'    => $this->avatar($user),
             'tenant_id' => $user->tenant_id,
         ]);

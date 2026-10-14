@@ -37,6 +37,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Exportes a Excel: un texto que empiece por "=" no se evalúa como fórmula (ver ValueBinderSeguro).
+        \PhpOffice\PhpSpreadsheet\Cell\Cell::setValueBinder(new \App\Support\ValueBinderSeguro());
+
         // Detecta N+1 queries en desarrollo — lanza excepción si se lazy-load una relación
         Model::preventLazyLoading(! app()->isProduction());
 

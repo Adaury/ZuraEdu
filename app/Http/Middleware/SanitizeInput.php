@@ -83,17 +83,34 @@ class SanitizeInput
 
     private function stripDangerousTags(string $value): string
     {
+        // Un filtro por expresiones regulares que limpia una sola vez se salta anidando la etiqueta dentro de
+        // sí misma («<scr<script>ipt>…»: al quitar la interna, las mitades se vuelven a unir). Se repite hasta
+        // que el texto ya no cambia (con tope, por si acaso).
+        for ($i = 0; $i < 10; $i++) {
+            $antes = $value;
+            $value = $this->limpiarUnaPasada($value);
+            if ($value === $antes) {
+                break;
+            }
+        }
+
+        return trim($value);
+    }
+
+    private function limpiarUnaPasada(string $value): string
+    {
         // Remove script, iframe, object, embed and other tags with no legitimate use in plain-text rich fields
-        $value = preg_replace('/<\s*(script|iframe|object|embed|base|form|meta|link|style|img|svg|body|math)[^>]*>.*?<\s*\/\s*\1\s*>/is', '', $value);
-        $value = preg_replace('/<\s*(script|iframe|object|embed|base|form|meta|link|style|img|svg|body|math)[^>]*\/?>/i', '', $value);
+        $value = preg_replace('/<\s*(script|iframe|object|embed|base|form|meta|link|style|img|svg|body|math)[^>]*>.*?<\s*\/\s*\1\s*>/is', '', $value) ?? '';
+        $value = preg_replace('/<\s*(script|iframe|object|embed|base|form|meta|link|style|img|svg|body|math)[^>]*\/?>/i', '', $value) ?? '';
         // Remove event handler attributes (on*=), quoted or unquoted
-        $value = preg_replace('/\bon\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $value);
+        $value = preg_replace('/\bon\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $value) ?? '';
         // Remove javascript: URIs — tolerante a espacios/tabs/saltos de línea
         // intercalados DENTRO de la propia palabra ("java\tscript:"), no solo
         // entre la palabra y los dos puntos: los navegadores descartan tab/CR/LF
         // en cualquier punto de una URL antes de interpretar el esquema (spec
         // WHATWG URL), así que un "\s*" solo entre "javascript" y ":" no bastaba.
-        $value = preg_replace('/j\s*a\s*v\s*a\s*s\s*c\s*r\s*i\s*p\s*t\s*:/i', '', $value);
-        return trim($value);
+        $value = preg_replace('/j\s*a\s*v\s*a\s*s\s*c\s*r\s*i\s*p\s*t\s*:/i', '', $value) ?? '';
+
+        return $value;
     }
 }

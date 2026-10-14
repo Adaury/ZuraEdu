@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
 import * as SecureStore from 'expo-secure-store'
 import * as Notifications from 'expo-notifications'
-import { authApi } from '../services/api'
+import { authApi, setUnauthorizedHandler } from '../services/api'
 
 type Role = 'Estudiante' | 'Docente' | 'Representante' | 'Administrador' | 'Director' | string
 
@@ -36,13 +36,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Determina el portal principal según roles
   const primaryRole: Role | null = user?.roles
-    ? user.roles.includes('Docente')        ? 'Docente'
+    // Los 4 roles docentes (mismo conjunto que User::ROLES_DOCENTE en el servidor) usan el portal docente
+    ? user.roles.some(r => r === 'Docente' || r.startsWith('Docente ')) ? 'Docente'
     : user.roles.includes('Representante')  ? 'Representante'
     : user.roles.includes('Estudiante')     ? 'Estudiante'
     : user.roles.includes('Administrador')  ? 'Administrador'
     : user.roles.includes('Director')       ? 'Director'
     : user.roles[0] ?? null
     : null
+
+  // Token vencido o revocado (401): se cierra la sesión también en pantalla. Antes solo se borraba el
+  // SecureStore y el usuario seguía «dentro» con todas las pantallas fallando hasta reiniciar la app.
+  useEffect(() => {
+    setUnauthorizedHandler(() => { setToken(null); setUser(null) })
+    return () => setUnauthorizedHandler(null)
+  }, [])
 
   useEffect(() => {
     (async () => {

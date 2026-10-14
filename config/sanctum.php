@@ -46,7 +46,9 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Los tokens de la app móvil vencen (antes eran eternos: un teléfono perdido seguía dentro para siempre).
+    // 90 días por defecto; la app, al recibir el 401, vuelve a la pantalla de inicio de sesión.
+    'expiration' => (int) env('SANCTUM_EXPIRATION', 60 * 24 * 90),
 
     /*
     |--------------------------------------------------------------------------

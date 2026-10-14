@@ -57,10 +57,11 @@ Route::prefix('v1')->group(function () {
     ]))->name('api.v1.index');
 
     // ── Auth pública (sin tenant) ─────────────────────────────────────
-    Route::prefix('auth')->middleware('throttle:10,1')->group(function () {
-        Route::post('login',  [AuthApiController::class, 'login'])->name('api.auth.login');
+    Route::prefix('auth')->group(function () {
+        // Por IP el límite es amplio (colegios tras una sola IP); el límite estricto es por correo + IP en el controlador
+        Route::post('login',  [AuthApiController::class, 'login'])->middleware('throttle:60,1')->name('api.auth.login');
 
-        Route::middleware('auth:sanctum')->group(function () {
+        Route::middleware(['throttle:10,1', 'auth:sanctum'])->group(function () {
             Route::post('logout',           [AuthApiController::class, 'logout'])->name('api.auth.logout');
             Route::get('me',                [AuthApiController::class, 'me'])->name('api.auth.me');
             Route::post('refresh-token',    [AuthApiController::class, 'refreshToken'])->name('api.auth.refresh');
@@ -147,6 +148,9 @@ Route::prefix('v1')->group(function () {
             Route::get('instrumentos',                       [DocenteApiController::class, 'instrumentos'])->name('instrumentos');
             Route::get('riesgo',                             [DocenteApiController::class, 'riesgoGrupo'])->name('riesgo');
             Route::get('carnet',                             [\App\Http\Controllers\Api\CarnetApiController::class, 'grupoHoy'])->name('carnet');
+            // Comunicados internos del personal (pantalla «Comunicados» del docente en la app móvil)
+            Route::get('comint',                             [\App\Http\Controllers\Api\ComunicadosApiController::class, 'comint'])->name('comint');
+            Route::post('comint/{id}/leer',                  [\App\Http\Controllers\Api\ComunicadosApiController::class, 'comintLeer'])->whereNumber('id')->name('comint.leer');
         });
 
         // Mensajería interna

@@ -16,6 +16,18 @@ class ResolveApiTenant
             return response()->json(['message' => 'No autenticado.'], 401);
         }
 
+        // Un usuario desactivado (o cuya aprobación se revocó) no puede seguir usando un token ya emitido:
+        // el login lo rechaza, pero un token anterior seguía abriendo toda la API. Se revoca y la app
+        // (401) vuelve al inicio de sesión.
+        if (! $user->activo || $user->pendiente_aprobacion) {
+            $token = $user->currentAccessToken();
+            if ($token instanceof \Laravel\Sanctum\PersonalAccessToken) {
+                $token->delete();
+            }
+
+            return response()->json(['message' => 'Cuenta desactivada. Contacta al administrador.'], 401);
+        }
+
         $tenantId = $user->tenant_id ?? null;
 
         if (! $tenantId) {

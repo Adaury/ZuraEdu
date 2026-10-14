@@ -27,8 +27,7 @@
       "package": "com.zuraedu.mobile",
       "googleServicesFile": "./google-services.json",
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.CAMERA"
       ]
     },
     "web": {
@@ -38,7 +37,14 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-camera",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "La aplicación usa la cámara para escanear el QR del carnet.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
       [
         "expo-image-picker",
         {

@@ -91,7 +91,9 @@ Route::get('/demo/{rol}', [AuthController::class, 'demoLogin'])
     ->where('rol', 'docente|padre|estudiante');
 
 Route::get('/login',  [AuthController::class, 'showLogin'])->name('login')->middleware('guest');
-Route::post('/login', [AuthController::class, 'login'])->name('login.post')->middleware('throttle:5,1');
+// El límite estricto es por correo + IP dentro de AuthController::login; por IP solo un tope amplio, porque un
+// colegio entero suele salir por una sola IP y «5 por minuto» bloqueaba a los demás docentes a primera hora.
+Route::post('/login', [AuthController::class, 'login'])->name('login.post')->middleware('throttle:60,1');
 
 Route::get('/register',  [AuthController::class, 'showRegister'])->name('register')->middleware('guest');
 Route::post('/register', [AuthController::class, 'register'])->name('register.post')->middleware(['guest', 'throttle:5,1']);

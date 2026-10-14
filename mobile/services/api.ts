@@ -4,7 +4,10 @@ import * as SecureStore from 'expo-secure-store'
 // Cambia esta URL al IP de tu servidor en desarrollo
 // Emulador Android: http://10.0.2.2:8000
 // Dispositivo físico: http://TU_IP_LOCAL:8000
-export const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:8000'
+// En una build de producción sin EXPO_PUBLIC_API_URL no se cae al emulador (http://10.0.2.2, sin cifrar):
+// se usa el servidor real por HTTPS.
+export const API_BASE = process.env.EXPO_PUBLIC_API_URL
+  ?? (__DEV__ ? 'http://10.0.2.2:8000' : 'https://app.zuraedu.com')
 
 export const api = axios.create({
   baseURL: `${API_BASE}/api/v1`,
@@ -23,13 +26,19 @@ api.interceptors.request.use(async (config) => {
   return config
 })
 
-// Manejo global de errores 401
+// Manejo global de errores 401: AuthContext registra aquí cómo cerrar la sesión en pantalla
+let onUnauthorized: (() => void) | null = null
+export const setUnauthorizedHandler = (fn: (() => void) | null) => { onUnauthorized = fn }
+
 api.interceptors.response.use(
   (r) => r,
   async (error) => {
-    if (error.response?.status === 401) {
-      await SecureStore.deleteItemAsync('auth_token')
-      await SecureStore.deleteItemAsync('auth_user')
+    // Un 401 del propio login es «credenciales incorrectas», no una sesión vencida
+    const esLogin = String(error.config?.url ?? '').includes('/auth/login')
+    if (error.response?.status === 401 && !esLogin) {
+      try { await SecureStore.deleteItemAsync('auth_token') } catch {}
+      try { await SecureStore.deleteItemAsync('auth_user') } catch {}
+      onUnauthorized?.()
     }
     return Promise.reject(error)
   }

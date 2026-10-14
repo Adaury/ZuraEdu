@@ -219,26 +219,13 @@ try { $moduleTransport = \App\Helpers\Setting::get('transporte','0');        } c
 
 {{-- ── GESTIONES ── --}}
 <div class="prt-sidebar-section mt-2">Gestiones</div>
-@if(auth()->user()->hasAnyRole(['Docente','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo','Director','Administrador']))
+@if(auth()->user()->tieneRolDocente() || auth()->user()->hasAnyRole(['Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo','Director','Administrador']))
 <a href="{{ route('portal.docente.comint.index') }}"
    class="prt-sidebar-link {{ $ak === 'comint' ? 'active' : '' }}">
     <i class="bi bi-envelope-paper-fill"></i>Comunicados Internos
     @php
     try {
-        $__uidCiEst = auth()->id();
-        $comintUnreadEst = \Illuminate\Support\Facades\Cache::remember('t'.(tenant_id()??0).'_user_'.$__uidCiEst.'_comint_unread', 120, function () use ($__uidCiEst) {
-            $user = auth()->user();
-            if (!$user) return 0;
-            $tipos = ['todos'];
-            if ($user->hasRole('Docente')) $tipos[] = 'docentes';
-            if ($user->hasAnyRole(['Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo','Director','Administrador'])) {
-                $tipos[] = 'coordinadores'; $tipos[] = 'docentes';
-            }
-            return \App\Models\Comunicado::internos()->publicados()
-                ->whereIn('tipo_destinatarios', $tipos)
-                ->whereDoesntHave('lecturas', fn($q) => $q->where('user_id', $__uidCiEst))
-                ->count();
-        });
+        $comintUnreadEst = \App\Models\Comunicado::internosSinLeer(auth()->user());
     } catch(\Exception $e){ $comintUnreadEst = 0; }
     @endphp
     @if($comintUnreadEst > 0)

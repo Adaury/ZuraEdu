@@ -399,7 +399,7 @@ class AuthController extends Controller
         if ($user->hasRole('Estudiante'))                return '/portal/estudiante';
         if ($user->hasRole('Administrador'))             return '/admin/dashboard';
         if ($user->hasRole('Director'))                  return '/admin/dashboard';
-        if ($user->hasRole('Coordinador Academico'))     return '/admin/dashboard';
+        if ($user->hasRole('Coordinador Académico'))     return '/admin/dashboard';
         if ($user->hasRole('Coordinador Primer Ciclo'))  return '/admin/dashboard';
         if ($user->hasRole('Coordinador Segundo Ciclo')) return '/admin/dashboard';
         if ($user->tieneRolDocente())                          return '/portal/docente';

@@ -69,6 +69,23 @@ class Comunicado extends Model
         return $q->whereIn('tipo_destinatarios', $tipos);
     }
 
+    /**
+     * Comunicados internos publicados que el usuario ve como personal y aún no ha acusado (caché 2 min).
+     * Un solo punto para el contador de las barras laterales (antes había 4 copias, todas con el rol
+     * «Docente» literal que dejaba fuera a Docente Académico/Técnico/Guía). La clave de caché la invalida
+     * PortalDocenteController::comintMarcarLeido y la API móvil al registrar el acuse.
+     */
+    public static function internosSinLeer(\App\Models\User $user): int
+    {
+        return (int) \Illuminate\Support\Facades\Cache::remember(
+            't' . (tenant_id() ?? 0) . '_user_' . $user->id . '_comint_unread',
+            120,
+            fn () => static::internos()->publicados()->paraStaff($user)
+                ->whereDoesntHave('lecturas', fn ($q) => $q->where('user_id', $user->id))
+                ->count()
+        );
+    }
+
     public function scopePublicados(Builder $q): Builder
     {
         return $q->whereNotNull('published_at')

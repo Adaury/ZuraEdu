@@ -46,8 +46,9 @@ class EnsureAdminAccess
                 ->with('info', 'Selecciona una institución para administrar su panel.');
         }
 
-        // Docente → portal propio
-        if ($user->tieneRolDocente()) {
+        // Docente → portal propio. Si además tiene un rol administrativo (p. ej. un Director que da clases) sí
+        // entra al panel: desde el menú tiene el enlace a su portal docente.
+        if ($user->tieneRolDocente() && ! $user->hasAnyRole(self::ADMIN_ROLES)) {
             return redirect()->route('portal.docente.dashboard')
                 ->with('info', 'Tu acceso es a través del portal docente.');
         }

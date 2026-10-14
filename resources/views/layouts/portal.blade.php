@@ -43,7 +43,7 @@
         }
     </script>
 </head>
-<body class="{{ auth()->check() ? (auth()->user()->hasRole('Docente') ? 'role-docente' : (auth()->user()->hasRole('Representante') ? 'role-padre' : (auth()->user()->hasRole('Estudiante') ? 'role-estudiante' : ''))) : '' }}">
+<body class="{{ auth()->check() ? (auth()->user()->tieneRolDocente() ? 'role-docente' : (auth()->user()->hasRole('Representante') ? 'role-padre' : (auth()->user()->hasRole('Estudiante') ? 'role-estudiante' : ''))) : '' }}">
 
 {{-- ── Banner Modo Demo ──────────────────────────────────────────────── --}}
 @if(session('demo_mode'))
@@ -337,7 +337,7 @@ window._SGE_DEBUG     = {{ config('app.debug') ? 'true' : 'false' }};
 {{-- ── ZuraAI Widget (Portal Docente y Estudiante) ─────────────────────── --}}
 @auth
 @php
-    $__zuraRole = auth()->user()->hasRole('Docente') ? 'docente'
+    $__zuraRole = auth()->user()->tieneRolDocente() ? 'docente'
         : (auth()->user()->hasRole('Estudiante')     ? 'estudiante'
         : (auth()->user()->hasRole('Representante')  ? 'padre' : null));
 @endphp

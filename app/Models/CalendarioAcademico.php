@@ -65,10 +65,12 @@ class CalendarioAcademico extends Model
 
         return match ($this->aplica_a) {
             'todos'           => true,
-            'docentes'        => $user->hasRole('Docente'),
+            // tieneRolDocente(): incluye Docente Académico/Técnico/Guía (hasRole('Docente') los dejaba fuera de
+            // los eventos «para docentes» y los trataba como personal administrativo)
+            'docentes'        => $user->tieneRolDocente(),
             'estudiantes'     => $user->hasRole('Estudiante'),
             'coordinadores',
-            'administrativos' => ! $user->hasAnyRole(['Docente', 'Estudiante', 'Representante']),
+            'administrativos' => ! ($user->tieneRolDocente() || $user->hasAnyRole(['Estudiante', 'Representante'])),
             default           => false,
         };
     }

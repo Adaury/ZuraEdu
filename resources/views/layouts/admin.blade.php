@@ -673,6 +673,14 @@ if (auth()->check()) {
                         <i class="bi bi-speedometer2"></i>Dashboard
                     </a>
                 </li>
+                @if($isDocente)
+                {{-- Quien además de un rol administrativo es docente (p. ej. Director que da clases) pasa a su portal desde aquí --}}
+                <li class="nav-item">
+                    <a href="{{ route('portal.docente.dashboard') }}">
+                        <i class="bi bi-person-workspace"></i>Mi portal docente
+                    </a>
+                </li>
+                @endif
             </ul>
 
             {{-- ══ GESTIÓN ACADÉMICA ══ --}}
@@ -726,20 +734,13 @@ if (auth()->check()) {
                         <i class="bi bi-calendar-check"></i>Asistencia
                     </a>
                 </li>
-                @if(!$isDocente)
+                {{-- Los docentes no llegan a este menú (EnsureAdminAccess los manda a su portal): aquí solo gestión de horarios --}}
                 {!! $subAbrir('subHorarios', 'bi-calendar-week', 'Horarios', request()->routeIs('admin.horarios*')) !!}
                     {!! $subItem(route('admin.horarios.index'), 'bi-calendar3', 'Horarios', request()->routeIs('admin.horarios.index', 'admin.horarios.show')) !!}
                     {!! $subItem(route('admin.horarios.vista-maestra'), 'bi-grid-3x3-gap-fill', 'Vista Maestra', request()->routeIs('admin.horarios.vista-maestra')) !!}
                     {!! $subItem(route('admin.horarios.suplencias'), 'bi-person-fill-exclamation', 'Suplencias', request()->routeIs('admin.horarios.suplencias*')) !!}
                     {!! $subItem(route('admin.horarios.disponibilidad'), 'bi-person-check', 'Disponibilidad', request()->routeIs('admin.horarios.disponibilidad')) !!}
                 {!! $subCerrar !!}
-                @else
-                <li class="nav-item">
-                    <a href="{{ route('admin.horarios.mi-horario') }}" class="{{ request()->routeIs('admin.horarios.mi-horario') ? 'active' : '' }}">
-                        <i class="bi bi-calendar-week-fill"></i>Mi Horario
-                    </a>
-                </li>
-                @endif
                 <li class="nav-item">
                     <a href="{{ route('admin.calificaciones.index') }}" class="{{ request()->routeIs('admin.calificaciones.index') || request()->routeIs('admin.calificaciones.planilla*') ? 'active' : '' }}">
                         <i class="bi bi-journal-check"></i>Registro de Notas
@@ -842,23 +843,6 @@ if (auth()->check()) {
                     {!! $subItem(route('admin.proyectos.dashboard'), 'bi-lightbulb', 'Proyectos', request()->routeIs('admin.proyectos*')) !!}
                     {!! $subItem(route('admin.reuniones.dashboard'), 'bi-journal-text', 'Actas de Reuniones', request()->routeIs('admin.reuniones*')) !!}
                 {!! $subCerrar !!}
-            </ul>
-            @endif
-
-            {{-- ══ MI ESPACIO (solo Docente) ══ --}}
-            @if($isDocente)
-            <div class="nav-section-title">Mi Espacio</div>
-            <ul class="list-unstyled mb-0">
-                <li class="nav-item">
-                    <a href="{{ route('admin.horarios.mi-horario') }}" class="{{ request()->routeIs('admin.horarios.mi-horario') ? 'active' : '' }}">
-                        <i class="bi bi-calendar-week-fill"></i>Mi Horario
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.perfiles.miPerfil') }}" class="{{ request()->routeIs('admin.perfiles.miPerfil') ? 'active' : '' }}">
-                        <i class="bi bi-person-circle"></i>Mi Perfil
-                    </a>
-                </li>
             </ul>
             @endif
 
@@ -968,7 +952,7 @@ if (auth()->check()) {
                 </li>
                 <li class="nav-item">
                     <a href="{{ route('admin.registro.index') }}" class="{{ request()->routeIs('admin.registro*') ? 'active' : '' }}">
-                        <i class="bi bi-journal-bookmark-fill"></i>Registro Académico
+                        <i class="bi bi-journal-bookmark-fill"></i>Registro MINERD
                     </a>
                 </li>
                 <li class="nav-item">

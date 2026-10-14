@@ -186,20 +186,7 @@ $ak  = $activeKey ?? '';
     <i class="bi bi-envelope-paper-fill"></i>Comunicados Internos
     @php
     try {
-        $__uid = auth()->id();
-        $comintUnread = \Illuminate\Support\Facades\Cache::remember('t'.(tenant_id()??0).'_user_'.$__uid.'_comint_unread', 120, function () use ($__uid) {
-            $user = auth()->user();
-            if (!$user) return 0;
-            $tipos = ['todos'];
-            if ($user->hasRole('Docente')) $tipos[] = 'docentes';
-            if ($user->hasAnyRole(['Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo','Director','Administrador'])) {
-                $tipos[] = 'coordinadores'; $tipos[] = 'docentes';
-            }
-            return \App\Models\Comunicado::internos()->publicados()
-                ->whereIn('tipo_destinatarios', $tipos)
-                ->whereDoesntHave('lecturas', fn($q) => $q->where('user_id', $__uid))
-                ->count();
-        });
+        $comintUnread = \App\Models\Comunicado::internosSinLeer(auth()->user());
     } catch(\Exception $e){ $comintUnread = 0; }
     @endphp
     @if($comintUnread > 0)

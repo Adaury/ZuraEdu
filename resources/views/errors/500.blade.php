@@ -53,9 +53,9 @@
         <div class="actions">
             <a href="javascript:location.reload()" class="btn btn-secondary">↻ Reintentar</a>
             @auth
-                @if(auth()->user()->hasRole(['Administrador','Director','Coordinador Academico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo','Secretaria Docente','Secretaria','Personal Administrativo']))
+                @if(auth()->user()->hasRole(['Administrador','Director','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo','Secretaria Docente','Secretaria','Personal Administrativo']))
                     <a href="/admin/dashboard" class="btn btn-primary">🏠 Panel Admin</a>
-                @elseif(auth()->user()->hasRole('Docente'))
+                @elseif(auth()->user()->tieneRolDocente())
                     <a href="/portal/docente" class="btn btn-primary">🏠 Portal Docente</a>
                 @elseif(auth()->user()->hasRole('Estudiante'))
                     <a href="/portal/estudiante" class="btn btn-primary">🏠 Mi Portal</a>

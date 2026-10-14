@@ -4,7 +4,7 @@
 
 @section('sidebar')
     <div class="prt-sidebar-section">Navegación</div>
-    @php $dash = auth()->user()->hasRole('Docente') ? 'portal.docente.dashboard' : (auth()->user()->hasRole('Representante') ? 'portal.padre.dashboard' : 'portal.estudiante.dashboard'); @endphp
+    @php $dash = auth()->user()->tieneRolDocente() ? 'portal.docente.dashboard' : (auth()->user()->hasRole('Representante') ? 'portal.padre.dashboard' : 'portal.estudiante.dashboard'); @endphp
     <a href="{{ route($dash) }}" class="prt-sidebar-link"><i class="bi bi-house-fill"></i>Inicio</a>
     <a href="#" class="prt-sidebar-link active"><i class="bi bi-bell-fill"></i>Notificaciones</a>
     @if(auth()->user()->hasAnyRole(['Administrador','Director','Coordinador Académico','Coordinador Primer Ciclo','Coordinador Segundo Ciclo']))
@@ -66,7 +66,7 @@
     <div style="display:flex;align-items:center;gap:.5rem;">
         <span style="font-size:.78rem;color:var(--prt-muted);">{{ $notificaciones->total() }} en total</span>
         @if($noLeidas > 0)
-        <form method="POST" action="{{ auth()->user()->hasRole('Docente') ? route('portal.docente.notif.leer-todas') : (auth()->user()->hasRole('Representante') ? route('portal.padre.notif.leer-todas') : route('portal.estudiante.notif.leer-todas')) }}">
+        <form method="POST" action="{{ auth()->user()->tieneRolDocente() ? route('portal.docente.notif.leer-todas') : (auth()->user()->hasRole('Representante') ? route('portal.padre.notif.leer-todas') : route('portal.estudiante.notif.leer-todas')) }}">
             @csrf
             <button type="submit" style="background:var(--primary);color:#fff;border:none;border-radius:7px;padding:.3rem .8rem;font-size:.75rem;font-weight:600;cursor:pointer;">
                 <i class="bi bi-check2-all me-1"></i>Marcar todas leídas

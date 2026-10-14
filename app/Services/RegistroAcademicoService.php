@@ -205,21 +205,55 @@ class RegistroAcademicoService
 
     private function buildAsistenciaMap(Collection $matriculaIds, Collection $periodos, SchoolYear $schoolYear): array
     {
+        $map = [];
+
+        foreach (self::pctAsistenciaPorMatricula($matriculaIds, $schoolYear) as $mId => $pct) {
+            $map[$mId] = ['pct_general' => $pct, 'periodos' => []];
+        }
+
+        return $map;
+    }
+
+    /**
+     * % de asistencia del año por matrícula (null si no hay registros). Un solo cálculo para el registro
+     * MINERD y para el cierre de año, que antes decidía la promoción sin mirar la asistencia.
+     *
+     * @return array<int, float|null>
+     */
+    public static function pctAsistenciaPorMatricula(Collection $matriculaIds, SchoolYear $schoolYear): array
+    {
         $asistencias = Asistencia::whereIn('matricula_id', $matriculaIds)
             ->whereHas('asignacion', fn($q) => $q->where('school_year_id', $schoolYear->id))
-            ->get();
+            ->get()
+            ->groupBy('matricula_id');
 
         $map = [];
 
         foreach ($matriculaIds as $mId) {
-            $map[$mId] = ['pct_general' => null, 'periodos' => []];
-            $matr = $asistencias->where('matricula_id', $mId);
+            $matr  = $asistencias->get($mId, collect());
             $total = $matr->count();
             $pres  = $matr->whereIn('estado', Asistencia::ESTADOS_ASISTIDO)->count();
-            $map[$mId]['pct_general'] = $total > 0 ? round(($pres / $total) * 100, 1) : null;
+            $map[$mId] = $total > 0 ? round(($pres / $total) * 100, 1) : null;
         }
 
         return $map;
+    }
+
+    /**
+     * Regla oficial de promoción (MINERD): promedio ≥ 65 Y asistencia ≥ 75 %. Sin promedio queda «pendiente».
+     * Sin registros de asistencia (null) no se penaliza. Es la única definición: la usan el registro
+     * académico y el cierre de año.
+     */
+    public static function estadoPorRegla(?float $promedio, ?float $pctAsistencia): string
+    {
+        if ($promedio === null) {
+            return 'pendiente';
+        }
+
+        $aprueba = $promedio >= self::NOTA_APROBATORIA
+            && ($pctAsistencia === null || $pctAsistencia >= self::PCT_ASISTENCIA_MIN);
+
+        return $aprueba ? 'promovido' : 'no_promovido';
     }
 
     // ─────────────────────────────────────────────────────────────────────────

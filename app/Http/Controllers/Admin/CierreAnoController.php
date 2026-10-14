@@ -179,17 +179,21 @@ class CierreAnoController extends Controller
                 ->whereNotNull('nota_final')
                 ->get()->groupBy('matricula_id');
 
+            $pctAsistencia = \App\Services\RegistroAcademicoService::pctAsistenciaPorMatricula($matIds, $schoolYear);
+
             $procesados = $promovidos = $noPromovidos = $pendientes = 0;
 
             foreach ($matriculas as $matricula) {
                 $promedio        = $this->calcularPromedioFinal($matricula->id, $calAcBulk, $calBulk);
-                $estadoPromocion = $this->determinarEstadoPromocion($promedio);
+                $pct             = $pctAsistencia[$matricula->id] ?? null;
+                $estadoPromocion = $this->determinarEstadoPromocion($promedio, $pct);
 
                 Promocion::updateOrCreate(
                     ['matricula_id' => $matricula->id, 'school_year_id' => $schoolYear->id],
                     [
                         'estado'         => $estadoPromocion,
                         'promedio_final' => $promedio,
+                        'pct_asistencia' => $pct,
                         'decidido_por'   => auth()->id(),
                         'fecha_decision' => now()->toDateString(),
                         'observacion'    => 'Generado automáticamente en cierre de año escolar.',
@@ -541,7 +545,7 @@ class CierreAnoController extends Controller
             $situacion = match($matricula->estado) {
                 'promovida'    => 'A',
                 'no_promovida' => 'R',
-                default        => ($promedioFinal !== null ? ($promedioFinal >= 60 ? 'A' : 'R') : null),
+                default        => ($promedioFinal !== null ? ($promedioFinal >= \App\Services\RegistroAcademicoService::NOTA_APROBATORIA ? 'A' : 'R') : null),
             };
 
             $filas[] = [
@@ -616,6 +620,11 @@ class CierreAnoController extends Controller
             ->get()
             ->groupBy(fn ($c) => $c->matricula_id . '_' . $c->asignacion_id);
 
+        $anioAsistencia = $schoolYear ?? SchoolYear::find($grupo->school_year_id);
+        $pctAsistencia  = $anioAsistencia
+            ? \App\Services\RegistroAcademicoService::pctAsistenciaPorMatricula($matIds, $anioAsistencia)
+            : [];
+
         $filas = [];
         foreach ($matriculas as $matricula) {
             $notasPorAsignacion = [];
@@ -637,10 +646,11 @@ class CierreAnoController extends Controller
             }
 
             $promedioFinal = $this->calcularPromedioFinalPorArea($notasPorAsignacion, $asignaciones);
-            $autoEstado    = $this->determinarEstadoPromocion($promedioFinal);
+            $autoEstado    = $this->determinarEstadoPromocion($promedioFinal, $pctAsistencia[$matricula->id] ?? null);
 
             $filas[] = [
                 'matricula'          => $matricula,
+                'pct_asistencia'     => $pctAsistencia[$matricula->id] ?? null,
                 'notas_asignaciones' => $notasPorAsignacion,
                 'promedio_final'     => $promedioFinal,
                 'estado_auto'        => $autoEstado,
@@ -784,9 +794,9 @@ class CierreAnoController extends Controller
         return (new \App\Services\PromedioEstudianteService())->calcular($notasAcademicas, $notasTecnicas);
     }
 
-    private function determinarEstadoPromocion(?float $promedio): string
+    /** La regla oficial (65 + 75 % de asistencia) vive en RegistroAcademicoService: aquí no se duplica. */
+    private function determinarEstadoPromocion(?float $promedio, ?float $pctAsistencia = null): string
     {
-        if ($promedio === null) return 'pendiente';
-        return $promedio >= 60 ? 'promovido' : 'no_promovido';
+        return \App\Services\RegistroAcademicoService::estadoPorRegla($promedio, $pctAsistencia);
     }
 }

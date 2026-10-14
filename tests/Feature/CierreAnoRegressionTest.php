@@ -147,6 +147,51 @@ class CierreAnoRegressionTest extends TestCase
         $this->assertSame('no_promovida', $e['matricula']->fresh()->estado);
     }
 
+    /** H1: el cierre de año usa la misma regla que el registro MINERD (65 de nota y 75 % de asistencia). */
+    private function cerrarConNotaYAsistencia(float $nota, int $presentes, int $ausentes): array
+    {
+        $e = $this->crearEscenario();
+        CalificacionAcademica::create([
+            'matricula_id' => $e['matricula']->id, 'asignacion_id' => $e['asignacion']->id,
+            'school_year_id' => $e['schoolYear']->id, 'nota_final' => $nota,
+        ]);
+        for ($i = 0; $i < $presentes + $ausentes; $i++) {
+            \App\Models\Asistencia::create([
+                'fecha' => now()->subDays($i + 1)->toDateString(), 'matricula_id' => $e['matricula']->id,
+                'asignacion_id' => $e['asignacion']->id, 'estado' => $i < $presentes ? 'presente' : 'ausente',
+                'registrado_por' => User::factory()->create()->id,
+            ]);
+        }
+
+        $this->actingAs($this->admin())->post(route('admin.cierre-ano.ejecutar'), ['school_year_id' => $e['schoolYear']->id]);
+
+        return [Promocion::where('matricula_id', $e['matricula']->id)->firstOrFail(), $e['matricula']->fresh()];
+    }
+
+    public function test_una_nota_entre_60_y_64_ya_no_promueve(): void
+    {
+        [$promocion, $matricula] = $this->cerrarConNotaYAsistencia(62, 0, 0);
+
+        $this->assertSame('no_promovido', $promocion->estado);
+        $this->assertSame('no_promovida', $matricula->estado);
+    }
+
+    public function test_buena_nota_con_poca_asistencia_no_promueve(): void
+    {
+        [$promocion] = $this->cerrarConNotaYAsistencia(85, 5, 5);   // 50 %
+
+        $this->assertSame('no_promovido', $promocion->estado);
+        $this->assertEquals(50.0, $promocion->pct_asistencia);
+    }
+
+    public function test_buena_nota_con_buena_asistencia_promueve_y_guarda_el_porcentaje(): void
+    {
+        [$promocion] = $this->cerrarConNotaYAsistencia(85, 9, 1);   // 90 %
+
+        $this->assertSame('promovido', $promocion->estado);
+        $this->assertEquals(90.0, $promocion->pct_asistencia);
+    }
+
     public function test_ejecutar_marca_pendiente_cuando_no_hay_notas(): void
     {
         $e = $this->crearEscenario();

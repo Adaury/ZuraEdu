@@ -223,7 +223,7 @@ class BibliotecaController extends Controller
             $libro->decrement('cantidad_disponible');
         });
 
-        return redirect()->route('admin.biblioteca.prestamos')
+        return redirect()->route('admin.biblioteca.prestamos.index')
             ->with('success', 'Préstamo registrado correctamente.');
     }
 

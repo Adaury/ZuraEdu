@@ -116,12 +116,9 @@
 
 <div class="alert alert-secondary py-2 px-3 small mb-3">
     <i class="bi bi-info-circle-fill me-1"></i>
-    Esta es la promoción <strong>oficial</strong> (regla: promedio ≥ 60%,
-    ajustable manualmente por fila). El Registro Académico MINERD tiene su
-    propio botón "Calcular Promoción" que usa otra regla (65% + asistencia
-    75% + condicionado) y escribe al mismo registro — si alguien lo corrió
-    ahí después de este cierre, revisa que el estado siga siendo el
-    correcto antes de imprimir actas.
+    Esta es la promoción <strong>oficial</strong> (regla MINERD: promedio ≥ {{ \App\Services\RegistroAcademicoService::NOTA_APROBATORIA }}
+    y asistencia ≥ {{ \App\Services\RegistroAcademicoService::PCT_ASISTENCIA_MIN }}%; ajustable manualmente por fila).
+    El botón "Calcular Promoción" del Registro Académico MINERD aplica la misma regla.
 </div>
 
 {{-- Header --}}
@@ -196,8 +193,8 @@
 
 {{-- Leyenda --}}
 <div class="legend-bar">
-    <span><span class="legend-dot" style="background:#10b981;"></span>Promovido (≥60)</span>
-    <span><span class="legend-dot" style="background:#ef4444;"></span>No Promovido (&lt;60)</span>
+    <span><span class="legend-dot" style="background:#10b981;"></span>Promovido (≥{{ \App\Services\RegistroAcademicoService::NOTA_APROBATORIA }} y asistencia ≥{{ \App\Services\RegistroAcademicoService::PCT_ASISTENCIA_MIN }}%)</span>
+    <span><span class="legend-dot" style="background:#ef4444;"></span>No Promovido (&lt;{{ \App\Services\RegistroAcademicoService::NOTA_APROBATORIA }} o poca asistencia)</span>
     <span><span class="legend-dot" style="background:#f59e0b;"></span>Condicionado (recuperación)</span>
     <span><span class="legend-dot" style="background:#94a3b8;"></span>Pendiente</span>
     <span class="ms-auto text-muted">Los cambios se guardan automáticamente al cambiar el estado.</span>
@@ -225,7 +222,7 @@
                 @foreach($filas as $idx => $fila)
                 @php
                     $prom = $fila['promedio_final'];
-                    $promClass = $prom === null ? '' : ($prom >= 70 ? 'alta' : ($prom >= 60 ? 'media' : 'baja'));
+                    $promClass = $prom === null ? '' : ($prom >= 70 ? 'alta' : ($prom >= 65 ? 'media' : 'baja'));
                     $mat = $fila['matricula'];
                     $est = $mat->estudiante;
                 @endphp
@@ -246,7 +243,7 @@
                     @foreach($asignaciones as $asi)
                     @php
                         $nota = $fila['notas_asignaciones'][$asi->id] ?? null;
-                        $nc = $nota === null ? '' : ($nota >= 70 ? 'alta' : ($nota >= 60 ? 'media' : 'baja'));
+                        $nc = $nota === null ? '' : ($nota >= 70 ? 'alta' : ($nota >= 65 ? 'media' : 'baja'));
                     @endphp
                     <td class="nota-cell {{ $nc }}">
                         {{ $nota !== null ? number_format($nota, 1) : '—' }}

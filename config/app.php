@@ -89,7 +89,9 @@ return [
     |
     */
 
-    'locale' => 'en',
+    // La aplicación es en español: con 'en' todas las fechas con nombre de mes (47 vistas y el PDF oficial de
+    // comunicados) salían en inglés («14 de October»).
+    'locale' => env('APP_LOCALE', 'es'),
 
     /*
     |--------------------------------------------------------------------------

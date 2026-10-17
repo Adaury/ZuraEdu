@@ -31,6 +31,7 @@ class Traductor
         '/^Mostrando (\d+)[–-](\d+) de (\d+) registros$/u' => [
             'en' => 'Showing $1–$2 of $3 records', 'fr' => 'Affichage de $1–$2 sur $3 enregistrements', 'pt' => 'Mostrando $1–$2 de $3 registros',
         ],
+        '/^Ej[:.] (.+)$/u' => ['en' => 'E.g. $1', 'fr' => 'Ex. : $1', 'pt' => 'Ex.: $1'],
         '/^Bienvenido, (.+)$/u' => ['en' => 'Welcome, $1', 'fr' => 'Bienvenue, $1', 'pt' => 'Bem-vindo, $1'],
         '/^Año escolar: (.+)$/u' => ['en' => 'School year: $1', 'fr' => 'Année scolaire : $1', 'pt' => 'Ano letivo: $1'],
         '/^Actualizado: (.+)$/u' => ['en' => 'Updated: $1', 'fr' => 'Mis à jour : $1', 'pt' => 'Atualizado: $1'],

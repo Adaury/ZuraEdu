@@ -100,6 +100,7 @@ input[type=text]:focus{border-color:#1d4ed8;background:#fff;box-shadow:0 0 0 4px
 @include('partials.marca.head')
 </head>
 <body>
+<x-selector-idioma :fijo="true" />
 @php
     $si        = \App\Models\ConfigInstitucional::get('nombre_institucion', config('app.name'));
     $resultado = $resultado ?? session('resultado');

@@ -12,7 +12,7 @@
 @endphp
 <details class="selector-idioma {{ $uid }}" @if($fijo) style="position:fixed;top:12px;right:12px;z-index:2000;" @endif>
     <summary title="Idioma" aria-label="Idioma">
-        <i class="bi bi-translate" aria-hidden="true"></i>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg>
         <span>{{ $idiomas[$actual]['corto'] ?? 'ES' }}</span>
     </summary>
     <div class="selector-idioma-menu" role="menu">
@@ -21,7 +21,7 @@
                 @csrf
                 <button type="submit" role="menuitem" class="{{ $codigo === $actual ? 'activo' : '' }}">
                     {!! htmlentities($dato['nombre'], ENT_NOQUOTES, 'UTF-8') !!}
-                    @if($codigo === $actual)<i class="bi bi-check2" aria-hidden="true"></i>@endif
+                    @if($codigo === $actual)<span aria-hidden="true">✓</span>@endif
                 </button>
             </form>
         @endforeach

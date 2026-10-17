@@ -117,6 +117,7 @@
 @include('partials.marca.head')
 </head>
 <body>
+<x-selector-idioma :fijo="true" />
 
 {{-- NAV --}}
 <nav class="nav">

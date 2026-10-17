@@ -127,6 +127,7 @@
         <span class="brand-name">{{ $config['nombre'] }}</span>
     </a>
     <a href="{{ route('login') }}" class="acceder"><i class="bi bi-box-arrow-in-right"></i>Acceder al panel</a>
+    <x-selector-idioma />
 </header>
 
 @if($config['ads_izquierda'])

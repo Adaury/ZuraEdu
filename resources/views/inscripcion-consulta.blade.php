@@ -71,6 +71,7 @@
 @include('partials.marca.head')
 </head>
 <body>
+<x-selector-idioma :fijo="true" />
 <nav class="nav">
     <div class="nav-inner">
         <a href="{{ route('landing') }}" class="nav-logo">

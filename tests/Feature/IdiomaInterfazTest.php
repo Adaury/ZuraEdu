@@ -118,6 +118,27 @@ class IdiomaInterfazTest extends TestCase
         $this->assertNull(Traductor::texto('Reunión de claustro — Colegio X', 'en'));
     }
 
+    public function test_las_paginas_publicas_ofrecen_el_selector_y_se_traducen(): void
+    {
+        foreach (['/', '/inscripcion', '/inscripcion/consulta', '/verificar-matricula', '/galeria'] as $ruta) {
+            $r = $this->get($ruta);
+            if ($r->getStatusCode() === 200) {
+                $r->assertSee('selector-idioma', false);
+            }
+        }
+
+        // Portada de ZuraEdu: el menú y los botones salen en el idioma elegido
+        $es = $this->get('/')->assertOk();
+        $es->assertSee('Crear escuela')->assertSee('Iniciar sesión');
+
+        $en = $this->withCookie('idioma', 'en')->get('/')->assertOk();
+        $en->assertSee('Create school')->assertSee('Frequently asked questions');
+        $en->assertDontSee('Preguntas frecuentes');
+
+        $fr = $this->withCookie('idioma', 'fr')->get('/')->assertOk();
+        $fr->assertSee('Questions fréquentes');
+    }
+
     public function test_las_fechas_salen_en_el_idioma_elegido(): void
     {
         app()->setLocale('fr');

@@ -101,6 +101,7 @@
 @include('partials.marca.head')
 </head>
 <body>
+<x-selector-idioma :fijo="true" />
 
 <div class="top-bar">
   <svg width="28" height="28" fill="none" stroke="#FFB300" stroke-width="2" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c3.33 1.67 8.67 1.67 12 0v-5"/></svg>

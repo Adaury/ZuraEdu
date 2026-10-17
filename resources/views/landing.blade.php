@@ -230,6 +230,7 @@
 
         {{-- Botones --}}
         <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            <x-selector-idioma />
             {{-- Visible en el celular también (antes «hidden sm:inline-flex»: sin menú móvil, quien entraba desde el teléfono no veía dónde iniciar sesión) --}}
             <a href="{{ route('login') }}" class="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 border border-slate-200 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all">
                 <span class="sm:hidden">Entrar</span><span class="hidden sm:inline">Iniciar sesión</span>

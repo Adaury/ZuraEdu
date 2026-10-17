@@ -55,6 +55,7 @@
     </a>
     <a href="{{ route('sitio.show') }}" class="volver"><i class="bi bi-arrow-left me-1"></i>Volver al inicio</a>
     <a href="{{ route('login') }}" class="acceder"><i class="bi bi-box-arrow-in-right"></i>Acceder al panel</a>
+    <x-selector-idioma />
 </header>
 
 <div class="wrap">

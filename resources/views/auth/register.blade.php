@@ -415,6 +415,7 @@
 @include('partials.marca.head')
 </head>
 <body>
+<x-selector-idioma :fijo="true" />
 
 <div class="container-fluid p-0">
     <div class="row g-0 min-vh-100">

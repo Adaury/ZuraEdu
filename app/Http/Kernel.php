@@ -30,10 +30,14 @@ class Kernel extends HttpKernel
      */
     protected $middlewareGroups = [
         'web' => [
+            // El más externo: traduce el HTML ya terminado al idioma elegido (en español no hace nada)
+            \App\Http\Middleware\TraducirRespuesta::class,
             \App\Http\Middleware\SecurityHeaders::class,
             \App\Http\Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
+            // Después de EncryptCookies: lee el cookie «idioma» ya descifrado
+            \App\Http\Middleware\EstablecerIdioma::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\PreventRequestForgery::class,
             \App\Http\Middleware\SanitizeInput::class,

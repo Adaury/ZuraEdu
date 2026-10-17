@@ -1368,6 +1368,9 @@ if (auth()->check()) {
         {{-- Accesos rápidos del rol (icono + panel) --}}
         @include('partials.accesos-rapidos-boton', ['variante' => 'claro'])
 
+        {{-- Idioma de la interfaz --}}
+        <x-selector-idioma />
+
         <!-- Dark mode toggle -->
         <button class="dark-toggle" id="darkToggleBtn" title="Modo oscuro / claro">
             <i class="bi bi-moon-stars-fill" id="darkToggleIcon"></i>

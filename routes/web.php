@@ -82,6 +82,10 @@ Route::get('/suspended', fn () => view('tenant-suspended'))->name('tenant.suspen
 Route::get('/onboarding',  [OnboardingController::class, 'show'])->name('onboarding');
 Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store')->middleware('throttle:5,10');
 
+// ── Idioma de la interfaz (selector en el panel, portales y pantallas de acceso) ──
+Route::post('/idioma/{codigo}', [\App\Http\Controllers\IdiomaController::class, 'cambiar'])
+    ->name('idioma.cambiar')->where('codigo', '[a-z]{2}')->middleware('throttle:60,1');
+
 // ── Demo automática (admin completo con datos ficticios) ──────────────────
 Route::get('/demo', [DemoAutoController::class, 'enter'])->name('demo.auto')->middleware('throttle:20,1');
 

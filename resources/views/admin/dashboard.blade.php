@@ -88,7 +88,7 @@
         <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
             <div class="zd-meta-chip">
                 <i class="bi bi-calendar3" style="opacity:.7;"></i>
-                {{ now()->isoFormat('dddd, D [de] MMMM') }}
+                {{ app()->getLocale() === 'es' ? now()->isoFormat('dddd, D [de] MMMM') : now()->isoFormat('dddd, LL') }}
             </div>
             <div class="zd-meta-chip">
                 <i class="bi bi-clock" style="opacity:.7;"></i>

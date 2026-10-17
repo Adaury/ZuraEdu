@@ -89,6 +89,8 @@ $sysLogo = \App\Helpers\Setting::get('system_logo');
     <div class="prt-topbar-right">
         {{-- Accesos rápidos del rol (icono + panel) --}}
         @include('partials.accesos-rapidos-boton', ['variante' => 'oscuro'])
+        {{-- Idioma de la interfaz --}}
+        <x-selector-idioma variante="oscuro" />
         {{-- Toggle dark mode --}}
         <button class="prt-dark-toggle" id="prtDarkToggle" title="Alternar modo oscuro/claro" type="button">
             <i class="bi bi-moon-stars-fill" id="prtDarkIcon"></i>
